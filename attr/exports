@@ -1,0 +1,40 @@
+ATTR_1.0 {
+    global:
+	# System calls (to be moved to glibc)
+	fgetxattr;
+	flistxattr;
+	fremovexattr;
+	fsetxattr;
+	getxattr;
+	lgetxattr;
+	listxattr;
+	llistxattr;
+	lremovexattr;
+	lsetxattr;
+	removexattr;
+	setxattr;
+
+	# SGI Irix compatibility extensions
+	attr_get;
+	attr_getf;
+	attr_multi;
+	attr_multif;
+	attr_remove;
+	attr_removef;
+	attr_set;
+	attr_setf;
+};
+
+ATTR_1.1 {
+    global:
+	attr_copy_fd;
+	attr_copy_file;
+	attr_copy_check_permissions;
+} ATTR_1.0;
+
+ATTR_1.2 {
+    global:
+	# Additional SGI Irix compatibility extensions
+	attr_list;
+	attr_listf;
+} ATTR_1.1;

@@ -1,0 +1,9 @@
+
+Andreas Gruenbacher's tests for the ext2 filesystem extended attributes
+support.  Most of these tests should work for any filesystem type, and
+most are actually used as part of the XFS test suite.  However, those
+tests relating to the exercising of boundary conditions of attribute
+value lengths, etc, are specific to ext2.
+
+		--  nathans@sgi.com
+
