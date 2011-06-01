@@ -1,0 +1,288 @@
+acl (2.2.42-1) unstable; urgency=low
+
+  * New upstream release
+  * Incorporate Petr Salinger's GNU/kFreeBSD patch (closes: #401511)
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 08 Dec 2006 14:21:40 +1100
+
+acl (2.2.41-1) unstable; urgency=low
+
+  * New upstream release
+  * Rework translation Makefile slightly (closes: #375796)
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 21 Jul 2006 09:37:35 +1000
+
+acl (2.2.39-1) unstable; urgency=low
+
+  * New upstream release
+  * Add Swedish translation from Daniel Nylander (closes: #368656)
+  * Fix get/setfacl segfault on non-existant files (closes: #370826)
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 07 Jun 2006 09:30:45 +1000
+
+acl (2.2.37-1) unstable; urgency=low
+
+  * New upstream release
+  * Fix tree walking with symbolic links (closes: #333160)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 02 May 2006 09:41:15 +1000
+
+acl (2.2.36-1) unstable; urgency=low
+
+  * New upstream release
+  * Fixed build dependency on libc-dev (closes: #358788)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 28 Mar 2006 09:14:25 +1100
+
+acl (2.2.35-1) unstable; urgency=low
+
+  * New upstream release
+  * Switch from debmake to debhelper
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 15 Feb 2006 20:43:49 +1100
+
+acl (2.2.34-1) unstable; urgency=low
+
+  * New upstream release
+  * Add libacl1-dev dependency on libattr1-dev (closes: #339786, #341711)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 05 Dec 2005 11:15:41 +1100
+
+acl (2.2.33-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 10 Nov 2005 07:59:12 +1100
+
+acl (2.2.32-1) unstable; urgency=low
+
+  * New upstream release
+  * Added French translation (closes: #330596)
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 29 Sep 2005 09:47:28 +1000
+
+acl (2.2.29-1) unstable; urgency=low
+
+  * New upstream release
+  * Replace use of _POSIX_PATH_MAX with PATH_MAX (closes: #292819)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 31 Jan 2005 20:13:02 +1100
+
+acl (2.2.28-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 30 Nov 2004 15:29:29 +1100
+
+acl (2.2.26-1) unstable; urgency=low
+
+  * New upstream release
+  * acl.5 man page user/group typo fixed (closes: #272186)
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 10 Sep 2004 10:51:19 +1000
+
+acl (2.2.23-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 02 Feb 2004 12:35:56 +1100
+
+acl (2.2.21-1) unstable; urgency=low
+
+  * New upstream release
+  * Make libacl1-dev conflict on kerberos4kth versioned (closes: #219715)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 10 Nov 2003 09:23:21 +1100
+
+acl (2.2.20-1) unstable; urgency=low
+
+  * New upstream release
+  * Fix incorrect man page entry (closes: #213244)
+  * Fix GNU/Hurd build issues, thanks to Robert Millan (closes: #215153)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 13 Oct 2003 13:07:43 +1000
+
+acl (2.2.15-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 08 Aug 2003 16:39:10 +1000
+
+acl (2.2.14-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 04 Aug 2003 09:18:00 +1000
+
+acl (2.2.13-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 29 Jul 2003 11:27:53 +1000
+
+acl (2.2.12-1) unstable; urgency=low
+
+  * Don't always call msgmerge, fix from Steve Langasek (closes: #199277)
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  3 Jul 2003 10:55:01 +1000
+
+acl (2.2.11-1) unstable; urgency=low
+
+  * New upstream release
+  * Fix lib package dependencies, thanks to Steve Langasek (closes: #193149)
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 04 Jun 2003 15:50:50 +1000
+
+acl (2.2.10-1) unstable; urgency=low
+
+  * New upstream release
+  * Added runtime conflict with libacl1-kerberos4kth, as the
+    presence of this package breaks Samba's use of libacl1.
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 26 May 2003 11:38:53 +1000
+
+acl (2.2.9-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated policy version to which this package conforms
+  * Fine-tuned the libacl1-dev dependencies a bit (closes: #188068)
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 26 Apr 2003 04:36:01 +1000
+
+acl (2.2.4-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 10 Feb 2003 16:15:18 +1100
+
+acl (2.2.1-1) unstable; urgency=low
+
+  * Clarify acl(5) with respect to fileutils support (closes: #172642)
+  * Fix a bash-ism in debian/rules (closes: #173025)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 16 Dec 2002 09:40:50 +1100
+
+acl (2.2.0-1) unstable; urgency=low
+
+  * New upstream release
+  * Added runtime conflict with kerberos4kth-dev (closes: #172169)
+
+ -- Nathan Scott <nathans@debian.org>  Mon,  9 Dec 2002 08:09:15 +1100
+
+acl (2.1.1-1) unstable; urgency=low
+
+  * Fix Debian package dependency rules for acl (closes: #166709)
+  * Fix the group for libacl1, was "utils" now "libs" (closes: #166835)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 29 Oct 2002 09:29:52 +1100
+
+acl (2.1.0-1) unstable; urgency=low
+
+  * New upstream release, changing dev package name (closes: #141756)
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 19 Oct 2002 08:40:38 +1000
+
+acl (2.0.19-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  5 Sep 2002 09:12:02 +1000
+
+acl (2.0.17-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 13 Aug 2002 07:52:54 +1000
+
+acl (2.0.15-1) unstable; urgency=low
+
+  * New upstream release (build-related and docs changes only)
+  * Follow Steve Langasek's advice to fix libattr issue (closes: #150854)
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  4 Jul 2002 12:10:38 +1000
+
+acl (2.0.14-1) unstable; urgency=low
+
+  * New upstream release (build-related changes only)
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  4 Jul 2002 12:10:38 +1000
+
+acl (2.0.13-1) unstable; urgency=low
+
+  * New upstream release for (even) closer standard compliance
+  * Increment the libacl version from 1.0.1 to 1.0.2
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 25 Jun 2002 17:08:03 +1000
+
+acl (2.0.12-1) unstable; urgency=low
+
+  * Increment the libacl version from 1.0.0 to 1.0.1 (closes: #150854)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 25 Jun 2002 08:27:20 +1000
+
+acl (2.0.11-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Wed,  1 May 2002 09:30:54 +1000
+
+acl (2.0.10-1) unstable; urgency=low
+
+  * New upstream bugfix release
+  * Add accidentally removed dependency of libacl on libattr
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 22 Apr 2002 15:12:21 +1000
+
+acl (2.0.9-1) unstable; urgency=low
+
+  * New upstream bugfix release (affects 64 bit platforms only)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 16 Apr 2002 08:31:48 +1000
+
+acl (2.0.8-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 13 Apr 2002 09:45:06 +1000
+
+acl (2.0.7-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 10 Apr 2002 09:50:24 +1100
+
+acl (2.0.6-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Mon,  8 Apr 2002 08:56:34 +1100
+
+acl (2.0.5-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 27 Mar 2002 08:47:58 +1100
+
+acl (2.0.4-2) unstable; urgency=low
+
+  * Fix attr-dev build dependency issue (closes: #138280)
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 15 Mar 2002 07:08:50 +1100
+
+acl (2.0.4-1) unstable; urgency=low
+
+  * New upstream bugfix release
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 12 Mar 2002 09:47:50 +1100
+
+acl (2.0.2-1) unstable; urgency=low
+
+  * Initial release (closes: #97686)
+  * Uses the official Linux extended attributes interfaces (currently
+     supported by ext2, ext3, and XFS)
+
+ -- Nathan Scott <nathans@debian.org>  Tue, 26 Feb 2002 13:25:26 +1100
+
+Local variables:
+mode: debian-changelog
+End:

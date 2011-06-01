@@ -1,0 +1,321 @@
+# German translation for ACL utilities
+# Copyright (C) 2000 Free Software Foundation, Inc.
+# Andreas Grünbacher <a.gruenbacher@computer.org>, 2000.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: acl-2.1.2\n"
+"POT-Creation-Date: 2002-11-22 18:28+0100\n"
+"PO-Revision-Date: 2003-01-23 00:08GMT\n"
+"Last-Translator: Andreas Grünbacher <a.gruenbacher@computer.org>\n"
+"Language-Team:  <de@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../chacl/chacl.c:59
+msgid "Usage:\n"
+msgstr "Verwendung:\n"
+
+#: ../chacl/chacl.c:60
+#, c-format
+msgid "\t%s acl pathname...\n"
+msgstr "\t%s acl pfadname...\n"
+
+#: ../chacl/chacl.c:61
+#, c-format
+msgid "\t%s -b acl dacl pathname...\n"
+msgstr "\t%s -b acl dacl pfadname...\n"
+
+#: ../chacl/chacl.c:62
+#, c-format
+msgid "\t%s -d dacl pathname...\n"
+msgstr "\t%s -d dacl pfadname...\n"
+
+#: ../chacl/chacl.c:63
+#, c-format
+msgid "\t%s -R pathname...\n"
+msgstr "\t%s -R pfadname...\n"
+
+#: ../chacl/chacl.c:64
+#, c-format
+msgid "\t%s -D pathname...\n"
+msgstr "\t%s -D pfadname...\n"
+
+#: ../chacl/chacl.c:65
+#, c-format
+msgid "\t%s -B pathname...\n"
+msgstr "\t%s -B pfadname...\n"
+
+#: ../chacl/chacl.c:66
+#, c-format
+msgid "\t%s -l pathname...\t[not IRIX compatible]\n"
+msgstr "\t%s -l pfadname...\t[nicht IRIX-kompatibel]\n"
+
+#: ../chacl/chacl.c:68
+#, c-format
+msgid "\t%s -r pathname...\t[not IRIX compatible]\n"
+msgstr "\t%s -r pfadname...\t[nicht IRIX-kompatibel]\n"
+
+#: ../chacl/chacl.c:154
+#, c-format
+msgid "%s: error removing access acl on \"%s\": %s\n"
+msgstr "%s: Fehler beim Entfernen der Zugriffs-ACL von \"%s\": %s\n"
+
+#: ../chacl/chacl.c:161
+#, c-format
+msgid "%s: error removing default acl on \"%s\": %s\n"
+msgstr "%s: Fehler beim Entfernen der Vorgabe-ACL von \"%s\": %s\n"
+
+#: ../chacl/chacl.c:180 ../chacl/chacl.c:199
+#, c-format
+msgid "%s: access ACL '%s': %s at entry %d\n"
+msgstr "%s: Zugriffs-ACL '%s': %s bei Eintrag %d\n"
+
+#: ../chacl/chacl.c:267
+#, c-format
+msgid "%s: cannot get access ACL on '%s': %s\n"
+msgstr "%s: Kann Zugriffs-ACL von '%s' nicht ermitteln: %s\n"
+
+#: ../chacl/chacl.c:273
+#, c-format
+msgid "%s: cannot get default ACL on '%s': %s\n"
+msgstr "%s: Kann Vorgabe-ACL von '%s' nicht ermitteln: %s\n"
+
+#: ../chacl/chacl.c:279
+#, c-format
+msgid "%s: cannot get access ACL text on '%s': %s\n"
+msgstr "%s: Kann den Text zur Zugriffs-ACL von '%s' nicht ermitteln: %s\n"
+
+#: ../chacl/chacl.c:286
+#, c-format
+msgid "%s: cannot get default ACL text on '%s': %s\n"
+msgstr "%s: Kann den Text zur Vorgabe-ACL von '%s' nicht ermitteln: %s\n"
+
+#: ../chacl/chacl.c:312
+#, c-format
+msgid "%s: cannot set access acl on \"%s\": %s\n"
+msgstr "%s: Kann die Zugriffs-ACL von \"%s\" nicht setzen: %s\n"
+
+#: ../chacl/chacl.c:318
+#, c-format
+msgid "%s: cannot set default acl on \"%s\": %s\n"
+msgstr "%s: Kann die Vorgabe-ACL von \"%s\" nicht setzen: %s\n"
+
+#: ../chacl/chacl.c:336
+#, c-format
+msgid "%s: opendir failed: %s\n"
+msgstr "%s: opendir ist fehlgeschlagen: %s\n"
+
+#: ../chacl/chacl.c:350
+#, c-format
+msgid "%s: malloc failed: %s\n"
+msgstr "%s: malloc ist fehlgeschlagen: %s\n"
+
+#: ../setfacl/do_set.c:404
+#, c-format
+msgid "%s: %s: Malformed access ACL `%s': %s at entry %d\n"
+msgstr "%s: %s: Ungültige Zugriffs-ACL `%s': %s bei Eintrag %d\n"
+
+#: ../setfacl/do_set.c:431
+#, c-format
+msgid "%s: %s: Malformed default ACL `%s': %s at entry %d\n"
+msgstr "%s: %s: Ungültige Vorgabe-ACL `%s': %s bei Eintrag %d\n"
+
+#: ../setfacl/do_set.c:494
+#, c-format
+msgid "%s: %s: Only directories can have default ACLs\n"
+msgstr "%s: %s: Nur Verzeichnisse können Vorgabe-ACLs haben\n"
+
+#: ../setfacl/setfacl.c:140
+#, c-format
+msgid "%s: %s: No filename found in line %d, aborting\n"
+msgstr "%s: %s: Kein Dateiname in Zeile %d gefunden; Abbruch\n"
+
+#: ../setfacl/setfacl.c:144
+#, c-format
+msgid "%s: No filename found in line %d of standard input, aborting\n"
+msgstr "%s: Kein Dateiname in Zeile %d der Standardeingabe gefunden; Abbruch\n"
+
+#: ../setfacl/setfacl.c:165
+#, c-format
+msgid "%s: %s: %s in line %d\n"
+msgstr "%s: %s: %s in Zeile %d\n"
+
+#: ../setfacl/setfacl.c:188
+#, c-format
+msgid "%s: %s: Cannot change owner/group: %s\n"
+msgstr "%s: %s: Kann Besitzer/Gruppe nicht ändern: %s\n"
+
+#: ../setfacl/setfacl.c:226
+#, c-format
+msgid "%s %s -- set file access control lists\n"
+msgstr "%s %s -- Datei-Zugriffskontrollisten (ACLs) ändern\n"
+
+#: ../setfacl/setfacl.c:228 ../setfacl/setfacl.c:674
+#, c-format
+msgid "Usage: %s %s\n"
+msgstr "Verwendung: %s %s\n"
+
+#: ../setfacl/setfacl.c:231
+msgid ""
+"  -m, --modify=acl        modify the current ACL(s) of file(s)\n"
+"  -M, --modify-file=file  read ACL entries to modify from file\n"
+"  -x, --remove=acl        remove entries from the ACL(s) of file(s)\n"
+"  -X, --remove-file=file  read ACL entries to remove from file\n"
+"  -b, --remove-all        remove all extended ACL entries\n"
+"  -k, --remove-default    remove the default ACL\n"
+msgstr ""
+"  -m, --modify=acl         Verändere die ACL(s) von Datei(en)\n"
+"  -M, --modify-file=datei  Lies die ACL-Einträge aus datei\n"
+"  -x, --remove=acl         Entferne Einträge aus ACLs von Datei(en)\n"
+"  -X, --remove-file=datei  Lies die ACL-Einträge aus datei\n"
+"  -b, --remove-all         Alle erweiterten ACL-Einträge entfernen\n"
+"  -k, --remove-default     Vorgabe-ACL entfernen\n"
+
+#: ../setfacl/setfacl.c:240
+msgid ""
+"      --set=acl           set the ACL of file(s), replacing the current ACL\n"
+"      --set-file=file     read ACL entries to set from file\n"
+"      --mask              do recalculate the effective rights mask\n"
+msgstr ""
+"      --set=acl            Ersetze die ACL von Datei(en)\n"
+"      --set-file=datei     Lies die ACL-Einträge aus datei\n"
+"      --mask               Effektive Rechte nicht neu berechnen\n"
+
+#: ../setfacl/setfacl.c:246
+msgid ""
+"  -n, --no-mask           don't recalculate the effective rights mask\n"
+"  -d, --default           operations apply to the default ACL\n"
+msgstr ""
+"  -n, --no-mask            Effektive Rechte nicht neu berechnen\n"
+"  -d, --default            Bearbeite die Vorgabe-ACL\n"
+
+#: ../setfacl/setfacl.c:251
+msgid ""
+"  -R, --recursive         recurse into subdirectories\n"
+"  -L, --logical           logical walk, follow symbolic links\n"
+"  -P, --physical          physical walk, do not follow symbolic links\n"
+"      --restore=file      restore ACLs (inverse of `getfacl -R')\n"
+"      --test              test mode (ACLs are not modified)\n"
+msgstr ""
+"  -R, --recursive          In Unterverzeichnisse wechseln\n"
+"  -L, --logical            Symbolischen Links folgen\n"
+"  -P, --physical           Symbolischen Links nicht folgen\n"
+"      --restore=datei      ACLs wiederherstellen (Umkehr von `getfacl -R')\n"
+"      --test               Testmodus (ACLs werden nicht verändert)\n"
+
+#: ../setfacl/setfacl.c:259 ../getfacl/getfacl.c:543
+msgid ""
+"      --version           print version and exit\n"
+"      --help              this help text\n"
+msgstr ""
+"      --version            Die Version ausgeben\n"
+"      --help               Diese Hilfe\n"
+
+#: ../setfacl/setfacl.c:468
+#, c-format
+msgid "%s: Option -%c incomplete\n"
+msgstr "%s: Option -%c unvollständig\n"
+
+#: ../setfacl/setfacl.c:473
+#, c-format
+msgid "%s: Option -%c: %s near character %d\n"
+msgstr "%s: Option -%c: %s bei Zeichen %d\n"
+
+#: ../setfacl/setfacl.c:558
+#, c-format
+msgid "%s: %s in line %d of file %s\n"
+msgstr "%s: %s in Zeile %d der Datei %s\n"
+
+#: ../setfacl/setfacl.c:566
+#, c-format
+msgid "%s: %s in line %d of standard input\n"
+msgstr "%s: %s in Zeile %d der Standardeingabe\n"
+
+#: ../setfacl/setfacl.c:676 ../getfacl/getfacl.c:749
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr "Weiterführende Informationen mit `%s --help'.\n"
+
+#: ../getfacl/getfacl.c:449
+#, c-format
+msgid "%s: Removing leading '/' from absolute path names\n"
+msgstr "%s: Entferne führende '/' von absoluten Pfadnamen\n"
+
+#: ../getfacl/getfacl.c:516
+#, c-format
+msgid "%s %s -- get file access control lists\n"
+msgstr "%s %s -- Datei-Zugriffskontrollisten (ACLs) anzeigen\n"
+
+#: ../getfacl/getfacl.c:518 ../getfacl/getfacl.c:747
+#, c-format
+msgid "Usage: %s [-%s] file ...\n"
+msgstr "Aufruf: %s [-%s] datei ...\n"
+
+#: ../getfacl/getfacl.c:524
+msgid "  -d, --default           display the default access control list\n"
+msgstr "  -d, --default            Die Vorgabe-ACL ausgeben\n"
+
+#: ../getfacl/getfacl.c:528
+msgid ""
+"      --access            display the file access control list only\n"
+"  -d, --default           display the default access control list only\n"
+"      --omit-header       do not display the comment header\n"
+"      --all-effective     print all effective rights\n"
+"      --no-effective      print no effective rights\n"
+"      --skip-base         skip files that only have the base entries\n"
+"  -R, --recursive         recurse into subdirectories\n"
+"  -L, --logical           logical walk, follow symbolic links\n"
+"  -P  --physical          physical walk, do not follow symbolic links\n"
+"      --tabular           use tabular output format\n"
+"      --numeric           print numeric user/group identifiers\n"
+"      --absolute-names    don't strip leading '/' in pathnames\n"
+msgstr ""
+"      --access             Nur die Zugriffs-ACL ausgeben\n"
+"  -d, --default            Nur die Vorgabe-ACL ausgeben\n"
+"      --omit-header        Keine Datei-Kommentare ausgeben\n"
+"      --all-effective      Alle Effektivrechte-Kommentare ausgeben\n"
+"      --no-effective       Keine Effektivrechte-Kommentare ausgeben\n"
+"      --skip-base          Überspringe Dateien mit Basiseinträgen\n"
+"  -R, --recursive          In Unterverzeichnisse wechseln\n"
+"  -L, --logical            Symbolische Links verfolgen\n"
+"  -P, --physical           Symbolische Links nicht verfolgen\n"
+"      --tabular            Tabellarisches Ausgabeformat verwenden\n"
+"      --numeric            Numerische Benutzer-/Gruppenkennungen ausgeben\n"
+"      --absolute-names     Führende '/' in Pfadnamen nicht entfernen\n"
+
+#: ../getfacl/getfacl.c:735
+#, c-format
+msgid "%s: Standard input: %s\n"
+msgstr "%s: Standardeingabe: %s\n"
+
+#: ../libacl/acl_error.c:34
+msgid "Multiple entries of same type"
+msgstr "Mehrere Einträge gleichen Typs"
+
+#: ../libacl/acl_error.c:36
+msgid "Duplicate entries"
+msgstr "Doppelte Einträge"
+
+#: ../libacl/acl_error.c:38
+msgid "Missing or wrong entry"
+msgstr "Fehlender oder falscher Eintrag"
+
+#: ../libacl/acl_error.c:40
+msgid "Invalid entry type"
+msgstr "Ungültiger Eintragstyp"
+
+#: ../libacl/perm_copy_fd.c:122 ../libacl/perm_copy_fd.c:132
+#: ../libacl/perm_copy_fd.c:183 ../libacl/perm_copy_file.c:122
+#: ../libacl/perm_copy_file.c:135 ../libacl/perm_copy_file.c:144
+#: ../libacl/perm_copy_file.c:214
+#, c-format
+msgid "setting permissions for %s"
+msgstr "Setzen der Zugriffsrechte für %s"
+
+#: ../libacl/perm_copy_fd.c:172 ../libacl/perm_copy_file.c:183
+#: ../libacl/perm_copy_file.c:205
+#, c-format
+msgid "preserving permissions for %s"
+msgstr "Erhalten der Zugriffsrechte für %s"

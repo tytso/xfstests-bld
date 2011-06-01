@@ -1,0 +1,79 @@
+Summary: Access control list utilities.
+Name: @pkg_name@
+Version: @pkg_version@
+Release: @pkg_release@
+Packager: Silicon Graphics, Inc. <http://www.sgi.com/>
+BuildRoot: @build_root@
+Source: @pkg_name@-@pkg_version@.src.tar.gz
+License: GPL
+Vendor: Silicon Graphics, Inc.
+Group: System Environment/Base
+URL: http://acl.bestbits.at/
+
+%description
+This package contains the getfacl and setfacl utilities needed for
+manipulating access control lists.
+
+%package -n libacl
+Summary: Dynamic library for access control list support.
+Group: Development/Libraries
+Prereq: /sbin/ldconfig
+
+%description -n libacl
+This package contains the libacl.so dynamic library which contains
+the POSIX 1003.1e draft standard 17 functions for manipulating access
+control lists.
+
+%package -n libacl-devel
+Summary: Access control list static libraries and headers.
+Group: Development/Libraries
+Requires: libacl
+Provides: acl-devel
+Obsoletes: acl-devel
+
+%description -n libacl-devel
+This package contains static libraries and header files needed to develop
+programs which make use of the access control list programming interface
+defined in POSIX 1003.1e draft standard 17.
+
+%prep
+if [ -f .census ] ; then
+   if [ ! -d ${RPM_PACKAGE_NAME}-${RPM_PACKAGE_VERSION} ] ; then
+      ln -s . ${RPM_PACKAGE_NAME}-${RPM_PACKAGE_VERSION}
+   fi
+else
+%setup
+INSTALL_USER=root
+INSTALL_GROUP=root
+export INSTALL_USER INSTALL_GROUP
+@make@ configure
+fi
+
+%build
+@make@
+
+%install
+DIST_ROOT="$RPM_BUILD_ROOT"
+DIST_INSTALL=`pwd`/install.manifest
+DIST_INSTALL_DEV=`pwd`/install-dev.manifest
+DIST_INSTALL_LIB=`pwd`/install-lib.manifest
+export DIST_ROOT DIST_INSTALL DIST_INSTALL_DEV DIST_INSTALL_LIB
+@make@ install DIST_MANIFEST="$DIST_INSTALL"
+@make@ -C build/rpm rpmfiles DIST_MANIFEST="$DIST_INSTALL"
+@make@ install-dev DIST_MANIFEST="$DIST_INSTALL_DEV"
+@make@ -C build/rpm rpmfiles-dev DIST_MANIFEST="$DIST_INSTALL_DEV"
+@make@ install-lib DIST_MANIFEST="$DIST_INSTALL_LIB"
+@make@ -C build/rpm rpmfiles-lib DIST_MANIFEST="$DIST_INSTALL_LIB"
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%post -n libacl -p /sbin/ldconfig
+
+%postun -n libacl -p /sbin/ldconfig
+
+%files -f build/rpm/rpmfiles
+
+%files -n libacl-devel -f build/rpm/rpmfiles-dev
+
+%files -n libacl -f build/rpm/rpmfiles-lib

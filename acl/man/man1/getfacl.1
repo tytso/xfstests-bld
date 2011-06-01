@@ -1,0 +1,143 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2000 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" This manual page may used unter the terms of the GNU LGPL license, either
+.\" version 2 of this license, or (at your option) any later version.
+.\" 
+.fam T
+.TH GETFACL 1 "ACL File Utilities" "May 2000" "Access Control Lists"
+.SH NAME
+getfacl \- get file access control lists
+.SH SYNOPSIS
+
+.B getfacl
+[\-dRLPvh] file ...
+
+.B getfacl
+[\-dRLPvh] \-
+
+.SH DESCRIPTION
+For each file, getfacl displays the file name, owner, the group,
+and the Access Control List (ACL). If a directory has a default ACL,
+getfacl also displays the default ACL. Non-directories cannot have default ACLs.
+
+If getfacl is used on a file system that does not support ACLs, getfacl
+displays the access permissions defined by the traditional file mode permission
+bits.
+
+The output format of getfacl is as follows:
+.fam C
+.RS
+.nf
+ 1:  # file: somedir/
+ 2:  # owner: lisa
+ 3:  # group: staff
+ 4:  user::rwx
+ 5:  user:joe:rwx               #effective:r\-x
+ 6:  group::rwx                 #effective:r\-x
+ 7:  group:cool:r\-x
+ 8:  mask:r\-x
+ 9:  other:r\-x
+10:  default:user::rwx
+11:  default:user:joe:rwx       #effective:r\-x
+12:  default:group::r\-x
+13:  default:mask:r\-x
+14:  default:other:\-\-\-
+
+.fi
+.RE
+.fam T
+
+Lines 4, 6 and 9 correspond to the user, group and other fields of
+the file mode permission bits. These three are called the base ACL
+entries. Lines 5 and 7 are named user and named group entries. Line 8 is
+the effective rights mask. This entry limits the effective rights granted
+to all groups and to named users. (The file owner and others permissions
+are not affected by the effective rights mask; all other entries are.)
+Lines 10\-\-14 display
+the default ACL associated with this directory. Directories may
+have a default ACL. Regular files never have a default ACL.
+
+The default behavior for getfacl is to display both the ACL and the
+default ACL, and to include an effective rights comment for lines
+where the rights of the entry differ from the effective rights.
+
+If output is to a terminal, the effective rights comment is aligned to
+column 40. Otherwise, a single tab character separates the ACL entry
+and the effective rights comment.
+
+The ACL listings of multiple files are separated by blank lines.
+The output of getfacl can also be used as input to setfacl.
+
+.SS PERMISSIONS
+Process with search access to a file (i.e., processes with read access
+to the containing directory of a file) are also granted read access
+to the file's ACLs.  This is analogous to the permissions required for
+accessing the file mode.
+
+.SS OPTIONS
+.TP 4
+.I \-\-access
+Display the file access control list.
+.TP
+.I \-d, \-\-default
+Display the default access control list.
+.TP
+.I \-\-omit-header
+Do not display the comment header (the first three lines of each file's output).
+.TP
+.I \-\-all-effective
+Print all effective rights comments, even if identical to the rights defined by the ACL entry.
+.TP
+.I \-\-no-effective
+Do not print effective rights comments.
+.TP
+.I \-\-skip-base
+Skip files that only have the base ACL entries (owner, group, others).
+.TP
+.I \-R, \-\-recursive
+List the ACLs of all files and directories recursively.
+.TP
+.I \-L, \-\-logical
+Logical walk, follow symbolic links to directories. The default behavior is to follow
+symbolic link arguments, and skip symbolic links encountered in subdirectories.
+Only effective in combination with \-R.
+.TP
+.I \-P, \-\-physical
+Physical walk, do not follow symbolic links to directories. This also skips symbolic
+link arguments.
+Only effective in combination with \-R.
+.TP
+.I \-\-tabular
+Use an alternative tabular output format. The ACL and the default ACL are displayed side by side. Permissions that are ineffective due to the ACL mask entry are displayed capitalized. The entry tag names for the ACL_USER_OBJ and ACL_GROUP_OBJ entries are also displayed in capital letters, which helps in spotting those entries.
+.TP
+.I \-\-absolute-names
+Do not strip leading slash characters (`/'). The default behavior is to
+strip leading slash characters.
+.TP
+.I \-\-version
+Print the version of getfacl and exit.
+.TP
+.I \-\-help
+Print help explaining the command line options.
+.TP
+.I \-\-
+End of command line options. All remaining parameters are interpreted as file names, even if they start with a dash character.
+.TP
+.I \-
+If the file name parameter is a single dash character, getfacl reads a list of files from standard input.
+
+.SH CONFORMANCE TO POSIX 1003.1e DRAFT STANDARD 17
+If the environment variable POSIXLY_CORRECT is defined, the default behavior of getfacl changes in the following ways: Unless otherwise specified, only the ACL is printed. The default ACL is only printed if the
+.I \-d
+option is given. If no command line parameter is given,
+.I getfacl
+behaves as if it was invoked as ``getfacl \-''.
+.SH AUTHOR
+Andreas Gruenbacher,
+.RI < a.gruenbacher@bestbits.at >.
+
+Please send your bug reports and comments to the above address.
+.SH SEE ALSO
+.BR setfacl "(1), " acl (5)

@@ -1,0 +1,75 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 23, 2002
+.Dt ACL_FREE 3
+.Os "Linux ACL"
+.Sh NAME
+.Nm acl_free
+.Nd release memory allocated to an ACL data object
+.Sh LIBRARY
+Linux Access Control Lists library (libacl, \-lacl).
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_free "void *obj_p"
+.Sh DESCRIPTION
+The
+.Fn acl_free
+function frees any releasable memory currently allocated by to the ACL data object identified by
+.Va obj_p .
+The argument
+.Va obj_p
+may identify an ACL, an ACL entry qualifier, or a pointer to a string
+allocated by the
+.Fn acl_to_text
+function.
+.\" .Sh IMPLEMENTATION NOTES
+.\" True64 prints a compile time warning for acl_free(text) if text was
+.\" produced by acl_to_text(). Bad!
+.Sh RETURN VALUE
+.Rv -std acl_free
+.Sh ERRORS
+If any of the following conditions occur, the
+.Fn acl_free
+function returns the value
+.Li -1
+and and sets
+.Va errno
+to the corresponding value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The value of the argument
+.Va obj_p
+is invalid.
+.El
+.Sh STANDARDS
+IEEE Std 1003.1e draft 17 (\(lqPOSIX.1e\(rq, abandoned)
+.Sh SEE ALSO
+.Xr acl_copy_int 3 ,
+.Xr acl_create_entry 3 ,
+.Xr acl_dup 3 ,
+.Xr acl_from_text 3 ,
+.Xr acl_get_fd ,
+.Xr acl_get_file 3 ,
+.Xr acl_init 3 ,
+.Xr acl 5
+.Sh AUTHOR
+Derived from the FreeBSD manual pages written by
+.An "Robert N M Watson" Aq rwatson@FreeBSD.org ,
+and adapted for Linux by
+.An "Andreas Gruenbacher" Aq a.gruenbacher@bestbits.at .

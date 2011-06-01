@@ -1,0 +1,76 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 23, 2002
+.Dt ACL_SET_TAG_TYPE 3
+.Os "Linux ACL"
+.Sh NAME
+.Nm acl_set_tag_type
+.Nd set the tag type of an ACL entry
+.Sh LIBRARY
+Linux Access Control Lists library (libacl, \-lacl).
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_set_tag_type "acl_entry_t entry_d" "acl_tag_t tag_type"
+.Sh DESCRIPTION
+The
+.Fn acl_set_tag_type
+function sets the tag type of the ACL entry indicated by the argument
+.Va entry_d
+to the value of the argument
+.Va tag_type .
+.Pp
+Any ACL entry descriptors that refer to the entry referred to by
+.Va entry_d
+continue to refer to that entry.
+.Sh RETURN VALUE
+.Rv -std acl_set_tag_type
+.Sh ERRORS
+If any of the following conditions occur, the
+.Fn acl_set_tag_type
+function returns
+.Li -1
+and sets
+.Va errno
+to the corresponding value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The argument
+.Va entry_d
+is not a valid descriptor for an ACL entry.
+.Pp
+The argument
+.Va tag_type
+is not a valid tag type.
+.El
+.Sh STANDARDS
+IEEE Std 1003.1e draft 17 (\(lqPOSIX.1e\(rq, abandoned)
+.Sh SEE ALSO
+.Xr acl_create_entry 3 ,
+.Xr acl_get_permset 3 ,
+.Xr acl_get_qualifier 3 ,
+.Xr acl_get_tag_type 3 ,
+.Xr acl_set_entry 3 ,
+.Xr acl_set_permset 3 ,
+.Xr acl_set_qualifier 3 ,
+.Xr acl 5
+.Sh AUTHOR
+Derived from the FreeBSD manual pages written by
+.An "Robert N M Watson" Aq rwatson@FreeBSD.org ,
+and adapted for Linux by
+.An "Andreas Gruenbacher" Aq a.gruenbacher@bestbits.at .

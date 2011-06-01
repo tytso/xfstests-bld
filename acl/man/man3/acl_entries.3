@@ -1,0 +1,66 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 23, 2002
+.Dt ACL_ENTRIES 3
+.Os "Linux ACL"
+.Sh NAME
+.Nm acl_entries
+.Nd return the number of entries in an ACL
+.Sh LIBRARY
+Linux Access Control Lists library (libacl, \-lacl).
+.Sh SYNOPSIS
+.In sys/types.h
+.In acl/libacl.h
+.Ft int
+.Fn acl_entries "acl_t acl"
+.Sh DESCRIPTION
+The
+.Fn acl_entries
+function returns the number of ACL entries that are contained in the ACL referred to by the argument
+.Va acl .
+.Sh RETURN VALUE
+The
+.Fn acl_entries
+function returns the number of entries in
+.Va acl
+if successful; otherwise the value
+.Li -1
+is returned and the global variable
+.Va errno
+is set to indicate the error.
+.Sh ERRORS
+If any of the following conditions occur, the
+.Fn acl_entries
+function returns
+.Li -1
+and sets
+.Va errno
+to the corresponding value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The argument
+.Va acl
+is not a valid pointer to an ACL.
+.El
+.Sh STANDARDS
+This is a non-portable, Linux specific extension to the ACL manipulation
+functions defined in IEEE Std 1003.1e draft 17 (\(lqPOSIX.1e\(rq, abandoned).
+.Sh SEE ALSO
+.Xr acl 5
+.Sh AUTHOR
+Written by
+.An "Andreas Gruenbacher" Aq a.gruenbacher@bestbits.at .

@@ -1,0 +1,97 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 23, 2002
+.Dt ACL_CREATE_ENTRY 3
+.Os "Linux ACL"
+.Sh NAME
+.Nm acl_create_entry
+.Nd create a new ACL entry
+.Sh LIBRARY
+Linux Access Control Lists library (libacl, \-lacl).
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft int
+.Fn acl_create_entry "acl_t *acl_p" "acl_entry_t *entry_p"
+.Sh DESCRIPTION
+The
+.Fn acl_create_entry
+function creates a new ACL entry in the ACL pointed to by the contents of the pointer argument
+.Va acl_p .
+On success, the function returns a descriptor for the new
+ACL entry via
+.Va entry_p .
+.Pp
+This function may cause memory to be allocated.  The caller should free any
+releasable memory, when the new ACL is no longer required, by calling
+.Xr acl_free 3
+with
+.\" <AG>
+.\" 1003.1e says:
+.\" .Va (void*)acl_t
+.\" this makes no sense, so:
+.Va (void*)*acl_p
+.\" </AG>
+as an argument.
+If the ACL working storage cannot be increased in the current location,
+then the working storage for the ACL pointed to by
+.Va acl_p
+may be relocated and the previous working storage is released. A pointer to
+the new working storage is returned via
+.Va acl_p .
+.Pp
+The components of the new ACL entry are initialized in the following ways: the
+ACL tag type component contains ACL_UNDEFINED_TAG, the qualifier component
+contains ACL_UNDEFINED_ID, and the set of permissions has no permissions
+enabled. Any existing ACL entry descriptors that refer to entries in the ACL
+continue to refer to those entries.
+.\" <AG>
+.\" Conflict between requirements:
+.\" (a) ACL may be relocated,
+.\" (b) all pointers remain valid.
+.\" </AG>
+.Sh RETURN VALUE
+.Rv -std acl_create_entry
+.Sh ERRORS
+If any of the following conditions occur, the
+.Fn acl_create_entry
+function returns
+.Li -1
+and sets
+.Va errno
+to the corresponding value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The argument
+.Va acl_p
+is not a valid pointer to an ACL.
+.It Bq Er ENOMEM
+The ACL working storage requires more memory than is allowed by the hardware or system-imposed memory management constraints.
+.El
+.Sh STANDARDS
+IEEE Std 1003.1e draft 17 (\(lqPOSIX.1e\(rq, abandoned)
+.Sh SEE ALSO
+.Xr acl_init 3 ,
+.Xr acl_delete_entry 3 ,
+.Xr acl_free 3 ,
+.Xr acl_create_entry 3 ,
+.Xr acl 5
+.Sh AUTHOR
+Derived from the FreeBSD manual pages written by
+.An "Robert N M Watson" Aq rwatson@FreeBSD.org ,
+and adapted for Linux by
+.An "Andreas Gruenbacher" Aq a.gruenbacher@bestbits.at .

@@ -1,0 +1,89 @@
+.\" Access Control Lists manual pages
+.\"
+.\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 23, 2002
+.Dt ACL_GET_FD 3
+.Os "Linux ACL"
+.Sh NAME
+.Nm acl_get_fd
+.Nd get an ACL by file descriptor
+.Sh LIBRARY
+Linux Access Control Lists library (libacl, \-lacl).
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/acl.h
+.Ft acl_t
+.Fn acl_get_fd "int fd"
+.Sh DESCRIPTION
+The
+.Fn acl_get_fd
+function retrieves the access ACL associated with the file referred to by
+.Va fd .
+The ACL is placed into working storage and
+.Fn acl_get_fd
+returns a pointer to that storage.
+.Pp
+In order to read an ACL from an object, a process must have read access to
+the object's attributes.
+.Pp
+This function may cause memory to be allocated.  The caller should free any
+releasable memory, when the new ACL is no longer required, by calling
+.Xr acl_free 3
+with the
+.Va (void*)acl_t
+returned by
+.Fn acl_get_fd
+as an argument.
+.Sh RETURN VALUE
+On success, this function shall return a pointer to the
+working storage.  On error, a value of
+.Li (acl_t)NULL
+shall be returned, and
+.Va errno
+is set appropriately.
+.Sh ERRORS
+If any of the following conditions occur, the
+.Fn acl_get_fd
+function returns a value of
+.Li (acl_t)NULL
+and sets
+.Va errno
+to the corresponding value:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Va fd
+argument is not a valid file descriptor.
+.It Bq Er ENOMEM
+The ACL working storage requires more memory than is allowed by the hardware or system-imposed memory management constraints.
+.It Bq Er ENOTSUP
+The file system on which the file identified by
+.Va fd
+is located does not support ACLs, or ACLs are disabled.
+.El
+.Sh STANDARDS
+IEEE Std 1003.1e draft 17 (\(lqPOSIX.1e\(rq, abandoned)
+.Sh SEE ALSO
+.Xr acl_free 3 ,
+.Xr acl_get_entry 3 ,
+.Xr acl_get_file 3 ,
+.Xr acl_set_fd 3 ,
+.Xr acl 5
+.Sh AUTHOR
+Derived from the FreeBSD manual pages written by
+.An "Robert N M Watson" Aq rwatson@FreeBSD.org ,
+and adapted for Linux by
+.An "Andreas Gruenbacher" Aq a.gruenbacher@bestbits.at .
