@@ -1,0 +1,106 @@
+dmapi-2.2.10 (5 May 2009)
+	- Update the Makepkgs script to generate proper source tarballs.
+	- Small specfile improvements, thanks to Jan Engelhardt.
+	- Various autoconf/libtool fixes, thanks to Andreas Gruenbacher.
+
+dmapi-2.2.9 (4 February 2009)
+	- Various build system updates.
+
+dmapi-2.2.8 (9 February 2007)
+	- Fix a problem in get_mnt() called by dm_handle_to_path()
+	  The "dmi" mount option was not considered.
+
+dmapi-2.2.7 (14 July 2006)
+	- Fix issues with makedepend on libtool libraries.
+
+dmapi-2.2.6 (4 July 2006)
+	- Makefile dependency fixes
+
+dmapi-2.2.5 (28 March 2006)
+	- Debian packaging updates (debmake out, debhelper in)
+
+dmapi-2.2.4 (22 March 2006)
+	- Use -O2 for builds, not -O1.
+	- Fix Debian build packaging dependency.
+
+dmapi-2.2.3 (21 November 2005)
+	- Make use of getdents64 instead of plain getdents.
+	- Remove remaining uses of Linux kernel types to resolve
+	  some build issues with newer versions of XFS headers.
+
+dmapi-2.2.2 (10 November 2005)
+	- Sync up build system (m4 macros, etc) with other projects
+	- Update SGI copyright/licence notices
+
+dmapi-2.2.1 (29 September 2004)
+	- Update m4 macros, incorporating some portability changes.
+	- Sync up with changes to the kernel DMAPI headers.
+
+dmapi-2.2.0 (21 April 2004)
+	- The linux 2.6 kernel puts the dmapi device at /dev/dmapi.
+
+dmapi-2.1.0 (18 October 2003)
+	- libdm now attempts to find the dmapi device in /dev, if that
+	  fails then it falls back to the old location in /proc.
+	- Rework Debian package names to more closely conform to the
+	  packaging policy requirements.
+
+dmapi-2.0.8 (26 April 2003)
+	- Rework configure.in to make use of shared macros.
+
+dmapi-2.0.7 (14 April 2003)
+	- Fix configure tests that used AC_PATH_PROG incorrectly.
+
+dmapi-2.0.6 (27 March 2003)
+	- Cleanups to the build process, in particular the automatic
+	  rpm package generation Makefile and spec file template.
+	- Makepkgs script can now propagate failures back from make.
+
+dmapi-2.0.5 (04 July 2002)
+	- Build infrastructure updates so that configure options can be
+	  used to specify paths rather than semi-hard-coded path names
+	  controlled by the ROOT/ROOT_PREFIX environment variables; eg.
+	  now allows /lib64 and /lib32
+
+dmapi-2.0.4 (18 June 2002)
+	- kernel<>library interface for DM_OPEN_BY_HANDLE changed
+
+dmapi-2.0.3 (12 June 2002)
+	- kernel-library interface has changed, now 64bit safe.
+
+dmapi-2.0.2 (13 April 2002)
+	- Minor build system updates
+
+dmapi-2.0.0 (07 February 2002)
+	- Major release to coincide with switch to new extended
+	  attributes system call interfaces
+
+dmapi-0.3.0 (04 December 2001)
+	- The kernel-side of dmapi is now a module, and the device has
+	  moved.  Change dmapi to use the dmapi device in its new
+	  location of /proc/fs/xfs_dmapi.
+
+dmapi-0.2.2 (27 July 2001)
+	- fixes for (hopefully) the last few nits in libtool usage
+
+dmapi-0.2.1 (23 July 2001)
+	- install static libs and libtool archives into /usr/lib
+	- shared libraries are unchanged, however
+
+dmapi-0.2.0 (19 July 2001)
+	- reworked Makefiles use of libtool slightly
+	- rework some of the Debian packaging rules
+	- libdm is now installed into /lib instead of /usr/lib
+	  as it is needed by xfsdump and xfsrestore which must
+	  be available for recovery when only root is mounted
+
+dmapi-0.1.2 (18 July 2001)
+	- change dmapi to use /proc instead of /dev/dmapi
+
+dmapi-0.1.1 (30 January 2001)
+        - minor rpm and deb packaging work
+
+dmapi-0.1.0 (15 January 2001)
+	- initial version of package
+	- early alpha code
+

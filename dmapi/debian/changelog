@@ -1,0 +1,122 @@
+dmapi (2.2.8-1) unstable; urgency=low
+
+  * New upstream release (closes: #402033)
+  * Switch from debmake to debhelper (closes: #372999)
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 28 May 2007 16:17:35 +1000
+
+dmapi (2.2.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Fix build dependencies and use -O2 now (closes: #357788)
+
+ -- Nathan Scott <nathans@debian.org>  Wed, 22 Mar 2006 10:16:13 +1100
+
+dmapi (2.2.3-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 21 Nov 2005 17:48:53 +1100
+
+dmapi (2.2.2-1) unstable; urgency=low
+
+  * New upstream release (closes: #305055)
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 10 Nov 2005 08:02:35 +1100
+
+dmapi (2.2.0-1) unstable; urgency=low
+
+  * New upstream release (works for both 2.6 and 2.4 now)
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 22 Apr 2004 10:19:32 +1000
+
+dmapi (2.1.0-1) unstable; urgency=low
+
+  * New upstream release
+  * Renamed packages to follow policy guidelines (closes: #141753)
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 18 Oct 2003 09:38:40 +1000
+
+dmapi (2.0.8-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 26 Apr 2003 04:36:01 +1000
+
+dmapi (2.0.6-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated policy version to which this package conforms
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 27 Mar 2003 10:30:18 +1100
+
+dmapi (2.0.5-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  4 Jul 2002 12:10:38 +1000
+
+dmapi (2.0.3-1) unstable; urgency=low
+
+  * New upstream release
+  * kernel-library interface has changed, now 64bit safe
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 13 Jun 2002 09:13:23 +1000
+
+dmapi (2.0.2-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Sat, 13 Apr 2002 09:45:06 +1000
+
+dmapi (2.0.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Fri,  5 Apr 2002 15:50:03 +1100
+
+dmapi (2.0.0-1) unstable; urgency=low
+
+  * Major release to coincide with switch to new extended attributes
+    system call interfaces
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  7 Feb 2002 13:25:26 +1100
+
+dmapi (0.3.0-1) unstable; urgency=low
+
+  * New upstream release
+  * Kernel-side of DMAPI is now modular, so the device has moved
+  * Change DMAPI to use new device location - /proc/fs/xfs_dmapi
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  6 Dec 2001 10:23:28 +1100
+
+dmapi (0.2.2-0) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Fri, 27 Jul 2001 07:59:49 +1000
+
+dmapi (0.2.1-0) unstable; urgency=low
+
+  * New upstream release
+
+ -- Nathan Scott <nathans@debian.org>  Mon, 23 Jul 2001 10:27:37 +1000
+
+dmapi (0.2.0-0) unstable; urgency=low
+
+  * Reworked package slightly so that its not Debian native
+  * Debian-specific changes now documented in changelog.Debian.gz
+  * New upstream release (see /usr/share/doc/dmapi/changelog.gz)
+  * Checked standards compliance - update standards version to 3.5.5
+
+ -- Nathan Scott <nathans@debian.org>  Thu, 19 Jul 2001 17:14:40 +1000
+
+dmapi (0.1.0) unstable; urgency=low
+
+  * Initial release.
+
+ -- Nathan Scott <nathans@debian.org>  Thu,  4 Jan 2001 11:15:11 -0500
+
+Local variables:
+mode: debian-changelog
+End:
