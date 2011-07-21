@@ -1,0 +1,10 @@
+#!/bin/sh -vx
+
+for i in acl attr dmapi e2fsprogs-libs libaio xfstests-dev
+do
+	make -C $i clean
+done
+
+make -C xfsprogs-dev realclean
+
+rm -rf bld

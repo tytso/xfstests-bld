@@ -1,0 +1,35 @@
+#!/bin/bash -vx
+
+DESTDIR=$(pwd)/bld
+
+mkdir -p $DESTDIR
+
+export CFLAGS="-I$DESTDIR/include"
+export LDFLAGS="-static -L$DESTDIR/lib"
+
+(cd e2fsprogs-libs; ./configure --prefix=/; make ; make DESTDIR=$DESTDIR install)
+
+(cd attr; ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static ; make install-dev ; make install)
+
+(cd acl; ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static; make install-dev; make install)
+
+(cd libaio; make prefix=$DESTDIR install)
+
+export DIST_ROOT=$DESTDIR
+export LIBS=-lpthread
+(cd xfsprogs-dev; make realclean ; make configure ; ./configure --prefix=/; make LLDFLAGS=-all-static BUILD_VERBOSE=1; make install; make install-dev)
+unset LIBS
+unset DIST_ROOT
+
+export LIBTOOL="/usr/bin/libtool --tag=CC"
+(cd dmapi; CFLAGS="-I$DESTDIR/include  -L$DESTDIR/lib" LDFLAGS=-static ./configure --prefix=$DESTDIR; make LLDFLAGS=-all-static; make install-dev; make install)
+unset LIBTOOL
+
+find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
+cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
+set
+
+export LIBS=-lpthread
+export CFLAGS="-I$DESTDIR/include  -fno-stack-protector"
+(cd xfstests-dev; ./configure ; make LLDFLAGS=-all-static BUILD_VERBOSE=1)
+
