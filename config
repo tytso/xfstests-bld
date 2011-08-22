@@ -1,0 +1,5 @@
+# Configuration file for xfstests-bld
+
+XFSTESTS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+XFSPROGS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
+

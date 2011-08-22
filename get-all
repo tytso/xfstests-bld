@@ -1,0 +1,6 @@
+#!/bin/bash
+
+. config
+
+git clone $XFSPROGS_GIT xfsprogs-dev
+git clone $XFSTESTS_GIT xfstests-dev

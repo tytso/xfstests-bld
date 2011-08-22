@@ -1,5 +1,7 @@
 #!/bin/bash -vx
 
+. config
+
 nr_cpus=$(expr 1 + $(grep ^processor /proc/cpuinfo | tail -1 | \
 		sed -e 's/.*://') )
 J=-j$(expr $nr_cpus \* 2)
@@ -8,16 +10,13 @@ DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
 
-#export 
-#export LDFLAGS="-static -L$DESTDIR/lib"
-
 (cd e2fsprogs-libs; \
-    CFLAGS="-I$DESTDIR/include" \
+    CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=/; make $J; make DESTDIR=$DESTDIR $J install)
 
 (cd attr; \
-    CFLAGS="-I$DESTDIR/include" \
+    CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=$DESTDIR; \
     make $J LLDFLAGS=-all-static ; \
@@ -25,7 +24,7 @@ mkdir -p $DESTDIR
 
 (cd acl; \
     CPPFLAGS="-I$DESTDIR/include" \
-    CFLAGS="-I$DESTDIR/include" \
+    CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=$DESTDIR; \
     make $J LLDFLAGS=-all-static ; \
@@ -35,7 +34,7 @@ mkdir -p $DESTDIR
 (cd libaio; make $J prefix=$DESTDIR install)
 
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
-    CFLAGS="-I$DESTDIR/include" \
+    CFLAGS="$CCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
@@ -45,7 +44,7 @@ mkdir -p $DESTDIR
     DIST_ROOT=$DESTDIR make install-dev)
 
 (cd dmapi; \
-    CFLAGS="-I$DESTDIR/include" \
+    CFLAGS="$CCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=$DESTDIR; \
@@ -57,7 +56,7 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 
 (cd xfstests-dev; \
     autoheader ; autoconf ; \
-    CFLAGS="-I$DESTDIR/include  -fno-stack-protector"
+    CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector"
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
