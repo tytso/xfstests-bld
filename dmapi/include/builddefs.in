@@ -71,7 +71,7 @@ GCFLAGS = $(OPTIMIZER) $(DEBUG) -funsigned-char -fno-strict-aliasing -Wall \
 	  -DPACKAGE=\"$(PKG_NAME)\" -I$(TOPDIR)/include
 
 # Global, Platform, Local CFLAGS
-CFLAGS += $(GCFLAGS) $(PCFLAGS) $(LCFLAGS)
+CFLAGS += $(GCFLAGS) $(PCFLAGS) $(LCFLAGS) @CFLAGS@
 
 include $(TOPDIR)/include/buildmacros
 
