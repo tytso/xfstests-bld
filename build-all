@@ -1,6 +1,10 @@
 #!/bin/bash -vx
 
-. config
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
 
 nr_cpus=$(expr 1 + $(grep ^processor /proc/cpuinfo | tail -1 | \
 		sed -e 's/.*://') )
@@ -27,7 +31,7 @@ mkdir -p $DESTDIR
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=$DESTDIR; \
-    make $J LLDFLAGS=-all-static ; \
+    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
     make $J install-dev ; \
     make $J install)
 
@@ -38,7 +42,7 @@ mkdir -p $DESTDIR
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
-    ./configure --prefix=/; \
+    ./configure --prefix=/ --disable-lib64 ; \
     make LLDFLAGS=-all-static BUILD_VERBOSE=1; \
     DIST_ROOT=$DESTDIR make install; \
     DIST_ROOT=$DESTDIR make install-dev)
@@ -48,7 +52,7 @@ mkdir -p $DESTDIR
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     ./configure --prefix=$DESTDIR; \
-    LIBTOOL="/usr/bin/libtool --tag=CC" make LLDFLAGS=-all-static; \
+    make LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
     make $J install-dev; make $J install)
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
@@ -61,5 +65,5 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure ; \
-    make $J LLDFLAGS=-all-static BUILD_VERBOSE=1)
+    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
