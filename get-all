@@ -2,5 +2,25 @@
 
 . config
 
-git clone $XFSPROGS_GIT xfsprogs-dev
-git clone $XFSTESTS_GIT xfstests-dev
+if test ! -d xfsprogs-dev
+then
+	if test -z "$XFSPROGS_GIT"; then
+		echo "XFSPROGS_GIT not set; check your config file!"
+		exit 1
+        fi
+	if ! git clone $XFSPROGS_GIT xfsprogs-dev; then
+		echo "Failed to get xfsprogs-dev from $XFSPROGS_GIT"
+                exit 1
+	fi
+fi
+if test ! -d xfstests-dev
+then
+	if test -z "$XFSTESTS_GIT"; then
+		echo "XFSTESTS_GIT not set; check your config file!"
+		exit 1
+        fi
+	if ! git clone $XFSTESTS_GIT xfstests-dev; then
+		echo "Failed to get xfstests-dev from $XFSTESTS_GIT"
+                exit 1
+	fi
+fi
