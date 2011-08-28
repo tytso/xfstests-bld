@@ -33,6 +33,8 @@ mkdir -p $DESTDIR
 
 (cd libaio; make $J prefix=$DESTDIR install)
 
+rm $DESTDIR/lib/libaio.so*
+
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
