@@ -25,6 +25,6 @@ tarball:
 	rm -rf xfstests/.git xfstests/autom4te.cache
 	find xfstests -type f -name \*.\[cho\]  -o -name \*.l[ao] | xargs rm
 	mkdir xfstests/bin
-	cp xfsprogs-dev/io/xfs_io xfsprogs-dev/db/xfs_db xfstests/bin
+	cp bld/sbin/* xfstests/bin
 	-find xfstests -mindepth 2 -type f -perm +0111 | xargs strip
 	tar cvf - xfstests | gzip -9 > xfstests.tar.gz
