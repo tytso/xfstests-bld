@@ -1,0 +1,7 @@
+export FS=ext4
+export TEST_DEV=$VDD
+export TEST_DIR=/vdd
+export MKFS_OPTIONS="-q -O bigalloc"
+export EXT_MOUNT_OPTIONS="-o block_validity"
+TESTNAME="Ext4 4k block w/bigalloc"
+

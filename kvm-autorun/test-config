@@ -1,0 +1,4 @@
+export VDB=/dev/vdb
+export VDC=/dev/vdc
+export VDD=/dev/vdd
+PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

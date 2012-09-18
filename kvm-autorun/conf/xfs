@@ -1,0 +1,4 @@
+export FS=xfs
+export TEST_DEV=$VDD
+export TEST_DIR=/vdd
+TESTNAME="XFS"

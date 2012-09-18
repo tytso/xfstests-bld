@@ -1,0 +1,6 @@
+export FS=ext4
+export TEST_DEV=$VDB
+export TEST_DIR=/vdb
+export MKFS_OPTIONS="-q"
+export EXT_MOUNT_OPTIONS="-o block_validity,dioread_nolock"
+TESTNAME="Ext4 4k block w/dioread_nolock"

@@ -1,0 +1,6 @@
+export FS=ext4
+export TEST_DEV=$VDD
+export TEST_DIR=/vdd
+export MKFS_OPTIONS="-q -b 1024"
+export EXT_MOUNT_OPTIONS="-o block_validity"
+TESTNAME="Ext4 1k block"
