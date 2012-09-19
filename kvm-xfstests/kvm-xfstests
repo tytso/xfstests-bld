@@ -1,0 +1,26 @@
+#!/bin/sh
+
+DIR=/u1/V-xfstests
+. $DIR/config
+
+. $DIR/util/parse_cli
+
+if test $(whoami) = "root" ; then
+  NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
+fi
+
+LOGFILE=$DIR/log.$(date +%Y%m%d%H%M)
+
+modprobe kvm-intel
+$QEMU -boot order=c $NET \
+	-drive file=$ROOT_QCOW2,if=virtio$SNAPSHOT \
+	-drive file=$VDB,cache=none,if=virtio \
+	-drive file=$VDC,cache=none,if=virtio \
+	-drive file=$VDD,cache=none,if=virtio \
+	-nographic -smp $NR_CPU -m $MEM \
+	--kernel $KERNEL \
+	--append "root=/dev/vda console=ttyS0,115200 $ARG $EXTRA_ARG" |\
+tee $LOGFILE
+
+$DIR/get-results $LOGFILE
+echo "logfile in $LOGFILE"
