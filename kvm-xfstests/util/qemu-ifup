@@ -1,0 +1,14 @@
+#!/bin/sh
+#sudo -p "Password for $0:" /sbin/ifconfig $1 172.20.0.1
+
+INTER_NET=`route -n | grep ^0.0.0.0 | tail -1 | awk '{print $8}'`
+
+/sbin/ifconfig $1 172.20.0.1
+if test -n "$INTER_NET"; then
+  iptables -t nat -F
+  iptables -t nat -A POSTROUTING -s 172.20.0.0/24 -o $INTER_NET -j MASQUERADE
+  iptables -t nat -A POSTROUTING -s 172.20.0.0/24 -o tun0 -j MASQUERADE
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  echo 1 > /proc/sys/net/ipv4/conf/$INTER_NET/rp_filter
+fi
+

@@ -1,0 +1,2 @@
+#!/bin/sh
+egrep "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*

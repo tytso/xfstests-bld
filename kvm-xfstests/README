@@ -1,0 +1,76 @@
+XFStests using Virtualization
+
+After you unpack this tarball in /usr/local/google, cd into the
+V-xfstests directory and run "./setup".  You will need approximately
+12-13 gigs of space to run the tests.
+
+If this tarball was not unpacked in /usr/local/google, you will need
+to customize the path found in the kvm-xfstests scripts.  Also, you
+will need to customize the paths in the "config" file so that your
+compiled kernel can be found, and where to find qemu/kvm binary.
+
+The kvm-xfstests script is used as follows:
+
+*) kvm-xfstests [-c <cfg>] <tests>
+
+	By default <cfg> defaults to all, which will run the following
+	configurations: "4k", "ext3", "nojournal", "1k", "data_journal",
+	"dioread_nolock".    You may specify a modified, comma separated
+	list if you don't want to run all of these configurations.
+
+	The <tests> parameter can either be an xfstests group
+	specifier, such as "quick" or "auto", or it can be a
+	comma-separated set of tests, i.e. "13,89,72"
+
+*) kvm-xfstests smoke
+
+	This is the equivalent of specifying "-c 4k quick"
+
+*) kvm-xfstests shell
+
+	Will allow you to examine the tests environment or to run
+	tests manually.  Any changes to the root partition will be
+	reverted when you exit the VM.
+
+*) kvm-xfstests maint
+
+	Will drop you into a root shell and allows you to modify the
+	root file system.  KVM uses and modifies the root_fs.img file,
+	which is a compressed qcow2 image.  After doing a lot of
+	maintenance, the root_fs.img can get quite large.  Afterwards,
+	it's advisable to run the compress-rootfs shell script.
+
+	Normally, the kvm-xfstests does not need to be run as root.
+	However, if you want to update the debian packages, or
+	otherwise would like to use networking from the VM, you will
+	need to run the script as root.
+
+To extract the interesting results from the log file, run the command
+"get-results":
+
+% ./get-results log.201108141904
+BEGIN TEST: Ext4 4k block Sun Aug 14 19:26:42 EDT 2011
+Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
+Passed all 71 tests
+END TEST: Ext4 4k block Sun Aug 14 19:38:05 EDT 2011
+BEGIN TEST: Ext4 4k block w/nodelalloc and no extents Sun Aug 14 19:38:06 EDT 2011
+Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 215 221 224 225 226 236 237 239 240 245 246 247 248 249
+Failures: 075 112
+END TEST: Ext4 4k block w/nodelalloc and no extents Sun Aug 14 19:47:52 EDT 2011
+BEGIN TEST: Ext4 4k block w/ no journal Sun Aug 14 19:47:52 EDT 2011
+Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
+Passed all 71 tests
+END TEST: Ext4 4k block w/ no journal Sun Aug 14 19:59:17 EDT 2011
+BEGIN TEST: Ext4 1k block Sun Aug 14 19:59:17 EDT 2011
+Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
+Failures: 075 112 127
+END TEST: Ext4 1k block Sun Aug 14 20:10:23 EDT 2011
+BEGIN TEST: Ext4 4k block w/data=journal Sun Aug 14 20:10:23 EDT 2011
+Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
+Failures: 223
+END TEST: Ext4 4k block w/data=journal Sun Aug 14 20:24:18 EDT 2011
+BEGIN TEST: Ext4 4k block w/dioread_nolock Sun Aug 14 20:24:18 EDT 2011
+
+(if there is a missing "END TEST", as above, it's likely because there
+was a kernel bug which caused the kernel to crash before the test run
+was able to complete.)

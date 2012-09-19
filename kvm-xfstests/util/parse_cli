@@ -1,0 +1,42 @@
+
+IFUP=$DIR/util/qemu-ifup
+IFDOWN=$DIR/util/qemu-ifdown
+
+FSTESTCFG=all
+SNAPSHOT=",snapshot=on"
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -c)	shift
+      FSTESTCFG=$1
+      ;;
+    smoke)
+      FSTESTCFG=4k
+      FSTESTSET=quick
+      ;;
+    full)
+      FSTESTSET=auto
+      ;;
+    shell)
+      ARG="maint"
+      ;;
+    maint)
+      ARG="maint"
+      EPH="-root_ephemeral=no"
+      SNAPSHOT=""
+      ;;
+    *)
+      FSTESTSET=$1
+      ;;
+  esac
+  shift
+done
+
+if test -n "$ARG" ; then
+  :
+elif test -n "$FSTESTSET"; then
+	ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET"
+else
+	echo "Usage: $0 [-c config] smoke|auto|quick|shell|maint"
+        exit 1
+fi

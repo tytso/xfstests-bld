@@ -1,0 +1,8 @@
+#!/bin/sh
+qemu-img create -f raw vdb 5g
+qemu-img create -f raw vdc 5g
+qemu-img create -f raw vdd 5g
+mke2fs -t ext4 -F vdb
+mke2fs -t ext4 -b 1024 -F vdd
+
+
