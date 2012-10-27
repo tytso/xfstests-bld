@@ -10,6 +10,9 @@ while [ "$1" != "" ]; do
     -c)	shift
       FSTESTCFG=$1
       ;;
+    -m) shift
+      MNTOPTS=$1
+      ;;
     smoke)
       FSTESTCFG=4k
       FSTESTSET=quick
@@ -25,6 +28,9 @@ while [ "$1" != "" ]; do
       EPH="-root_ephemeral=no"
       SNAPSHOT=""
       ;;
+    fsstress)
+       ARG="cmd=fsstress"
+       ;;
     *)
       FSTESTSET=$1
       ;;
@@ -39,4 +45,8 @@ elif test -n "$FSTESTSET"; then
 else
 	echo "Usage: $0 [-c config] smoke|auto|quick|shell|maint"
         exit 1
+fi
+
+if test -n "$MNTOPTS" ; then
+    ARG="$ARG mount_opts=$MNTOPTS"
 fi

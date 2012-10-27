@@ -24,6 +24,8 @@ PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g' -e 's/\([a-z]\+\)/-g \1/g')
+MNTOPTS=$(parse mount_opts)
+CMD=$(parse cmd)
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
@@ -32,6 +34,14 @@ then
 	echo FSTESTCFG is \"$FSTESTCFG\"
 	echo FSTESTSET is \"$FSTESTSET\"
 	/root/runtests.sh
+	/sbin/halt
+fi
+
+if test "$CMD" = "fsstress"
+then
+	. /root/test-config
+	mount -o "noatime,$MNTOPTS" $VDD
+	/root/xfstests/ltp/fsstress -r -m 8 -n 500000 -d /vdd/fsstress
 	/sbin/halt
 fi
 
