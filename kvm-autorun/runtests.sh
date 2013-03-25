@@ -37,7 +37,8 @@ do
 	echo Device: $TEST_DEV
 	echo mk2fs options: $MKFS_OPTIONS
 	echo mount options: $EXT_MOUNT_OPTIONS
-	sh ./check -ext4 $FSTESTSET
+	export FSTYP=$FS
+	sh ./check $FSTESTSET
 	echo -n "END TEST: $TESTNAME " ; date
 	umount $TEST_DEV >& /dev/null
 	if test "$FS" = "ext4" ; then
