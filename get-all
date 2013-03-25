@@ -35,3 +35,14 @@ then
                 exit 1
 	fi
 fi
+if test ! -d quota
+then
+	if test -z "$QUOTA_GIT"; then
+		echo "QUOTA_GIT not set; check your config file!"
+		exit 1
+        fi
+	if ! git clone $QUOTA_GIT quota; then
+		echo "Failed to get fio from $QUOTA_GIT"
+                exit 1
+	fi
+fi
