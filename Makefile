@@ -28,4 +28,4 @@ tarball:
 	cp bld/sbin/* xfstests/bin
 	cp bld/bin/fio xfstests/bin
 	-find xfstests -mindepth 2 -type f -perm +0111 | xargs strip
-	tar cvf - xfstests | gzip -9 > xfstests.tar.gz
+	tar cf - xfstests | gzip -9 > xfstests.tar.gz
