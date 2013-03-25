@@ -62,7 +62,7 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 
 (cd fio; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
-    export LDFLAGS="-static -L$DESTDIR/lib" ; \
+    export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
     ./configure; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 
 (cd xfstests-dev; \
@@ -72,5 +72,5 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure ; \
-    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+    make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
