@@ -60,6 +60,11 @@ rm $DESTDIR/lib/libaio.so*
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 
+(cd fio; \
+    export CFLAGS="$CCF -I$DESTDIR/include" ; \
+    export LDFLAGS="-static -L$DESTDIR/lib" ; \
+    ./configure; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+
 (cd xfstests-dev; \
     autoheader ; autoconf ; \
     CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector"

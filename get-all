@@ -24,3 +24,14 @@ then
                 exit 1
 	fi
 fi
+if test ! -d fio
+then
+	if test -z "$FIO_GIT"; then
+		echo "FIO_GIT not set; check your config file!"
+		exit 1
+        fi
+	if ! git clone $FIO_GIT fio; then
+		echo "Failed to get fio from $FIO_GIT"
+                exit 1
+	fi
+fi

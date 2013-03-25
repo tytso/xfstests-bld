@@ -2,3 +2,4 @@
 
 XFSTESTS_GIT=git://oss.sgi.com/xfs/cmds/xfstests.git
 XFSPROGS_GIT=git://oss.sgi.com/xfs/cmds/xfsprogs.git
+FIO_GIT=git://git.kernel.dk/fio.git
