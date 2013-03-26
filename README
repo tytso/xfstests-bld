@@ -1,0 +1,23 @@
+
+The xfstests-bld package makes it easy to build xfstests in a hermetic
+build environment (so it is not dependent on possibly out-of-date
+system libraries for libaio, dmapi, etc.).  It also contains scripts
+which make it easy to run xfstests in a KVM guest.
+
+Quick directions (which assume you are using a debian guest image; if
+you are using another distribution for your guest image, these
+instructions may need to be adjusted slightly).
+
+1.  "make tarball" to generate the xfstests.tar.gz file.  This should be
+    unpacked in the directory /root of your KVM guest OS image
+2.  Copy the files in kvm-autorun to the /root directory on the guest OS
+    image
+3.  Move /root/rc.local to /etc/rc.local
+4.  Move /root/S06mkvdevs.sh to /etc/init.d and create a symlink from
+    /etc/init.d/S06mkvdevs.sh to /etc/rc.d/rcS.d
+5.  Add entries to /etc/fstab for /dev/vdb, /dev/vdc, and /dev/vdb as
+    ext4 file systems mounted on /vdb, /vdc, /vdd respectively.  Make
+    sure empty direcotires exist for the /vdb, /vdc, vdd mount points.
+6.  The host OS scripts are in kvm-xfststs directory.  You'll need to
+    edit the DIR= line in kvm-xfstests, and adjust some of the
+    parameters in the kvm-xfstests/config file
