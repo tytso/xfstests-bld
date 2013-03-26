@@ -2,10 +2,10 @@
 # A simple makefile for xfstests-bld
 #
 
-all: xfsprogs-dev xfstests-dev
+all: xfsprogs-dev xfstests-dev fio quota
 	./build-all
 
-xfsprogs-dev xfstests-dev:
+xfsprogs-dev xfstests-dev fio quota:
 	./get-all
 
 clean:
@@ -17,7 +17,7 @@ clean:
 	rm -rf bld xfstests
 
 realclean: clean
-	rm -rf xfsprogs-dev xfstests-dev
+	rm -rf xfsprogs-dev xfstests-dev fio quota
 
 tarball:
 	rm -rf xfstests
