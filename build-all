@@ -77,7 +77,7 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 (cd quota; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
-    export CPPFLAGS="-I$DESTDIR/include" \
+    export CPPFLAGS="-I$DESTDIR/include" ; \
     aclocal ; autoconf ; \
-    ./configure --prefix=$DESTDIR ; \
+    ./configure --enable-ext2direct=no --prefix=$DESTDIR ; \
     make V=1 $J; make V=1 $J install)
