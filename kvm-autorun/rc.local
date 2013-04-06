@@ -23,7 +23,7 @@ PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
-FSTESTSET=$(parse fstestset | sed -e 's/,/ /g' -e 's/\([a-z]\+\)/-g \1/g')
+FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 

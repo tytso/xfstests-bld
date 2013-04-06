@@ -14,6 +14,9 @@ then
 	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc"
 fi
 
+cat /proc/slabinfo
+free -m
+
 export SCRATCH_DEV=$VDC
 export SCRATCH_MNT=/vdc
 for i in $FSTESTCFG
@@ -38,7 +41,9 @@ do
 	echo mk2fs options: $MKFS_OPTIONS
 	echo mount options: $EXT_MOUNT_OPTIONS
 	export FSTYP=$FS
-	sh ./check $FSTESTSET
+	sh ./check -T $FSTESTSET
+	free -m
+	grep $FS /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
 	umount $TEST_DEV >& /dev/null
 	if test "$FS" = "ext4" ; then

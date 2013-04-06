@@ -13,12 +13,27 @@ while [ "$1" != "" ]; do
     -m) shift
       MNTOPTS=$1
       ;;
+    -r) shift
+      MEM=$1
+      ;;
+    -g) shift
+      FSTESTSET="$FSTESTSET,-g,$1"
+      ;;
+    -h)
+      echo "Usage: $0 [-c config] [-m MNTOPTS] [-r ram] smoke|auto|quick|full"
+      echo "Usage: $0 [-c config] [-m MNTOPTS] [-r ram] <test> ..."
+      echo "Usage: $0 shell|maint"
+      exit 1
+      ;;
     smoke)
       FSTESTCFG=4k
-      FSTESTSET=quick
+      FSTESTSET="$FSTESTSET,-g,quick"
+      ;;
+    quick)
+      FSTESTSET="$FSTESTSET,-g,quick"
       ;;
     full)
-      FSTESTSET=auto
+      FSTESTSET="$FSTESTSET,-g,auto"
       ;;
     shell)
       ARG="maint"
@@ -31,8 +46,11 @@ while [ "$1" != "" ]; do
     fsstress)
        ARG="cmd=fsstress"
        ;;
+    benchmark)
+       ARG="cmd=benchmark"
+       ;;
     *)
-      FSTESTSET=$1
+      FSTESTSET="$FSTESTSET,$1"
       ;;
   esac
   shift
@@ -41,10 +59,8 @@ done
 if test -n "$ARG" ; then
   :
 elif test -n "$FSTESTSET"; then
-	ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET"
-else
-	echo "Usage: $0 [-c config] smoke|auto|quick|shell|maint"
-        exit 1
+     FSTESTSET=$(echo $FSTESTSET | sed -e 's/^,//')
+     ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET"
 fi
 
 if test -n "$MNTOPTS" ; then
