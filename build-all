@@ -40,6 +40,7 @@ mkdir -p $DESTDIR
 rm $DESTDIR/lib/libaio.so*
 
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
+    ver=$(git describe --always); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
@@ -61,11 +62,13 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 
 (cd fio; \
+    ver=$(git describe --always); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
     ./configure; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 
 (cd xfstests-dev; \
+    ver=$(git describe --always); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
     autoheader ; autoconf ; \
     CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector"
     CPPFLAGS="-I$DESTDIR/include" \
@@ -75,6 +78,7 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
     make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
 (cd quota; \
+    ver=$(git describe --always); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
     export CPPFLAGS="-I$DESTDIR/include" ; \

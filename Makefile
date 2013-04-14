@@ -17,11 +17,12 @@ clean:
 	rm -rf bld xfstests
 
 realclean: clean
-	rm -rf xfsprogs-dev xfstests-dev fio quota
+	rm -rf xfsprogs-dev xfstests-dev fio quota *.ver
 
 tarball:
 	rm -rf xfstests
 	cp -r xfstests-dev xfstests
+	cat *.ver > xfstests/git-versions
 	rm -rf xfstests/.git xfstests/autom4te.cache
 	find xfstests -type f -name \*.\[cho\]  -o -name \*.l[ao] | xargs rm
 	mkdir xfstests/bin
