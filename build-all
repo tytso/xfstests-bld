@@ -65,7 +65,7 @@ cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
     ver=$(git describe --always); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-    ./configure; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+    ./configure --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 
 (cd xfstests-dev; \
     ver=$(git describe --always); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
