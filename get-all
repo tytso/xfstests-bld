@@ -1,6 +1,10 @@
 #!/bin/bash
 
-. config
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
 
 if test ! -d xfsprogs-dev
 then
