@@ -1,12 +1,12 @@
 XFStests using Virtualization
 
-After you unpack this tarball in /usr/local/google, cd into the
+After you unpack this tarball in /u1/V-xfstests, cd into the
 V-xfstests directory and run "./setup".  You will need approximately
 12-13 gigs of space to run the tests.
 
-If this tarball was not unpacked in /usr/local/google, you will need
-to customize the path found in the kvm-xfstests scripts.  Also, you
-will need to customize the paths in the "config" file so that your
+If this tarball was not unpacked in /u1/V-xfstests, you will need to
+customize the path found in the kvm-xfstests scripts.  In addition,
+you will need to customize the paths in the "config" file so that your
 compiled kernel can be found, and where to find qemu/kvm binary.
 
 The kvm-xfstests script is used as follows:
