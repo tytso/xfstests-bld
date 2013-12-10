@@ -11,7 +11,7 @@ cd /root/xfstests
 
 if test "$FSTESTCFG" = all
 then
-	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc"
+	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc-1k"
 fi
 
 cat /proc/slabinfo
