@@ -5,6 +5,7 @@
 *.mo
 *.ol
 *.os
+*.ver
 .libs
 config.log
 config.status
@@ -35,5 +36,9 @@ libaio/src/libaio.so.1.0.1
 e2fsprogs-libs/intl/libgnuintl.h
 e2fsprogs-libs/lib/blkid/blkid.h
 e2fsprogs-libs/lib/uuid/uuid.h
+fio
+quota
 xfsprogs-dev
 xfstests-dev
+xfstests
+xfstests.tar.gz
