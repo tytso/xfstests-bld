@@ -27,6 +27,9 @@ do_start () {
 	mknod /dev/vdb b $major 16
 	mknod /dev/vdc b $major 32
 	mknod /dev/vdd b $major 48
+	mknod /dev/vde b $major 64
+	mknod /dev/vdf b $major 80
+	mknod /dev/vdg b $major 96
 }
 
 case "$1" in

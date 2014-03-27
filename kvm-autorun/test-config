@@ -1,4 +1,6 @@
 export VDB=/dev/vdb
 export VDC=/dev/vdc
 export VDD=/dev/vdd
+export VDE=/dev/vde
+export VDF=/dev/vdf
 PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

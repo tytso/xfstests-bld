@@ -11,20 +11,20 @@ compiled kernel can be found, and where to find qemu/kvm binary.
 
 The kvm-xfstests script is used as follows:
 
-*) kvm-xfstests [-c <cfg>] <tests>
+*) kvm-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
 
 	By default <cfg> defaults to all, which will run the following
-	configurations: "4k", "ext3", "nojournal", "1k", "data_journal",
-	"dioread_nolock".    You may specify a modified, comma separated
+	configurations: "4k", "ext3", "nojournal", "1k", "ext3conv",
+	"metacsum, "dioread_nolock, "data_journal", "bigalloc",
+	"bigalloc_1k".  You may specify a modified, comma separated
 	list if you don't want to run all of these configurations.
 
-	The <tests> parameter can either be an xfstests group
-	specifier, such as "quick" or "auto", or it can be a
-	comma-separated set of tests, i.e. "13,89,72"
+	Tests can be specified using an an xfstests group
+	via "-g <group>", or can be an xfstests (e.g., "generic/068")
 
 *) kvm-xfstests smoke
 
-	This is the equivalent of specifying "-c 4k quick"
+	This is the equivalent of specifying "-c 4k -g quick"
 
 *) kvm-xfstests shell
 

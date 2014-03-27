@@ -11,23 +11,32 @@ cd /root/xfstests
 
 if test "$FSTESTCFG" = all
 then
-	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc-1k"
+	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k"
+fi
+
+if test -n "$(echo $FSTESTSET | awk '/^AEX /{print "t"}')"
+then
+	echo "Enabling auto exclude"
+	DO_AEX=t
+	FSTESTSET=$(echo $FSTESTSET | sed -e 's/^AEX //')
 fi
 
 cat /proc/slabinfo
 free -m
 
-export SCRATCH_DEV=$VDC
-export SCRATCH_MNT=/vdc
 for i in $FSTESTCFG
 do
+	export SCRATCH_DEV=$VDC
+	export SCRATCH_MNT=/vdc
+	export RESULT_BASE=/results/results-$i
+	mkdir -p $RESULT_BASE
 	if test -e "/root/conf/$i"; then
 		. /root/conf/$i
 	else
 		echo "Unknown configuration $i!"
 		continue
 	fi
-	if test "$TEST_DEV" = "$VDD" ; then
+	if test "$TEST_DEV" != "$VDB" ; then
 		if test "$FS" = "ext4" ; then
 		    mke2fs -q -t ext4 $MKFS_OPTIONS $TEST_DEV
 		elif test "$FS" = "xfs" ; then
@@ -41,7 +50,11 @@ do
 	echo mk2fs options: $MKFS_OPTIONS
 	echo mount options: $EXT_MOUNT_OPTIONS
 	export FSTYP=$FS
-	sh ./check -T $FSTESTSET
+	AEX=""
+	if test -n "$DO_AEX" ; then
+	    AEX="-X $i.exclude"
+        fi
+	bash ./check -T $AEX $FSTESTSET
 	free -m
 	grep $FS /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
