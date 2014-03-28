@@ -16,6 +16,7 @@ file
 gawk
 ifupdown
 iputils-ping
+isc-dhcp-client
 less
 makedev
 nano

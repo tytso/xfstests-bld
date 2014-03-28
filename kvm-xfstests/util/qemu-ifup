@@ -3,7 +3,7 @@
 
 INTER_NET=`route -n | grep ^0.0.0.0 | tail -1 | awk '{print $8}'`
 
-/sbin/ifconfig $1 172.20.0.1
+/sbin/ifconfig $1 172.20.0.2
 if test -n "$INTER_NET"; then
   iptables -t nat -F
   iptables -t nat -A POSTROUTING -s 172.20.0.0/24 -o $INTER_NET -j MASQUERADE

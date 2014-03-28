@@ -5,8 +5,12 @@ DIR=.
 
 . $DIR/util/parse_cli
 
-if test $(whoami) = "root" ; then
+if test -z "$DO_NET" ; then
+   echo "Networking disabled."
+elif test $(whoami) = "root" ; then
   NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
+else
+  NET="-netdev user,id=mynet0,net=172.20.0.0/24 -device virtio-net,netdev=mynet0 "
 fi
 
 #EXTRA_ARG="virtio_blk.queue_depth=32"

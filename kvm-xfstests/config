@@ -18,6 +18,9 @@ VDE=$DIR/vde
 VDF=$DIR/vdf
 VDG=$DIR/vdg
 
+IFUP=$DIR/util/qemu-ifup
+IFDOWN=$DIR/util/qemu-ifdown
+
 if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
    . $KVM_CONFIG
 elif test -f $CONFIG_DIR; then

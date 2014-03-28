@@ -29,10 +29,10 @@ do
 	mkdir $ROOTDIR/$i
 done
 
-umount $DIR/$ROOTDIR/var/cache/apt/archives
-umount $DIR/$ROOTDIR/var/lib/apt/lists
-umount $DIR/$ROOTDIR
-rmdir $DIR/$ROOTDIR
+umount $ROOTDIR/var/cache/apt/archives
+umount $ROOTDIR/var/lib/apt/lists
+umount $ROOTDIR
+rmdir $ROOTDIR
 
 tune2fs -O has_journal $RAW_ROOT_FS
 qemu-img convert -f raw -O qcow2 -c $RAW_ROOT_FS $ROOT_FS

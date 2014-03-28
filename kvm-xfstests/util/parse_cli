@@ -1,7 +1,3 @@
-
-IFUP=$DIR/util/qemu-ifup
-IFDOWN=$DIR/util/qemu-ifdown
-
 FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
 AEX="AEX,"
@@ -29,6 +25,9 @@ while [ "$1" != "" ]; do
       echo "Usage: $0 [-c config] [-r ram] -g <group> ..."
       echo "Usage: $0 shell|maint"
       exit 1
+      ;;
+    -N)
+      DO_NET=yes
       ;;
     smoke)
       FSTESTCFG=4k
