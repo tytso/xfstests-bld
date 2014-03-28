@@ -2,22 +2,38 @@
 The xfstests-bld package makes it easy to build xfstests in a hermetic
 build environment (so it is not dependent on possibly out-of-date
 system libraries for libaio, dmapi, etc.).  It also contains scripts
-which make it easy to run xfstests in a KVM guest.
+which make it easy to run xfstests in a KVM guest.  It is currently
+optimized for ext4 testing, but it should be fairly simple to
+generalize this for testing other file systems.
 
-Quick directions (which assume you are using a debian guest image; if
-you are using another distribution for your guest image, these
-instructions may need to be adjusted slightly).
+If you are using debian testing, it is pretty simple to generate your
+own test appliance which uses kvm to run xfstests.  If you are using a
+different distribution, you can fetch a copy of root_fs.img from
+https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests.
 
-1.  "make tarball" to generate the xfstests.tar.gz file.  This should be
-    unpacked in the directory /root of your KVM guest OS image
-2.  Copy the files in kvm-autorun to the /root directory on the guest OS
-    image
-3.  Move /root/rc.local to /etc/rc.local
-4.  Move /root/S06mkvdevs.sh to /etc/init.d and create a symlink from
-    /etc/init.d/S06mkvdevs.sh to /etc/rc.d/rcS.d
-5.  Add entries to /etc/fstab for /dev/vdb, /dev/vdc, and /dev/vdb as
-    ext4 file systems mounted on /vdb, /vdc, /vdd respectively.  Make
-    sure empty direcotires exist for the /vdb, /vdc, vdd mount points.
-6.  The host OS scripts are in kvm-xfststs directory.  You'll need to
-    edit the DIR= line in kvm-xfstests, and adjust some of the
-    parameters in the kvm-xfstests/config file
+Or you can take a look at the kvm-xfstests/test-appliance/gen-image
+and create something which works for your distribution.  Please let me
+know if create something which works well for other distributions.
+
+1.  "make ; make tarball" to generate the xfstests.tar.gz file.
+2.  cd to kvm-xfststs/test-appliance, and run as root the shell script
+    "gen-image".  This will create the root_fs.img file.
+3.  build a kernel which does not use modules (at least for all of the
+    device drivers required for running under kvm).  There are sample
+    kernel configs found in the top-level kernel-configs directory.
+    Note that if you build a 32-bit i386 kernel, you will need to make
+    to build the root_fs.img file in 32-bit build chroot.  You can use
+    a 32-bit userspace with a 64-bit kernel; in fact, this is a good
+    way to sanity check the ioctl compatibility code.
+4.  Adjust the KERNEL= line in kvm-xfststs/config to point at your
+    kernel's bzImage file.
+5.  cd to kvm-xfstests, and run "kvm-xfstests smoke".  More details of
+    how to run kvm-xfstests can be found in kvm-xfstests/README.  If
+    you adjust the DIR= line in kvm-xfstests/config, it will not be
+    necessary to be cd'ed into the kvm-xfstests directory before
+    kicking off the shell script.
+
+When the kvm-xfstests is done, it will print a summary of which tests
+passed and failed.  It will also save the output of the test in a
+log.YYYYMMDDHHSS file.  The "get-results" script will parse the log
+file and generate the test summary.

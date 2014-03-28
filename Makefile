@@ -2,7 +2,7 @@
 # A simple makefile for xfstests-bld
 #
 
-all: xfsprogs-dev xfstests-dev fio quota
+all: xfsprogs-dev xfstests-dev fio quota kvm-xfstests/util/zerofree
 	./build-all
 
 xfsprogs-dev xfstests-dev fio quota:
@@ -15,6 +15,10 @@ clean:
 	done
 	make -C xfsprogs-dev realclean
 	rm -rf bld xfstests
+	rm kvm-xfstests/util/zerofree
+
+kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
+	cc -o $@ $< -lext2fs -lcom_err
 
 realclean: clean
 	rm -rf xfsprogs-dev xfstests-dev fio quota *.ver

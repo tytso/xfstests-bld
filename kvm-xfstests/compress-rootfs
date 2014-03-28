@@ -1,8 +1,14 @@
 #!/bin/sh
-qemu-img convert -f qcow2 -O raw root_fs.img root_fs
-e2fsck -fy root_fs
-./util/zerofree root_fs
-qemu-img convert -f raw -O qcow2 -c root_fs root_fs.img
-rm -rf root_fs
+
+DIR=.
+ROOT_FS=$DIR/test-appliance/root_fs.img
+RAW_ROOT_FS=$DIR/test-appliance/root_fs.raw
+COMPAT="-o compat=0.10"
+
+qemu-img convert -f qcow2 -O raw $ROOT_FS $RAW_ROOT_FS
+e2fsck -fy $RAW_ROOT_FS
+./util/zerofree $RAW_ROOT_FS
+qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+rm -rf $RAW_ROOT_FS
 
 

@@ -21,7 +21,7 @@ do_start () {
 
 	major=$(grep virtblk /proc/devices | awk '{print $1}')
 
-	rm -f /dev/vd?
+	rm -f /dev/vd? 
 
 	mknod /dev/vda b $major 0
 	mknod /dev/vdb b $major 16
@@ -30,11 +30,20 @@ do_start () {
 	mknod /dev/vde b $major 64
 	mknod /dev/vdf b $major 80
 	mknod /dev/vdg b $major 96
+	cd /dev
+	for i in ttyS0 ttyS1 ttyS2 ttyS3
+	do
+	    if ! test -c $i ; then
+		MAKEDEV $i
+	    fi
+	done
 }
 
 case "$1" in
   start|"")
+	log_action_begin_msg "Creating virtual disk devices"
 	do_start
+	log_end_msg $?
 	;;
   restart|reload|force-reload)
 	echo "Error: argument '$1' not supported" >&2
@@ -44,7 +53,7 @@ case "$1" in
 	# No-op
 	;;
   *)
-	echo "Usage: mountall-mtab.sh [start|stop]" >&2
+	echo "Usage: mkvdevs.sh [start|stop]" >&2
 	exit 3
 	;;
 esac

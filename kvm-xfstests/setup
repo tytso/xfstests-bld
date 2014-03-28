@@ -7,5 +7,6 @@ qemu-img create -f raw vdf 20g
 qemu-img create -f raw vdg 5g
 mke2fs -t ext4 -F vdb
 mke2fs -t ext4 -b 1024 -F vdd
+mke2fs -t ext4 -F vdg
 
 

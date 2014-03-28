@@ -1,20 +1,25 @@
 #
-# Customize these or put new values in ~/.V-xfstests
+# Customize these or put new values in ~/.config/kvm-xfstests
 #
 #QEMU=/usr/local/bin/qemu-system-x86_64
 QEMU=/usr/bin/kvm
 KERNEL=/u1/ext4/arch/x86/boot/bzImage
 NR_CPU=2
 MEM=2048
+CONFIG_DIR=$HOME/.config/kvm-xfstests
 
-ROOT=$DIR/root_fs
-ROOT_QCOW2=$DIR/root_fs.img
+DIR=.
+ROOT_FS=$DIR/test-appliance/root_fs.img
+ROOT_DEV=/dev/vda
 VDB=$DIR/vdb
 VDC=$DIR/vdc
 VDD=$DIR/vdd
+VDE=$DIR/vde
+VDF=$DIR/vdf
+VDG=$DIR/vdg
 
 if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
    . $KVM_CONFIG
-elif test -f $HOME/.V-xfstests; then
-   . $HOME/.V-xfstests
+elif test -f $CONFIG_DIR; then
+   . $CONFIG_DIR
 fi

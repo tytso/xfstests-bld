@@ -1,0 +1,5 @@
+root_fs.img
+root_fs.raw
+rootdir
+var.cache.apt.archives
+var.lib.apt.lists

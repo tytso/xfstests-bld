@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# This shell script must be run as root
+
+SUITE=jessie
+MIRROR=http://mirrors.kernel.org/debian
+DIR=$(pwd)
+ROOTDIR=$DIR/rootdir
+#ARCH="--arch=i386"
+RAW_ROOT_FS=$DIR/root_fs.raw
+ROOT_FS=$DIR/root_fs.img
+
+mkdir -p $ROOTDIR
+mkdir -p var.cache.apt.archives
+mkdir -p var.lib.apt.lists
+cp /dev/null $RAW_ROOT_FS
+mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
+mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+mkdir -p $ROOTDIR/var/cache/apt/archives
+mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
+mkdir -p $ROOTDIR/var/lib/apt/lists
+mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
+debootstrap --variant=xfstests $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
+patch -p0 < config-patches
+cp -r files/* rootdir
+tar -C rootdir/root -xvf ../../xfstests.tar.gz
+for i in vda vdb vdc vdd vde vdf vdg
+do
+	mkdir $ROOTDIR/$i
+done
+
+umount $DIR/$ROOTDIR/var/cache/apt/archives
+umount $DIR/$ROOTDIR/var/lib/apt/lists
+umount $DIR/$ROOTDIR
+rmdir $DIR/$ROOTDIR
+
+tune2fs -O has_journal $RAW_ROOT_FS
+qemu-img convert -f raw -O qcow2 -c $RAW_ROOT_FS $ROOT_FS
+rm -f $RAW_ROOT_FS

@@ -1,0 +1,20 @@
+--- rootdir/etc/init.d/checkroot.sh.orig	2014-02-04 17:20:15.000000000 -0500
++++ rootdir/etc/init.d/checkroot.sh	2014-03-27 19:51:15.527834186 -0400
+@@ -344,6 +344,7 @@
+ case "$1" in
+   start|"")
+ 	do_start
++	/etc/init.d/mkvdevs.sh start
+ 	;;
+   restart|reload|force-reload)
+ 	echo "Error: argument '$1' not supported" >&2
+--- rootdir/etc/inittab.orig	2014-03-27 20:09:55.718381955 -0400
++++ rootdir/etc/inittab	2014-03-27 19:05:03.811901330 -0400
+@@ -67,3 +67,7 @@
+ #
+ #T3:23:respawn:/sbin/mgetty -x0 -s 57600 ttyS3
+ 
++T0:23:respawn:/sbin/getty -l /root/autologin -n -L ttyS0 115200 vt100
++T1:23:respawn:/sbin/getty -l /root/autologin -n -L ttyS1 115200 vt100
++T2:23:respawn:/sbin/getty -l /root/autologin -n -L ttyS2 115200 vt100
++T3:23:respawn:/sbin/getty -l /root/autologin -n -L ttyS3 115200 vt100
