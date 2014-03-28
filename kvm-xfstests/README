@@ -1,13 +1,14 @@
-XFStests using Virtualization
+XFStests using virtualization
 
-After you unpack this tarball in /u1/V-xfstests, cd into the
-V-xfstests directory and run "./setup".  You will need approximately
-12-13 gigs of space to run the tests.
+To set up the necessary scratch disks used by the kvm-xfstests, run
+the "./setup" script.  You will need approximately 60 gigs of disk
+space to run all of the ext4 tests.
 
-If this tarball was not unpacked in /u1/V-xfstests, you will need to
-customize the path found in the kvm-xfstests scripts.  In addition,
-you will need to customize the paths in the "config" file so that your
-compiled kernel can be found, and where to find qemu/kvm binary.
+The current working directory must be kvm-xfstests directory.  This
+restriction can be relaxed if you edit the "DIR=" line in the
+kvm-xfstests script.  In addition, you will probably need to customize
+the paths in the "config" file so that your compiled kernel can be
+found, and where to find qemu/kvm binary.
 
 The kvm-xfstests script is used as follows:
 
@@ -48,29 +49,30 @@ The kvm-xfstests script is used as follows:
 To extract the interesting results from the log file, run the command
 "get-results":
 
-% ./get-results log.201108141904
-BEGIN TEST: Ext4 4k block Sun Aug 14 19:26:42 EDT 2011
-Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
-Passed all 71 tests
-END TEST: Ext4 4k block Sun Aug 14 19:38:05 EDT 2011
-BEGIN TEST: Ext4 4k block w/nodelalloc and no extents Sun Aug 14 19:38:06 EDT 2011
-Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 215 221 224 225 226 236 237 239 240 245 246 247 248 249
-Failures: 075 112
-END TEST: Ext4 4k block w/nodelalloc and no extents Sun Aug 14 19:47:52 EDT 2011
-BEGIN TEST: Ext4 4k block w/ no journal Sun Aug 14 19:47:52 EDT 2011
-Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
-Passed all 71 tests
-END TEST: Ext4 4k block w/ no journal Sun Aug 14 19:59:17 EDT 2011
-BEGIN TEST: Ext4 1k block Sun Aug 14 19:59:17 EDT 2011
-Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
-Failures: 075 112 127
-END TEST: Ext4 1k block Sun Aug 14 20:10:23 EDT 2011
-BEGIN TEST: Ext4 4k block w/data=journal Sun Aug 14 20:10:23 EDT 2011
-Ran: 001 002 005 006 007 011 013 014 015 053 069 070 074 075 076 077 079 083 088 089 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 221 223 224 225 226 228 236 237 239 240 243 245 246 247 248 249 256
-Failures: 223
-END TEST: Ext4 4k block w/data=journal Sun Aug 14 20:24:18 EDT 2011
-BEGIN TEST: Ext4 4k block w/dioread_nolock Sun Aug 14 20:24:18 EDT 2011
+% ./get-results log.201312220828
+[    0.000000] Linux version 3.13.0-rc2-00010-ge128f1f (tytso@lambda) (gcc version 4.8.2 (Debian 4.8.2-1) ) #1564 SMP Sat Dec 21 23:43:09 EST 2013
+FSTESTCFG is "all"
+FSTESTSET is "-g auto"
+BEGIN TEST: Ext4 4k block Sun Dec 22 08:28:47 EST 2013
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: ext4/271 ext4/305 generic/001 generic/002 generic/005 generic/006 generic/007 generic/011 generic/013 generic/014 generic/015 generic/020 generic/053 generic/062 generic/069 generic/070 generic/074 generic/075 generic/076 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/257 generic/258 generic/263 generic/269 generic/270 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/313 generic/314 generic/315 generic/316 generic/317 generic/318 generic/319 shared/218 shared/243 shared/272 shared/289 shared/298
+Failures: generic/223 generic/318 shared/218
+END TEST: Ext4 4k block Sun Dec 22 09:02:47 EST 2013
+BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Dec 22 09:02:49 EST 2013
+MKFS_OPTIONS  -- -q -O ^extents,^flex_bg,^uninit_bg /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
+Ran: ext4/271 ext4/305 generic/001 generic/002 generic/005 generic/006 generic/007 generic/011 generic/013 generic/014 generic/015 generic/020 generic/053 generic/062 generic/069 generic/070 generic/074 generic/075 generic/076 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/215 generic/219 generic/221 generic/224 generic/225 generic/226 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/245 generic/246 generic/247 generic/248 generic/249 generic/257 generic/258 generic/263 generic/269 generic/270 generic/277 generic/280 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/313 generic/314 generic/315 generic/316 generic/317 generic/318 generic/319 shared/218 shared/272 shared/289 shared/298
+Failures: generic/300 generic/318 shared/218
+END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Dec 22 09:36:38 EST 2013
+BEGIN TEST: Ext4 4k block w/ no journal Sun Dec 22 09:36:39 EST 2013
+MKFS_OPTIONS  -- -q -O ^has_journal /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,noload /dev/vdc /vdc
+Ran: ext4/271 ext4/305 generic/001 generic/002 generic/005 generic/006 generic/007 generic/011 generic/013 generic/014 generic/015 generic/020 generic/053 generic/062 generic/069 generic/070 generic/074 generic/075 generic/076 generic/079 generic/083 generic/088 generic/089 generic/091 generic/100 generic/105 generic/112 generic/113 generic/117 generic/120 generic/123 generic/124 generic/125 generic/126 generic/127 generic/128 generic/129 generic/130 generic/131 generic/132 generic/133 generic/135 generic/141 generic/169 generic/184 generic/192 generic/193 generic/198 generic/204 generic/207 generic/208 generic/209 generic/210 generic/211 generic/212 generic/213 generic/214 generic/215 generic/219 generic/221 generic/223 generic/224 generic/225 generic/226 generic/228 generic/230 generic/231 generic/232 generic/233 generic/234 generic/235 generic/236 generic/237 generic/239 generic/240 generic/245 generic/246 generic/247 generic/248 generic/249 generic/255 generic/257 generic/258 generic/263 generic/269 generic/270 generic/277 generic/285 generic/286 generic/294 generic/299 generic/300 generic/306 generic/307 generic/308 generic/309 generic/310 generic/313 generic/314 generic/315 generic/316 generic/317 generic/318 generic/319 shared/218 shared/243 shared/272 shared/289 shared/298
+Failures: generic/318
+END TEST: Ext4 4k block w/ no journal Sun Dec 22 10:01:56 EST 2013
+....
 
-(if there is a missing "END TEST", as above, it's likely because there
-was a kernel bug which caused the kernel to crash before the test run
-was able to complete.)
+(If there is a missing "END TEST", it's likely because there was a
+kernel bug which caused the kernel to crash before the test run was
+able to complete.)
