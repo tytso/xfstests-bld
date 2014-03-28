@@ -1,7 +1,7 @@
 
 The xfstests-bld package makes it easy to build xfstests in a hermetic
 build environment (so it is not dependent on possibly out-of-date
-system libraries for libaio, dmapi, etc.).  It also contains scripts
+distro versions of libaio, xfsprogs, etc.).  It also contains scripts
 which make it easy to run xfstests in a KVM guest.  It is currently
 optimized for ext4 testing, but it should be fairly simple to
 generalize this for testing other file systems.
@@ -29,7 +29,7 @@ know if create something which works well for other distributions.
     kernel's bzImage file.
 5.  cd to kvm-xfstests, and run "kvm-xfstests smoke".  More details of
     how to run kvm-xfstests can be found in kvm-xfstests/README.  If
-    you adjust the DIR= line in kvm-xfstests/config, it will not be
+    you adjust the DIR= line in kvm-xfstests, it will not be
     necessary to be cd'ed into the kvm-xfstests directory before
     kicking off the shell script.
 

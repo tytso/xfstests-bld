@@ -8,7 +8,6 @@ NR_CPU=2
 MEM=2048
 CONFIG_DIR=$HOME/.config/kvm-xfstests
 
-DIR=.
 ROOT_FS=$DIR/test-appliance/root_fs.img
 ROOT_DEV=/dev/vda
 VDB=$DIR/vdb
