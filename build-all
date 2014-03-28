@@ -6,8 +6,7 @@ else
 	. config
 fi
 
-nr_cpus=$(expr 1 + $(grep ^processor /proc/cpuinfo | tail -1 | \
-		sed -e 's/.*://') )
+nr_cpus=$(getconf _NPROCESSORS_ONLN)
 J=-j$(expr $nr_cpus \* 2)
 
 DESTDIR=$(pwd)/bld
