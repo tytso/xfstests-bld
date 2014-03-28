@@ -36,29 +36,3 @@ then
 	/root/runtests.sh
 	/sbin/halt
 fi
-
-if test "$CMD" = "fsstress"
-then
-	. /root/test-config
-	mount -o "noatime,$MNTOPTS" $VDD
-	/root/xfstests/ltp/fsstress -r -m 8 -n 500000 -d /vdd/fsstress
-	/sbin/halt
-fi
-
-if grep -q fstest-auto /proc/cmdline ; then
-	/root/xfstests.sh -g auto
-	/sbin/halt
-elif grep -q fstest-quick /proc/cmdline ; then
-	/root/xfstests.sh -g quick
-	/sbin/halt
-elif grep -q fstest-smoke /proc/cmdline ; then
-	export SMOKE=yes
-	/root/xfstests.sh -g quick
-	/sbin/halt
-elif grep -q fstest-dioread_nolock-bug /proc/cmdline ; then
-	e2fsck -fy /dev/vdb || exit 0
-	cd /root/xfstests
-	./run-test-dioread_nolock 089
-	/sbin/halt
-fi
-

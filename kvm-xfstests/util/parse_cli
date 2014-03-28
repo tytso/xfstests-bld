@@ -4,9 +4,13 @@ IFDOWN=$DIR/util/qemu-ifdown
 
 FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
+AEX="AEX,"
 
 while [ "$1" != "" ]; do
   case $1 in
+    -a)
+      AEX=""
+      ;;
     -c)	shift
       FSTESTCFG=$1
       ;;
@@ -20,8 +24,9 @@ while [ "$1" != "" ]; do
       FSTESTSET="$FSTESTSET,-g,$1"
       ;;
     -h)
-      echo "Usage: $0 [-c config] [-m MNTOPTS] [-r ram] smoke|auto|quick|full"
-      echo "Usage: $0 [-c config] [-m MNTOPTS] [-r ram] <test> ..."
+      echo "Usage: $0 [-c config] [-r ram] smoke|full"
+      echo "Usage: $0 [-c config] [-r ram] <test> ..."
+      echo "Usage: $0 [-c config] [-r ram] -g <group> ..."
       echo "Usage: $0 shell|maint"
       exit 1
       ;;
@@ -46,9 +51,6 @@ while [ "$1" != "" ]; do
     fsstress)
        ARG="cmd=fsstress"
        ;;
-    benchmark)
-       ARG="cmd=benchmark"
-       ;;
     *)
       FSTESTSET="$FSTESTSET,$1"
       ;;
@@ -60,7 +62,7 @@ if test -n "$ARG" ; then
   :
 elif test -n "$FSTESTSET"; then
      FSTESTSET=$(echo $FSTESTSET | sed -e 's/^,//')
-     ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET"
+     ARG="fstestcfg=$FSTESTCFG fstestset=$AEX$FSTESTSET"
 fi
 
 if test -n "$MNTOPTS" ; then
