@@ -6,7 +6,7 @@ QEMU=/usr/bin/kvm
 KERNEL=/u1/ext4/arch/x86/boot/bzImage
 NR_CPU=2
 MEM=2048
-CONFIG_DIR=$HOME/.config/kvm-xfstests
+CONFIG_DIR=$HOME/.config
 
 ROOT_FS=$DIR/test-appliance/root_fs.img
 ROOT_DEV=/dev/vda
@@ -20,8 +20,15 @@ VDG=$DIR/vdg
 IFUP=$DIR/util/qemu-ifup
 IFDOWN=$DIR/util/qemu-ifdown
 
+
+if test -f $CONFIG_DIR/kvm-xfstests; then
+   . $CONFIG_DIR/kvm-xfstests
+fi
+
+if test -f $DIR/config.custom ; then
+   . $DIR/config.custom
+fi
+
 if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
    . $KVM_CONFIG
-elif test -f $CONFIG_DIR; then
-   . $CONFIG_DIR
 fi
