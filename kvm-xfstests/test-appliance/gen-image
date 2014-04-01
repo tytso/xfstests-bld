@@ -24,7 +24,7 @@ debootstrap --variant=xfstests $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.sc
 patch -p0 < config-patches
 cp -r files/* rootdir
 tar -C rootdir/root -xvf ../../xfstests.tar.gz
-for i in vda vdb vdc vdd vde vdf vdg
+for i in vda vdb vdc vdd vde vdf results
 do
 	mkdir $ROOTDIR/$i
 done
