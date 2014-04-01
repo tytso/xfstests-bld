@@ -1,7 +1,0 @@
-#
-# This file is used by configure to get version information
-#
-PKG_MAJOR=2
-PKG_MINOR=2
-PKG_REVISION=10
-PKG_BUILD=1

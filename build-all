@@ -49,16 +49,7 @@ rm $DESTDIR/lib/libaio.so*
     DIST_ROOT=$DESTDIR make $J install; \
     DIST_ROOT=$DESTDIR make $J install-dev)
 
-(cd dmapi; \
-    CFLAGS="$CCF -I$DESTDIR/include" \
-    CPPFLAGS="-I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
-    ./configure --prefix=$DESTDIR; \
-    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
-    make $J install-dev; make $J install)
-
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
-cp $DESTDIR/include/xfs/dmapi.h $DESTDIR/include
 
 (cd fio; \
     ver=$(git describe --always); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
