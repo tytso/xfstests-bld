@@ -22,6 +22,13 @@ SERIAL="-serial telnet::7500,server,nowait \
         -serial telnet::7502,server,nowait"
 
 modprobe kvm-intel
+
+if ! test -e $VDB -a -e $VDC -a -e $VDD -a -e $VDE -a -e $VDF -a -e $VDG
+then
+	echo "Test disks don't exist, running setup..."
+	$DIR/setup
+fi
+
 $QEMU -boot order=c $NET \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=none,if=virtio \
