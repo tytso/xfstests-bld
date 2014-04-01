@@ -13,6 +13,8 @@ DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
 
+ver=$(git describe --always); echo "xfstests-bld	$ver ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
+
 (cd e2fsprogs-libs; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
@@ -75,3 +77,4 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     aclocal ; autoconf ; \
     ./configure --enable-ext2direct=no --prefix=$DESTDIR ; \
     make V=1 $J; make V=1 $J install)
+
