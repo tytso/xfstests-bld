@@ -15,7 +15,11 @@ fi
 
 #EXTRA_ARG="virtio_blk.queue_depth=32"
 
-LOGFILE=$DIR/log.$(date +%Y%m%d%H%M)
+if test -n "$SKIP_LOG" ; then
+    LOGFILE=/tmp/log.$(date +%Y%m%d%H%M)
+else
+    LOGFILE=$DIR/log.$(date +%Y%m%d%H%M)
+fi
 
 modprobe kvm-intel
 
@@ -41,4 +45,9 @@ $QEMU -boot order=c $NET \
 tee $LOGFILE
 
 $DIR/get-results $LOGFILE
-echo "logfile in $LOGFILE"
+
+if test -n "$SKIP_LOG" ; then
+  rm $LOGFILE
+else
+  echo "logfile in $LOGFILE"
+fi

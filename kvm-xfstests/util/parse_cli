@@ -29,6 +29,12 @@ while [ "$1" != "" ]; do
     -N)
       DO_NET=yes
       ;;
+    --no-log)
+      SKIP_LOG=yes
+      ;;
+    --log)
+      SKIP_LOG=no
+      ;;
     smoke)
       FSTESTCFG=4k
       FSTESTSET="$FSTESTSET,-g,quick"
@@ -56,6 +62,14 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+if test "$ARG" = maint -a -z "$SKIP_LOG" ; then
+  SKIP_LOG=yes
+fi
+
+if test "$SKIP_LOG" = no ; then
+   unset SKIP_LOG
+fi
 
 if test -n "$ARG" ; then
   :
