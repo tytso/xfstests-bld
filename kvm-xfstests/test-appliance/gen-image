@@ -9,6 +9,7 @@ ROOTDIR=$DIR/rootdir
 #ARCH="--arch=i386"
 RAW_ROOT_FS=$DIR/root_fs.raw
 ROOT_FS=$DIR/root_fs.img
+COMPAT="-o compat=0.10"
 
 mkdir -p $ROOTDIR
 mkdir -p var.cache.apt.archives
@@ -35,5 +36,5 @@ umount $ROOTDIR
 rmdir $ROOTDIR
 
 tune2fs -O has_journal $RAW_ROOT_FS
-qemu-img convert -f raw -O qcow2 -c $RAW_ROOT_FS $ROOT_FS
+qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 rm -f $RAW_ROOT_FS
