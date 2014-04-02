@@ -25,6 +25,7 @@ netbase
 perl
 postmark
 procps
+psmisc
 strace
 time
 xz-utils
