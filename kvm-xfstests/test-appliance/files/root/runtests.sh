@@ -21,7 +21,9 @@ then
 	FSTESTSET=$(echo $FSTESTSET | sed -e 's/^AEX //')
 fi
 
-cat /proc/slabinfo
+SLAB_GREP="ext4\|jbd2\|xfs"
+
+grep $SLAB_GREP /proc/slabinfo
 free -m
 
 for i in $FSTESTCFG
@@ -56,7 +58,12 @@ do
         fi
 	bash ./check -T $AEX $FSTESTSET
 	free -m
-	grep $FS /proc/slabinfo
+	if test "$FS" = "ext4" ; then
+	   SLAB_GREP="ext4\|jbd2"
+	else
+	   SLAB_GREP=$FS
+	fi
+	grep $SLAB_GREP /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
 	umount $TEST_DEV >& /dev/null
 	if test "$FS" = "ext4" ; then
