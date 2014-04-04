@@ -1,3 +1,17 @@
+dnl Copyright (C) 2003, 2008  Silicon Graphics, Inc.
+dnl
+dnl This program is free software: you can redistribute it and/or modify it
+dnl under the terms of the GNU General Public License as published by
+dnl the Free Software Foundation, either version 2 of the License, or
+dnl (at your option) any later version.
+dnl
+dnl This program is distributed in the hope that it will be useful,
+dnl but WITHOUT ANY WARRANTY; without even the implied warranty of
+dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+dnl GNU General Public License for more details.
+dnl
+dnl You should have received a copy of the GNU General Public License
+dnl along with this program.  If not, see <http://www.gnu.org/licenses/>.
 AC_DEFUN([AC_FUNC_GCC_VISIBILITY],
   [AC_CACHE_CHECK(whether __attribute__((visibility())) is supported,
 		  libc_cv_visibility_attribute,
@@ -17,6 +31,6 @@ EOF
 		  rm -f conftest.[cs]
 		  ])
    if test $libc_cv_visibility_attribute = yes; then
-     AC_DEFINE(HAVE_VISIBILITY_ATTRIBUTE)
+     AC_DEFINE(HAVE_VISIBILITY_ATTRIBUTE, [], [GCC supports visibility attributes])
    fi
   ])

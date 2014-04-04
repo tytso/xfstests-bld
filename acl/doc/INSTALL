@@ -26,7 +26,7 @@ attribute library and utility from source, and how to install them.
    If you want to build the package and install it manually, use the
    following steps:
 
-       # make configure  (or run autoconf; ./configure)
+       # make configure  (or run autoreconf; ./configure)
        # make
        # su root
        # make install install-lib

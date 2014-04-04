@@ -2,17 +2,24 @@
 .\"
 .\" (C) 2002 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-.\" SUCH DAMAGE.
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual.  If not, see
+.\" <http://www.gnu.org/licenses/>.
 .\"
 .Dd March 23, 2002
 .Dt ACL 5
@@ -163,14 +170,12 @@ the object will be granted.
 the effective user ID of the process matches the user ID of the file object owner,
 .Sy then
 .Pp
-.in +4
-.Bd -filled
+.Bd -filled -offset indent
 .Sy if
 the ACL_USER_OBJ entry contains the requested permissions, access is granted,
 .Pp
 .Sy else
 access is denied.
-.in -4
 .Ed
 .It
 .Sy "else if"
@@ -178,15 +183,13 @@ the effective user ID of the process matches the qualifier of any entry
 of type ACL_USER,
 .Sy then
 .Pp
-.in +4
-.Bd -filled
+.Bd -filled -offset indent
 .Sy if
 the matching ACL_USER entry and the ACL_MASK entry contain the requested
 permissions, access is granted,
 .Pp
 .Sy else
 access is denied.
-.in -4
 .Ed
 .It
 .Sy else if
@@ -194,13 +197,11 @@ the effective group ID or any of the supplementary group IDs of the process
 match the file group or the qualifier of any entry of type ACL_GROUP, 
 .Sy then
 .Pp
-.in +4
-.Bd -filled
+.Bd -filled -offset indent
 .Sy if
 the ACL contains an ACL_MASK entry,
 .Sy then
-.in +4
-.Bd -filled
+.Bd -filled -offset indent
 .Sy if
 the ACL_MASK entry and any of the matching ACL_GROUP_OBJ or ACL_GROUP entries
 contain
@@ -209,12 +210,10 @@ the requested permissions, access is granted,
 .Sy else
 access is denied.
 .Pp
-.in -4
 .Ed
 .Sy else
 (note that there can be no ACL_GROUP entries without an ACL_MASK entry)
-.in +4
-.Bd -filled
+.Bd -filled -offset indent
 .Sy if
 the ACL_GROUP_OBJ entry contains the requested permissions,
 access is granted,
@@ -223,7 +222,6 @@ access is granted,
 .Sy else
 access is denied.
 .Pp
-.in -4
 .Ed
 .It
 .Sy else if
@@ -490,6 +488,7 @@ These non-portable extensions are available on Linux systems.
 .Xr acl_error 3 ,
 .Xr acl_extended_fd 3 ,
 .Xr acl_extended_file 3 ,
+.Xr acl_extended_file_nofollow 3 ,
 .Xr acl_from_mode 3 ,
 .Xr acl_get_perm 3 ,
 .Xr acl_to_any_text 3

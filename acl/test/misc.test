@@ -3,6 +3,7 @@ Pretty comprehensive ACL tests.
 This must be run on a filesystem with ACL support. Also, you will need
 two dummy users (bin and daemon) and a dummy group (daemon).
  
+	$ rm -f f
 	$ umask 027
 	$ touch f
 	  
@@ -253,7 +254,7 @@ Add some users and groups
 Symlink in directory with default ACL?
 	 
 	$ ln -s d d/l
-	$ ls -dl d/l | awk '{print $1}'
+	$ ls -dl d/l | awk '{print $1}' | sed 's/\\.$//g'
 	> lrwxrwxrwx
 
 	$ ls -dl -L d/l | awk '{print $1}'
@@ -342,7 +343,7 @@ Remove the default ACL
 Reset to base entries
 	 
 	$ setfacl -b d
-	$ ls -dl d | awk '{print $1}'
+	$ ls -dl d | awk '{print $1}' | sed 's/\\.$//g'
 	> drwxr-x---
 
 	$ getfacl --omit-header d
@@ -354,7 +355,7 @@ Reset to base entries
 Now, chmod should change the group_obj entry
 	 
 	$ chmod 775 d
-	$ ls -dl d | awk '{print $1}'
+	$ ls -dl d | awk '{print $1}' | sed 's/\\.$//g'
 	> drwxrwxr-x
 	
 	$ getfacl --omit-header d
@@ -424,3 +425,37 @@ Now, chmod should change the group_obj entry
 	> 
 
 	$ rmdir d
+
+Dangling symlink test http://savannah.nongnu.org/bugs/?28131
+
+	$ mkdir d
+	$ ln -s d/a d/b
+	$ getfacl -R d
+	> # file: d
+	> # owner: %TUSER
+	> # group: %TGROUP
+	> user::rwx
+	> group::rwx
+	> other::r-x
+	> 
+	$ setfacl -R -m u:bin:rw d
+	$ getfacl -RL d
+	> getfacl: d/b: No such file or directory
+	> # file: d
+	> # owner: %TUSER
+	> # group: %TGROUP
+	> user::rwx
+	> user:bin:rw-
+	> group::rwx
+	> mask::rwx
+	> other::r-x
+	> 
+	$ setfacl -RL -m u:bin:rw d
+	> setfacl: d/b: No such file or directory
+	$ rm -R d
+
+Malformed restore file
+
+	$ echo "# owner: root" > f
+	$ setfacl --restore=f 2>&1
+	>setfacl: f: No filename found in line 0, aborting

@@ -2,6 +2,19 @@
   File: libacl.h
 
   (C) 1999, 2000 Andreas Gruenbacher, <a.gruenbacher@computer.org>
+
+  This program is free software: you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef __ACL_LIBACL_H
@@ -46,6 +59,7 @@ extern int acl_check(acl_t acl, int *last);
 extern acl_t acl_from_mode(mode_t mode);
 extern int acl_equiv_mode(acl_t acl, mode_t *mode_p);
 int acl_extended_file(const char *path_p);
+int acl_extended_file_nofollow(const char *path_p);
 int acl_extended_fd(int fd);
 extern int acl_entries(acl_t acl);
 extern const char *acl_error(int code);

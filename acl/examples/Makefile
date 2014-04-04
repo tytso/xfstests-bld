@@ -1,13 +1,9 @@
-#
-# Copyright (c) 2001-2002 Silicon Graphics, Inc.  All Rights Reserved.
-#
+CFLAGS = -g -Wall -I../include
+LDFLAGS = -lacl
 
-TOPDIR = ..
-include $(TOPDIR)/include/builddefs
+PROGS = get-acl copy-acl set-acl copyperm
 
-LSRCFILES = README Makefile.examples get-acl.c set-acl.c copy-acl.c
-LDIRT = get-acl set-acl copy-acl
+all: $(PROGS)
 
-include $(BUILDRULES)
-
-default install install-dev install-lib:
+clean:
+	rm -f $(PROGS)

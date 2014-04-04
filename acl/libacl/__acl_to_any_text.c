@@ -7,7 +7,7 @@
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
-  version 2 of the License, or (at your option) any later version.
+  version 2.1 of the License, or (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -160,7 +160,7 @@ acl_entry_to_any_str(const acl_entry_t entry_d, char *text_p, ssize_t size,
 					str = NULL;
 				else
 					str = quote(user_name(
-						entry_obj_p->eid.qid));
+						entry_obj_p->eid.qid), ":, \t\n\r");
 				if (str != NULL) {
 					strncpy(text_p, str, size);
 					ADVANCE(strlen(str));
@@ -183,7 +183,7 @@ acl_entry_to_any_str(const acl_entry_t entry_d, char *text_p, ssize_t size,
 					str = NULL;
 				else
 					str = quote(group_name(
-						entry_obj_p->eid.qid));
+						entry_obj_p->eid.qid), ":, \t\n\r");
 				if (str != NULL) {
 					strncpy(text_p, str, size);
 					ADVANCE(strlen(str));
@@ -247,6 +247,11 @@ acl_entry_to_any_str(const acl_entry_t entry_d, char *text_p, ssize_t size,
 		    options & TEXT_ALL_EFFECTIVE) {
 			x = (options & TEXT_SMART_INDENT) ?
 				((text_p - orig_text_p)/8) : TABS-1;
+
+			/* use at least one tab for indentation */
+			if (x > (TABS-1))
+				x = (TABS-1);
+
 			strncpy(text_p, tabs+x, size);
 			ADVANCE(TABS-x);
 

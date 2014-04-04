@@ -72,7 +72,7 @@
 
    # ./Makepkgs
    this script generates all of the packages supported - each has a
-   subdirectory below acl/build where knowledge specific to each
+   subdirectory below acl/package where knowledge specific to each
    package type is maintained.
 
    The script produces logs of each stage of the build (this info is
@@ -80,7 +80,7 @@
 
 	acl/Logs/configure	- `autoconf; ./configure' output
 	acl/Logs/default	- `make default' output
-	acl/Logs/dist		- `make build dist' output
+	acl/Logs/dist		- `make package dist' output
 
    On successful completion, the script echoes the names of packages
    successfully generated.

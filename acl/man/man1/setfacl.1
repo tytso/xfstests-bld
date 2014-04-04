@@ -2,8 +2,24 @@
 .\"
 .\" (C) 2000 Andreas Gruenbacher, <a.gruenbacher@bestbits.at>
 .\"
-.\" This manual page may used unter the terms of the GNU LGPL license, either
-.\" version 2 of this license, or (at your option) any later version.
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual.  If not, see
+.\" <http://www.gnu.org/licenses/>.
 .\"
 .TH SETFACL 1 "ACL File Utilities" "May 2000" "Access Control Lists"
 .SH NAME
@@ -46,8 +62,8 @@ ACL entries for this operation must include permissions.
 
 The
 .IR "\-x (\-\-remove)" " and " "\-X (\-\-remove-file)"
-options remove ACL enries. Only
-ACL entries without the
+options remove ACL entries. It is not an error to remove an entry which
+does not exist.  Only ACL entries without the
 .I perms
 field are accepted as parameters, unless POSIXLY_CORRECT is defined.
 
@@ -69,7 +85,7 @@ to modify ACLs of a file. This is analogous to the permissions required
 for accessing the file mode. (On current Linux systems, root is the only
 user with the CAP_FOWNER capability.)
 
-.SS OPTIONS
+.SH OPTIONS
 .TP 4
 .I \-b, \-\-remove-all
 Remove all extended ACL entries. The base ACL entries of the owner, group and others are retained.
@@ -94,8 +110,10 @@ the input set are discarded. (A warning is issued if that happens).
 .I \-\-restore=file
 Restore a permission backup created by `getfacl \-R' or similar. All permissions
 of a complete directory subtree are restored using this mechanism. If the input
-contains owner comments or group comments, and setfacl is run by root, the
-owner and owning group of all files are restored as well. This option cannot be mixed with other options except `\-\-test'.
+contains owner comments or group comments, setfacl attempts to restore the
+owner and owning group. If the input contains flags comments (which define the setuid,
+setgid, and sticky bits), setfacl sets those three bits accordingly; otherwise,
+it clears them. This option cannot be mixed with other options except `\-\-test'.
 .TP 4
 .I \-\-test
 Test mode. Instead of changing the ACLs of any files, the resulting ACLs are listed.
@@ -115,10 +133,10 @@ This also skips symbolic link arguments.
 Only effective in combination with \-R.
 This option cannot be mixed with `\-\-restore'.
 .TP 4
-.I \-\-version
+.I \-v, \-\-version
 Print the version of setfacl and exit.
 .TP 4
-.I \-\-help
+.I \-h, \-\-help
 Print help explaining the command line options.
 .TP 4
 .I \-\-
@@ -222,8 +240,8 @@ owner, owning group, or others entry, a copy of the ACL owner, owning group, or 
 .IP * 4
 If a Default ACL contains named user entries or named group entries, and no mask entry exists, a mask entry containing the same permissions as the default Default ACL's group entry is added. Unless the
 .I \-n
-option is given, the permissions of the mask entry are further adjusted to inclu
-de the union of all permissions affected by the mask entry. (See the
+option is given, the permissions of the mask entry are further adjusted to
+include the union of all permissions affected by the mask entry. (See the
 .I \-n
 option description).
 .PP

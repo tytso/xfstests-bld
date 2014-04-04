@@ -7,7 +7,7 @@
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
-  version 2 of the License, or (at your option) any later version.
+  version 2.1 of the License, or (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -152,11 +152,14 @@ get_uid(const char *token, uid_t *uid_p)
 
 	if (get_id(token, uid_p) == 0)
 		return 0;
+	errno = 0;
 	passwd = getpwnam(token);
 	if (passwd) {
 		*uid_p = passwd->pw_uid;
 		return 0;
 	}
+	if (errno == 0)
+		errno = EINVAL;
 	return -1;
 }
 
@@ -168,11 +171,14 @@ get_gid(const char *token, gid_t *gid_p)
 
 	if (get_id(token, (uid_t *)gid_p) == 0)
 		return 0;
+	errno = 0;
 	group = getgrnam(token);
 	if (group) {
 		*gid_p = group->gr_gid;
 		return 0;
 	}
+	if (errno == 0)
+		errno = EINVAL;
 	return -1;
 }
 

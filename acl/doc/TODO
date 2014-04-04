@@ -1,4 +1,2 @@
-- include po (gettext stuff) in packages and build process
-- fix build process
 - check documentation
 - add manual pages for POSIX functions
