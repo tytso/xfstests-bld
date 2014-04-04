@@ -44,7 +44,7 @@ do
 		if test "$FS" = "ext4" ; then
 		    mke2fs -q -t ext4 $MKFS_OPTIONS $TEST_DEV
 		elif test "$FS" = "xfs" ; then
-		    /sbin/mkfs.xfs -f $MKFS_OPTIONS $TEST_DEV
+		    mkfs.xfs -f $MKFS_OPTIONS $TEST_DEV
 		else
 		    /sbin/mkfs.$FS $TEST_DEV
 		fi
@@ -71,7 +71,7 @@ do
 	if test "$FS" = "ext4" ; then
 		/sbin/e2fsck -fy $TEST_DEV
 	elif test "$FS" = "xfs" ; then
-		xfs_check -f $TEST_DEV
+		xfs_repair -f $TEST_DEV
 	else
 		/sbin/fsck.$FS $TEST_DEV
 	fi
