@@ -25,6 +25,8 @@ SLAB_GREP="ext4\|jbd2\|xfs"
 
 grep $SLAB_GREP /proc/slabinfo
 free -m
+echo git versions:
+cat git-versions
 
 for i in $FSTESTCFG
 do
