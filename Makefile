@@ -32,5 +32,5 @@ tarball:
 	mkdir xfstests/bin
 	cp bld/sbin/* xfstests/bin
 	cp bld/bin/* xfstests/bin
-	-find xfstests -mindepth 2 -type f -perm +0111 | xargs strip
+	-find xfstests -mindepth 2 -type f -perm +0111 | xargs strip 2> /dev/null
 	tar cf - xfstests | gzip -9 > xfstests.tar.gz
