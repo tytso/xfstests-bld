@@ -1,2 +1,2 @@
 #!/bin/sh
-egrep "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
+egrep -a "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
