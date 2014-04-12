@@ -4,7 +4,6 @@
 proc            /proc           proc    defaults        0       0
 tmpfs		/tmp		tmpfs	mode=1777	0	0
 debugfs		/sys/kernel/debug debugfs defaults	0	0
-usbfs		/proc/bus/usb	  usbfs defaults	0	0
 /dev/rootfs	/	ext4    noatime 0 1
 /dev/vdb	/vdb	ext4	defaults,noauto	0	0
 /dev/vdc	/vdc ext4	defaults,noauto,usrquota,grpquota	0	0
