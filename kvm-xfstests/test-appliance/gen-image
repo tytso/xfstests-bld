@@ -30,6 +30,13 @@ do
 	mkdir $ROOTDIR/$i
 done
 
+echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/sh" >> $ROOTDIR/etc/passwd
+echo "fsgqa:*:31415:0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "fsgqa:x:31415:" >> $ROOTDIR/etc/group
+mkdir $ROOTDIR/home/fsgqa
+chown 31415:31415 $ROOTDIR/home/fsgqa
+chmod 755 $ROOTDIR/root
+
 umount $ROOTDIR/var/cache/apt/archives
 umount $ROOTDIR/var/lib/apt/lists
 umount $ROOTDIR
