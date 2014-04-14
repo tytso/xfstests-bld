@@ -16,15 +16,11 @@
 /setfacl
 
 /ABOUT-NLS
-/aclocal.m4
 /autom4te.cache/
-/build-aux/
 /config.*
-/configure
 /libtool
 /m4/
 Makefile
-Makefile.in
 stamp-h1
 
 *.log
