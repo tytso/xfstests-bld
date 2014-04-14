@@ -104,7 +104,7 @@ do
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
-	    AEX="-X $i.exclude"
+	    AEX="-X /root/conf/$i.exclude"
         fi
 	for j in $(seq 1 $RPT_COUNT) ; do
 	   bash ./check -T $AEX $FSTESTSET
