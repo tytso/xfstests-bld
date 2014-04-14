@@ -1,7 +1,64 @@
 #!/bin/bash
+
+API_MAJOR=1
+API_MINOR=0
 . /root/test-config
-umount $VDB
-umount $VDD
+
+if test -z "$FSTESTAPI" ; then
+    echo "Missing TEST API!"
+    umount /results
+    poweroff -f
+fi
+
+set $FSTESTAPI
+
+if test "$1" -ne "$API_MAJOR" ; then
+    echo " "
+    echo "API version of kvm-xfstests is $1.$2"
+    echo "Major version number must be $API_MAJOR"
+    echo " "
+    umount /results
+    poweroff -f
+fi
+
+if test "$2" -gt "$API_MINOR" ; then
+    echo " "
+    echo "API version of kvm-xfstests is $1.$2"
+    echo "Minor version number is greater than $API_MINOR"
+    echo "Some kvm-xfstests options may not work correctly."
+    echo "please update or rebuild your root_fs.img"
+    echo " "
+    sleep 5
+fi
+
+if test -n "$FSTESTOPT" ; then
+   set $FSTESTOPT
+else
+   set ""
+fi
+
+RPT_COUNT=1
+
+while [ "$1" != "" ]; do
+  case $1 in
+    aex)
+	echo "Enabling auto exclude"
+	DO_AEX=t
+	;;
+    count) shift
+	RPT_COUNT=$1
+	echo "Repeat each test $RPT_COUNT times"
+	;;
+    *)
+	echo " "
+	echo "Unrecognized option $i"
+	echo " "
+  esac
+  shift
+done
+
+umount $VDB >& /dev/null
+umount $VDD >& /dev/null
 /sbin/e2fsck -fy $VDB
 if test $? -ge 8 ; then
 	mke2fs -t ext4 $VDB
@@ -14,19 +71,10 @@ then
 	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k"
 fi
 
-if test -n "$(echo $FSTESTSET | awk '/^AEX /{print "t"}')"
-then
-	echo "Enabling auto exclude"
-	DO_AEX=t
-	FSTESTSET=$(echo $FSTESTSET | sed -e 's/^AEX //')
-fi
-
 SLAB_GREP="ext4\|jbd2\|xfs"
 
 grep $SLAB_GREP /proc/slabinfo
 free -m
-echo git versions:
-cat git-versions
 
 for i in $FSTESTCFG
 do
@@ -58,7 +106,22 @@ do
 	if test -n "$DO_AEX" ; then
 	    AEX="-X $i.exclude"
         fi
-	bash ./check -T $AEX $FSTESTSET
+	for j in $(seq 1 $RPT_COUNT) ; do
+	   bash ./check -T $AEX $FSTESTSET
+	   umount $TEST_DEV >& /dev/null
+	   if test "$FS" = "ext4" ; then
+		/sbin/e2fsck -fy $TEST_DEV >& $RESULT_BASE/fsck.out
+		if test $? -gt 0 ; then
+		   cat $RESULT_BASE/fsck.out
+		fi
+	   elif test "$FS" = "xfs" ; then
+		if ! xfs_repair -n $TEST_DEV >& /dev/null ; then
+		   xfs_repair $TEST_DEV
+		fi
+	   else
+		/sbin/fsck.$FS $TEST_DEV
+	   fi
+	done
 	free -m
 	if test "$FS" = "ext4" ; then
 	   SLAB_GREP="ext4\|jbd2"
@@ -67,12 +130,4 @@ do
 	fi
 	grep $SLAB_GREP /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
-	umount $TEST_DEV >& /dev/null
-	if test "$FS" = "ext4" ; then
-		/sbin/e2fsck -fy $TEST_DEV
-	elif test "$FS" = "xfs" ; then
-		xfs_repair -f $TEST_DEV
-	else
-		/sbin/fsck.$FS $TEST_DEV
-	fi
 done

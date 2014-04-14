@@ -1,5 +1,5 @@
 #
-# Customize these or put new values in ~/.config/kvm-xfstests
+# Customize these or put new values in ~/.config/kvm-xfstests or config.custom
 #
 #QEMU=/usr/local/bin/qemu-system-x86_64
 QEMU=/usr/bin/kvm
@@ -8,6 +8,7 @@ NR_CPU=2
 MEM=2048
 CONFIG_DIR=$HOME/.config
 
+PRIMARY_FSTYPE="ext4"
 ROOT_FS=$DIR/test-appliance/root_fs.img
 ROOT_DEV=/dev/vda
 VDB=$DIR/vdb

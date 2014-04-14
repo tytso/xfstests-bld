@@ -5,6 +5,10 @@ DIR=.
 
 . $DIR/util/parse_cli
 
+API="1.0"
+
+ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
+
 if test -z "$DO_NET" ; then
    echo "Networking disabled."
 elif test $(whoami) = "root" ; then

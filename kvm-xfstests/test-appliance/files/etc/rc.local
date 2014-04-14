@@ -21,9 +21,11 @@ fi
 
 PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
+FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
+FSTESTTYP=$(parse fstesttyp)
+FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 
@@ -31,8 +33,15 @@ if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
 	export FSTESTCFG
 	export FSTESTSET
+	export FSTESTOPT
+	export FSTESTTYP
+	export FSTESTAPI
+	echo git versions:
+	cat /root/xfstests/git-versions
+
 	echo FSTESTCFG is \"$FSTESTCFG\"
 	echo FSTESTSET is \"$FSTESTSET\"
+	echo FSTESTOPT is \"$FSTESTOPT\"
 	/root/runtests.sh
 	/sbin/halt
 fi

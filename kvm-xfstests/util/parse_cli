@@ -1,14 +1,17 @@
 FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
-AEX="AEX,"
+DO_AEX="yes"
 
 while [ "$1" != "" ]; do
   case $1 in
     -a)
-      AEX=""
+      DO_AEX=""
       ;;
     -c)	shift
       FSTESTCFG=$1
+      ;;
+    -C) shift
+      FSTESTOPT="$FSTESTOPT,count,$1"
       ;;
     -m) shift
       MNTOPTS=$1
@@ -67,6 +70,12 @@ if test "$ARG" = maint -a -z "$SKIP_LOG" ; then
   SKIP_LOG=yes
 fi
 
+if test "$DO_AEX" = yes ; then
+    FSTESTOPT="$FSTESTOPT,aex"
+fi
+
+FSTESTOPT=$(echo $FSTESTOPT | sed -e 's/^,//')
+
 if test "$SKIP_LOG" = no ; then
    unset SKIP_LOG
 fi
@@ -75,7 +84,7 @@ if test -n "$ARG" ; then
   :
 elif test -n "$FSTESTSET"; then
      FSTESTSET=$(echo $FSTESTSET | sed -e 's/^,//')
-     ARG="fstestcfg=$FSTESTCFG fstestset=$AEX$FSTESTSET"
+     ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET fstestopt=$FSTESTOPT"
 fi
 
 if test -n "$MNTOPTS" ; then
