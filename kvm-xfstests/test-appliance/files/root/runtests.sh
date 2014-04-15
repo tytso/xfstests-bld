@@ -103,7 +103,7 @@ do
 	echo mount options: $EXT_MOUNT_OPTIONS
 	export FSTYP=$FS
 	AEX=""
-	if test -n "$DO_AEX" ; then
+	if test -n "$DO_AEX" -a -f "/root/conf/$i.exclude"; then
 	    AEX="-X /root/conf/$i.exclude"
         fi
 	for j in $(seq 1 $RPT_COUNT) ; do
