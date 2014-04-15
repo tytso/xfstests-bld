@@ -29,13 +29,14 @@ FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 
+export FSTESTCFG
+export FSTESTSET
+export FSTESTOPT
+export FSTESTTYP
+export FSTESTAPI
+
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
-	export FSTESTCFG
-	export FSTESTSET
-	export FSTESTOPT
-	export FSTESTTYP
-	export FSTESTAPI
 	echo git versions:
 	cat /root/xfstests/git-versions
 
