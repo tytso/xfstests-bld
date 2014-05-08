@@ -21,9 +21,9 @@ VDG=$DIR/vdg
 IFUP=$DIR/util/qemu-ifup
 IFDOWN=$DIR/util/qemu-ifdown
 
-SERIAL="-serial telnet::7500,server,nowait \
-        -serial telnet::7501,server,nowait \
-        -serial telnet::7502,server,nowait"
+SERIAL="-serial telnet:localhost:7500,server,nowait \
+        -serial telnet:localhost:7501,server,nowait \
+        -serial telnet:localhost:7502,server,nowait"
 
 if test -f $CONFIG_DIR/kvm-xfstests; then
    . $CONFIG_DIR/kvm-xfstests
