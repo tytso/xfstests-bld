@@ -43,5 +43,6 @@ umount $ROOTDIR
 rmdir $ROOTDIR
 
 tune2fs -O has_journal $RAW_ROOT_FS
+e2fsck -fy -E discard $RAW_ROOT_FS
 qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 rm -f $RAW_ROOT_FS
