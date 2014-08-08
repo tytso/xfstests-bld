@@ -24,7 +24,8 @@ mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
 debootstrap --variant=xfstests $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
 patch -p0 < config-patches
 cp -r files/* rootdir
-tar -C rootdir/root -xvf ../../xfstests.tar.gz
+echo "untaring xfstests"
+tar -C rootdir/root -xf ../../xfstests.tar.gz
 for i in vda vdb vdc vdd vde vdf results
 do
 	mkdir $ROOTDIR/$i
