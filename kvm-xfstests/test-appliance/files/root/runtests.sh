@@ -61,14 +61,14 @@ umount $VDB >& /dev/null
 umount $VDD >& /dev/null
 /sbin/e2fsck -fy $VDB
 if test $? -ge 8 ; then
-	mke2fs -t ext4 $VDB
+	mke2fs -F -q -t ext4 $VDB
 fi
 dmesg -n 5
 cd /root/xfstests
 
 if test "$FSTESTCFG" = all
 then
-	FSTESTCFG="4k ext3 nojournal 1k ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k"
+	FSTESTCFG="4k 1k ext3 nojournal ext3conv metacsum inline dioread_nolock data_journal bigalloc bigalloc_1k"
 fi
 
 SLAB_GREP="ext4\|jbd2\|xfs"
@@ -90,7 +90,7 @@ do
 	fi
 	if test "$TEST_DEV" != "$VDB" ; then
 		if test "$FS" = "ext4" ; then
-		    mke2fs -q -t ext4 $MKFS_OPTIONS $TEST_DEV
+		    mke2fs -F -q -t ext4 $MKFS_OPTIONS $TEST_DEV
 		elif test "$FS" = "xfs" ; then
 		    mkfs.xfs -f $MKFS_OPTIONS $TEST_DEV
 		else
