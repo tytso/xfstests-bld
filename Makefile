@@ -18,7 +18,7 @@ clean:
 	rm kvm-xfstests/util/zerofree
 
 kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
-	cc -o $@ $< -lext2fs -lcom_err
+	cc -static -o $@ $< -lext2fs -lcom_err -lpthread
 
 realclean: clean
 	rm -rf xfsprogs-dev xfstests-dev fio quota *.ver
