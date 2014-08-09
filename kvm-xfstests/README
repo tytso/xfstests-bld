@@ -15,12 +15,13 @@ The kvm-xfstests script is used as follows:
 *) kvm-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
 
 	By default <cfg> defaults to all, which will run the following
-	configurations: "4k", "ext3", "nojournal", "1k", "ext3conv",
-	"metacsum, "dioread_nolock, "data_journal", "bigalloc",
-	"bigalloc_1k".  You may specify a modified, comma separated
-	list if you don't want to run all of these configurations.
+	configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
+	"metacsum, "inline", "dioread_nolock, "data_journal",
+	"bigalloc", and "bigalloc_1k".  You may specify a single
+	configuration or a comma separated list if you want to run a
+	subset of all possible file system configurations.
 
-	Tests can be specified using an an xfstests group
+	Tests can be specified using an xfstests group
 	via "-g <group>", or can be an xfstests (e.g., "generic/068")
 
 *) kvm-xfstests smoke
@@ -33,18 +34,18 @@ The kvm-xfstests script is used as follows:
 	tests manually.  Any changes to the root partition will be
 	reverted when you exit the VM.
 
+	To run tests manually source the /root/test-env file, and then
+	set the FSTESTCFG and FSTESTSET environment variables before
+	running /root/runtests.sh.
+
 *) kvm-xfstests maint
 
 	Will drop you into a root shell and allows you to modify the
 	root file system.  KVM uses and modifies the root_fs.img file,
 	which is a compressed qcow2 image.  After doing a lot of
-	maintenance, the root_fs.img can get quite large.  Afterwards,
-	it's advisable to run the compress-rootfs shell script.
+	maintenance, the root_fs.img can get quite large.  If so, the
+	compress-rootfs shell script can be helpful.
 
-	Normally, the kvm-xfstests does not need to be run as root.
-	However, if you want to update the debian packages, or
-	otherwise would like to use networking from the VM, you will
-	need to run the script as root.
 
 To extract the interesting results from the log file, run the command
 "get-results":
