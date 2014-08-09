@@ -11,9 +11,15 @@ RAW_ROOT_FS=$DIR/root_fs.raw
 ROOT_FS=$DIR/root_fs.img
 COMPAT="-o compat=0.10"
 
+if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
+then
+    RAW_ROOT_FS=/tmp/root_fs.raw.$$
+fi
+
 mkdir -p $ROOTDIR
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
+mkdir -p debs
 cp /dev/null $RAW_ROOT_FS
 mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
 mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
@@ -21,6 +27,8 @@ mkdir -p $ROOTDIR/var/cache/apt/archives
 mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
 mkdir -p $ROOTDIR/var/lib/apt/lists
 mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
+mkdir -p $ROOTDIR/debs
+mount --bind debs $ROOTDIR/debs
 debootstrap --variant=xfstests $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
 patch -p0 < config-patches
 cp -r files/* rootdir
@@ -38,12 +46,27 @@ mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
 chmod 755 $ROOTDIR/root
 
+if test -n "$(find debs -name \*.deb)"
+then
+    chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i /debs/*.deb
+fi
+
+chroot $ROOTDIR dpkg --purge gcc-4.7-base gcc-4.8-base
+find $ROOTDIR/usr/share/doc -type f | grep -v copyright | xargs rm
+find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
+find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
+rm -rf $ROOTDIR/usr/share/man
+find $ROOTDIR/var/log | xargs rm
+
 umount $ROOTDIR/var/cache/apt/archives
 umount $ROOTDIR/var/lib/apt/lists
+umount $ROOTDIR/debs
+rmdir $ROOTDIR/debs
 umount $ROOTDIR
 rmdir $ROOTDIR
 
 tune2fs -O has_journal $RAW_ROOT_FS
+e2fsck -fyD $RAW_ROOT_FS
 e2fsck -fy -E discard $RAW_ROOT_FS
 qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 rm -f $RAW_ROOT_FS
