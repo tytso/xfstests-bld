@@ -1,5 +1,5 @@
 # For people who need to run tests by hand
-export FSTESTAPI=1.0
+export FSTESTAPI="1 0"
 export FSTESTCFG=4k
 export FSTESTSET=generic/001
 export FSTESTOPT=aex
