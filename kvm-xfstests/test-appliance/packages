@@ -1,12 +1,10 @@
-apt
 bash-completion
 bc
-binutils
-blktrace
 bsdmainutils
 bzip2
 cpio
 dc
+dbench
 dmsetup
 e3
 ed
@@ -21,9 +19,6 @@ nano
 net-tools
 netbase
 perl
-postmark
 procps
 psmisc
-strace
 time
-xz-utils
