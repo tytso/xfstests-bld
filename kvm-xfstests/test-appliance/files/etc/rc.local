@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # rc.local
 #
@@ -37,12 +37,12 @@ export FSTESTAPI
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
-	echo git versions:
-	cat /root/xfstests/git-versions
+	sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions
+	echo -e "FSTESTVER: kernel\t$(uname -r -v -m)"
 
-	echo FSTESTCFG is \"$FSTESTCFG\"
-	echo FSTESTSET is \"$FSTESTSET\"
-	echo FSTESTOPT is \"$FSTESTOPT\"
+	echo FSTESTCFG: \"$FSTESTCFG\"
+	echo FSTESTSET: \"$FSTESTSET\"
+	echo FSTESTOPT: \"$FSTESTOPT\"
 	/root/runtests.sh
 	/sbin/halt
 fi

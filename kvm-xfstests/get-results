@@ -1,2 +1,2 @@
 #!/bin/sh
-egrep -a "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
+egrep "( Linux version )|(^FSTEST)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
