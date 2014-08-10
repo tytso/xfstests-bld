@@ -26,6 +26,7 @@ realclean: clean
 tarball:
 	rm -rf xfstests
 	cp -r xfstests-dev xfstests
+	echo "xfstests-bld	$$(git describe --always --dirty) ($$(git log -1 --pretty=%cD))" > xfstests-bld.ver
 	cat *.ver > xfstests/git-versions
 	rm -rf xfstests/.git xfstests/autom4te.cache
 	find xfstests -type f -name \*.\[cho\]  -o -name \*.l[ao] | xargs rm

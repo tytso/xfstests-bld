@@ -13,8 +13,6 @@ DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
 
-ver=$(git describe --always); echo "xfstests-bld	$ver ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
-
 (cd e2fsprogs-libs; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
@@ -41,7 +39,7 @@ ver=$(git describe --always); echo "xfstests-bld	$ver ($(git log -1 --pretty=%cD
 rm $DESTDIR/lib/libaio.so*
 
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
-    ver=$(git describe --always); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
+    ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
@@ -54,13 +52,13 @@ rm $DESTDIR/lib/libaio.so*
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 
 (cd fio; \
-    ver=$(git describe --always); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
+    ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
     ./configure --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 
 (cd xfstests-dev; \
-    ver=$(git describe --always); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
+    ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
     autoheader ; autoconf ; \
     CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector"
     CPPFLAGS="-I$DESTDIR/include" \
@@ -70,7 +68,7 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
 (cd quota; \
-    ver=$(git describe --always); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
+    ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
     export CPPFLAGS="-I$DESTDIR/include" ; \
