@@ -26,6 +26,7 @@ FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
 FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
 FSTESTTYP=$(parse fstesttyp)
 FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
+timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 
@@ -34,6 +35,12 @@ export FSTESTSET
 export FSTESTOPT
 export FSTESTTYP
 export FSTESTAPI
+
+if test -n "$timezone" -a -f /usr/share/zoneinfo/$timezone
+then
+    ln -sf /usr/share/zoneinfo/$timezone /etc/localtime
+    echo $timezone > /etc/timezone
+fi
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
