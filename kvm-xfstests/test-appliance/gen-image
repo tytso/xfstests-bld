@@ -46,9 +46,10 @@ mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
 chmod 755 $ROOTDIR/root
 
-if test -n "$(find debs -name \*.deb)"
+DEBS=$(find debs -name \*.deb)
+if test -n "$DEBS"
 then
-    chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i /debs/*.deb
+    chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
 fi
 
 chroot $ROOTDIR dpkg --purge gcc-4.7-base gcc-4.8-base
@@ -56,7 +57,7 @@ find $ROOTDIR/usr/share/doc -type f | grep -v copyright | xargs rm
 find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
 find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
 rm -rf $ROOTDIR/usr/share/man
-find $ROOTDIR/var/log | xargs rm
+find $ROOTDIR/var/log -type f | xargs rm
 
 umount $ROOTDIR/var/cache/apt/archives
 umount $ROOTDIR/var/lib/apt/lists
