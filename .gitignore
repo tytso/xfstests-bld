@@ -17,6 +17,7 @@ acl/include/acl
 acl/include/builddefs
 acl/include/config.h
 acl/include/sys
+acl/po/Makefile.in
 acl/po/acl.pot
 acl/setfacl/setfacl
 attr/attr/attr
@@ -42,3 +43,8 @@ xfsprogs-dev
 xfstests-dev
 xfstests
 xfstests.tar.gz
+kvm-xfstests/test-appliance/root_fs.img*
+kvm-xfstests/test-appliance/debs
+kvm-xfstests/baseline.*
+config.custom
+
