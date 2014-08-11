@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /u1/xfstests-bld/build-64/kvm-xfstests/test-appliance
+./gen-image

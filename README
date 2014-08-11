@@ -1,0 +1,35 @@
+These KVM test appliance image are designed to be used with the
+kvm-xfstests system which can be found here:
+
+	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+
+If you are testing a 32-bit x86 kernel you must use the
+root_fs.img.i386.  If you are using a 64-bit kernel, you may use
+either the i386 or x86_64 root_fs.img file.
+
+
+The "corresponding source" of the GPL binaries found in these KVM images
+can be found in the source packages for the Jessie testing
+distribution as of August 10, 2014:
+
+	http://snapshot.debian.org/archive/debian/20140810T163814Z/
+
+The gen-image script found in the kvm-xfstests/test-appliance
+directory of the xfstests-bld git repository, plus debootstrap,
+constitutes the scripts used to control the creation of these KVM
+images.
+
+The following git repositories was used to build these images:
+
+e2fsprogs	v1.42.11-340-g489ff4a (Fri, 8 Aug 2014 17:02:34 -0400)
+fio		fio-2.1.4 (Sat, 16 Nov 2013 11:15:12 -0700)
+quota		f215e3f (Mon, 2 Dec 2013 23:06:23 -0300)
+xfsprogs	v3.2.1-6-gba24eb7 (Fri, 18 Jul 2014 10:47:11 +1000)
+xfstests-bld	3b6cf65 (Sun, 10 Aug 2014 15:36:51 -0400)
+xfstests	linux-v3.8-438-g67abe66 (Sat, 9 Aug 2014 01:29:24 -0400)
+
+Local changes to xfstests can be found here:
+
+	https://github.com/tytso/xfstests
+
+

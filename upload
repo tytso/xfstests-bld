@@ -1,0 +1,20 @@
+#!/bin/sh
+
+README=README
+DIR_32=build-32/kvm-xfstests/test-appliance
+DIR_64=build-64/kvm-xfstests/test-appliance
+
+/bin/rm $README.sig
+gpg2 --sign --detach $README
+
+/bin/rm -f $DIR_32/root_fs.img.i386.sig $DIR_32/root_fs.img.i386
+cp $DIR_32/root_fs.img $DIR_32/root_fs.img.i386
+gpg2 --sign --detach $DIR_32/root_fs.img.i386
+
+/bin/rm -f $DIR_64/root_fs.img.x86_64.sig $DIR_64/root_fs.img.x86_64
+cp $DIR_64/root_fs.img $DIR_64/root_fs.img.x86_64
+gpg2 --sign --detach $DIR_64/root_fs.img.x86_64
+
+kup put $README $README.sig  /pub/linux/kernel/people/tytso/kvm-xfstests/README
+kup put $DIR_32/root_fs.img.i386 $DIR_32/root_fs.img.i386.sig   /pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+kup put $DIR_64/root_fs.img.x86_64 $DIR_64/root_fs.img.x86_64.sig   /pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.x86_64

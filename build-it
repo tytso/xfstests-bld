@@ -1,0 +1,24 @@
+#!/bin/sh
+date
+cd build-32
+schroot -c sid make clean
+schroot -c sid make
+schroot -c sid make tarball
+cd ..
+
+cd build-64
+make clean
+make
+make tarball
+cd ..
+
+if ! diff build-32/xfstests/git-versions  build-64/xfstests/git-versions
+then
+	echo "differences in versions detected, aborting!"
+	exit 1
+fi
+
+(cd build-32/kvm-xfstests/test-appliance ; \
+    schroot -c sid -u root ./gen-image)
+sudo /u1/xfstests-bld/gen-image-64
+date
