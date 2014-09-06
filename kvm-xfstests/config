@@ -25,6 +25,8 @@ SERIAL="-serial telnet:localhost:7500,server,nowait \
         -serial telnet:localhost:7501,server,nowait \
         -serial telnet:localhost:7502,server,nowait"
 
+GDB="-gdb tcp:localhost:7499"
+
 if test -f $CONFIG_DIR/kvm-xfstests; then
    . $CONFIG_DIR/kvm-xfstests
 fi
