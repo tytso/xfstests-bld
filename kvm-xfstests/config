@@ -27,6 +27,19 @@ SERIAL="-serial telnet:localhost:7500,server,nowait \
 
 GDB="-gdb tcp:localhost:7499"
 
+MONITOR="-monitor telnet:localhost:7498,server,nowait"
+
+# The advantage of mon:stdio is that you can use Control-a followed
+# by a 'b' character to send a break (magic-sysrq) character.
+# The disadvantage is that in order to send a Control-a, you have to type
+# C-a C-a, and an accidental "C-a c" will dump you into the qemu monitor,
+# which is confusing to some users --- although a second "C-a c" will
+# switch you back to the console.  If you never use magic-sysrq, you might
+# want to enable the second console command, which will disable the C-a
+# interception entirely.
+CONSOLE=" -serial mon:stdio"
+#CONSOLE=" -chardev stdio,id=console,signal=off -serial chardev:console"
+
 if test -f $CONFIG_DIR/kvm-xfstests; then
    . $CONFIG_DIR/kvm-xfstests
 fi
