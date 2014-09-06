@@ -2,6 +2,5 @@ export FS=ext4
 export TEST_DEV=$VDD
 export TEST_DIR=/vdd
 export MKFS_OPTIONS="-q"
-export EXT_MOUNT_OPTIONS="-o block_validity,encrypt_key_sig=4cb927ea0c564410"
+export EXT_MOUNT_OPTIONS="-o block_validity,dummy_encryption"
 TESTNAME="Ext4 encryption"
-echo -n "hunter2" | ecryptfs-add-passphrase >& /dev/null
