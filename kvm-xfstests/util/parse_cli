@@ -22,7 +22,7 @@ while [ "$1" != "" ]; do
     -g) shift
       FSTESTSET="$FSTESTSET,-g,$1"
       ;;
-    -h|--help)
+    -h|--help|help)
       echo "Usage: $0 [<OPTIONS>] smoke|full"
       echo "Usage: $0 [<OPTIONS>] <test> ..."
       echo "Usage: $0 [<OPTIONS>] -g <group> ..."
