@@ -1,9 +1,10 @@
 [Unit]
-Description=/etc/rc.local Compatibility
+Description=KVM-xfstests
+After=network.target
 
 [Service]
 Type=forking
-ExecStart=/etc/rc.local
+ExecStart=/root/kvm-xfstests.boot
 TimeoutSec=0
 StandardInput=tty
 RemainAfterExit=yes

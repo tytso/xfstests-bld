@@ -51,12 +51,20 @@ then
     chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
 fi
 
-sed -i -e '/ExecStart/s/agetty/agetty -a root/' $ROOTDIR/lib/systemd/system/serial-getty@.service
+
+cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
+	$ROOTDIR/etc/systemd/system/telnet-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
+	$ROOTDIR/lib/systemd/system/serial-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e 's/After=rc.local.service/After=network.target/' \
+	$ROOTDIR/etc/systemd/system/telnet-getty@.service
 chroot $ROOTDIR dpkg --purge gcc-4.7-base gcc-4.8-base
-chroot $ROOTDIR systemctl enable rc-local.service
-chroot $ROOTDIR systemctl enable serial-getty@ttyS1.service
-chroot $ROOTDIR systemctl enable serial-getty@ttyS2.service
-chroot $ROOTDIR systemctl enable serial-getty@ttyS3.service
+chroot $ROOTDIR systemctl enable kvm-xfstests.service
+chroot $ROOTDIR systemctl enable telnet-getty@ttyS1.service
+chroot $ROOTDIR systemctl enable telnet-getty@ttyS2.service
+chroot $ROOTDIR systemctl enable telnet-getty@ttyS3.service
 find $ROOTDIR/usr/share/doc -type f | grep -v copyright | xargs rm
 find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
 find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
