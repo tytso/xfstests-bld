@@ -32,6 +32,7 @@ while [ "$1" != "" ]; do
       echo "	-a		- Disable auto-exclude; run all tests"
       echo "	-c config	- Specify a file system configuration"
       echo "	-C count	- Run the specified tests multiple times"
+      echo "	-m mountopts	- Append mount options to fs config"
       echo "	-N		- Enable networking (requires root)"
       echo "	-r ram		- Specify memory to be used in megabytes"
       echo "	--kernel file	- Boot the specified kernel"

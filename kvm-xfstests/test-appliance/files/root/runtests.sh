@@ -88,6 +88,9 @@ do
 		echo "Unknown configuration $i!"
 		continue
 	fi
+	if test -n "$MNTOPTS" ; then
+		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+	fi
 	if test "$TEST_DEV" != "$VDB" ; then
 		if test "$FS" = "ext4" ; then
 		    mke2fs -F -q -t ext4 $MKFS_OPTIONS $TEST_DEV

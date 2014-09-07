@@ -35,6 +35,7 @@ export FSTESTSET
 export FSTESTOPT
 export FSTESTTYP
 export FSTESTAPI
+export MNTOPTS
 
 if test -n "$timezone" -a -f /usr/share/zoneinfo/$timezone
 then
