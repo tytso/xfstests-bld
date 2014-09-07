@@ -22,11 +22,25 @@ while [ "$1" != "" ]; do
     -g) shift
       FSTESTSET="$FSTESTSET,-g,$1"
       ;;
-    -h)
-      echo "Usage: $0 [-c config] [-r ram] smoke|full"
-      echo "Usage: $0 [-c config] [-r ram] <test> ..."
-      echo "Usage: $0 [-c config] [-r ram] -g <group> ..."
+    -h|--help)
+      echo "Usage: $0 [<OPTIONS>] smoke|full"
+      echo "Usage: $0 [<OPTIONS>] <test> ..."
+      echo "Usage: $0 [<OPTIONS>] -g <group> ..."
       echo "Usage: $0 shell|maint"
+      echo " "
+      echo "Common options are:"
+      echo "	-a		- Disable auto-exclude; run all tests"
+      echo "	-c config	- Specify a file system configuration"
+      echo "	-C count	- Run the specified tests multiple times"
+      echo "	-N		- Enable networking (requires root)"
+      echo "	-r ram		- Specify memory to be used in megabytes"
+      echo "	--kernel file	- Boot the specified kernel"
+      echo "	--no-log	- Don't save the log file for this run"
+      echo " "
+      echo "Common file system configurations are:"
+      echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
+      echo "	data_journal bigalloc bigalloc_1k inline"
+      echo " "
       exit 1
       ;;
     -N)
