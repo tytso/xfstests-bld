@@ -11,6 +11,7 @@ ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
 
 if test -z "$DO_NET" ; then
    echo "Networking disabled."
+   NET="-net none "
 elif test $(whoami) = "root" ; then
   NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
 else
@@ -47,7 +48,7 @@ $QEMU -boot order=c $NET \
         $SERIAL \
         $GDB \
 	--kernel $KERNEL \
-	--append "root=$ROOT_DEV console=ttyS0,115200 $ARG $EXTRA_ARG" |\
+	--append "quiet root=$ROOT_DEV console=ttyS0,115200 $ARG $EXTRA_ARG" |\
 tee $LOGFILE
 
 $DIR/get-results $LOGFILE
