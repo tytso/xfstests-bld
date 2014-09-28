@@ -71,11 +71,6 @@ then
 	FSTESTCFG="4k 1k ext3 nojournal ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k inline"
 fi
 
-SLAB_GREP="ext4\|jbd2\|xfs"
-
-grep $SLAB_GREP /proc/slabinfo
-free -m
-
 for i in $FSTESTCFG
 do
 	export SCRATCH_DEV=$VDC
@@ -99,6 +94,17 @@ do
 		else
 		    /sbin/mkfs.$FS $TEST_DEV
 		fi
+	fi
+	if test "$FS" = "ext4" ; then
+	    SLAB_GREP="ext4\|jbd2"
+	else
+	    SLAB_GREP=$FS
+	fi
+	echo 3 > /proc/sys/vm/drop_caches
+	if test "$SLAB_GREP" != "$OLD_SLAB_GREP" ; then
+	    free -m
+	    grep $SLAB_GREP /proc/slabinfo
+	    OLD_SLAB_GREP="$SLAB_GREP"
 	fi
 	echo -n "BEGIN TEST: $TESTNAME " ; date
 	echo Device: $TEST_DEV
@@ -125,12 +131,8 @@ do
 		/sbin/fsck.$FS $TEST_DEV
 	   fi
 	done
+	echo 3 > /proc/sys/vm/drop_caches
 	free -m
-	if test "$FS" = "ext4" ; then
-	   SLAB_GREP="ext4\|jbd2"
-	else
-	   SLAB_GREP=$FS
-	fi
 	grep $SLAB_GREP /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
 done
