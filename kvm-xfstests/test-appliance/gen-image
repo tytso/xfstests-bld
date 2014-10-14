@@ -10,6 +10,23 @@ ROOTDIR=$DIR/rootdir
 RAW_ROOT_FS=$DIR/root_fs.raw
 ROOT_FS=$DIR/root_fs.img
 COMPAT="-o compat=0.10"
+SAVE_RAW_ROOT=no
+
+while [ "$1" != "" ]; do
+  case $1 in
+    --save_raw_root)
+      SAVE_RAW_ROOT=yes;
+      ;;
+    --mirror) shift
+      MIRROR=$1
+      ;;
+    *)
+      echo "usage: gen-image [--save_raw_root] [--mirror MIRROR_LOC]"
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
 then
@@ -82,4 +99,9 @@ tune2fs -O has_journal $RAW_ROOT_FS
 e2fsck -fyD $RAW_ROOT_FS
 e2fsck -fy -E discard $RAW_ROOT_FS
 qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
-rm -f $RAW_ROOT_FS
+
+if test "$SAVE_RAW_ROOT" = "yes" ; then
+  echo "Raw root image has been saved at" $RAW_ROOT_FS
+else
+  rm -f $RAW_ROOT_FS
+fi
