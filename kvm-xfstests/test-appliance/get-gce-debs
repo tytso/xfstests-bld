@@ -1,0 +1,38 @@
+#!/bin/sh
+
+GCD_SHA256=78a60bf52d51ddee3e9f9c5ce7b4ee1cd429578f9b7176ba2bf8bade95bd90e3
+GCD_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.1.6/google-compute-daemon_1.1.6-1_all.deb
+
+GSS_SHA256=4f082cffc5e7f2052466195da1a4929b1df66dda7126c54de4b99846204c10dd
+GSS_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.1.6/google-startup-scripts_1.1.6-1_all.deb
+
+GIB_SHA256=b8e1f651acae0b93be9e51f8713f7a5743e599481805d1f4df75d7fa1099cb5a
+GIB_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.1.6/python-gcimagebundle_1.1.6-1_all.deb
+
+get_image () {
+	url=$1
+	exp_sha=$2
+
+	file=$(basename $url)
+
+	if test -e gce/$file && \
+	   test $(sha256sum gce/$file | colrm 65) = $exp_sha ;
+	then
+		echo "$file has expected sha256"
+		return 0;
+	else
+		curl -L -o gce/$file $url
+		if test $(sha256sum gce/$file | colrm 65) != $exp_sha ;
+		then
+			echo "$file corrupted!?!"
+			exit 1;
+		fi	
+	fi
+}
+
+get_image $GCD_URL $GCD_SHA256
+get_image $GSS_URL $GSS_SHA256
+get_image $GIB_URL $GIB_SHA256
+
+	
+

@@ -1,7 +1,7 @@
 mirror_style release
 download_style apt
 finddebs_style from-indices
-variants - buildd fakechroot minbase scratchbox xfstests
+variants - buildd fakechroot minbase scratchbox xfstests gce-xfstests
 keyring /usr/share/keyrings/debian-archive-keyring.gpg
 
 if doing_variant fakechroot; then
@@ -27,7 +27,9 @@ work_out_debs () {
 	elif doing_variant minbase; then
 		base="apt"
 	elif doing_variant xfstests; then
-		base=$(cat packages)
+		base=$(cat xfstests-packages)
+	elif doing_variant gce-xfstests; then
+		base=$(cat xfstests-packages gce-packages)
 	fi
 
 	if doing_variant fakechroot; then

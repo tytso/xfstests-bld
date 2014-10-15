@@ -1,5 +1,7 @@
 root_fs.img
 root_fs.raw
 rootdir
+gce
 var.cache.apt.archives
 var.lib.apt.lists
+mirror

@@ -11,6 +11,7 @@ RAW_ROOT_FS=$DIR/root_fs.raw
 ROOT_FS=$DIR/root_fs.img
 COMPAT="-o compat=0.10"
 SAVE_RAW_ROOT=no
+DO_GCE=no
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -20,8 +21,12 @@ while [ "$1" != "" ]; do
     --mirror) shift
       MIRROR=$1
       ;;
+    --gce)
+      DO_GCE=yes
+      SAVE_RAW_ROOT=yes;
+      ;;
     *)
-      echo "usage: gen-image [--save_raw_root] [--mirror MIRROR_LOC]"
+      echo "usage: gen-image [--save_raw_root] [--do_gce] [--mirror MIRROR_LOC]"
       exit 1
       ;;
   esac
@@ -31,6 +36,15 @@ done
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
 then
     RAW_ROOT_FS=/tmp/root_fs.raw.$$
+fi
+
+mkdir -p gce
+if test $DO_GCE = "yes" ; then
+    sh get-gce-debs
+    variant=gce-xfstests
+else
+    cp xfstests-packages packages
+    variant=xfstests
 fi
 
 mkdir -p $ROOTDIR
@@ -46,7 +60,11 @@ mkdir -p $ROOTDIR/var/lib/apt/lists
 mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
 mkdir -p $ROOTDIR/debs
 mount --bind debs $ROOTDIR/debs
-debootstrap --variant=xfstests $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
+mkdir -p $ROOTDIR/gce
+mount --bind gce $ROOTDIR/gce
+mkdir -p $ROOTDIR/imgdir
+mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
+debootstrap --variant=$variant $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
 cp -r files/* rootdir
 echo "untaring xfstests"
 tar -C rootdir/root -xf ../../xfstests.tar.gz
@@ -68,6 +86,23 @@ then
     chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
 fi
 
+if test $DO_GCE = "yes" ; then
+    sed -ie 's;/vd;/sd;g' $ROOTDIR/etc/fstab
+    sed -ie 's;/vd;/sd;g' $ROOTDIR/root/test-config
+    DEBS=$(find gce -name \*.deb)
+    if test -n "$DEBS"
+    then
+        chroot $ROOTDIR dpkg -i $DEBS
+    fi
+    for i in vda vdb vdc vdd vde vdf
+    do
+	rmdir $ROOTDIR/$i
+    done
+    for i in sda sdb sdc sdd sde sdf
+    do
+	mkdir $ROOTDIR/$i
+    done
+fi
 
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
@@ -90,15 +125,20 @@ find $ROOTDIR/var/log -type f | xargs rm
 
 umount $ROOTDIR/var/cache/apt/archives
 umount $ROOTDIR/var/lib/apt/lists
-umount $ROOTDIR/debs
-rmdir $ROOTDIR/debs
+for i in debs gce imgdir ;
+do
+    umount $ROOTDIR/$i
+    rmdir $ROOTDIR/$i
+done
 umount $ROOTDIR
 rmdir $ROOTDIR
 
-tune2fs -O has_journal $RAW_ROOT_FS
-e2fsck -fyD $RAW_ROOT_FS
-e2fsck -fy -E discard $RAW_ROOT_FS
-qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+if test $DO_GCE != "yes" ; then
+   tune2fs -O has_journal $RAW_ROOT_FS
+   e2fsck -fyD $RAW_ROOT_FS
+   e2fsck -fy -E discard $RAW_ROOT_FS
+   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+fi
 
 if test "$SAVE_RAW_ROOT" = "yes" ; then
   echo "Raw root image has been saved at" $RAW_ROOT_FS

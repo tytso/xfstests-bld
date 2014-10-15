@@ -1,0 +1,11 @@
+curl
+ethtool
+grub-pc
+kpartx
+parted
+python
+openssh-server
+openssh-client
+rsync
+sudo
+uuid-runtime
