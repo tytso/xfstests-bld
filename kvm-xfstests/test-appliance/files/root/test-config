@@ -14,16 +14,16 @@ export VDD=/dev/vdd
 export VDE=/dev/vde
 export VDF=/dev/vdf
 
-export PRI_TEST_DEV=/dev/vdb
+export PRI_TST_DEV=/dev/vdb
 export SM_SCR_DEV=/dev/vdc
 export SM_TST_DEV=/dev/vdd
 export LG_TST_DEV=/dev/vde
 export LG_SCR_DEV=/dev/vdf
 
-export PRI_TEST_MNT=/$(basename $PRI_TEST_DEV)
-export SM_SCR_MNT=/$(basename SM_SCR_DEV)
-export SM_TST_MNT=/$(basename SM_TST_DEV)
-export LG_TST_MNT=/$(basename LG_TST_DEV)
-export LG_SCR_MNT=/$(basename LG_SCR_DEV)
+export PRI_TST_MNT=/$(basename $PRI_TST_DEV)
+export SM_SCR_MNT=/$(basename $SM_SCR_DEV)
+export SM_TST_MNT=/$(basename $SM_TST_DEV)
+export LG_TST_MNT=/$(basename $LG_TST_DEV)
+export LG_SCR_MNT=/$(basename $LG_SCR_DEV)
 
 PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

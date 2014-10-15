@@ -57,11 +57,11 @@ while [ "$1" != "" ]; do
   shift
 done
 
-umount $VDB >& /dev/null
-umount $VDD >& /dev/null
-/sbin/e2fsck -fy $VDB
+umount $PRI_TST_DEV >& /dev/null
+umount $SM_TST_DEV >& /dev/null
+/sbin/e2fsck -fy $PRI_TST_DEV
 if test $? -ge 8 ; then
-	mke2fs -F -q -t ext4 $VDB
+	mke2fs -F -q -t ext4 $PRI_TST_DEV
 fi
 dmesg -n 5
 cd /root/xfstests
@@ -73,8 +73,8 @@ fi
 
 for i in $FSTESTCFG
 do
-	export SCRATCH_DEV=$VDC
-	export SCRATCH_MNT=/vdc
+	export SCRATCH_DEV=$SM_SCR_DEV
+	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
 	mkdir -p $RESULT_BASE
 	if test -e "/root/conf/$i"; then
@@ -86,7 +86,7 @@ do
 	if test -n "$MNTOPTS" ; then
 		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
 	fi
-	if test "$TEST_DEV" != "$VDB" ; then
+	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 		if test "$FS" = "ext4" ; then
 		    mke2fs -F -q -t ext4 $MKFS_OPTIONS $TEST_DEV
 		elif test "$FS" = "xfs" ; then

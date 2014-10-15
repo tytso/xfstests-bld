@@ -1,6 +1,6 @@
 export FS=ext4
-export TEST_DEV=$VDB
-export TEST_DIR=/vdb
+export TEST_DEV=$PRI_TST_DEV
+export TEST_DIR=$PRI_TST_MNT
 export MKFS_OPTIONS="-q"
 export EXT_MOUNT_OPTIONS="-o block_validity,data=journal"
 TESTNAME="Ext4 4k block w/data=journal"

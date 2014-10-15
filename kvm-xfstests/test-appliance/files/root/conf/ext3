@@ -1,6 +1,6 @@
 export FS=ext4
-export TEST_DEV=$VDD
-export TEST_DIR=/vdd
+export TEST_DEV=$SM_TST_DEV
+export TEST_DIR=$SM_TST_MNT
 export MKFS_OPTIONS="-q -O ^extents,^flex_bg,^uninit_bg"
 export EXT_MOUNT_OPTIONS="-o block_validity,nodelalloc"
 TESTNAME="Ext4 4k block w/nodelalloc, no flex_bg, and no extents"
