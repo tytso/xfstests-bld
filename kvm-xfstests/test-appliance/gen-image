@@ -13,6 +13,10 @@ COMPAT="-o compat=0.10"
 SAVE_RAW_ROOT=no
 DO_GCE=no
 
+if test -r config.custom ; then
+   . $(pwd)/config.custom
+fi
+
 while [ "$1" != "" ]; do
   case $1 in
     --save_raw_root)
