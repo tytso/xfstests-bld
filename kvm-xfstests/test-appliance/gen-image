@@ -12,6 +12,7 @@ ROOT_FS=$DIR/root_fs.img
 COMPAT="-o compat=0.10"
 SAVE_RAW_ROOT=no
 DO_GCE=no
+DO_UPDATE=no
 
 if test -r config.custom ; then
    . $(pwd)/config.custom
@@ -29,8 +30,11 @@ while [ "$1" != "" ]; do
       DO_GCE=yes
       SAVE_RAW_ROOT=yes;
       ;;
+    --update)
+      DO_UPDATE=yes
+      ;;
     *)
-      echo "usage: gen-image [--save_raw_root] [--do_gce] [--mirror MIRROR_LOC]"
+      echo "usage: gen-image [--save_raw_root] [--do_gce] [--update] [--mirror MIRROR_LOC]"
       exit 1
       ;;
   esac
@@ -42,6 +46,31 @@ then
     RAW_ROOT_FS=/tmp/root_fs.raw.$$
 fi
 
+update_xfstests()
+{
+   tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
+   rsync -avH files/* $ROOTDIR
+}
+
+finalize_rootfs()
+{
+   e2fsck -fyD $RAW_ROOT_FS
+   e2fsck -fy -E discard $RAW_ROOT_FS
+   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+}
+
+mkdir -p $ROOTDIR
+if test $DO_UPDATE = "yes" ; then
+   qemu-img convert -f qcow2 -O raw $ROOT_FS $RAW_ROOT_FS
+   mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+   rm -rf $ROOTDIR/xfstests
+   update_xfstests
+   umount $ROOTDIR
+   rmdir $ROOTDIR
+   finalize_rootfs
+   exit 0
+fi
+
 mkdir -p gce
 if test $DO_GCE = "yes" ; then
     sh get-gce-debs
@@ -51,7 +80,6 @@ else
     variant=xfstests
 fi
 
-mkdir -p $ROOTDIR
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
 mkdir -p debs
@@ -69,9 +97,7 @@ mount --bind gce $ROOTDIR/gce
 mkdir -p $ROOTDIR/imgdir
 mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
 debootstrap --variant=$variant $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
-cp -r files/* rootdir
-echo "untaring xfstests"
-tar -C rootdir/root -xf ../../xfstests.tar.gz
+update_xfstests
 for i in vda vdb vdc vdd vde vdf results
 do
 	mkdir $ROOTDIR/$i
@@ -139,9 +165,7 @@ rmdir $ROOTDIR
 
 if test $DO_GCE != "yes" ; then
    tune2fs -O has_journal $RAW_ROOT_FS
-   e2fsck -fyD $RAW_ROOT_FS
-   e2fsck -fy -E discard $RAW_ROOT_FS
-   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+   finalize_rootfs
 fi
 
 if test "$SAVE_RAW_ROOT" = "yes" ; then
