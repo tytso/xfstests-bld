@@ -68,7 +68,7 @@ cd /root/xfstests
 
 if test "$FSTESTCFG" = all
 then
-	FSTESTCFG="4k 1k ext3 nojournal ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k inline"
+	FSTESTCFG="4k 1k ext3 nojournal ext3conv metacsum dioread_nolock data_journal inline bigalloc bigalloc_1k"
 fi
 
 if test -n "$FSTESTEXC" ; then
