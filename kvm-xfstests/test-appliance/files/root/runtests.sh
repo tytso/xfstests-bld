@@ -1,7 +1,7 @@
 #!/bin/bash
 
 API_MAJOR=1
-API_MINOR=0
+API_MINOR=1
 . /root/test-config
 
 if test -z "$FSTESTAPI" ; then
@@ -71,6 +71,12 @@ then
 	FSTESTCFG="4k 1k ext3 nojournal ext3conv metacsum dioread_nolock data_journal bigalloc bigalloc_1k inline"
 fi
 
+if test -n "$FSTESTEXC" ; then
+	echo $FSTESTEXC | tr , \\n > /tmp/exclude-tests
+else
+	rm -f /tmp/exclude-tests
+fi
+
 for i in $FSTESTCFG
 do
 	export SCRATCH_DEV=$SM_SCR_DEV
@@ -115,6 +121,9 @@ do
 	if test -n "$DO_AEX" -a -f "/root/conf/$i.exclude"; then
 	    AEX="-E /root/conf/$i.exclude"
         fi
+	if test -f /tmp/exclude-tests ; then
+	    AEX="$AEX -E /tmp/exclude-tests"
+	fi
 	for j in $(seq 1 $RPT_COUNT) ; do
 	   bash ./check -T $AEX $FSTESTSET
 	   umount $TEST_DEV >& /dev/null

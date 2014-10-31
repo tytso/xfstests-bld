@@ -29,12 +29,14 @@ FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
 timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
+FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
 
 export FSTESTCFG
 export FSTESTSET
 export FSTESTOPT
 export FSTESTTYP
 export FSTESTAPI
+export FSTESTEXC
 export MNTOPTS
 
 if test -n "$timezone" -a -f /usr/share/zoneinfo/$timezone
@@ -50,6 +52,7 @@ then
 
 	echo FSTESTCFG: \"$FSTESTCFG\"
 	echo FSTESTSET: \"$FSTESTSET\"
+	echo FSTESTEXC: \"$FSTESTEXC\"
 	echo FSTESTOPT: \"$FSTESTOPT\"
 	/root/runtests.sh
 	/sbin/poweroff

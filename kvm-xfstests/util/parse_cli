@@ -36,6 +36,7 @@ while [ "$1" != "" ]; do
       echo "	-n nr_cpus	- Specify the number of cpu's"
       echo "	-N		- Enable networking (requires root)"
       echo "	-r ram		- Specify memory to be used in megabytes"
+      echo "	-X test		- Exclude test from running"
       echo "	--kernel file	- Boot the specified kernel"
       echo "	--no-log	- Don't save the log file for this run"
       echo " "
@@ -51,6 +52,13 @@ while [ "$1" != "" ]; do
     -N)
       DO_NET=yes
       ;;
+    -X) shift
+	if test -n "$FSTESTEXC" ; then
+	    FSTESTEXC="$FSTESTEXC,$1"
+	else
+	    FSTESTEXC="$1"
+	fi
+	;;
     --no-log)
       SKIP_LOG=yes
       ;;
@@ -107,6 +115,9 @@ if test -n "$ARG" ; then
 elif test -n "$FSTESTSET"; then
      FSTESTSET=$(echo $FSTESTSET | sed -e 's/^,//')
      ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET fstestopt=$FSTESTOPT"
+fi
+if test -n "$FSTESTEXC" ; then
+    ARG="$ARG fstestexc=$FSTESTEXC"
 fi
 
 if test -n "$MNTOPTS" ; then

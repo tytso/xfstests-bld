@@ -5,7 +5,7 @@ DIR=.
 
 . $DIR/util/parse_cli
 
-API="1.0"
+API="1.1"
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
 
