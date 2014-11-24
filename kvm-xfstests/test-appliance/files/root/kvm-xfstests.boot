@@ -54,6 +54,7 @@ then
 	echo FSTESTSET: \"$FSTESTSET\"
 	echo FSTESTEXC: \"$FSTESTEXC\"
 	echo FSTESTOPT: \"$FSTESTOPT\"
+	echo MNTOPTS: \"$MNTOPTS\"
 	/root/runtests.sh
 	/sbin/poweroff
 fi
