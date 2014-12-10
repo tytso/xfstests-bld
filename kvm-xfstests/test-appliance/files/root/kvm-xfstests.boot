@@ -56,5 +56,5 @@ then
 	echo FSTESTOPT: \"$FSTESTOPT\"
 	echo MNTOPTS: \"$MNTOPTS\"
 	/root/runtests.sh
-	/sbin/poweroff
+	poweroff -f
 fi
