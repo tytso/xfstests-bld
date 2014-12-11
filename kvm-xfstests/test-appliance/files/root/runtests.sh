@@ -77,18 +77,40 @@ else
 	rm -f /tmp/exclude-tests
 fi
 
+sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions > /results/run-stats
+echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> /results/run-stats
+echo FSTESTCFG: \"$FSTESTCFG\" >> /results/run-stats
+echo FSTESTSET: \"$FSTESTSET\" >> /results/run-stats
+echo FSTESTEXC: \"$FSTESTEXC\" >> /results/run-stats
+echo FSTESTOPT: \"$FSTESTOPT\" >> /results/run-stats
+echo MNTOPTS: \"$MNTOPTS\" >> /results/run-stats
+
+cat /results/run-stats
+
+for i in btrfs ext4 generic shared udf xfs config; do
+    rm -rf /results/results-*/$i
+done
+
 for i in $FSTESTCFG
 do
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
-	mkdir -p $RESULT_BASE
 	if test -e "/root/conf/$i"; then
 		. /root/conf/$i
 	else
 		echo "Unknown configuration $i!"
 		continue
 	fi
+	mkdir -p $RESULT_BASE
+	echo FS: $FS > $RESULT_BASE/config
+	echo TESTNAME: $TESTNAME >> $RESULT_BASE/config
+	echo TEST_DEV: $TEST_DEV >> $RESULT_BASE/config
+	echo TEST_DIR: $TEST_DIR >> $RESULT_BASE/config
+	echo SCRATCH_DEV: $SCRATCH_DEV >> $RESULT_BASE/config
+	echo SCRATCH_MNT: $SCRATCH_MNT >> $RESULT_BASE/config
+	echo MKFS_OPTIONS: $MKFS_OPTIONS >> $RESULT_BASE/config
+	echo EXT_MOUNT_OPTIONS: $EXT_MOUNT_OPTIONS >> $RESULT_BASE/config
 	if test -n "$MNTOPTS" ; then
 		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
 	fi

@@ -47,14 +47,6 @@ fi
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
-	sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions
-	echo -e "FSTESTVER: kernel\t$(uname -r -v -m)"
-
-	echo FSTESTCFG: \"$FSTESTCFG\"
-	echo FSTESTSET: \"$FSTESTSET\"
-	echo FSTESTEXC: \"$FSTESTEXC\"
-	echo FSTESTOPT: \"$FSTESTOPT\"
-	echo MNTOPTS: \"$MNTOPTS\"
 	/root/runtests.sh
 	poweroff -f
 fi
