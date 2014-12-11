@@ -76,7 +76,6 @@ if test $DO_GCE = "yes" ; then
     sh get-gce-debs
     variant=gce-xfstests
 else
-    cp xfstests-packages packages
     variant=xfstests
 fi
 

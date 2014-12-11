@@ -24,4 +24,5 @@ netbase
 perl
 procps
 psmisc
+strace
 time
