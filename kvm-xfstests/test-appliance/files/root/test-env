@@ -4,3 +4,4 @@ export FSTESTCFG=4k
 export FSTESTSET=generic/001
 export FSTESTOPT=aex
 export FSTESTTYP=ext4
+export MNTOPTS=""
