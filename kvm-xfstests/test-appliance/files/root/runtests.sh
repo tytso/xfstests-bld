@@ -102,6 +102,14 @@ do
 		echo "Unknown configuration $i!"
 		continue
 	fi
+	if test -n "$EXT_MOUNT_OPTIONS" ; then
+		EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
+	else
+		EXT_MOUNT_OPTIONS="-o block_validity"
+	fi
+	if test -n "$MNTOPTS" ; then
+		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+	fi
 	mkdir -p $RESULT_BASE
 	echo FS: $FS > $RESULT_BASE/config
 	echo TESTNAME: $TESTNAME >> $RESULT_BASE/config
@@ -111,9 +119,6 @@ do
 	echo SCRATCH_MNT: $SCRATCH_MNT >> $RESULT_BASE/config
 	echo MKFS_OPTIONS: $MKFS_OPTIONS >> $RESULT_BASE/config
 	echo EXT_MOUNT_OPTIONS: $EXT_MOUNT_OPTIONS >> $RESULT_BASE/config
-	if test -n "$MNTOPTS" ; then
-		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
-	fi
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 		if test "$FS" = "ext4" ; then
 		    mke2fs -F -q -t ext4 $MKFS_OPTIONS $TEST_DEV

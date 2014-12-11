@@ -2,5 +2,5 @@ export FS=ext4
 export TEST_DEV=$SM_TST_DEV
 export TEST_DIR=$SM_TST_MNT
 export MKFS_OPTIONS="-q -O ^flex_bg"
-export EXT_MOUNT_OPTIONS="-o block_validity,nodelalloc"
+export EXT_MOUNT_OPTIONS="nodelalloc"
 TESTNAME="Ext4 4k block w/nodelalloc and no flex_bg"

@@ -4,6 +4,6 @@ export TEST_DIR=$LG_TST_MNT
 export SCRATCH_DEV=$LG_SCR_DEV
 export SCRATCH_MNT=$LG_SCR_MNT
 export MKFS_OPTIONS="-q -O bigalloc"
-export EXT_MOUNT_OPTIONS="-o block_validity"
+export EXT_MOUNT_OPTIONS=""
 TESTNAME="Ext4 4k block w/bigalloc"
 
