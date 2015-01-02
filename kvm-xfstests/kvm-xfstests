@@ -3,6 +3,8 @@
 DIR=.
 . $DIR/config
 
+QUIET="quiet loglevel=0"
+
 . $DIR/util/parse_cli
 
 API="1.1"
@@ -48,7 +50,7 @@ $QEMU -boot order=c $NET \
         $SERIAL \
         $GDB \
 	--kernel $KERNEL \
-	--append "quiet root=$ROOT_DEV console=ttyS0,115200 $ARG $EXTRA_ARG" |\
+	--append "$QUIET root=$ROOT_DEV console=ttyS0,115200 $ARG $EXTRA_ARG" |\
 tee $LOGFILE
 
 $DIR/get-results $LOGFILE

@@ -49,6 +49,15 @@ while [ "$1" != "" ]; do
     -n) shift
       NR_CPU=$1
       ;;
+    -v)
+      if test "$V" = "1" ; then
+      	  QUIET=""
+	  V=2
+      else
+          QUIET="systemd.show_status=auto systemd.log_level=crit"
+	  V=1
+      fi
+      ;;
     -N)
       DO_NET=yes
       ;;
