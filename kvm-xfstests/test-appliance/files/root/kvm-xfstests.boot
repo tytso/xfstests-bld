@@ -1,15 +1,7 @@
 #!/bin/bash -e
 #
-# rc.local
-#
-# This script is executed at the end of each multiuser runlevel.
-# Make sure that the script will "exit 0" on success or any other
-# value on error.
-#
-# In order to enable or disable this script just change the execution
-# bits.
-#
-# By default this script does nothing.
+# This script is executed at the end of each multiuser runlevel
+# to kick off the test appliance commands
 
 parse() {
 if grep -q " $1=" /proc/cmdline; then
@@ -45,8 +37,14 @@ then
     echo $timezone > /etc/timezone
 fi
 
+if test "$CMD" = "ver"
+then
+	/usr/local/sbin/ver
+	poweroff -f > /dev/null 2>&1
+fi
+
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
 	/root/runtests.sh
-	poweroff -f
+	poweroff -f > /dev/null 2>&1
 fi

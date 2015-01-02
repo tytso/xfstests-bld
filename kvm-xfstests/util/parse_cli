@@ -86,9 +86,9 @@ while [ "$1" != "" ]; do
       EPH="-root_ephemeral=no"
       SNAPSHOT=""
       ;;
-    fsstress)
-       ARG="cmd=fsstress"
-       ;;
+    ver)
+      ARG="cmd=ver"
+      ;;
     *)
       FSTESTSET="$FSTESTSET,$1"
       ;;
@@ -97,6 +97,10 @@ while [ "$1" != "" ]; do
 done
 
 if test "$ARG" = maint -a -z "$SKIP_LOG" ; then
+  SKIP_LOG=yes
+fi
+
+if test "$ARG" = "cmd=ver" -a -z "$SKIP_LOG" ; then
   SKIP_LOG=yes
 fi
 

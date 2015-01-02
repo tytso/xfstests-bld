@@ -7,7 +7,7 @@ API_MINOR=1
 if test -z "$FSTESTAPI" ; then
     echo "Missing TEST API!"
     umount /results
-    poweroff -f
+    poweroff -f > /dev/null 2>&1
 fi
 
 set $FSTESTAPI
@@ -18,7 +18,7 @@ if test "$1" -ne "$API_MAJOR" ; then
     echo "Major version number must be $API_MAJOR"
     echo " "
     umount /results
-    poweroff -f
+    poweroff -f > /dev/null 2>&1
 fi
 
 if test "$2" -gt "$API_MINOR" ; then
