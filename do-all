@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+$BUILD_ENV make clean
+$BUILD_ENV make
+$BUILD_ENV make tarball
+cd kvm-xfstests/test-appliance
+$SUDO_ENV ./gen-image

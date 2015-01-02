@@ -7,3 +7,8 @@ QUOTA_GIT=git://linuxquota.git.sourceforge.net/gitroot/linuxquota/linuxquota
 
 EXEC_LDFLAGS=-static
 EXEC_LLDFLAGS=-all-static
+
+#BUILD_ENV="schroot -c sid --"
+#SUDO_ENV="schroot -c sid -u root --"
+BUILD_ENV=
+SUDO_ENV=sudo
