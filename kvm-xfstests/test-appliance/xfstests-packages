@@ -15,6 +15,7 @@ gawk
 ifupdown
 iputils-ping
 isc-dhcp-client
+keyutils
 less
 libssl1.0.0
 libgdbm3
