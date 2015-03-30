@@ -117,6 +117,15 @@ if test "$DO_AEX" = yes ; then
     FSTESTOPT="$FSTESTOPT,aex"
 fi
 
+if test -d "$KERNEL" ; then
+    KERNEL=$KERNEL/arch/x86/boot/bzImage
+fi
+
+if ! test -f "$KERNEL"; then
+     echo "$KERNEL: kernel not found"
+     exit 1
+fi
+
 FSTESTOPT=$(echo $FSTESTOPT | sed -e 's/^,//')
 
 if test "$SKIP_LOG" = no ; then
