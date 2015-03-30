@@ -2,5 +2,5 @@ export FS=ext4
 export TEST_DEV=$SM_TST_DEV
 export TEST_DIR=$SM_TST_MNT
 export MKFS_OPTIONS="-q"
-export EXT_MOUNT_OPTIONS="dummy_encryption"
+export EXT_MOUNT_OPTIONS="test_dummy_encryption"
 TESTNAME="Ext4 encryption"
