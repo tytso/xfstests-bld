@@ -9,7 +9,7 @@ xfsprogs-dev xfstests-dev fio quota:
 	./get-all
 
 clean:
-	for i in acl attr e2fsprogs-libs fio quota libaio xfstests-dev ; \
+	for i in acl attr e2fsprogs-libs fio quota libaio xfstests-dev misc ; \
 	do \
 		make -C $$i clean ; \
 	done

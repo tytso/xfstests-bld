@@ -1,0 +1,38 @@
+#!/bin/sh -vx
+dmesg -n 7
+mke2fs -t ext4 -O encrypt,^dir_index -Fq /dev/vdc
+mount /vdc
+mkdir /vdc/a /vdc/b
+echo foobar | e4crypt add_key /vdc/a
+cp /etc/motd /vdc/a
+ln -s motd /vdc/a/link
+cp -r /root/xfstests /vdc/a
+umount /vdc
+mount /vdc
+ls -l /vdc/a
+cat /vdc/a/link
+cat /vdc/a/motd
+umount /vdc
+keyctl purge logon
+mount /vdc
+ls -l /vdc/a
+rm -rf /vdc/a
+umount /vdc
+mke2fs -t ext4 -O encrypt -Fq /dev/vdc
+mount /vdc
+mkdir /vdc/a /vdc/b
+echo foobar | e4crypt add_key /vdc/a
+cp /etc/motd /vdc/a
+ln -s motd /vdc/a/link
+cp -r /root/xfstests /vdc/a
+umount /vdc
+mount /vdc
+ls -l /vdc/a
+cat /vdc/a/link
+cat /vdc/a/motd
+umount /vdc
+keyctl purge logon
+mount /vdc
+ls -l /vdc/a
+rm -rf /vdc/a
+umount /vdc

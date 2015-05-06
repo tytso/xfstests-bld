@@ -76,3 +76,4 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     ./configure --enable-ext2direct=no --prefix=$DESTDIR ; \
     make V=1 $J; make V=1 $J install)
 
+(cd misc ; make $J ; make install DESTDIR=$DESTDIR)
