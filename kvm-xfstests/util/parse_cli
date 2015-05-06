@@ -35,6 +35,7 @@ while [ "$1" != "" ]; do
       echo "	-m mountopts	- Append mount options to fs config"
       echo "	-n nr_cpus	- Specify the number of cpu's"
       echo "	-N		- Enable networking (requires root)"
+      echo "	-o opts		- Extra kernel command line options"
       echo "	-r ram		- Specify memory to be used in megabytes"
       echo "	-X test		- Exclude test from running"
       echo "	--kernel file	- Boot the specified kernel"
@@ -48,6 +49,9 @@ while [ "$1" != "" ]; do
       ;;
     -n) shift
       NR_CPU=$1
+      ;;
+    -o) shift
+      EXTRA_ARG=$1
       ;;
     -v)
       if test "$V" = "1" ; then
