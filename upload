@@ -4,7 +4,7 @@ README=README
 DIR_32=build-32/kvm-xfstests/test-appliance
 DIR_64=build-64/kvm-xfstests/test-appliance
 
-/bin/rm $README.sig
+/bin/rm -f $README.sig
 gpg2 --sign --detach $README
 
 /bin/rm -f $DIR_32/root_fs.img.i386.sig $DIR_32/root_fs.img.i386
