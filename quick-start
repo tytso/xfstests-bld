@@ -1,0 +1,122 @@
+Quick start instructions for kvm-xfstests
+==========================================
+
+0.  Make sure qemu with kvm support is installed on your system.
+
+1.  Run the following commands:
+
+    git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+    cd fstests/kvm-xfstests
+    wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+
+Substitute "i386" for "x86_64" in the above URL if you want to test
+using a native 64-bit userspace.  It should be possible to use the
+32-bit userspace with a 64-bit kernel, although you may run into some
+rough spots via-a-vis compat ioctls working correctly.  (If you do,
+let me know; those are bugs that should be fixed.  :-)
+
+2.  In the fstests/kvm-xfstests directory, take a look at the "config"
+    file and either edit that file in place, or put override values in
+    ~/.config/kvm-xfstests or config.custom.  The latter is preferred.
+
+3.  Build a kernel with all of the necessary drives for kvm built into
+    the kernel (i.e., no modules!).  There are some sample kernel
+    configs in the kernel-configs directory.
+
+4.  Run "./kvm-xfstests smoke" to do a quick test.  Or "./kvm-xfstests
+    -g auto" to do a full test.  You can also run specific tests on
+    specific configurations, i.e., "./kvm-xfstests -c bigalloc
+    generic/013 generic/127".   To run a shell, use "./kvm-xfstests shell"
+
+For more information, please see:
+
+https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/kvm-xfstests/README
+
+
+Building a 32-bit kernel
+========================
+
+
+To build a 32-bit kernel, create a /build/ext4 directory (or change
+directory name as you wish) and place a kernel configuration file in
+/build/ext4/.config.  (There are some example config files in the
+kernel-configs directory of the xfstests-bld git repo).  Then run:
+
+make O=/build/ext4 ARCH=i386 -j16 $*
+
+The reason for using a separate build directory is you can maintain a
+separate build directory for 64-bit builds, which you can now build
+using:
+
+make O=/build/ext4-64 ARCH=x86_64 -j16 $*
+
+I generally create shell scripts which look like this:
+
+#!/bin/dash
+cd /usr/projects/linux/ext4
+make O=/build/ext4-64 ARCH=x86_64 -j16 $*
+
+And store them as "make-ext4", "make-ext4-64", "make-ext4-crypto",
+etc., in /usr/projects/linux.  The reason for having the "cd" command
+is so that if you accidentally run "../make-ext4" while you are in the
+/usr/projects/linux/ext4-crypto directory, instead of the
+/usr/projects/linux/ext4 directory (for example), you won't end up
+accidentally contaminating the build directory.
+
+The remote ports feature
+========================
+
+While kvm-xfstests is running, you can telnet to a number of ports
+(which are bound to localhost).  Ports 7500, 7501, and 7502 will
+connect you to a shell prompts while the tests are running (if you
+want to check on /proc/slabinfo, enable tracing, etc.)  You can also
+use these ports in conjuction with "kvm-xfstests shell" if you want
+additional windows to capture traces using ftrace.
+
+You can also access the qemu monitor on port 7498, and you debug the
+kernel using remote gdb on localhost port 7499.  Just run "gdb
+/path/to/vmlinux", and then use the command "target remote
+localhost:7499".  (Pro tip: it's helpful to temporarily add
+"EXTRA_CFLAGS += -O0" to fs/{ext4,jbd2}/Makefile, and to make sure you
+have CONFIG_DEBUG_INFO, CONFIG_DEBUG_INFO_DWARF4, and
+CONFIG_FRAME_POINTER enabled.)
+
+
+Miscellaneous kernel hacking hints
+==================================
+
+The following hints may be useful to folks who are new to kernel
+development.
+
+Using ccache
+------------
+
+Enabling ccache can really help speed up your kernel builds.  I
+strongly recommend it.
+
+Examples of using ftrace
+------------------------
+
+This is an example of how to debug the lazytime feature (which is
+when you mount a file system using -m lazytime using a 4.0-rcX and
+later kernels).
+
+cd /sys/kernel/debug/tracing
+echo 1 > events/writeback/writeback_lazytime/enable
+echo 1 > events/writeback/writeback_lazytime_iput/enable
+echo "state & 2048" > events/writeback/writeback_dirty_inode_enqueue/filter
+echo 1 > events/writeback/writeback_dirty_inode_enqueue/enable
+echo 1 > events/ext4/ext4_other_inode_update_time/enable
+cat trace_pipe
+
+The definition of the tracepoints can be found in
+include/linux/trace/events.  The tracepoints used by ext4 and be found
+in ext4.h, and by jbd2 in the jbd2.h files in that directory, and so
+on.
+
+For more information, please see:
+
+http://lwn.net/Articles/365835/
+http://lwn.net/Articles/366796/
+http://lwn.net/Articles/370423/
+

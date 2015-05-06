@@ -10,9 +10,9 @@ either the i386 or x86_64 root_fs.img file.
 
 The "corresponding source" of the GPL binaries found in these KVM images
 can be found in the source packages for the Jessie testing
-distribution as of August 10, 2014:
+distribution as of April 1, 2015:
 
-	http://snapshot.debian.org/archive/debian/20140810T163814Z/
+	http://snapshot.debian.org/archive/debian/20150401T032713Z/
 
 The gen-image script found in the kvm-xfstests/test-appliance
 directory of the xfstests-bld git repository, plus debootstrap,
@@ -21,15 +21,9 @@ images.
 
 The following git repositories was used to build these images:
 
-e2fsprogs	v1.42.11-340-g489ff4a (Fri, 8 Aug 2014 17:02:34 -0400)
-fio		fio-2.1.4 (Sat, 16 Nov 2013 11:15:12 -0700)
-quota		f215e3f (Mon, 2 Dec 2013 23:06:23 -0300)
-xfsprogs	v3.2.1-6-gba24eb7 (Fri, 18 Jul 2014 10:47:11 +1000)
-xfstests-bld	3b6cf65 (Sun, 10 Aug 2014 15:36:51 -0400)
-xfstests	linux-v3.8-438-g67abe66 (Sat, 9 Aug 2014 01:29:24 -0400)
-
-Local changes to xfstests can be found here:
-
-	https://github.com/tytso/xfstests
-
-
+efsprogs	v1.42.12-548-g8804a96 (Tue, 5 May 2015 10:52:12 -0400)
+fio		fio-2.2.6 (Fri, 27 Feb 2015 08:30:04 -0700)
+quota		022aabf (Wed, 26 Nov 2014 10:22:08 +0100)
+xfsprogs	v3.2.2-36-g502544b (Mon, 13 Apr 2015 09:33:50 +1000)
+xfstests-bld	843186f (Tue, 5 May 2015 23:53:00 -0400)
+xfstests	linux-v3.8-656-gc3d3e1e (Mon, 4 May 2015 22:56:13 +1000)
