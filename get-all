@@ -16,6 +16,12 @@ then
 		echo "Failed to get xfsprogs-dev from $XFSPROGS_GIT"
                 exit 1
 	fi
+	if test -n "$XFSPROGS_COMMIT"; then
+		cd xfsprogs
+		git branch xfstests-bld $XFSPROGS_COMMIT
+		git checkout xfstests-bld
+		cd ..
+	fi
 fi
 if test ! -d xfstests-dev
 then
@@ -26,6 +32,12 @@ then
 	if ! git clone $XFSTESTS_GIT xfstests-dev; then
 		echo "Failed to get xfstests-dev from $XFSTESTS_GIT"
                 exit 1
+	fi
+	if test -n "$XFSTESTS_COMMIT"; then
+		cd xfstests-dev
+		git branch xfstests-bld $XFSTESTS_COMMIT
+		git checkout xfstests-bld
+		cd ..
 	fi
 fi
 if test ! -d fio
@@ -38,6 +50,12 @@ then
 		echo "Failed to get fio from $FIO_GIT"
                 exit 1
 	fi
+	if test -n "$FIO_COMMIT"; then
+		cd fio
+		git branch xfstests-bld $FIO_COMMIT
+		git checkout xfstests-bld
+		cd ..
+	fi
 fi
 if test ! -d quota
 then
@@ -48,5 +66,11 @@ then
 	if ! git clone $QUOTA_GIT quota; then
 		echo "Failed to get fio from $QUOTA_GIT"
                 exit 1
+	fi
+	if test -n "$QUOTA_COMMIT"; then
+		cd quota
+		git branch xfstests-bld $QUOTA_COMMIT
+		git checkout xfstests-bld
+		cd ..
 	fi
 fi

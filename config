@@ -5,6 +5,9 @@ XFSPROGS_GIT=git://oss.sgi.com/xfs/cmds/xfsprogs.git
 FIO_GIT=git://git.kernel.dk/fio.git
 QUOTA_GIT=git://linuxquota.git.sourceforge.net/gitroot/linuxquota/linuxquota
 
+FIO_COMMIT=fio-2.2.6
+QUOTA_COMMIT=022aabf0c5
+
 EXEC_LDFLAGS=-static
 EXEC_LLDFLAGS=-all-static
 
