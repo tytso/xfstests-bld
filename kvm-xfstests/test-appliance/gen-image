@@ -33,6 +33,9 @@ while [ "$1" != "" ]; do
     --update)
       DO_UPDATE=yes
       ;;
+    -a|--add_packages) shift
+      ADD_PACKAGES="$ADD_PACKAGES $1"
+      ;;
     *)
       echo "usage: gen-image [--save_raw_root] [--do_gce] [--update] [--mirror MIRROR_LOC]"
       exit 1
@@ -40,6 +43,8 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+export ADD_PACKAGES
 
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
 then

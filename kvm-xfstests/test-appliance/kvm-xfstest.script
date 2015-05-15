@@ -31,6 +31,7 @@ work_out_debs () {
 	elif doing_variant gce-xfstests; then
 		base=$(cat xfstests-packages gce-packages)
 	fi
+	base="$base $ADD_PACKAGES"
 
 	if doing_variant fakechroot; then
 		# ldd.fake needs binutils
