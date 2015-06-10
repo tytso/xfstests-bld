@@ -15,7 +15,7 @@ clean:
 	done
 	make -C xfsprogs-dev realclean
 	rm -rf bld xfstests
-	rm kvm-xfstests/util/zerofree
+	rm -f kvm-xfstests/util/zerofree
 
 kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
 	cc -static -o $@ $< -lext2fs -lcom_err -lpthread
