@@ -19,6 +19,7 @@ keyutils
 less
 libssl1.0.0
 libgdbm3
+lvm2
 makedev
 nano
 net-tools
