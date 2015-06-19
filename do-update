@@ -6,7 +6,7 @@ else
 	. config
 fi
 
-echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
-cat *.ver > xfstests/git-versions
+$BUILD_ENV ./update-all
+$BUILD_ENV make tarball
 cd kvm-xfstests/test-appliance
 $SUDO_ENV ./gen-image --update

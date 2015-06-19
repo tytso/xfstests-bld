@@ -1,0 +1,55 @@
+#!/bin/bash -vx
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+nr_cpus=$(getconf _NPROCESSORS_ONLN)
+J=-j$(expr $nr_cpus \* 2)
+
+DESTDIR=$(pwd)/bld
+
+mkdir -p $DESTDIR
+
+(cd e2fsprogs-libs; \
+	make $J; make DESTDIR=$DESTDIR $J install)
+
+(cd attr; \
+    make $J ; \
+    make $J install-dev ; make install)
+
+(cd acl; \
+    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+    make $J install-dev ; \
+    make $J install)
+
+(cd libaio; make $J prefix=$DESTDIR install)
+
+rm $DESTDIR/lib/libaio.so*
+
+(cd xfsprogs-dev; \
+    make $J LLDFLAGS=-all-static BUILD_VERBOSE=1; \
+    DIST_ROOT=$DESTDIR make $J install; \
+    DIST_ROOT=$DESTDIR make $J install-dev)
+
+find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
+
+(cd fio; \
+	make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+
+(cd xfstests-dev; \
+    make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+
+(cd quota; \
+    make V=1 $J; make V=1 $J install)
+
+(cd misc ; make $J ; make install DESTDIR=$DESTDIR)
+
+(cd xfsprogs-dev; ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver )
+(cd fio; ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver )
+(cd xfstests-dev; ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver )
+(cd quota; ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver )
+
+
