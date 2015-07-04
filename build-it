@@ -1,7 +1,7 @@
 #!/bin/sh
 date
-(cd build-32 ; do-all)
-(cd build-64 ; do-all)
+(cd build-32 ; ./do-all)
+(cd build-64 ; ./do-all)
 
 if ! diff build-32/xfstests/git-versions  build-64/xfstests/git-versions
 then
