@@ -12,9 +12,6 @@ e3
 ed
 file
 gawk
-ifupdown
-iputils-ping
-isc-dhcp-client
 keyutils
 less
 libssl1.0.0
@@ -22,8 +19,6 @@ libgdbm3
 lvm2
 makedev
 nano
-net-tools
-netbase
 perl
 procps
 psmisc

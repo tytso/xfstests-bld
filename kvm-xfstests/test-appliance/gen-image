@@ -13,6 +13,7 @@ COMPAT="-o compat=0.10"
 SAVE_RAW_ROOT=no
 DO_GCE=no
 DO_UPDATE=no
+DO_NETWORKING=no
 
 if test -r config.custom ; then
    . $(pwd)/config.custom
@@ -30,6 +31,9 @@ while [ "$1" != "" ]; do
       DO_GCE=yes
       SAVE_RAW_ROOT=yes;
       ;;
+    --networking)
+      DO_NETWORKING=yes;
+      ;;
     --update)
       DO_UPDATE=yes
       ;;
@@ -43,6 +47,10 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+if test $DO_NETWORKING = "yes" -o $DO_GCE = "yes"; then
+    ADD_PACKAGES="$ADD_PACKAGES $(cat net-packages)"
+fi
 
 export ADD_PACKAGES
 
