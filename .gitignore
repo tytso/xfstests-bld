@@ -20,6 +20,7 @@ acl/include/sys
 acl/po/Makefile.in
 acl/po/acl.pot
 acl/setfacl/setfacl
+attr/autom4te.cache
 attr/attr/attr
 attr/doc/CHANGES.gz
 attr/getfattr/getfattr
@@ -48,3 +49,4 @@ kvm-xfstests/test-appliance/debs
 kvm-xfstests/baseline.*
 config.custom
 misc/fname_benchmark
+MAKELOG
