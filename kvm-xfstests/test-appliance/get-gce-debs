@@ -1,13 +1,16 @@
 #!/bin/sh
 
-GCD_SHA256=ddb561f7b43ff87066bb233f24c027b7dcd1c38be15f5f22735df98e880afe3f
-GCD_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.0/google-compute-daemon_1.2.0-1_all.deb
+# From https://github.com/GoogleCloudPlatform/compute-image-packages/releases
 
-GSS_SHA256=74dc35fc0cedeaac46381b3d3d8d3a4989ed02f3b475d532c744043d0968faef
-GSS_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.0/google-startup-scripts_1.2.0-1_all.deb
+GCD_SHA256=dbff68c908ffe16aabcf7023d6121599996624a148f063309023f8cf8d4e2648
+GCD_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.7/google-compute-daemon_1.2.7-1_all.deb
 
-GIB_SHA256=ead0323090aaa83cf53538409b0e465852684e45df5ca67529079a79f36bc1b0
-GIB_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.0/python-gcimagebundle_1.2.0-1_all.deb
+GSS_SHA256=728b7378ddfa89d803fdf908b5e5b7de02ddf8bd6bbe0c541b44c3286f37fb34
+GSS_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.7/google-startup-scripts_1.2.7-1_all.deb
+
+GIB_SHA256=837ef4b61e84e945b15b90d35dfeaa644b0ab62ce3117a73a8c3a01b0833ea59
+GIB_URL=https://github.com/GoogleCloudPlatform/compute-image-packages/releases/download/1.2.7/python-gcimagebundle_1.2.7-1_all.deb
+
 
 get_image () {
 	url=$1
