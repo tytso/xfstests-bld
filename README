@@ -37,3 +37,49 @@ When the kvm-xfstests is done, it will print a summary of which tests
 passed and failed.  It will also save the output of the test in a
 log.YYYYMMDDHHSS file.  The "get-results" script will parse the log
 file and generate the test summary.
+
+
+Instructions for building a 32-bit test-appliance image in a chroot
+-------------------------------------------------------------------
+
+These instructions assumes you are using Debian; it should probably
+work for Ubuntu as well.
+
+If you want to build a 64-bit test image, just remove the --arch=i386
+in step #3, or if you don't want to use a build-chroot, you should be
+able to just use the "./do-all" script all by itself --- or you can
+use the manual instructions described in steps #1 and #2 above.
+
+1)  Install the necessary packages to build host OS
+
+# sudo apt-get install schroot debootstrap
+
+2) Add the following to /etc/schroot.conf, replacing "tytso" with your
+username, and /u1/jessie-root with path where you plan to put your
+build chroot
+
+[jessie]
+description=Debian jessie
+type=directory
+directory=/u1/jessie-root
+users=tytso,root
+root-users=tytso
+
+3) Create the build chroot (again, replace /u1/jessie-root with the
+pathname to your build chroot directory):
+
+# cd /u1
+# debootstrap --arch=i386 jessie /u1/jessie-root
+# schroot -c jessie -u root
+(jessie)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
+(jessie)root@closure:/u1# exit
+
+4) Copy config to config.custom, and then change the lines which
+define SUDO_ENV and BUILD_ENV to:
+
+SUDO_ENV="schroot -c jessie -u root --"
+BUILD_ENV="schroot -c jessie --"
+
+5)  Kick off the build!
+
+./do-all
