@@ -3,7 +3,7 @@
 XFSTESTS_GIT=git://oss.sgi.com/xfs/cmds/xfstests.git
 XFSPROGS_GIT=git://oss.sgi.com/xfs/cmds/xfsprogs.git
 FIO_GIT=git://git.kernel.dk/fio.git
-QUOTA_GIT=git://linuxquota.git.sourceforge.net/gitroot/linuxquota/linuxquota
+QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 
 FIO_COMMIT=fio-2.1.3
 QUOTA_COMMIT=022aabf0c5
