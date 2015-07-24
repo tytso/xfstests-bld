@@ -6,6 +6,14 @@ else
 	. config
 fi
 
+if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
+    PATH=$TOOLCHAIN_DIR/bin:$PATH
+fi
+
+if test -n "$CROSS_COMPILE" ; then
+    cross="--build=$(e2fsprogs-libs/config/config.guess) --host=$CROSS_COMPILE"
+fi
+
 nr_cpus=$(getconf _NPROCESSORS_ONLN)
 J=-j$(expr $nr_cpus \* 2)
 
@@ -16,12 +24,12 @@ mkdir -p $DESTDIR
 (cd e2fsprogs-libs; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
-    ./configure --prefix=/; make $J; make DESTDIR=$DESTDIR $J install)
+    ./configure $cross --prefix=/; make $J; make DESTDIR=$DESTDIR $J install)
 
 (cd attr; \
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
-    ./configure --prefix=$DESTDIR; \
+    ./configure $cross --prefix=$DESTDIR; \
     make $J ; \
     make $J install-dev ; make install)
 
@@ -29,7 +37,7 @@ mkdir -p $DESTDIR
     CPPFLAGS="-I$DESTDIR/include" \
     CFLAGS="$CCF -I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
-    ./configure --prefix=$DESTDIR; \
+    ./configure $cross --prefix=$DESTDIR; \
     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
     make $J install-dev ; \
     make $J install)
@@ -44,7 +52,7 @@ rm $DESTDIR/lib/libaio.so*
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
-    ./configure --prefix=/ --disable-lib64 ; \
+    ./configure $cross --prefix=/ --disable-lib64 ; \
     make $J LLDFLAGS=-all-static BUILD_VERBOSE=1; \
     DIST_ROOT=$DESTDIR make $J install; \
     DIST_ROOT=$DESTDIR make $J install-dev)
@@ -55,7 +63,7 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
     export CFLAGS="$CCF -I$DESTDIR/include" ; \
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-    ./configure --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+    ./configure $cross --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 
 (cd xfstests-dev; \
     ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
@@ -64,7 +72,7 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
-    ./configure ; \
+    ./configure $cross ; \
     make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
 (cd quota; \
@@ -73,7 +81,7 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
     export CPPFLAGS="-I$DESTDIR/include" ; \
     aclocal ; autoconf ; \
-    ./configure --enable-ext2direct=no --prefix=$DESTDIR ; \
+    ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
     make V=1 $J; make V=1 $J install)
 
 (cd misc ; make $J ; make install DESTDIR=$DESTDIR)
