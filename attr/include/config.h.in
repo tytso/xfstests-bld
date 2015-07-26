@@ -25,6 +25,9 @@
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
+/* Define to 1 if you have the `telldir' function. */
+#undef HAVE_TELLDIR
+
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
 #undef HAVE_ALLOCA_H
