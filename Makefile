@@ -2,6 +2,17 @@
 # A simple makefile for xfstests-bld
 #
 
+SUBDIRS =	acl \
+		android-compat \
+		attr \
+		e2fsprogs-libs \
+		fio \
+		quota \
+		libaio \
+		misc \
+		xfsprogs-dev \
+		xfstests-dev
+
 all: xfsprogs-dev xfstests-dev fio quota kvm-xfstests/util/zerofree
 	./build-all
 
@@ -9,9 +20,9 @@ xfsprogs-dev xfstests-dev fio quota:
 	./get-all
 
 clean:
-	for i in acl attr e2fsprogs-libs fio quota libaio xfstests-dev misc ; \
+	for i in $(SUBDIRS) ; \
 	do \
-		make -C $$i clean ; \
+		if test -f $$i/Makefile ; then make -C $$i clean ; fi ; \
 	done
 	make -C xfsprogs-dev realclean
 	rm -rf bld xfstests

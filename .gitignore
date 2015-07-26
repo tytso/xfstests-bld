@@ -20,6 +20,8 @@ acl/include/sys
 acl/po/Makefile.in
 acl/po/acl.pot
 acl/setfacl/setfacl
+android-compat/Makefile
+android-compat/autom4te.cache
 attr/autom4te.cache
 attr/attr/attr
 attr/doc/CHANGES.gz
