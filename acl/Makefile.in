@@ -95,8 +95,8 @@ DIST_COMMON = $(srcdir)/doc/Makemodule.am \
 	$(srcdir)/libacl.pc.in $(top_srcdir)/build-aux/depcomp \
 	$(dist_man_MANS) $(dist_doc_DATA) $(noinst_HEADERS) \
 	$(pkginclude_HEADERS) $(sysinclude_HEADERS) \
-	$(top_srcdir)/build-aux/test-driver ABOUT-NLS README \
-	build-aux/ar-lib build-aux/compile build-aux/config.guess \
+	$(top_srcdir)/build-aux/test-driver README build-aux/ar-lib \
+	build-aux/compile build-aux/config.guess \
 	build-aux/config.rpath build-aux/config.sub build-aux/depcomp \
 	build-aux/install-sh build-aux/missing build-aux/ltmain.sh \
 	$(top_srcdir)/build-aux/ar-lib $(top_srcdir)/build-aux/compile \
