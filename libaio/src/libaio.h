@@ -53,7 +53,7 @@ typedef enum io_iocb_cmd {
 #define PADDED(x, y)	x; unsigned y
 #define PADDEDptr(x, y)	x; unsigned y
 #define PADDEDul(x, y)	unsigned long x; unsigned y
-#elif defined(__ia64__) || defined(__x86_64__) || defined(__alpha__)
+#elif defined(__ia64__) || defined(__x86_64__) || defined(__alpha__) || defined(__aarch64__)
 #define PADDED(x, y)	x, y
 #define PADDEDptr(x, y)	x
 #define PADDEDul(x, y)	unsigned long x

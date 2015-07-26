@@ -24,6 +24,8 @@
 #include "syscall-alpha.h"
 #elif defined(__arm__)
 #include "syscall-arm.h"
+#elif defined(__aarch64__)
+#include "syscall-generic.h"
 #else
 #error "add syscall-arch.h"
 #endif
