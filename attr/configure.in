@@ -25,5 +25,6 @@ AC_MULTILIB($enable_lib64)
 AC_C_CONST
 AC_TYPE_MODE_T
 AC_FUNC_ALLOCA
+AC_CHECK_FUNCS(telldir)
 
 AC_OUTPUT(include/builddefs)

@@ -29,6 +29,7 @@
 #include <getopt.h>
 #include <regex.h>
 #include <locale.h>
+#include <libgen.h>
 
 #include <attr/xattr.h>
 #include "config.h"
