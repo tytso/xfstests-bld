@@ -32,7 +32,7 @@ partcheck: all
 	@$(MAKE) -C harness partcheck
 
 clean:
-	@$(MAKE) -C src clean
+	@if test -f src/Makefile; then $(MAKE) -C src clean ; fi
 	@$(MAKE) -C harness clean
 
 tag: tag-checks

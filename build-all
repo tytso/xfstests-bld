@@ -42,7 +42,7 @@ mkdir -p $DESTDIR
     make $J install-dev ; \
     make $J install)
 
-(cd libaio; make $J prefix=$DESTDIR install)
+(cd libaio; ./configure $cross ;  make $J prefix=$DESTDIR install)
 
 rm $DESTDIR/lib/libaio.so*
 
