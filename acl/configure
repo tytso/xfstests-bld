@@ -13963,6 +13963,18 @@ fi
 
 
 
+for ac_func in telldir
+do :
+  ac_fn_c_check_func "$LINENO" "telldir" "ac_cv_func_telldir"
+if test "x$ac_cv_func_telldir" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_TELLDIR 1
+_ACEOF
+
+fi
+done
+
+
 ac_config_commands="$ac_config_commands include/acl"
 
 ac_config_commands="$ac_config_commands include/sys"

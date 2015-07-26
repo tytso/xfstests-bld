@@ -27,7 +27,41 @@
 #include <string.h>
 #include <errno.h>
 
+#include "config.h"
 #include "walk_tree.h"
+
+#ifndef HAVE_TELLDIR
+/*
+ * We're doing something evil, evil, evil, but there's no way around
+ * this because bionic doesn't implment telldir/seekdir, even though
+ * those interfaces are in POSIX (sob).  Fortunately (unfortunately)
+ * Apportable decided to copy this structure into a commonly used NDK
+ * library, so it's unlikely the first field in this structure will
+ * change.  See b/210372080 or bionic/libc/bionic/dirent.cpp and the
+ * comments before the definition of struct DIR in that file for more
+ * details.
+ *
+ * The real right answer is the telldir/seekdir functions that we're
+ * implementing here should be moved to bionic....
+ */
+struct DIR {
+  int fd_;
+};
+
+static long int my_telldir(struct DIR *dirp)
+{
+	return (long) lseek(dirp->fd_, 0, SEEK_CUR);
+}
+
+static void my_seekdir(DIR *dirp, long loc)
+{
+	(void) lseek(dirp->fd_, loc, SEEK_SET);
+}
+
+#define telldir my_telldir
+#define seekdir my_seekdir
+
+#endif
 
 struct entry_handle {
 	struct entry_handle *prev, *next;
