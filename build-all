@@ -52,7 +52,7 @@ rm $DESTDIR/lib/libaio.so*
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
-    ./configure $cross --prefix=/ --disable-lib64 ; \
+    ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
     make $J LLDFLAGS=-all-static BUILD_VERBOSE=1; \
     DIST_ROOT=$DESTDIR make $J install; \
     DIST_ROOT=$DESTDIR make $J install-dev)
