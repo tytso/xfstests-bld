@@ -14,12 +14,24 @@ if test -n "$CROSS_COMPILE" ; then
     cross="--build=$(e2fsprogs-libs/config/config.guess) --host=$CROSS_COMPILE"
 fi
 
+case "$CROSS_COMPILE" in
+    *-android|*-androideabi)
+	DO_ANDROID=yes
+	;;
+esac
+
 nr_cpus=$(getconf _NPROCESSORS_ONLN)
 J=-j$(expr $nr_cpus \* 2)
 
 DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
+
+if test -n "$DO_ANDROID" ; then
+    (cd android-compat; ./configure $cross ;  make $J prefix=$DESTDIR install)
+    android_compat="-landroid_compat"
+    CCF="-include android_compat.h"
+fi
 
 (cd e2fsprogs-libs; \
     CFLAGS="$CCF -I$DESTDIR/include" \
@@ -53,35 +65,47 @@ rm $DESTDIR/lib/libaio.so*
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
-    make $J LLDFLAGS=-all-static BUILD_VERBOSE=1; \
+    make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
     DIST_ROOT=$DESTDIR make $J install; \
     DIST_ROOT=$DESTDIR make $J install-dev)
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 
-(cd fio; \
-    ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
-    export CFLAGS="$CCF -I$DESTDIR/include" ; \
-    export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-    ./configure $cross --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+#
+# We don't support building fio for Android, and there is an old
+# version of fio in external/fio in AOSP, so we'll leave it be for
+# now.
+# 
+if test -z "$DO_ANDROID"; then
+    (cd fio; \
+     ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
+     export CFLAGS="$CCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     ./configure $cross --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+fi
 
 (cd xfstests-dev; \
     ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
     autoheader ; autoconf ; \
-    CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector"
+    CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector" \
     CPPFLAGS="-I$DESTDIR/include" \
     LDFLAGS="-static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure $cross ; \
-    make $J LLDFLAGS=$EXEC_LLDFLAGS LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+    make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 
-(cd quota; \
-    ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
-    export CFLAGS="$CCF -I$DESTDIR/include" ; \
-    export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
-    export CPPFLAGS="-I$DESTDIR/include" ; \
-    aclocal ; autoconf ; \
-    ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
-    make V=1 $J; make V=1 $J install)
+#
+# We haven't gotten quota working on android yet.  Shrug.
+#
+if test -z "$DO_ANDROID"; then
+    (cd quota; \
+     ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
+     export CFLAGS="$CCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     aclocal ; autoconf ; \
+     ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
+     make V=1 $J; make V=1 $J install)
+fi
 
-(cd misc ; make $J ; make install DESTDIR=$DESTDIR)
+(cd misc ; ./configure $cross ; make $J ; make install DESTDIR=$DESTDIR)

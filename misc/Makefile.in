@@ -2,14 +2,21 @@
 # Makefile for local miscellaneous test/benchmark programs
 #
 
-PROGS= fname_benchmark
+srcdir = @srcdir@
+VPATH = @srcdir@
+top_builddir = .
+my_dir = .
 
+CC = @CC@
+CFLAGS = @CFLAGS@
+
+PROGS= fname_benchmark
 SCRIPTS= encrypt-fname-benchmark encrypt-smoketest
 
 all: $(PROGS)
 
 fname_benchmark: fname_benchmark.c
-	cc -o fname_benchmark -O2 $<
+	$(CC) -o fname_benchmark -O2 $<
 
 install:
 	mkdir -p $(DESTDIR)/bin
@@ -20,3 +27,6 @@ install:
 
 clean:
 	rm -f $(PROGS)
+
+Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
+	cd $(top_builddir); CONFIG_FILES=$(my_dir)/Makefile ./config.status

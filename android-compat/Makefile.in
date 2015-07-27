@@ -29,8 +29,8 @@ OBJS = $(OBJS_RT) $(OBJS_COMPAT)
 
 LIBS= libpthread.a librt.a libandroid_compat.a
 
-INCLUDES = aio.h
-SYS_INCLUDES = ustat.h quota.h syssgi.h
+INCLUDES = aio.h android_compat.h
+SYS_INCLUDES = ustat.h quota.h
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
