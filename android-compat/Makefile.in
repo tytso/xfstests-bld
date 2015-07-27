@@ -20,7 +20,9 @@ OBJS_COMPAT =	getpwent.o \
 		getsubopt.o \
 		hasmntopt.o \
 		quotactl.o \
+		shmget.o \
 		sighold.o \
+		sync_file_range.o \
 		telldir.o \
 		ustat.o \
 		valloc.o

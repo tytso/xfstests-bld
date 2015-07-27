@@ -48,4 +48,7 @@ extern void *shmat(int shmid, const void *shmaddr, int shmflg);
 extern int shmdt(const void *shmaddr);
 extern int shmget(int key, size_t size, int shmflg);
 
+extern int sync_file_range(int fd, off64_t offset, off64_t nbytes,
+                           unsigned int flags);
+
 #endif
