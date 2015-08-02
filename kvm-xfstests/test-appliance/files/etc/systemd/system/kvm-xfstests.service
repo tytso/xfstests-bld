@@ -3,11 +3,10 @@ Description=KVM-xfstests
 After=network.target
 
 [Service]
-Type=forking
+Type=oneshot
 ExecStart=/root/kvm-xfstests.boot
 TimeoutSec=0
-StandardInput=tty
-RemainAfterExit=yes
+StandardOutput=tty
 
 [Install]
 WantedBy=multi-user.target

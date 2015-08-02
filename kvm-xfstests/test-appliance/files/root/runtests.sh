@@ -84,6 +84,11 @@ echo FSTESTSET: \"$FSTESTSET\" >> /results/run-stats
 echo FSTESTEXC: \"$FSTESTEXC\" >> /results/run-stats
 echo FSTESTOPT: \"$FSTESTOPT\" >> /results/run-stats
 echo MNTOPTS: \"$MNTOPTS\" >> /results/run-stats
+if test -n "$RUN_ON_GCE"
+then
+   GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
+   echo GCE ID: \"$GCE_ID\" >> /results/run-stats
+fi
 
 cat /results/run-stats
 
@@ -139,7 +144,8 @@ do
 	    grep $SLAB_GREP /proc/slabinfo
 	    OLD_SLAB_GREP="$SLAB_GREP"
 	fi
-	echo -n "BEGIN TEST: $TESTNAME " ; date
+	echo -n "BEGIN TEST $i: $TESTNAME " ; date
+	logger "BEGIN TEST $i: $TESTNAME "
 	echo Device: $TEST_DEV
 	echo mk2fs options: $MKFS_OPTIONS
 	echo mount options: $EXT_MOUNT_OPTIONS
@@ -166,9 +172,33 @@ do
 	   else
 		/sbin/fsck.$FS $TEST_DEV
 	   fi
+	   if test -n "$RUN_ON_GCE"
+	   then
+	       if ! gsutil cp gs://$GS_BUCKET/check.time.$i /tmp >& /dev/null
+	       then
+		   gsutil cp /results/results-$i/check.time \
+			  gs://$GS_BUCKET/check.time.$i >& /dev/null
+	       else
+		   cat /results/results-$i/check.time /tmp/check.time.$i \
+	    | awk '
+	{ t[$1] = $2 }
+END	{ if (NR > 0) {
+	    for (i in t) print i " " t[i]
+	  }
+	}' \
+	    | sort -n > /tmp/check.time.$i.new
+		   cmp -s /tmp/check.time.$i /tmp/check.time.$i.new
+		   if test $? -eq 1
+		   then
+		       gsutil cp /tmp/check.time.$i.new \
+			      gs://$GS_BUCKET/check.time.$i >& /dev/null
+		   fi
+	       fi
+	   fi
 	done
 	echo 3 > /proc/sys/vm/drop_caches
 	free -m
 	grep $SLAB_GREP /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
+	logger "END TEST $i: $TESTNAME "
 done

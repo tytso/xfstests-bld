@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# GS_BUCKET=gs_bucket.gce.thunk.org
+# GCE_PROJECT=tytso-xfstests-project
+# GCE_ZONE=us-central1-a
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+GS_RO=https://www.googleapis.com/auth/devstorage.read_only
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+
+SCOPES="$GS_RO,$LOG_WR,$COMPUTE_RW"
+
+IMAGE=https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8
+
+TARBALL=../../xfstests.tar.gz
+
+if ! test -f $TARBALL ; then
+   echo $TARBALL does not exist!
+   exit 1
+fi
+
+if test -r config.custom ; then
+   . $(pwd)/config.custom
+fi
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "the config.custom file"
+	exit 1
+fi
+
+GS_SCRIPT=gs://$GS_BUCKET/gce-xfstests-bld.sh
+GS_TARBALL=gs://$GS_BUCKET/xfstests.tar.gz
+METADATA="startup-script-url=$GS_SCRIPT"
+
+t=$(mktemp /tmp/gce-create.XXXXXXXX)
+gunzip < $TARBALL > $t
+(cd files/root ; tar rf $t .)
+(cd files/etc/systemd/system ; tar rf $t .)
+(cd files/usr/local ; tar rf $t ./sbin)
+s=$(mktemp /tmp/gce-create.XXXXXXXX)
+gzip -9n < $t > $s
+
+LOCAL_HASH=$(gsutil hash $s 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
+REMOTE_HASH=$(gsutil stat $GS_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
+if test "$LOCAL_HASH" != "$REMOTE_HASH"
+then
+	gsutil cp $s $GS_TARBALL
+fi
+
+sed -e "s/@BUCKET@/$GS_BUCKET/" < gce-xfstests-bld.sh > $t
+gsutil cp $t gs://$GS_BUCKET/gce-xfstests-bld.sh
+rm -f $s $t
+
+gcloud compute --project "$GCE_PROJECT" -q instances delete xfstests-bld \
+       --zone "$GCE_ZONE" 2> /dev/null
+gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld 2> /dev/null
+
+gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
+       --zone "$GCE_ZONE" --machine-type "n1-standard-1" \
+       --network "default" --metadata "$METADATA" \
+       --maintenance-policy "MIGRATE" \
+       --scopes "$SCOPES" --image "$IMAGE" \
+       --boot-disk-type "pd-standard" --boot-disk-device-name "xfstests-bld"
+
+echo -n "Waiting for bootable image setup"
+
+while gcloud compute instances describe xfstests-bld --zone $GCE_ZONE >& /dev/null
+do
+    echo -n "."
+    sleep 10
+done
+echo " Done!"
+
+gcloud compute --project "$GCE_PROJECT" -q images delete xfstests
+gcloud compute --project "$GCE_PROJECT" -q images create xfstests \
+       --description "Linux Kernel File System Test Appliance" \
+       --source-disk xfstests-bld --source-disk-zone "$GCE_ZONE"
+gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld \
+       --zone "$GCE_ZONE"

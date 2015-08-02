@@ -1,0 +1,74 @@
+#!/bin/bash
+
+RESULTS=/dev/sdb
+DEVICE=/dev/sdc
+
+GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
+echo $GCE_ID > /root/gce_id
+
+ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2> /dev/null)
+ZONE=$(basename $ZONE)
+echo $ZONE > /root/gce_zone
+
+. /root/test-config
+
+gcloud compute -q disks create "xfstests-results-$GCE_ID" --size "10" \
+       --zone "$ZONE" --type "pd-standard"
+
+gcloud compute -q disks create "xfstests-scratch-$GCE_ID" --size "100" \
+       --zone "$ZONE" --type "pd-ssd"
+
+gcloud compute -q instances attach-disk $(hostname) \
+       --disk "xfstests-results-$GCE_ID" \
+       --device-name results --zone "$ZONE"
+
+gcloud compute -q instances attach-disk $(hostname) \
+       --disk "xfstests-scratch-$GCE_ID" \
+       --device-name scratch --zone "$ZONE"
+
+gcloud compute -q instances set-disk-auto-delete $(hostname) --auto-delete \
+       --disk "xfstests-scratch-$GCE_ID" --zone "$ZONE"
+
+if ! test -b $RESULTS
+then
+	logger -s "Couldn't find block device $RESULTS"
+	exit 1
+fi
+
+if ! test -b $DEVICE
+then
+	logger -s "Couldn't find block device $DEVICE"
+	exit 1
+fi
+
+t=$(blkid $RESULTS)
+if test -z "$t"
+then
+	mke2fs -t ext4 $RESULTS
+fi
+
+mount -t ext4 $RESULTS /results
+
+gsutil -m cp gs://$GS_BUCKET/check.time.* /results
+for i in $(cd /results; echo check.time.*)
+do
+    r=$(echo $i | sed -e 's/check.time.//')
+    mkdir -p /results/results-$r
+    mv /results/check.time.$r /results/results-$r/check.time
+done
+
+t=$(blkid $DEVICE)
+if test -z "$t"
+then
+	pvcreate $DEVICE
+	vgcreate xt $DEVICE
+	lvcreate -L  5g -n vdb xt
+	lvcreate -L  5g -n vdc xt
+	lvcreate -L  5g -n vdd xt
+	lvcreate -L 20g -n vde xt
+	lvcreate -L 20g -n vdf xt
+	mke2fs -t ext4 /dev/mapper/xt-vdb
+fi
+
+cp /root/gce-syslog.conf /etc/rsyslog.d
+systemctl restart rsyslog.service

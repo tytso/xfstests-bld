@@ -11,7 +11,7 @@ else
 fi
 }
 
-PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+. /root/test-config
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
@@ -43,8 +43,24 @@ then
 	poweroff -f > /dev/null 2>&1
 fi
 
+REGEXP="( Linux version )|(^FSTEST)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)"
+REGEXP_FAILURE="(^BEGIN)|(^Failures: )|(^Passed)"
+
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
+    if test -n "$RUN_ON_GCE"
+    then
+	DATECODE=$(date +%Y%m%d%H%M)
+	/root/gce-setup
+	/root/runtests.sh >& /results/runtests.log
+	egrep "$REGEXP" < /results/runtests.log > /results/summary
+	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+	tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
+	gsutil cp /tmp/results.tar.xz \
+	       gs://$GS_BUCKET/results.$DATECODE.tar.xz
+	/root/gce-shutdown
+    else
 	/root/runtests.sh
 	poweroff -f > /dev/null 2>&1
+    fi
 fi
