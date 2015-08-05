@@ -1,0 +1,82 @@
+#!/bin/bash
+
+if test -f /run/gce_zone
+then
+    ZONE=$(cat /run/gce_zone)
+else
+    ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2> /dev/null)
+    ZONE=$(basename $ZONE)
+    echo $ZONE > /run/gce_zone
+fi
+
+if test -f /run/gce_id
+then
+    GCE_ID=$(cat /run/gce_id)
+else
+    GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
+    echo $GCE_ID > /run/gce_id
+fi
+
+if test -z "$MDS_PREFIX"
+then
+    declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1
+    declare -r MDS_TRIES=${MDS_TRIES:-100}
+fi
+
+function print_metadata_value() {
+  local readonly tmpfile=$(mktemp)
+  http_code=$(curl -f "${1}" -H "Metadata-Flavor: Google" -w "%{http_code}" \
+    -s -o ${tmpfile} 2>/dev/null)
+  local readonly return_code=$?
+  # If the command completed successfully, print the metadata value to stdout.
+  if [[ ${return_code} == 0 && ${http_code} == 200 ]]; then
+    cat ${tmpfile}
+  fi
+  rm -f ${tmpfile}
+  return ${return_code}
+}
+
+function print_metadata_value_if_exists() {
+  local return_code=1
+  local readonly url=$1
+  print_metadata_value ${url}
+  return_code=$?
+  return ${return_code}
+}
+
+function get_metadata_value() {
+  local readonly varname=$1
+  # Print the instance metadata value.
+  print_metadata_value_if_exists ${MDS_PREFIX}/instance/${varname}
+  return_code=$?
+  # If the instance doesn't have the value, try the project.
+  if [[ ${return_code} != 0 ]]; then
+    print_metadata_value_if_exists ${MDS_PREFIX}/project/${varname}
+    return_code=$?
+  fi
+  return ${return_code}
+}
+
+function get_metadata_value_with_retries() {
+  local return_code=1  # General error code.
+  for ((count=0; count <= ${MDS_TRIES}; count++)); do
+    get_metadata_value $1
+    return_code=$?
+    case $return_code in
+      # No error.  We're done.
+      0) return ${return_code};;
+      # Failed to resolve host or connect to host.  Retry.
+      6|7) sleep 0.3; continue;;
+      # A genuine error.  Exit.
+      *) return ${return_code};
+    esac
+  done
+  # Exit with the last return code we got.
+  return ${return_code}
+}
+
+gce_attribute()
+{
+	get_metadata_value_with_retries attributes/$1
+}
+

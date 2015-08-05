@@ -39,7 +39,7 @@ t=$(mktemp /tmp/gce-create.XXXXXXXX)
 gunzip < $TARBALL > $t
 (cd files/root ; tar rf $t .)
 (cd files/etc/systemd/system ; tar rf $t .)
-(cd files/usr/local ; tar rf $t ./sbin)
+(cd files/usr/local ; tar rf $t ./sbin ./lib)
 s=$(mktemp /tmp/gce-create.XXXXXXXX)
 gzip -9n < $t > $s
 

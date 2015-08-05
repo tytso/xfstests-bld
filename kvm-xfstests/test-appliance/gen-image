@@ -60,7 +60,7 @@ update_xfstests()
    tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
    rsync -avH files/* $ROOTDIR
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests
-   rm -f $ROOTDIR/root/gce-*
+   find $ROOTDIR/root $ROOTDIR/usr/local -name gce-\* -print | xargs rm
 }
 
 finalize_rootfs()

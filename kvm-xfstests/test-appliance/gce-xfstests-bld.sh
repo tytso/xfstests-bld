@@ -61,8 +61,10 @@ mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
+mkdir -p /usr/local/sbin /usr/local/lib
 mv /root/sbin/* /usr/local/sbin
-rmdir /root/sbin
+mv /root/lib/* /usr/local/lib
+rmdir /root/sbin /root/lib
 
 mv /root/*.service /etc/systemd/system
 systemctl enable kvm-xfstests.service
