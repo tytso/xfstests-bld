@@ -77,17 +77,22 @@ else
 	rm -f /tmp/exclude-tests
 fi
 
+CPUS=$(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
+MEM=$(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
+
 sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions > /results/run-stats
 echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> /results/run-stats
 echo FSTESTCFG: \"$FSTESTCFG\" >> /results/run-stats
 echo FSTESTSET: \"$FSTESTSET\" >> /results/run-stats
 echo FSTESTEXC: \"$FSTESTEXC\" >> /results/run-stats
 echo FSTESTOPT: \"$FSTESTOPT\" >> /results/run-stats
-echo MNTOPTS: \"$MNTOPTS\" >> /results/run-stats
+echo MNTOPTS:   \"$MNTOPTS\" >> /results/run-stats
+echo CPUS:      \"$CPUS\" >> /results/run-stats
+echo MEM:       \"$MEM\" >> /results/run-stats
 if test -n "$RUN_ON_GCE"
 then
    GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-   echo GCE ID: \"$GCE_ID\" >> /results/run-stats
+   echo GCE ID:    \"$GCE_ID\" >> /results/run-stats
 fi
 
 cat /results/run-stats
@@ -96,6 +101,7 @@ for i in btrfs ext4 generic shared udf xfs config; do
     rm -rf /results/results-*/$i
 done
 
+free -m
 for i in $FSTESTCFG
 do
 	export SCRATCH_DEV=$SM_SCR_DEV
@@ -133,17 +139,9 @@ do
 		    /sbin/mkfs.$FS $TEST_DEV
 		fi
 	fi
-	if test "$FS" = "ext4" ; then
-	    SLAB_GREP="ext4\|jbd2"
-	else
-	    SLAB_GREP=$FS
-	fi
 	echo 3 > /proc/sys/vm/drop_caches
-	if test "$SLAB_GREP" != "$OLD_SLAB_GREP" ; then
-	    free -m
-	    grep $SLAB_GREP /proc/slabinfo
-	    OLD_SLAB_GREP="$SLAB_GREP"
-	fi
+	cp /proc/slabinfo $RESULT_BASE/slabinfo.before
+	cp /proc/meminfo $RESULT_BASE/meminfo.before
 	echo -n "BEGIN TEST $i: $TESTNAME " ; date
 	logger "BEGIN TEST $i: $TESTNAME "
 	echo Device: $TEST_DEV
@@ -197,8 +195,9 @@ END	{ if (NR > 0) {
 	   fi
 	done
 	echo 3 > /proc/sys/vm/drop_caches
+	cp /proc/slabinfo $RESULT_BASE/slabinfo.after
+	cp /proc/meminfo $RESULT_BASE/meminfo.after
 	free -m
-	grep $SLAB_GREP /proc/slabinfo
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
