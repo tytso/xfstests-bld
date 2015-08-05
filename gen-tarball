@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
+    PATH=$TOOLCHAIN_DIR/bin:$PATH
+fi
+
+if test -n "$CROSS_COMPILE" ; then
+    STRIP=$CROSS_COMPILE-strip
+else
+    STRIP=strip
+fi
+
+echo "GEN xfstests"
+rm -rf xfstests
+cp -r xfstests-dev xfstests
+echo "xfstests-bld	$$(git describe --always --dirty) ($$(git log -1 --pretty=%cD))" > xfstests-bld.ver
+cat *.ver > xfstests/git-versions
+rm -rf xfstests/.git xfstests/autom4te.cache
+find xfstests -type f -name \*.\[cho\]  -o -name \*.l[ao] | xargs rm
+mkdir xfstests/bin
+cp bld/sbin/* xfstests/bin
+cp bld/bin/* xfstests/bin
+echo "STRIP xfstests/*"
+find xfstests -mindepth 2 -type f -perm +0111 | xargs $STRIP 2> /dev/null
+echo "TAR xfstests"
+tar cf - xfstests | gzip -9 > xfstests.tar.gz
