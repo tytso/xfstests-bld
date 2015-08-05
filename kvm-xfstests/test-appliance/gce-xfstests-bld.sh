@@ -81,4 +81,5 @@ ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -
 ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google")
 logger -s "xfstests GCE appliance build completed (build instance id $ID)"
 journalctl > /image-build.log
+fstrim /
 gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE) --keep-disks boot
