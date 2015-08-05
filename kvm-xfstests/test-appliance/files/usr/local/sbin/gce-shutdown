@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+
+gcloud compute -q instances delete $(hostname) --zone $ZONE --delete-disks all

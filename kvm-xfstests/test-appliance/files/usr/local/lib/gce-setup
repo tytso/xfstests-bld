@@ -3,14 +3,8 @@
 RESULTS=/dev/sdb
 DEVICE=/dev/sdc
 
-GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-echo $GCE_ID > /root/gce_id
-
-ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2> /dev/null)
-ZONE=$(basename $ZONE)
-echo $ZONE > /root/gce_zone
-
 . /root/test-config
+. /usr/local/lib/gce-funcs
 
 gcloud compute -q disks create "xfstests-results-$GCE_ID" --size "10" \
        --zone "$ZONE" --type "pd-standard"
@@ -70,5 +64,5 @@ then
 	mke2fs -t ext4 /dev/mapper/xt-vdb
 fi
 
-cp /root/gce-syslog.conf /etc/rsyslog.d
+cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
 systemctl restart rsyslog.service

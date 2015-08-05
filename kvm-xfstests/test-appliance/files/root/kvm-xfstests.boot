@@ -51,14 +51,14 @@ then
     if test -n "$RUN_ON_GCE"
     then
 	DATECODE=$(date +%Y%m%d%H%M)
-	/root/gce-setup
+	/usr/local/lib/gce-setup
 	/root/runtests.sh >& /results/runtests.log
 	egrep "$REGEXP" < /results/runtests.log > /results/summary
 	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
 	tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
 	gsutil cp /tmp/results.tar.xz \
 	       gs://$GS_BUCKET/results.$DATECODE.tar.xz
-	/root/gce-shutdown
+	gce-shutdown
     else
 	/root/runtests.sh
 	poweroff -f > /dev/null 2>&1
