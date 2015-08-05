@@ -96,10 +96,10 @@ while [ "$1" != "" ]; do
       FSTESTSET="$FSTESTSET,-g,auto"
       ;;
     shell)
-      ARG="maint"
+      ARG="cmd=maint"
       ;;
     maint)
-      ARG="maint"
+      ARG="cmd=maint"
       EPH="-root_ephemeral=no"
       SNAPSHOT=""
       ;;
@@ -113,7 +113,7 @@ while [ "$1" != "" ]; do
   shift
 done
 
-if test "$ARG" = maint -a -z "$SKIP_LOG" ; then
+if test "$ARG" = "cmd=maint" -a -z "$SKIP_LOG" ; then
   SKIP_LOG=yes
 fi
 
