@@ -30,25 +30,26 @@ mkdir -p $DESTDIR
 if test -n "$DO_ANDROID" ; then
     (cd android-compat; ./configure $cross ;  make $J prefix=$DESTDIR install)
     android_compat="-landroid_compat"
-    CCF="-include android_compat.h"
+    LCF="-fpie -include android_compat.h"
+    LLF="-pie"
 fi
 
 (cd e2fsprogs-libs; \
-    CFLAGS="$CCF -I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
+    CFLAGS="$LCF -I$DESTDIR/include" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
     ./configure $cross --prefix=/; make $J; make DESTDIR=$DESTDIR $J install)
 
 (cd attr; \
-    CFLAGS="$CCF -I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
+    CFLAGS="$LCF -I$DESTDIR/include" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
     ./configure $cross --prefix=$DESTDIR; \
     make $J ; \
     make $J install-dev ; make install)
 
 (cd acl; \
     CPPFLAGS="-I$DESTDIR/include" \
-    CFLAGS="$CCF -I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
+    CFLAGS="$LCF -I$DESTDIR/include" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
     ./configure $cross --prefix=$DESTDIR; \
     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
     make $J install-dev ; \
@@ -60,9 +61,9 @@ rm $DESTDIR/lib/libaio.so*
 
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
     ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
-    CFLAGS="$CCF -I$DESTDIR/include" \
+    CFLAGS="$LCF -I$DESTDIR/include" \
     CPPFLAGS="-I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
     make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
@@ -79,17 +80,17 @@ find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 if test -z "$DO_ANDROID"; then
     (cd fio; \
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
-     export CFLAGS="$CCF -I$DESTDIR/include" ; \
-     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
      ./configure $cross --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
 (cd xfstests-dev; \
     ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
     autoheader ; autoconf ; \
-    CFLAGS="$CCF -I$DESTDIR/include -fno-stack-protector" \
+    CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" \
     CPPFLAGS="-I$DESTDIR/include" \
-    LDFLAGS="-static -L$DESTDIR/lib" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
     LIBS=-lpthread \
     ./configure $cross ; \
     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
@@ -100,8 +101,8 @@ fi
 if test -z "$DO_ANDROID"; then
     (cd quota; \
      ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
-     export CFLAGS="$CCF -I$DESTDIR/include" ; \
-     export LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      aclocal ; autoconf ; \
      ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
