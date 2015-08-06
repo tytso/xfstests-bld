@@ -13,6 +13,8 @@ fi
 
 . /root/test-config
 
+if test -e /usr/local/lib/gce-parse ; then /usr/local/lib/gce-parse; fi
+
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
 FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
@@ -50,7 +52,14 @@ if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
     if test -n "$RUN_ON_GCE"
     then
-	DATECODE=$(date +%Y%m%d%H%M)
+	hostname=$(hostname)
+	case "$hostname" in
+	    xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+		DATECODE=$(echo $hostname | sed -e 's/xfstests-//')
+		;;
+	    *)
+		DATECODE=$(date +%Y%m%d%H%M)
+	esac
 	/usr/local/lib/gce-setup
 	/root/runtests.sh >& /results/runtests.log
 	egrep "$REGEXP" < /results/runtests.log > /results/summary

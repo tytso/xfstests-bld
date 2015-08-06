@@ -1,0 +1,55 @@
+#!/bin/sh
+
+DIR=.
+. $DIR/config
+
+if test -r test-appliance/config.custom ; then
+   . $(pwd)/test-appliance/config.custom
+fi
+
+if test -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GCE_PROJECT and GCE_ZONE in"
+	echo "the config.custom file"
+	exit 1
+fi
+
+QUIET="quiet loglevel=0"
+
+. $DIR/util/parse_cli
+
+API="1.1"
+
+ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+GS_RO=https://www.googleapis.com/auth/devstorage.read_only
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+
+SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
+
+DATECODE=$(date +%Y%m%d%H%M)
+INSTANCE="xfstests-$DATECODE"
+
+case "$ARG" in
+    cmd=maint*)
+	INSTANCE="xfstests"
+	;;
+esac
+
+ARG="$ARG kexec=gs://$GS_BUCKET/bzImage"
+
+gcloud compute --project "$GCE_PROJECT" \
+       instances create $INSTANCE --zone "$GCE_ZONE" \
+       --machine-type "n1-highcpu-4" --network "default" \
+       --maintenance-policy "MIGRATE" \
+       --scopes "$SCOPES" \
+       --metadata "^ ^$ARG" \
+       --image "xfstests"
+
+case "$ARG" in
+    cmd=maint*)
+	gcloud compute ssh $INSTANCE
+	;;
+esac

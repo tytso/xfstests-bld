@@ -49,6 +49,8 @@ while [ "$1" != "" ]; do
 	RPT_COUNT=$1
 	echo "Repeat each test $RPT_COUNT times"
 	;;
+    gce_kernel_oneshot)
+	;;
     *)
 	echo " "
 	echo "Unrecognized option $i"

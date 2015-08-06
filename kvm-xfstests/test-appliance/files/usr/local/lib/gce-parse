@@ -1,0 +1,24 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+
+kexec=$(gce_attribute kexec)
+if test -z "$kexec" || grep -q fstestcfg /proc/cmdline; then exit 0; fi
+
+if ! gsutil cp $kexec /run/bzImage
+then
+    logger "Couldn't find $kexec"
+    exit 1
+fi
+
+kopt=$(gce_attribute kopt)
+fstestcfg=$(gce_attribute fstestcfg)
+fstestset=$(gce_attribute fstestset)
+fstestopt=$(gce_attribute fstestopt)
+fstesttz=$(gce_attribute fstesttz)
+fstesttyp=$(gce_attribute fstesttyp)
+fstestapi=$(gce_attribute fstestapi)
+
+kexec /run/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestopt=$fstestopt fstesttz=$fstesttz fstesttyp=$fstesttyp fstestapi=$fstestapi"
+
+

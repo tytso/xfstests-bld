@@ -1,47 +1,60 @@
 #!/bin/bash
 
-RESULTS=/dev/sdb
-DEVICE=/dev/sdc
+RESULTS_DEV=/dev/sdb
+SCRATCH_DEV=/dev/sdc
 
 . /root/test-config
 . /usr/local/lib/gce-funcs
 
-gcloud compute -q disks create "xfstests-results-$GCE_ID" --size "10" \
+hostname=$(hostname)
+case "$hostname" in
+    xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+	RESULTS_DSK=$(hostname)-results
+	SCRATCH_DSK=$(hostname)-scratch
+	DATECODE=$(echo $hostname | sed -e 's/xfstests-//')
+	;;
+    *)
+	DATECODE=$(date +%Y%m%d%H%M)
+	RESULTS_DSK=xfstests-$DATECODE-results
+	SCRATCH_DSK=xfstests-$DATECODE-scratch
+esac
+
+gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
        --zone "$ZONE" --type "pd-standard"
 
-gcloud compute -q disks create "xfstests-scratch-$GCE_ID" --size "100" \
+gcloud compute -q disks create "$SCRATCH_DSK" --size "100" \
        --zone "$ZONE" --type "pd-ssd"
 
 gcloud compute -q instances attach-disk $(hostname) \
-       --disk "xfstests-results-$GCE_ID" \
+       --disk "$RESULTS_DSK" \
        --device-name results --zone "$ZONE"
 
 gcloud compute -q instances attach-disk $(hostname) \
-       --disk "xfstests-scratch-$GCE_ID" \
+       --disk "$SCRATCH_DSK" \
        --device-name scratch --zone "$ZONE"
 
 gcloud compute -q instances set-disk-auto-delete $(hostname) --auto-delete \
-       --disk "xfstests-scratch-$GCE_ID" --zone "$ZONE"
+       --disk "$SCRATCH_DSK" --zone "$ZONE"
 
-if ! test -b $RESULTS
+if ! test -b $RESULTS_DSK_DEV
 then
-	logger -s "Couldn't find block device $RESULTS"
+	logger -s "Couldn't find block device $RESULTS_DSK_DEV"
 	exit 1
 fi
 
-if ! test -b $DEVICE
+if ! test -b $SCRATCH_DEV
 then
-	logger -s "Couldn't find block device $DEVICE"
+	logger -s "Couldn't find block device $SCRATCH_DEV"
 	exit 1
 fi
 
-t=$(blkid $RESULTS)
+t=$(blkid $RESULTS_DEV)
 if test -z "$t"
 then
-	mke2fs -t ext4 $RESULTS
+	mke2fs -t ext4 $RESULTS_DEV
 fi
 
-mount -t ext4 $RESULTS /results
+mount -t ext4 $RESULTS_DEV /results
 
 gsutil -m cp gs://$GS_BUCKET/check.time.* /results
 for i in $(cd /results; echo check.time.*)
@@ -51,11 +64,11 @@ do
     mv /results/check.time.$r /results/results-$r/check.time
 done
 
-t=$(blkid $DEVICE)
+t=$(blkid $SCRATCH_DEV)
 if test -z "$t"
 then
-	pvcreate $DEVICE
-	vgcreate xt $DEVICE
+	pvcreate $SCRATCH_DEV
+	vgcreate xt $SCRATCH_DEV
 	lvcreate -L  5g -n vdb xt
 	lvcreate -L  5g -n vdc xt
 	lvcreate -L  5g -n vdd xt
@@ -66,3 +79,22 @@ fi
 
 cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
 systemctl restart rsyslog.service
+
+if test -n "$FSTESTOPT" ; then
+   set $FSTESTOPT
+else
+   set ""
+fi
+
+while [ "$1" != "" ]; do
+  case $1 in
+    gce_kernel_oneshot)
+	kexec=$(gce_attribute kexec)
+	if test -n "$kexec"
+	then
+	    gsutil rm "$kexec"
+	fi
+	;;
+  esac
+  shift
+done
