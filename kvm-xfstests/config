@@ -40,6 +40,13 @@ MONITOR="-monitor telnet:localhost:7498,server,nowait"
 CONSOLE=" -serial mon:stdio"
 #CONSOLE=" -chardev stdio,id=console,signal=off -serial chardev:console"
 
+# GCE configuration
+#
+# GS_BUCKET=gs_bucket.thunk.org
+# GCE_PROJECT=tytso-xfstests-project
+# GCE_ZONE=us-central1-c
+# GCE_KERNEL=/u1/ext4-64/arch/x86/boot/bzImage
+
 if test -f $CONFIG_DIR/kvm-xfstests; then
    . $CONFIG_DIR/kvm-xfstests
 fi

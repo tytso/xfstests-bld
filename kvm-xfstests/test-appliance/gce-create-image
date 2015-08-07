@@ -1,8 +1,18 @@
 #!/bin/bash
 
-# GS_BUCKET=gs_bucket.gce.thunk.org
-# GCE_PROJECT=tytso-xfstests-project
-# GCE_ZONE=us-central1-a
+DIR=..
+. $DIR/config
+
+if test -r config.custom ; then
+   . ./config.custom
+fi
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
@@ -18,17 +28,6 @@ TARBALL=../../xfstests.tar.gz
 if ! test -f $TARBALL ; then
    echo $TARBALL does not exist!
    exit 1
-fi
-
-if test -r config.custom ; then
-   . $(pwd)/config.custom
-fi
-
-if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
-then
-	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
-	echo "the config.custom file"
-	exit 1
 fi
 
 GS_SCRIPT=gs://$GS_BUCKET/gce-xfstests-bld.sh

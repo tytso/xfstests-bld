@@ -84,6 +84,7 @@ while [ "$1" != "" ]; do
       ;;
     --kernel) shift
       KERNEL=$1
+      OVERRIDE_KERNEL=$1
       ;;
     smoke)
       FSTESTCFG=4k

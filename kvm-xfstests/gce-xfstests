@@ -38,7 +38,32 @@ case "$ARG" in
 	;;
 esac
 
-ARG="$ARG kexec=gs://$GS_BUCKET/bzImage"
+GS_KERNEL=gs://$GS_BUCKET/bzImage
+if test -z "$GCE_KERNEL"
+then
+    GCE_KERNEL=$KERNEL
+fi
+
+if test -n "$OVERRIDE_KERNEL"
+then
+    GCE_KERNEL=$OVERRIDE_KERNEL
+    GS_KERNEL=gs://$GS_BUCKET/bzImage-$DATECODE-onetime
+fi
+
+if ! test -f "$GCE_KERNEL"
+then
+    echo "Can't find kernel at $GCE_KERNEL"
+    exit 1
+fi
+
+LOCAL_HASH=$(gsutil hash $GCE_KERNEL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
+REMOTE_HASH=$(gsutil stat $GS_KERNEL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
+if test "$LOCAL_HASH" != "$REMOTE_HASH"
+then
+	gsutil cp $GCE_KERNEL $GS_KERNEL
+fi
+
+ARG="$ARG kexec=$GS_KERNEL"
 
 gcloud compute --project "$GCE_PROJECT" \
        instances create $INSTANCE --zone "$GCE_ZONE" \

@@ -80,21 +80,10 @@ fi
 cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
 systemctl restart rsyslog.service
 
-if test -n "$FSTESTOPT" ; then
-   set $FSTESTOPT
-else
-   set ""
-fi
+kexec=$(gce_attribute kexec)
 
-while [ "$1" != "" ]; do
-  case $1 in
-    gce_kernel_oneshot)
-	kexec=$(gce_attribute kexec)
-	if test -n "$kexec"
-	then
-	    gsutil rm "$kexec"
-	fi
+case "$kexec" in
+    *-onetime)
+	gsutil rm "$kexec"
 	;;
-  esac
-  shift
-done
+esac
