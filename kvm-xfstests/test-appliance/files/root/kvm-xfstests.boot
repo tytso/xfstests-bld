@@ -66,7 +66,7 @@ then
 	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
 	tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
 	gsutil cp /tmp/results.tar.xz \
-	       gs://$GS_BUCKET/results.$DATECODE.tar.xz
+	       gs://$GS_BUCKET/results.$DATECODE.$(uname -r).tar.xz
 	gce-shutdown
     else
 	/root/runtests.sh

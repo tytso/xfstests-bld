@@ -12,12 +12,24 @@ then
 fi
 
 kopt=$(gce_attribute kopt)
+mem=$(gce_attribute mem)
+cpus=$(gce_attribute nr_cpus)
 fstestcfg=$(gce_attribute fstestcfg)
 fstestset=$(gce_attribute fstestset)
 fstestopt=$(gce_attribute fstestopt)
 fstesttz=$(gce_attribute fstesttz)
 fstesttyp=$(gce_attribute fstesttyp)
 fstestapi=$(gce_attribute fstestapi)
+
+if test -n "$mem"
+then
+    kopt="$kopt mem=${mem}M"
+fi
+
+if test -n "$cpus"
+then
+    kopt="$kopt maxcpus=$cpus"
+fi
 
 kexec /run/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestopt=$fstestopt fstesttz=$fstesttz fstesttyp=$fstesttyp fstestapi=$fstestapi"
 
