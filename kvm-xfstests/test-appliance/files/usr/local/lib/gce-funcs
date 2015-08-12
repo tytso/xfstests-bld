@@ -80,3 +80,10 @@ gce_attribute()
 	get_metadata_value_with_retries attributes/$1
 }
 
+if test -f /run/gs_bucket
+then
+    GS_BUCKET=$(cat /run/gs_bucket)
+else
+    GS_BUCKET=$(gce_attribute gs_bucket)
+    echo $GS_BUCKET > /run/gs_bucket
+fi

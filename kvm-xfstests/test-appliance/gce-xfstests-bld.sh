@@ -84,4 +84,8 @@ ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "M
 logger -s "xfstests GCE appliance build completed (build instance id $ID)"
 journalctl > /image-build.log
 fstrim /
-gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE) --keep-disks boot
+mount -t tmpfs -o size=10G tmpfs /mnt
+mkdir -p /mnt/tmp
+gcimagebundle -d /dev/sda -o /mnt/tmp/ --log_file=/tmp/bundle.log
+gsutil cp /mnt/tmp/*.image.tar.gz gs://$BUCKET/gce-xfstests.image.tar.gz
+gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE)

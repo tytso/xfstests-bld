@@ -7,10 +7,10 @@ if test -r test-appliance/config.custom ; then
    . $(pwd)/test-appliance/config.custom
 fi
 
-if test -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
-	echo "You must configure GCE_PROJECT and GCE_ZONE in"
-	echo "the config.custom file"
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
 	exit 1
 fi
 
@@ -142,6 +142,8 @@ then
     ARG="$ARG nr_cpus=$NR_CPU"
 fi
 
+ARG="$ARG gs_bucket=$GS_BUCKET"
+
 echo "Launching $MT...."
 # echo "Using ARG: $ARG"
 
@@ -155,6 +157,7 @@ gcloud compute --project "$GCE_PROJECT" \
 
 case "$ARG" in
     cmd=maint*)
+	sleep 1
 	gcloud compute ssh $INSTANCE
 	;;
 esac

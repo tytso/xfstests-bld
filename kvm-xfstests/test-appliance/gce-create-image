@@ -19,7 +19,7 @@ GS_RO=https://www.googleapis.com/auth/devstorage.read_only
 LOG_WR=https://www.googleapis.com/auth/logging.write
 COMPUTE_RW=https://www.googleapis.com/auth/compute
 
-SCOPES="$GS_RO,$LOG_WR,$COMPUTE_RW"
+SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
 IMAGE=https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8
 
@@ -58,7 +58,7 @@ gcloud compute --project "$GCE_PROJECT" -q instances delete xfstests-bld \
 gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld 2> /dev/null
 
 gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
-       --zone "$GCE_ZONE" --machine-type "n1-standard-1" \
+       --zone "$GCE_ZONE" --machine-type "n1-highmem-2" \
        --network "default" --metadata "$METADATA" \
        --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" --image "$IMAGE" \
@@ -76,6 +76,4 @@ echo " Done!"
 gcloud compute --project "$GCE_PROJECT" -q images delete xfstests
 gcloud compute --project "$GCE_PROJECT" -q images create xfstests \
        --description "Linux Kernel File System Test Appliance" \
-       --source-disk xfstests-bld --source-disk-zone "$GCE_ZONE"
-gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld \
-       --zone "$GCE_ZONE"
+       --source-uri gs://$GS_BUCKET/gce-xfstests.image.tar.gz

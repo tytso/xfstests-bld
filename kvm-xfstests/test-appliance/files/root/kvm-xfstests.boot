@@ -13,7 +13,11 @@ fi
 
 . /root/test-config
 
-if test -e /usr/local/lib/gce-parse ; then /usr/local/lib/gce-parse; fi
+if test -e /usr/local/lib/gce-parse
+then
+    . /usr/local/lib/gce-funcs
+    /usr/local/lib/gce-parse
+fi
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
