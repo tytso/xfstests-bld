@@ -4,6 +4,7 @@ BUCKET=@BUCKET@
 PACKAGES="bash-completion \
 	bc \
 	bsdmainutils \
+	bsd-mailx \
 	bzip2 \
 	cpio \
 	dc \
@@ -18,11 +19,13 @@ PACKAGES="bash-completion \
 	kexec-tools \
 	keyutils \
 	less \
+	libsasl2-modules \
 	libssl1.0.0 \
 	libgdbm3 \
 	lvm2 \
 	nano \
 	perl \
+	postfix \
 	procps \
 	psmisc \
 	strace \
@@ -33,6 +36,9 @@ apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
 kexec-tools	kexec-tools/load_kexec	boolean	true
+postfix	postfix/destinations	string	xfstests.internal, localhost
+postfix	postfix/mailname	string	xfstests.internal
+postfix	postfix/main_mailer_type	select	Local only
 EOF
 apt-get install -y $PACKAGES
 gsutil cp gs://$BUCKET/xfstests.tar.gz /tmp/xfstests.tar.gz
@@ -63,6 +69,7 @@ chmod 755 /root
 
 mkdir -p /usr/local/sbin /usr/local/lib
 mv /root/sbin/* /usr/local/sbin
+mv /root/lib/gce-postfix-main.cf /etc/postfix/main.cf
 mv /root/lib/* /usr/local/lib
 rmdir /root/sbin /root/lib
 

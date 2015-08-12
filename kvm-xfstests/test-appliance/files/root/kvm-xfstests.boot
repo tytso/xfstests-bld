@@ -68,6 +68,12 @@ then
 	/root/runtests.sh >& /results/runtests.log
 	egrep "$REGEXP" < /results/runtests.log > /results/summary
 	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+	REPORT_EMAIL=$(gce_attribute report_email)
+	if test -n "$REPORT_EMAIL"
+	then
+	    mail -s "xfstests results $DATECODE - $(uname -r)" \
+		 "$REPORT_EMAIL" < /results/failures
+	fi
 	tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
 	gsutil cp /tmp/results.tar.xz \
 	       gs://$GS_BUCKET/results.$DATECODE.$(uname -r).tar.xz

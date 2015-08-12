@@ -144,6 +144,16 @@ fi
 
 ARG="$ARG gs_bucket=$GS_BUCKET"
 
+if test -n "$GCE_SG_USER" -a -n "$GCE_SG_PASS"
+then
+    ARG="$ARG sg_user=$GCE_SG_USER sg_pass=$GCE_SG_PASS"
+fi
+
+if test -n "$GCE_REPORT_EMAIL"
+then
+    ARG="$ARG report_email=$GCE_REPORT_EMAIL"
+fi
+
 echo "Launching $MT...."
 # echo "Using ARG: $ARG"
 

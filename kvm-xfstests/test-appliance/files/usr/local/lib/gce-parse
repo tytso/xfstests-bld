@@ -2,6 +2,19 @@
 
 . /usr/local/lib/gce-funcs
 
+if ! test -f /etc/postfix/sasl_passwd
+then
+    sg_user=$(gce_attribute sg_user)
+    sg_pass=$(gce_attribute sg_pass)
+    if test -n "$sg_user" -a -n "$sg_pass"
+    then
+	echo "[smtp.sendgrid.net]:2525 $sg_user:$sg_pass" \
+	     > /etc/postfix/sasl_passwd
+	postmap /etc/postfix/sasl_passwd
+	postfix reload
+    fi
+fi
+
 kexec=$(gce_attribute kexec)
 if test -z "$kexec" || grep -q fstestcfg /proc/cmdline; then exit 0; fi
 
