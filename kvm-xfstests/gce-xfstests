@@ -16,6 +16,34 @@ fi
 
 QUIET="quiet loglevel=0"
 
+case "$1" in
+    list)
+	gcloud compute --project "$GCE_PROJECT" instances list \
+	       --regexp ^xfstests.*
+	exit 0;
+	;;
+    delete)
+	if ! gcloud compute instances describe "$2" \
+	     --zone $GCE_ZONE > /dev/null 2>&1
+	then
+	    echo "GCE instance $2 does not exist"
+	fi
+	gcloud compute --project "$GCE_PROJECT" -q instances delete "$2" \
+	       --zone "$GCE_ZONE" &
+	exit 0;
+	;;
+    ssh)
+	if ! gcloud compute instances describe "$2" \
+	     --zone $GCE_ZONE > /dev/null 2>&1
+	then
+	    echo "GCE instance $2 does not exist"
+	fi
+	gcloud compute --project "$GCE_PROJECT" -q ssh "$2" \
+	       --zone "$GCE_ZONE"
+	exit 0;
+	;;
+esac
+
 . $DIR/util/parse_cli
 
 API="1.1"
