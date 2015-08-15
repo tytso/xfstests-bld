@@ -1,6 +1,12 @@
 #!/bin/sh
 
 DIR=.
+
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
 . $DIR/config
 
 if test -r test-appliance/config.custom ; then
@@ -41,6 +47,26 @@ case "$1" in
 	gcloud compute --project "$GCE_PROJECT" -q ssh "$2" \
 	       --zone "$GCE_ZONE"
 	exit 0;
+	;;
+    console)
+	gcloud compute --project "$GCE_PROJECT" -q instances \
+	       get-serial-port-output "$2" --zone "$GCE_ZONE"
+	exit 0;
+	;;
+    get-results)
+	case "$2" in
+	    --failures|-F)
+		OPT="-F"
+		shift
+		;;
+	esac
+	tmpfile=$(mktemp)
+	gcloud compute --project "$GCE_PROJECT" -q \
+	       copy-files "$2:/results/runtests.log" $tmpfile \
+	       --zone "$GCE_ZONE"
+	$DIR/get-results $OPT $tmpfile
+	/bin/rm -f $tmpfile
+	exit 0
 	;;
 esac
 
