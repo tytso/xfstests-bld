@@ -106,8 +106,9 @@ do
 done
 
 echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
-echo "fsgqa:*:31415:0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "fsgqa:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
 echo "fsgqa:x:31415:" >> $ROOTDIR/etc/group
+echo "fsgqa:!::" >> $ROOTDIR/etc/gshadow
 mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
 chmod 755 $ROOTDIR/root

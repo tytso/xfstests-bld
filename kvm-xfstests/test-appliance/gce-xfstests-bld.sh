@@ -61,8 +61,9 @@ cat >> /etc/fstab <<EOF
 EOF
 
 echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> /etc/passwd
-echo "fsgqa:*:31415:0:99999:7:::" >> /etc/shadow
+echo "fsgqa:!::0:99999:7:::" >> /etc/shadow
 echo "fsgqa:x:31415:" >> /etc/group
+echo "fsgqa:!::" >> /etc/gshadow
 mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
 chmod 755 /root
