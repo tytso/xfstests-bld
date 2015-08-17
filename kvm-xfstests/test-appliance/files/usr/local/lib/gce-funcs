@@ -1,5 +1,7 @@
 #!/bin/bash
 
+instance=$(hostname)
+
 if test -f /run/gce_zone
 then
     ZONE=$(cat /run/gce_zone)
