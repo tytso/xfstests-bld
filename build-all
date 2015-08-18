@@ -37,12 +37,12 @@ fi
 (cd e2fsprogs-libs; \
     CFLAGS="$LCF -I$DESTDIR/include" \
     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=/; make $J; make DESTDIR=$DESTDIR $J install)
+    ./configure $cross --prefix=/ --disable-nls; make $J; make DESTDIR=$DESTDIR $J install)
 
 (cd attr; \
     CFLAGS="$LCF -I$DESTDIR/include" \
     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=$DESTDIR; \
+    ./configure $cross --prefix=$DESTDIR --disable-nls; \
     make $J ; \
     make $J install-dev ; make install)
 
@@ -50,12 +50,12 @@ fi
     CPPFLAGS="-I$DESTDIR/include" \
     CFLAGS="$LCF -I$DESTDIR/include" \
     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=$DESTDIR; \
+    ./configure $cross --prefix=$DESTDIR --disable-nls; \
     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
     make $J install-dev ; \
     make $J install)
 
-(cd libaio; ./configure $cross ;  make $J prefix=$DESTDIR install)
+(cd libaio; ./configure $cross --disable-nls;  make $J prefix=$DESTDIR install)
 
 rm $DESTDIR/lib/libaio.so*
 
