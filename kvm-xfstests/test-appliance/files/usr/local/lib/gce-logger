@@ -1,0 +1,14 @@
+#!/bin/bash
+. /usr/local/lib/gce-funcs
+
+status=$(echo $* | sed -e 's/run xfstest //')
+if test -f /run/fstest-config
+then
+    cfg="$(cat /run/fstest-config)"
+    status="$cfg $status"
+fi
+
+gcloud compute instances -q add-metadata ${instance} \
+	--metadata "status=$(date +%H:%M) $status" &
+logger $cfg $*
+

@@ -71,6 +71,7 @@ chmod 755 /root
 mkdir -p /usr/local/sbin /usr/local/lib
 mv /root/sbin/* /usr/local/sbin
 mv /root/lib/gce-postfix-main.cf /etc/postfix/main.cf
+mv /root/lib/gce-local.config /root/xfstests/local.config
 mv /root/lib/* /usr/local/lib
 rmdir /root/sbin /root/lib
 

@@ -113,6 +113,7 @@ do
 		echo "Unknown configuration $i!"
 		continue
 	fi
+	echo $i > /run/fstest-config
 	if test -n "$EXT_MOUNT_OPTIONS" ; then
 		EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
 	else
