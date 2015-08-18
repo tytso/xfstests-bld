@@ -50,7 +50,7 @@ then
 fi
 
 REGEXP="( Linux version )|(^FSTEST)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)"
-REGEXP_FAILURE="(^BEGIN)|(^Failures: )|(^Passed)"
+REGEXP_FAILURE="(^FSTEST)|(^BEGIN)|(^Failures: )|(^Passed)"
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
