@@ -23,20 +23,78 @@ fi
 QUIET="quiet loglevel=0"
 
 case "$1" in
-    list)
+    ls|ls-instances)
 	gcloud compute --project "$GCE_PROJECT" instances list \
 	       --regexp ^xfstests.*
-	exit 0;
+	exit 0
 	;;
-    delete)
+    rm|rm-instances|abort|abort-instances)
 	if ! gcloud compute instances describe "$2" \
 	     --zone $GCE_ZONE > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
-	gcloud compute --project "$GCE_PROJECT" -q instances delete "$2" \
-	       --zone "$GCE_ZONE" &
-	exit 0;
+	if test "$1" = "abort"
+	then
+	    deldisks="--delete-disks all"
+	fi
+	shift
+	for i in "$*"
+	do
+	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
+		   --zone "$GCE_ZONE" $deldisks &
+	done
+	exit 0
+	;;
+    ls-disks|ls-disk)
+	gcloud compute --project "$GCE_PROJECT" disks list \
+	       --regexp ^xfstests.*
+	exit 0
+	;;
+    rm-disks|rm-disk)
+	shift
+	gcloud compute --project "$GCE_PROJECT" disks delete $* \
+	exit 0
+	;;
+    ls-gcs)
+	shift
+	for i in $*
+	do
+	    case $i in
+		-*)
+		    opt="$opt $i"
+		    ;;
+		*)
+		    arg="$arg gs://$GS_BUCKET/$i"
+		    ;;
+	    esac
+	done
+	if test -z "$arg"
+	then
+	    arg="gs://$GS_BUCKET"
+	fi
+	gsutil ls $opt $arg
+	exit 0
+	;;
+    rm-gcs)
+	shift
+	for i in $*
+	do
+	    case $i in
+		-*)
+		    opt="$opt $i"
+		    ;;
+		*)
+		    arg="$arg gs://$GS_BUCKET/$i"
+		    ;;
+	    esac
+	done
+	if test -z "$arg"
+	then
+	    arg="gs://$GS_BUCKET"
+	fi
+	gsutil rm $opt $arg
+	exit 0
 	;;
     ssh)
 	if ! gcloud compute instances describe "$2" \
@@ -46,12 +104,12 @@ case "$1" in
 	fi
 	gcloud compute --project "$GCE_PROJECT" -q ssh "$2" \
 	       --zone "$GCE_ZONE"
-	exit 0;
+	exit 0
 	;;
     console)
 	gcloud compute --project "$GCE_PROJECT" -q instances \
 	       get-serial-port-output "$2" --zone "$GCE_ZONE"
-	exit 0;
+	exit 0
 	;;
     get-results)
 	case "$2" in
