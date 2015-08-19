@@ -92,9 +92,20 @@ ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -
 ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google")
 logger -s "xfstests GCE appliance build completed (build instance id $ID)"
 journalctl > /image-build.log
-fstrim /
-mount -t tmpfs -o size=10G tmpfs /mnt
-mkdir -p /mnt/tmp
-gcimagebundle -d /dev/sda -o /mnt/tmp/ --log_file=/tmp/bundle.log
-gsutil cp /mnt/tmp/*.image.tar.gz gs://$BUCKET/gce-xfstests.image.tar.gz
-gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE)
+
+. /usr/local/lib/gce-funcs
+
+fast=$(gce_attribute fast)
+
+if test "$fast" = "yes"
+then
+    fstrim /
+    gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE) \
+	   --keep-disks boot
+else
+    mount -t tmpfs -o size=10G tmpfs /mnt
+    mkdir -p /mnt/tmp
+    gcimagebundle -d /dev/sda -o /mnt/tmp/ --log_file=/tmp/bundle.log
+    gsutil cp /mnt/tmp/*.image.tar.gz gs://$BUCKET/gce-xfstests.image.tar.gz
+    gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE)
+fi
