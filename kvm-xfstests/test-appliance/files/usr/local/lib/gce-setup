@@ -59,7 +59,8 @@ fi
 
 mount -t ext4 $RESULTS_DEV /results
 
-gsutil -m cp gs://$GS_BUCKET/check.time.* /results
+gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
+(cd /results; tar xfz /tmp/check-time.tar.gz)
 for i in $(cd /results; echo check.time.*)
 do
     r=$(echo $i | sed -e 's/check.time.//')

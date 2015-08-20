@@ -173,12 +173,16 @@ do
 	   fi
 	   if test -n "$RUN_ON_GCE"
 	   then
-	       if ! gsutil cp gs://$GS_BUCKET/check.time.$i /tmp >& /dev/null
+	       gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
+	       if test -f /tmp/check-time.tar.gz
 	       then
-		   gsutil cp /results/results-$i/check.time \
-			  gs://$GS_BUCKET/check.time.$i >& /dev/null
-	       else
-		   cat /results/results-$i/check.time /tmp/check.time.$i \
+		   tar -C /tmp -xzf /tmp/check-time.tar.gz
+	       fi
+	       if ! test -f /tmp/check.time.$i
+	       then
+		   touch /results/results-$i/check.time
+	       fi
+	       cat /results/results-$i/check.time /tmp/check.time.$i \
 	    | awk '
 	{ t[$1] = $2 }
 END	{ if (NR > 0) {
@@ -186,13 +190,10 @@ END	{ if (NR > 0) {
 	  }
 	}' \
 	    | sort -n > /tmp/check.time.$i.new
-		   cmp -s /tmp/check.time.$i /tmp/check.time.$i.new
-		   if test $? -eq 1
-		   then
-		       gsutil cp /tmp/check.time.$i.new \
-			      gs://$GS_BUCKET/check.time.$i >& /dev/null
-		   fi
-	       fi
+	       mv /tmp/check.time.$i.new /tmp/check.time.$i
+	       (cd /tmp ; tar -cf - check.time.* | gzip -9 \
+			> /tmp/check-time.tar.gz)
+	       gsutil cp /tmp/check-time.tar.gz gs://$GS_BUCKET >& /dev/null
 	   fi
 	done
 	echo 3 > /proc/sys/vm/drop_caches
