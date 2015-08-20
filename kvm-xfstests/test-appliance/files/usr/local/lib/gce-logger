@@ -8,7 +8,11 @@ then
     status="$cfg $status"
 fi
 
-gcloud compute instances -q add-metadata ${instance} \
-	--metadata "status=$(date +%H:%M) $status" &
+if test -z "$(find /run/last_logged -mmin -1 -print 2> /dev/null)"
+then
+    gcloud compute instances -q add-metadata ${instance} \
+	   --metadata "status=$(date +%H:%M) $status" >& /dev/null &
+    touch /run/last_logged
+fi
 logger $cfg $*
 
