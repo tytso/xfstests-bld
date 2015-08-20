@@ -28,15 +28,30 @@ case "$1" in
 #	       --regexp ^xfstests.*
 	l=$(gcloud compute --project "$GCE_PROJECT" instances list \
 		--regexp ^xfstests.* --format=json | jq ".[].name" | \
-		sed -e 's/^"//' -e 's/"$//')
+		   sed -e 's/^"//' -e 's/"$//')
+	if test "$2" != "-l"
+	then
+	    for i in $l
+	    do
+		echo $i
+	    done
+	    exit 0
+	fi
+	inst_info=$(mktemp)
 	for i in $l
 	do
-	    status=$(gcloud compute --project "$GCE_PROJECT" instances \
-			describe $i --format=json | jq \
+	    gcloud compute --project "$GCE_PROJECT" instances \
+			describe $i --format=json > $inst_info
+	    kver=$(cat $inst_info | jq \
+		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
+			sed -e 's/^"//' -e 's/"$//' \
+			    -e 's/^Linux xfstests-[0-9]* //' -e 's/ .*//')
+	    status=$(cat $inst_info | jq \
 		'.metadata.items[] | select(.key == "status") | .value' | \
 			sed -e 's/^"//' -e 's/"$//')
-	    echo $i - $status
+	    echo $i - $kver - $status
 	done
+	rm $inst_info
 	exit 0
 	;;
     rm|rm-instances|abort|abort-instances)
