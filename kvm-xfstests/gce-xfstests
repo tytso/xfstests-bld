@@ -24,8 +24,19 @@ QUIET="quiet loglevel=0"
 
 case "$1" in
     ls|ls-instances)
-	gcloud compute --project "$GCE_PROJECT" instances list \
-	       --regexp ^xfstests.*
+#	gcloud compute --project "$GCE_PROJECT" instances list \
+#	       --regexp ^xfstests.*
+	l=$(gcloud compute --project "$GCE_PROJECT" instances list \
+		--regexp ^xfstests.* --format=json | jq ".[].name" | \
+		sed -e 's/^"//' -e 's/"$//')
+	for i in $l
+	do
+	    status=$(gcloud compute --project "$GCE_PROJECT" instances \
+			describe $i --format=json | jq \
+		'.metadata.items[] | select(.key == "status") | .value' | \
+			sed -e 's/^"//' -e 's/"$//')
+	    echo $i - $status
+	done
 	exit 0
 	;;
     rm|rm-instances|abort|abort-instances)
