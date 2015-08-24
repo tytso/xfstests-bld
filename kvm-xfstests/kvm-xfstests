@@ -1,6 +1,11 @@
 #!/bin/sh
 
 DIR=.
+if test -n "$KVM_XFSTESTS_DIR"
+then
+    DIR="$KVM_XFSTESTS_DIR"
+fi
+
 . $DIR/config
 
 QUIET="quiet loglevel=0"
@@ -40,7 +45,7 @@ if ionice -h > /dev/null ; then
     IONICE="ionice -n 5"
 fi
 
-$IONICE $QEMU -boot order=c $NET \
+$NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=none,if=virtio \
 	-drive file=$VDC,cache=none,if=virtio \

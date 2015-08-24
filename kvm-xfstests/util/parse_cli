@@ -2,129 +2,218 @@ FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
 
+print_help ()
+{
+    PROG=$(basename $0)
+    echo "Usage: $PROG [<OPTIONS>] smoke|full"
+    echo "Usage: $PROG [<OPTIONS>] <test> ..."
+    echo "Usage: $PROG [<OPTIONS>] -g <group> ..."
+    if test "$GCE_XFSTESTS" != "yes" ; then
+	echo "Usage: $PROG [<OPTIONS>] shell|maint"
+    else
+	echo "Usage: $PROG [<OPTIONS>] shell"
+    fi
+    echo ""
+    echo "Common options are:"
+    echo "	-a		- Disable auto-exclude; run all tests"
+    echo "	-c config	- Specify a file system configuration"
+    echo "	-C count	- Run the specified tests multiple times"
+    echo "	-I image	- Use this test appliance image"
+    echo "	-m mountopts	- Append mount options to fs config"
+    echo "	-n nr_cpus	- Specify the number of cpu's"
+    if test "$GCE_XFSTESTS" != "yes" ; then
+	echo "	-N		- Enable networking (requires root)"
+    fi
+    echo "	-o opts		- Extra kernel command line options"
+    echo "	-r ram		- Specify memory to be used in megabytes"
+    echo "	-X test		- Exclude test from running"
+    if test "$GCE_XFSTESTS" != "yes" ; then
+	echo "	--kernel file	- Boot the specified kernel"
+
+    fi
+    echo "	--no-log	- Don't save the log file for this run"
+    echo "	--no-action	- Print the command to start the VM"
+    echo ""
+    echo "Common file system configurations are:"
+    echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
+    echo "	data_journal bigalloc bigalloc_1k inline"
+    echo ""
+    echo "xfstest names have the form: ext4/NNN generic/NNN shared/NNN"
+    echo ""
+    exit 1
+}
+
 validate_test_name()
 {
     case "$1" in
 	btrfs*|cifs*|ext4*|generic*|shared*|udf*|xfs*) ;;
 	*)
-	    echo "Invalid test name: $1"
+	    echo "Invalid test name: $1\n"
+	    print_help
+	    exit 1
+	    ;;
+    esac
+}
+
+validate_config_name()
+{
+    CONFDIR="$DIR/test-appliance/files/root/conf"
+    if test -d "$CONFDIR"
+    then
+	if test -f "$CONFDIR/$1"
+	then
+	    return
+	else
+	    echo "Invalid config name: $1\n"
+	    print_help
+	    exit 1
+	fi
+    fi
+
+    # Fallback in case we are installed stand-alone
+    case "$1" in
+	1k) ;;
+	4k) ;;
+	bigalloc) ;;
+	bigalloc_1k) ;;
+	data_journal) ;;
+	dioread_nolock) ;;
+	encrypt) ;;
+	encrypt-nodelalloc) ;;
+	ext3) ;;
+	ext3conv) ;;
+	inline) ;;
+	metacsum) ;;
+	nojournal) ;;
+	xfs) ;;
+	*)
+	    echo "Invalid config name: $1"
 	    exit 1
 	    ;;
     esac
 }
 
 while [ "$1" != "" ]; do
-  case $1 in
-    -a)
-      DO_AEX=""
-      ;;
-    -c)	shift
-      FSTESTCFG=$1
-      ;;
-    -C) shift
-      FSTESTOPT="$FSTESTOPT,count,$1"
-      ;;
-    -m) shift
-      MNTOPTS=$1
-      ;;
-    -r) shift
-      MEM=$1
-      ;;
-    -g) shift
-      FSTESTSET="$FSTESTSET,-g,$1"
-      ;;
-    -h|--help|help)
-      echo "Usage: $0 [<OPTIONS>] smoke|full"
-      echo "Usage: $0 [<OPTIONS>] <test> ..."
-      echo "Usage: $0 [<OPTIONS>] -g <group> ..."
-      echo "Usage: $0 shell|maint"
-      echo " "
-      echo "Common options are:"
-      echo "	-a		- Disable auto-exclude; run all tests"
-      echo "	-c config	- Specify a file system configuration"
-      echo "	-C count	- Run the specified tests multiple times"
-      echo "	-I image	- Use this test appliance image"
-      echo "	-m mountopts	- Append mount options to fs config"
-      echo "	-n nr_cpus	- Specify the number of cpu's"
-      echo "	-N		- Enable networking (requires root)"
-      echo "	-o opts		- Extra kernel command line options"
-      echo "	-r ram		- Specify memory to be used in megabytes"
-      echo "	-X test		- Exclude test from running"
-      echo "	--kernel file	- Boot the specified kernel"
-      echo "	--no-log	- Don't save the log file for this run"
-      echo " "
-      echo "Common file system configurations are:"
-      echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
-      echo "	data_journal bigalloc bigalloc_1k inline"
-      echo " "
-      exit 1
-      ;;
-    -I) shift
-      ROOT_FS=$1
-      ;;
-    -n) shift
-      NR_CPU=$1
-      ;;
-    -o) shift
-      EXTRA_ARG=$1
-      ;;
-    -v)
-      if test "$V" = "1" ; then
-      	  QUIET=""
-	  V=2
-      else
-          QUIET="systemd.show_status=auto systemd.log_level=crit"
-	  V=1
-      fi
-      ;;
-    -N)
-      DO_NET=yes
-      ;;
-    -X) shift
-	if test -n "$FSTESTEXC" ; then
-	    FSTESTEXC="$FSTESTEXC,$1"
-	else
-	    FSTESTEXC="$1"
-	fi
-	;;
-    --no-log)
-      SKIP_LOG=yes
-      ;;
-    --log)
-      SKIP_LOG=no
-      ;;
-    --kernel) shift
-      KERNEL=$1
-      OVERRIDE_KERNEL=$1
-      ;;
-    smoke)
-      FSTESTCFG=4k
-      FSTESTSET="$FSTESTSET,-g,quick"
-      ;;
-    quick)
-      FSTESTSET="$FSTESTSET,-g,quick"
-      ;;
-    full)
-      FSTESTSET="$FSTESTSET,-g,auto"
-      ;;
-    shell)
-      ARG="cmd=maint"
-      ;;
-    maint)
-      ARG="cmd=maint"
-      EPH="-root_ephemeral=no"
-      SNAPSHOT=""
-      ;;
-    ver)
-      ARG="cmd=ver"
-      ;;
-    *)
-      validate_test_name "$1"
-      FSTESTSET="$FSTESTSET,$1"
-      ;;
-  esac
-  shift
+    case $1 in
+	-a)
+	    DO_AEX=""
+	    ;;
+	-c)
+	    shift
+	    validate_config_name "$1"
+	    FSTESTCFG=$1
+	    ;;
+	-C) shift
+	    FSTESTOPT="$FSTESTOPT,count,$1"
+	    ;;
+	-m) shift
+	    MNTOPTS=$1
+	    ;;
+	-r) shift
+	    MEM=$1
+	    ;;
+	-g) shift
+	    FSTESTSET="$FSTESTSET,-g,$1"
+	    ;;
+	-h|--help|help)
+	    print_help
+	    ;;
+	-I) shift
+	    ROOT_FS=$1
+	    ;;
+	-n) shift
+	    NR_CPU=$1
+	    ;;
+	-o) shift
+	    EXTRA_ARG=$1
+	    ;;
+	-v)
+	    if test "$V" = "1" ; then
+		QUIET=""
+		V=2
+	    else
+		QUIET="systemd.show_status=auto systemd.log_level=crit"
+		V=1
+	    fi
+	    ;;
+	-N)
+	    if test "$GCE_XFSTESTS" != "yes" ; then
+		DO_NET=yes
+	    else
+		print_help
+	    fi
+	    ;;
+	-X) shift
+	    if test -n "$FSTESTEXC" ; then
+		FSTESTEXC="$FSTESTEXC,$1"
+	    else
+		FSTESTEXC="$1"
+	    fi
+	    ;;
+	--no-action)
+	    NO_ACTION="echo Would execute:\n\t"
+	    SKIP_LOG=yes
+	    ;;
+	--no-log)
+	    if test "$GCE_XFSTESTS" != "yes" ; then
+		SKIP_LOG=yes
+	    else
+		print_help
+	    fi
+	    ;;
+	--log)
+	    if test "$GCE_XFSTESTS" != "yes" ; then
+		SKIP_LOG=no
+	    else
+		print_help
+	    fi
+	    ;;
+	--kernel) shift
+		  KERNEL=$1
+		  OVERRIDE_KERNEL=$1
+		  ;;
+	smoke)
+	    FSTESTCFG=4k
+	    FSTESTSET="$FSTESTSET,-g,quick"
+	    ;;
+	quick)
+	    FSTESTSET="$FSTESTSET,-g,quick"
+	    ;;
+	full)
+	    FSTESTSET="$FSTESTSET,-g,auto"
+	    ;;
+	shell)
+	    ARG="cmd=maint"
+	    ;;
+	maint)
+	    if test "$GCE_XFSTESTS" != "yes" ; then
+		ARG="cmd=maint"
+		EPH="-root_ephemeral=no"
+		SNAPSHOT=""
+	    else
+		print_help
+	    fi
+	    ;;
+	ver)
+	    ARG="cmd=ver"
+	    ;;
+	-*)
+	    print_help
+	    ;;
+	*)
+	    validate_test_name "$1"
+	    FSTESTSET="$FSTESTSET,$1"
+	    ;;
+    esac
+    shift
 done
+
+if test -z "$FSTESTSET"
+then
+    echo "No tests specified!\n"
+    print_help
+    exit 1
+fi
 
 if test "$ARG" = "cmd=maint" -a -z "$SKIP_LOG" ; then
   SKIP_LOG=yes
