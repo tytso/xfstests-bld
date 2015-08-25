@@ -56,7 +56,7 @@ case "$1" in
 	for i in $l
 	do
 	    gcloud compute --project "$GCE_PROJECT" instances \
-			describe $i --format=json > $inst_info
+			describe --zone $GCE_ZONE $i --format=json > $inst_info
 	    kver=$(cat $inst_info | jq \
 		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
 			sed -e 's/^"//' -e 's/"$//' \
