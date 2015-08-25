@@ -87,7 +87,8 @@ gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
 
 echo -n "Waiting for bootable image setup"
 
-while gcloud compute instances describe xfstests-bld --zone $GCE_ZONE >& /dev/null
+while gcloud compute --project "$GCE_PROJECT" instances \
+	     describe xfstests-bld --zone $GCE_ZONE >& /dev/null
 do
     echo -n "."
     sleep 10

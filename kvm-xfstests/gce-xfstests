@@ -70,8 +70,8 @@ case "$1" in
 	exit 0
 	;;
     rm|rm-instances|abort|abort-instances)
-	if ! gcloud compute instances describe "$2" \
-	     --zone $GCE_ZONE > /dev/null 2>&1
+	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
+	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
@@ -138,8 +138,8 @@ case "$1" in
 	exit 0
 	;;
     ssh)
-	if ! gcloud compute instances describe "$2" \
-	     --zone $GCE_ZONE > /dev/null 2>&1
+	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
+	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
@@ -330,6 +330,6 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
 case "$ARG" in
     cmd=maint*)
 	sleep 1
-	$NO_ACTION gcloud compute ssh $INSTANCE
+	$NO_ACTION gcloud compute --project "GCE_PROJECT" ssh $INSTANCE
 	;;
 esac
