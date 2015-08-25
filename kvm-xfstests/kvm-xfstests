@@ -16,6 +16,11 @@ API="1.1"
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
 
+if ! test -f "$KERNEL"; then
+     echo "$KERNEL: kernel not found"
+     exit 1
+fi
+
 if test -z "$DO_NET" ; then
    echo "Networking disabled."
    NET="-net none "

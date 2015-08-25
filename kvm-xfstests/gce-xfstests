@@ -12,10 +12,10 @@ GCE_XFSTESTS=yes
 . $DIR/config
 
 # Use different defaults for GCE because the background ruby monitoring
-# program uses extra memory --- the n1-standard-2 machine type has 3.75 GB,
+# program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
 # so use that.
 NR_CPU=2
-MEM=3840
+MEM=7680
 
 # We use ROOT_FS for the GCE image; this can be set by the -I option
 ROOT_FS="xfstests"
@@ -202,20 +202,22 @@ then
     GCE_KERNEL=$KERNEL
 fi
 
-if test -n "$OVERRIDE_KERNEL"
+if test "$OVERRIDE_KERNEL" = "none"
+then
+   GCE_KERNEL=""
+elif test -n "$OVERRIDE_KERNEL"
 then
     GCE_KERNEL=$OVERRIDE_KERNEL
     GS_KERNEL=gs://$GS_BUCKET/bzImage-$DATECODE-onetime
 fi
 
-if ! test -f "$GCE_KERNEL"
+if test -z "$NO_ACTION" -a -n "$GCE_KERNEL"
 then
-    echo "Can't find kernel at $GCE_KERNEL"
-    exit 1
-fi
-
-if test -z "$NO_ACTION"
-then
+    if ! test -f "$GCE_KERNEL"
+    then
+	echo "Can't find kernel at $GCE_KERNEL"
+	exit 1
+    fi
     LOCAL_HASH=$(gsutil hash $GCE_KERNEL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
     REMOTE_HASH=$(gsutil stat $GS_KERNEL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
@@ -224,7 +226,10 @@ then
     fi
 fi
 
-ARG="$ARG kexec=$GS_KERNEL"
+if test -n "$GCE_KERNEL"
+then
+    ARG="$ARG kexec=$GS_KERNEL"
+fi
 
 case $NR_CPU in
     1)
@@ -263,32 +268,41 @@ case $NR_CPU in
 	;;
 esac
 
-if test $MT_CPU -eq 1
+if test -n "$MACHTYPE"
 then
-    MT=n1-standard-1
-    RAM=$RAM_N
+    case "$MACHTYPE" in
+	f1-micro) RAM=614 ;;
+	g1-micro) RAM=1740 ;;
+    esac
+    MT=$MACHTYPE
 else
-    if test $MEM -le $RAM_L
+    if test $MT_CPU -eq 1
     then
-	MT=n1-highcpu-$MT_CPU
-	RAM=$RAM_L
-    elif test $MEM -le $RAM_N
-    then
-	MT=n1-standard-$MT_CPU
+	MT=n1-standard-1
 	RAM=$RAM_N
     else
-	MT=n1-highmem-$MT_CPU
-	RAM=$RAM_H
+	if test $MEM -le $RAM_L
+	then
+	    MT=n1-highcpu-$MT_CPU
+	    RAM=$RAM_L
+	elif test $MEM -le $RAM_N
+	then
+	    MT=n1-standard-$MT_CPU
+	    RAM=$RAM_N
+	else
+	    MT=n1-highmem-$MT_CPU
+	    RAM=$RAM_H
+	fi
     fi
 fi
 
-if test $MEM -ge $RAM
+if test -z "$MACHTYPE" -a -n "$RAM" && test $MEM -gt "$RAM"
 then
     echo "Warning: requested $MEM memory but only $RAM available"
     echo "with $MT_CPU cpus"
 fi
 
-if test $MEM -lt $RAM
+if test -z "$RAM" || test $MEM -lt "$RAM"
 then
     ARG="$ARG mem=$MEM"
 fi
@@ -329,7 +343,10 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
 
 case "$ARG" in
     cmd=maint*)
-	sleep 1
-	$NO_ACTION gcloud compute --project "GCE_PROJECT" ssh $INSTANCE
+	if test -z "$NO_ACTION"
+	then
+	    sleep 1
+	fi
+	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh $INSTANCE
 	;;
 esac

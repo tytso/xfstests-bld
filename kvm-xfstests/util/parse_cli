@@ -8,11 +8,7 @@ print_help ()
     echo "Usage: $PROG [<OPTIONS>] smoke|full"
     echo "Usage: $PROG [<OPTIONS>] <test> ..."
     echo "Usage: $PROG [<OPTIONS>] -g <group> ..."
-    if test "$GCE_XFSTESTS" != "yes" ; then
-	echo "Usage: $PROG [<OPTIONS>] shell|maint"
-    else
-	echo "Usage: $PROG [<OPTIONS>] shell"
-    fi
+    echo "Usage: $PROG [<OPTIONS>] shell|maint"
     echo ""
     echo "Common options are:"
     echo "	-a		- Disable auto-exclude; run all tests"
@@ -172,6 +168,15 @@ while [ "$1" != "" ]; do
 		  KERNEL=$1
 		  OVERRIDE_KERNEL=$1
 		  ;;
+	--machtype)
+	    if test "$GCE_XFSTESTS" = "yes"
+	    then
+		shift
+		MACHTYPE=$1
+	    else
+		print_help
+	    fi
+	    ;;
 	smoke)
 	    FSTESTCFG=4k
 	    FSTESTSET="$FSTESTSET,-g,quick"
@@ -191,7 +196,9 @@ while [ "$1" != "" ]; do
 		EPH="-root_ephemeral=no"
 		SNAPSHOT=""
 	    else
-		print_help
+		ARG="cmd=maint"
+		MACHTYPE="f1-micro"
+		OVERRIDE_KERNEL="none"
 	    fi
 	    ;;
 	ver)
@@ -229,11 +236,6 @@ fi
 
 if test -d "$KERNEL" ; then
     KERNEL=$KERNEL/arch/x86/boot/bzImage
-fi
-
-if ! test -f "$KERNEL"; then
-     echo "$KERNEL: kernel not found"
-     exit 1
 fi
 
 FSTESTOPT=$(echo $FSTESTOPT | sed -e 's/^,//')
