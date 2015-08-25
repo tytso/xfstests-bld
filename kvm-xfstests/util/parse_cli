@@ -208,7 +208,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
-if test -z "$FSTESTSET"
+if test -z "$FSTESTSET" -a -z "$ARG"
 then
     echo "No tests specified!\n"
     print_help
