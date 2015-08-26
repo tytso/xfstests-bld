@@ -49,7 +49,7 @@ then
 	poweroff -f > /dev/null 2>&1
 fi
 
-REGEXP="( Linux version )|(^FSTEST)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)"
+REGEXP="( Linux version )|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)"
 REGEXP_FAILURE="(^FSTEST)|(^BEGIN)|(^Failures: )|(^Passed)"
 
 if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
