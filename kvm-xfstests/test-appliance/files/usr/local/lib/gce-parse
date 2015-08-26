@@ -47,5 +47,3 @@ then
 fi
 
 kexec /run/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestopt=$fstestopt fstesttz=$fstesttz fstesttyp=$fstesttyp fstestapi=$fstestapi"
-
-

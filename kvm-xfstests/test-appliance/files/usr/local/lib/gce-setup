@@ -91,3 +91,11 @@ case "$kexec" in
 	gsutil rm "$kexec"
 	;;
 esac
+
+for i in /usr/sbin/rsyslogd /usr/sbin/sshd
+do
+    pgrep -f $i | while read PID
+    do
+	echo -1000 > /proc/$PID/oom_score_adj
+    done
+done
