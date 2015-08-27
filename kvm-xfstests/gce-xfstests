@@ -33,6 +33,79 @@ fi
 
 QUIET="quiet loglevel=0"
 
+get_local_hash()
+{
+    LOCAL_HASH=$(gsutil hash $1 2> /dev/null | grep "Hash (md5)" \
+			| awk '{print $3}')
+}
+
+get_remote_hash()
+{
+    REMOTE_HASH=$(gsutil stat $1 2> /dev/null | grep "Hash (md5)" \
+			 | awk '{print $3}')
+}
+
+do_get_results_uri()
+{
+    case "$1" in
+	gs://*)
+	    URI="$1"
+	    ;;
+	results*)
+	    URI="gs://$GS_BUCKET/$1"
+	    ;;
+	[0-9]*)
+	    URI=$(gsutil ls "gs://$GS_BUCKET/results.$1.*.tar.xz" \
+			 2>/dev/null)
+	    if test -z "$URI"
+	    then
+		echo "No results found with datecode: $1"
+		exit 1
+	    fi
+	    ;;
+    esac
+}
+
+do_get_results()
+{
+    do_get_results_uri "$1"
+    TARBALL=/tmp/$(basename $URI)
+    if test -n "$do_checksum"
+    then
+	get_local_hash $TARBALL
+	get_remote_hash $URI
+	if test "$LOCAL_HASH" != "$REMOTE_HASH"
+	then
+	    gsutil cp $URI $TARBALL 2> /dev/null
+	fi
+    else
+	if ! test -f $TARBALL
+	then
+	    gsutil cp $URI $TARBALL 2> /dev/null
+	fi
+    fi
+    if ! test -f $TARBALL
+    then
+	echo "Couldn't download $TARBALL from $URI"
+	return 1
+    fi
+    if test -n "$do_unpack"
+    then
+	DIRNAME=/tmp/$(basename $URI | sed -e 's/\(results.[0-9]*\).*/\1/' -e s'/\./-/')
+	/bin/rm -rf $DIRNAME 2> /dev/null
+	mkdir -p $DIRNAME
+	xzcat < $TARBALL | tar -C $DIRNAME -xf -
+	echo Unpacked results at $DIRNAME
+	return 0
+    fi
+    if test -n "do_summary"
+    then
+	xzcat < $TARBALL | tar -Oxf - ./runtests.log | $DIR/get-results -
+    else
+	xzcat < $TARBALL | tar -Oxf - ./runtests.log
+    fi
+}
+
 case "$1" in
     ls|ls-instances)
 	l=$(gcloud compute --project "$GCE_PROJECT" instances list \
@@ -97,11 +170,18 @@ case "$1" in
 	gcloud compute --project "$GCE_PROJECT" disks delete $* \
 	exit 0
 	;;
-    ls-gcs)
+    ls-results|ls-gcs)
+	if test "$1" = "ls-gcs"
+	then
+	    do_all=yes
+	fi
 	shift
 	for i in $*
 	do
 	    case $i in
+		--all|-a)
+		    do_all=yes
+		    ;;
 		-*)
 		    opt="$opt $i"
 		    ;;
@@ -112,29 +192,43 @@ case "$1" in
 	done
 	if test -z "$arg"
 	then
-	    arg="gs://$GS_BUCKET"
+	    if test -n "$do_all"
+	    then
+		arg="gs://$GS_BUCKET"
+	    else
+		arg="gs://$GS_BUCKET/results.*"
+	    fi
 	fi
 	gsutil ls $opt $arg
 	exit 0
 	;;
-    rm-gcs)
+    rm-results|rm-gcs)
+	shift
+	for i in $*
+	do
+	    do_get_results_uri $i
+	    echo gsutil rm $URI
+	done
+	exit 0
+	;;
+    get-results)
 	shift
 	for i in $*
 	do
 	    case $i in
-		-*)
-		    opt="$opt $i"
+		--checksum|-c)
+		    do_checksum=yes
+		    ;;
+		--unpack)
+		    do_unpack=yes
+		    ;;
+		--summary|-s)
+		    do_summary=yes
 		    ;;
 		*)
-		    arg="$arg gs://$GS_BUCKET/$i"
-		    ;;
+		    do_get_results $i
 	    esac
 	done
-	if test -z "$arg"
-	then
-	    arg="gs://$GS_BUCKET"
-	fi
-	gsutil rm $opt $arg
 	exit 0
 	;;
     ssh)
@@ -218,8 +312,8 @@ then
 	echo "Can't find kernel at $GCE_KERNEL"
 	exit 1
     fi
-    LOCAL_HASH=$(gsutil hash $GCE_KERNEL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
-    REMOTE_HASH=$(gsutil stat $GS_KERNEL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
+    get_local_hash $GCE_KERNEL
+    get_remote_hash $GS_KERNEL
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
 	gsutil cp $GCE_KERNEL $GS_KERNEL
