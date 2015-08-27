@@ -207,7 +207,7 @@ case "$1" in
 	for i in $*
 	do
 	    do_get_results_uri $i
-	    echo gsutil rm $URI
+	    gsutil rm $URI
 	done
 	exit 0
 	;;
