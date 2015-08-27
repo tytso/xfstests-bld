@@ -4,7 +4,7 @@ REGEXP="( Linux version )|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT
 
 case "$1" in
     --failures|-F)
-	REGEXP="(^BEGIN)|(^Failures: )|(^Passed)"
+	REGEXP="(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)"
 	do_failure="yes"
 	shift
 	;;
