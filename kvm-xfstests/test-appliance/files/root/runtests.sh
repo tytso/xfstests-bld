@@ -91,8 +91,21 @@ echo CPUS:      \"$CPUS\" >> /results/run-stats
 echo MEM:       \"$MEM\" >> /results/run-stats
 if test -n "$RUN_ON_GCE"
 then
-   GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-   echo GCE ID:    \"$GCE_ID\" >> /results/run-stats
+    . /usr/local/lib/gce-funcs
+    DMI_MEM=$(sudo dmidecode -t memory 2> /dev/null | \
+		     grep "Maximum Capacity: " | \
+		     sed -e 's/.*: //')
+    if test $? -eq 0
+    then
+	echo "MEM: $DMI_MEM (Max capacity)" >> /results/run-stats
+    fi
+    PARAM_MEM=$(gce_attribute mem)
+    if test -n "$PARAM_MEM"
+    then
+	echo "MEM: $PARAM_MEM (restricted by cmdline)" >> /results/run-stats
+    fi
+    GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
+    echo GCE ID:    \"$GCE_ID\" >> /results/run-stats
 fi
 
 cat /results/run-stats
