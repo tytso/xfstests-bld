@@ -19,6 +19,21 @@ else
     echo $GCE_ID > /run/gce_id
 fi
 
+if test -f /run/datecode
+then
+    DATECODE=$(cat /run/datecode)
+else
+    case "$HOSTNAME" in
+	xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+	    DATECODE=$(echo $HOSTNAME | sed -e 's/xfstests-//')
+	    ;;
+	*)
+	    DATECODE=$(date +%Y%m%d%H%M)
+	    ;;
+    esac
+    echo $DATECODE > /run/datecode
+fi
+
 if test -z "$MDS_PREFIX"
 then
     declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1

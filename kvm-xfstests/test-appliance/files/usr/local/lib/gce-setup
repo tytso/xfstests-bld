@@ -6,18 +6,8 @@ SCRATCH_DEV=/dev/sdc
 . /root/test-config
 . /usr/local/lib/gce-funcs
 
-hostname=$(hostname)
-case "$hostname" in
-    xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
-	RESULTS_DSK=${hostname}-results
-	SCRATCH_DSK=${hostname}-scratch
-	DATECODE=$(echo $hostname | sed -e 's/xfstests-//')
-	;;
-    *)
-	DATECODE=$(date +%Y%m%d%H%M)
-	RESULTS_DSK=xfstests-$DATECODE-results
-	SCRATCH_DSK=xfstests-$DATECODE-scratch
-esac
+RESULTS_DSK=xfstests-$DATECODE-results
+SCRATCH_DSK=xfstests-$DATECODE-scratch
 
 gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
        --zone "$ZONE" --type "pd-standard"

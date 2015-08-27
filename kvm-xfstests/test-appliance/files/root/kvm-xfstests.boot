@@ -56,14 +56,6 @@ if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
     if test -n "$RUN_ON_GCE"
     then
-	hostname=$(hostname)
-	case "$hostname" in
-	    xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
-		DATECODE=$(echo $hostname | sed -e 's/xfstests-//')
-		;;
-	    *)
-		DATECODE=$(date +%Y%m%d%H%M)
-	esac
 	/usr/local/lib/gce-setup
 	/root/runtests.sh >& /results/runtests.log
 	egrep "$REGEXP" < /results/runtests.log > /results/summary
