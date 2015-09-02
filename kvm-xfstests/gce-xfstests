@@ -98,9 +98,9 @@ do_get_results()
 	echo Unpacked results at $DIRNAME
 	return 0
     fi
-    if test -n "do_summary"
+    if test -n "$do_summary"
     then
-	xzcat < $TARBALL | tar -Oxf - ./runtests.log | $DIR/get-results -
+	xzcat < $TARBALL | tar -Oxf - ./runtests.log | $DIR/get-results "$do_summary" -
     else
 	xzcat < $TARBALL | tar -Oxf - ./runtests.log
     fi
@@ -223,7 +223,10 @@ case "$1" in
 		    do_unpack=yes
 		    ;;
 		--summary|-s)
-		    do_summary=yes
+		    do_summary="-s"
+		    ;;
+		--failures|-F)
+		    do_summary="-F"
 		    ;;
 		*)
 		    do_get_results $i
