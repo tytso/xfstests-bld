@@ -167,7 +167,7 @@ case "$1" in
 	;;
     rm-disks|rm-disk)
 	shift
-	gcloud compute --project "$GCE_PROJECT" disks delete $* \
+	gcloud compute --project "$GCE_PROJECT" disks delete $*
 	exit 0
 	;;
     ls-results|ls-gcs)
