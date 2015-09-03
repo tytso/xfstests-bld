@@ -115,6 +115,9 @@ for i in btrfs ext4 generic shared udf xfs config; do
     rm -rf /results/results-*/$i
 done
 
+cp /proc/slabinfo /results/slabinfo.before
+cp /proc/meminfo /results/meminfo.before
+
 free -m
 for i in $FSTESTCFG
 do
@@ -217,3 +220,6 @@ END	{ if (NR > 0) {
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
+
+cp /proc/slabinfo /results/slabinfo.after
+cp /proc/meminfo /results/meminfo.after
