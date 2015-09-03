@@ -240,7 +240,7 @@ case "$1" in
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
-	gcloud compute --project "$GCE_PROJECT" -q ssh "$2" \
+	gcloud compute --project "$GCE_PROJECT" -q ssh root@"$2" \
 	       --zone "$GCE_ZONE"
 	exit 0
 	;;
@@ -444,6 +444,6 @@ case "$ARG" in
 	then
 	    sleep 1
 	fi
-	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh $INSTANCE
+	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh root@$INSTANCE
 	;;
 esac
