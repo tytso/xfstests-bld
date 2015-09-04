@@ -293,6 +293,11 @@ case "$ARG" in
 	;;
 esac
 
+if test -n "$INSTANCE_NAME"
+then
+    INSTANCE="$INSTANCE_NAME"
+fi
+
 GS_KERNEL=gs://$GS_BUCKET/bzImage
 if test -z "$GCE_KERNEL"
 then

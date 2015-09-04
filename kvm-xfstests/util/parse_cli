@@ -177,6 +177,14 @@ while [ "$1" != "" ]; do
 		print_help
 	    fi
 	    ;;
+	--instance-name)
+	    if test "$GCE_XFSTESTS" = "yes" ; then
+		shift
+		INSTANCE_NAME=$1
+	    else
+		print_help
+	    fi
+	    ;;
 	smoke)
 	    FSTESTCFG=4k
 	    FSTESTSET="$FSTESTSET,-g,quick"
