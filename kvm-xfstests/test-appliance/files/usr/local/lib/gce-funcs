@@ -2,26 +2,30 @@
 
 instance=$(hostname)
 
-if test -f /run/gce_zone
+GCE_STATE_DIR=/var/lib/gce-xfstests
+
+mkdir -p $GCE_STATE_DIR
+
+if test -f $GCE_STATE_DIR/gce_zone
 then
-    ZONE=$(cat /run/gce_zone)
+    ZONE=$(cat $GCE_STATE_DIR/gce_zone)
 else
     ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2> /dev/null)
     ZONE=$(basename $ZONE)
-    echo $ZONE > /run/gce_zone
+    echo $ZONE > $GCE_STATE_DIR/gce_zone
 fi
 
-if test -f /run/gce_id
+if test -f $GCE_STATE_DIR/gce_id
 then
-    GCE_ID=$(cat /run/gce_id)
+    GCE_ID=$(cat $GCE_STATE_DIR/gce_id)
 else
     GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-    echo $GCE_ID > /run/gce_id
+    echo $GCE_ID > $GCE_STATE_DIR/gce_id
 fi
 
-if test -f /run/datecode
+if test -f $GCE_STATE_DIR/datecode
 then
-    DATECODE=$(cat /run/datecode)
+    DATECODE=$(cat $GCE_STATE_DIR/datecode)
 else
     case "$HOSTNAME" in
 	xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
@@ -31,7 +35,7 @@ else
 	    DATECODE=$(date +%Y%m%d%H%M)
 	    ;;
     esac
-    echo $DATECODE > /run/datecode
+    echo $DATECODE > $GCE_STATE_DIR/datecode
 fi
 
 if test -z "$MDS_PREFIX"
@@ -97,10 +101,10 @@ gce_attribute()
 	get_metadata_value_with_retries attributes/$1
 }
 
-if test -f /run/gs_bucket
+if test -f $GCE_STATE_DIR/gs_bucket
 then
-    GS_BUCKET=$(cat /run/gs_bucket)
+    GS_BUCKET=$(cat $GCE_STATE_DIR/gs_bucket)
 else
     GS_BUCKET=$(gce_attribute gs_bucket)
-    echo $GS_BUCKET > /run/gs_bucket
+    echo $GS_BUCKET > $GCE_STATE_DIR/gs_bucket
 fi

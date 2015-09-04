@@ -94,6 +94,7 @@ logger -s "xfstests GCE appliance build completed (build instance id $ID)"
 journalctl > /image-build.log
 
 . /usr/local/lib/gce-funcs
+rm -rf $GCE_STATE_DIR
 
 fast=$(gce_attribute fast)
 
