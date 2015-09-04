@@ -108,15 +108,15 @@ do_get_results()
 
 case "$1" in
     ls|ls-instances)
-	l=$(gcloud compute --project "$GCE_PROJECT" instances list \
-		--regexp ^xfstests.* --format=json | jq ".[].name" | \
-		   sed -e 's/^"//' -e 's/"$//')
 	if test "$2" = "--gce"
 	then
 	   gcloud compute --project "$GCE_PROJECT" instances list \
 		  --regexp ^xfstests.*
 	   exit 0
 	fi
+	l=$(gcloud compute --project "$GCE_PROJECT" instances list \
+		--regexp ^xfstests.* --format=json | jq ".[].name" | \
+		   sed -e 's/^"//' -e 's/"$//')
 	if test "$2" != "-l"
 	then
 	    for i in $l
