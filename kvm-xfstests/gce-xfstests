@@ -262,6 +262,11 @@ case "$1" in
 	done
 	exit 0
 	;;
+    setup)
+	gcloud config set core/project $GCE_PROJECT
+	gcloud config set compute/zone $GCE_ZONE
+	exit 0
+	;;
     ssh)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
 	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
