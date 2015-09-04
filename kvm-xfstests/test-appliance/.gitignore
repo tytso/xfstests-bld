@@ -5,3 +5,4 @@ var.cache.apt.archives
 var.lib.apt.lists
 mirror
 config.custom
+!xfstests

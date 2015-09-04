@@ -41,10 +41,16 @@ postfix	postfix/mailname	string	xfstests.internal
 postfix	postfix/main_mailer_type	select	Local only
 EOF
 apt-get install -y $PACKAGES
-gsutil cp gs://$BUCKET/xfstests.tar.gz /tmp/xfstests.tar.gz
-cd /root
-tar xfz /tmp/xfstests.tar.gz
-rm /tmp/xfstests.tar.gz
+
+gsutil cp gs://$BUCKET/xfstests.tar.gz /run/xfstests.tar.gz
+tar -C /root -xzf /run/xfstests.tar.gz
+rm /run/xfstests.tar.gz
+
+gsutil cp gs://$BUCKET/files.tar.gz /run/files.tar.gz
+tar -C / -xzf /run/files.tar.gz
+rm /run/files.tar.gz
+mv /usr/local/lib/gce-local.config /root/xfstests/local.config
+
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
 echo "export GS_BUCKET=$BUCKET" >> /tmp/test-config
@@ -68,20 +74,12 @@ mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
-mkdir -p /usr/local/sbin /usr/local/lib
-mv /root/sbin/* /usr/local/sbin
-mv /root/lib/gce-postfix-main.cf /etc/postfix/main.cf
-mv /root/lib/gce-local.config /root/xfstests/local.config
-mv /root/lib/* /usr/local/lib
-rmdir /root/sbin /root/lib
-
-mv /root/*.service /etc/systemd/system
 systemctl enable kvm-xfstests.service
 
-if gsutil -m cp gs://$BUCKET/*.deb /tmp
+if gsutil -m cp gs://$BUCKET/*.deb /run
 then
-    dpkg -i --ignore-depends=e2fsprogs /tmp/*.deb
-    rm -f /tmp/*.deb
+    dpkg -i --ignore-depends=e2fsprogs /run/*.deb
+    rm -f /run/*.deb
 fi
 
 gcloud components -q update

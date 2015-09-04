@@ -58,9 +58,8 @@ fi
 update_xfstests()
 {
    tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
-   rsync -avH files/* $ROOTDIR
+   rsync --exclude-from kvm-exclude-files -avH files/* $ROOTDIR
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests
-   find $ROOTDIR/root $ROOTDIR/usr/local -name gce-\* -print | xargs rm
 }
 
 finalize_rootfs()

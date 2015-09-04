@@ -55,24 +55,28 @@ then
     MACHTYPE=n1-standard-1
 fi
 
-t=$(mktemp /tmp/gce-create.XXXXXXXX)
-gunzip < $TARBALL > $t
-(cd files/root ; tar rf $t .)
-(cd files/etc/systemd/system ; tar rf $t .)
-(cd files/usr/local ; tar rf $t ./sbin ./lib)
-s=$(mktemp /tmp/gce-create.XXXXXXXX)
-gzip -9n < $t > $s
-
-LOCAL_HASH=$(gsutil hash $s 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
+LOCAL_HASH=$(gsutil hash $TARBALL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
 REMOTE_HASH=$(gsutil stat $GS_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
 if test "$LOCAL_HASH" != "$REMOTE_HASH"
 then
-	gsutil cp $s $GS_TARBALL
+	gsutil cp $TARBALL $GS_TARBALL
 fi
+
+t=$(mktemp /tmp/gce-create.XXXXXXXX)
 
 sed -e "s/@BUCKET@/$GS_BUCKET/" < gce-xfstests-bld.sh > $t
 gsutil cp $t gs://$GS_BUCKET/gce-xfstests-bld.sh
-rm -f $s $t
+
+tar -X gce-exclude-files -C files -cf - . | gzip -9n > $t
+GS_FILES_TARBALL=gs://$GS_BUCKET/files.tar.gz
+
+LOCAL_HASH=$(gsutil hash $t 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
+REMOTE_HASH=$(gsutil stat $GS_FILES_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
+if test "$LOCAL_HASH" != "$REMOTE_HASH"
+then
+	gsutil cp $t $GS_FILES_TARBALL
+fi
+rm -f $t
 
 gcloud compute --project "$GCE_PROJECT" -q instances delete xfstests-bld \
        --zone "$GCE_ZONE" 2> /dev/null
