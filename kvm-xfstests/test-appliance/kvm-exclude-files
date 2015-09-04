@@ -1,4 +1,6 @@
 root/xfstests/local.config
 etc/postfix/main.cf
+etc/lighttpd
+var/www
 gce-*
 *~

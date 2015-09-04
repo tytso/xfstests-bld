@@ -9,6 +9,23 @@ SCRATCH_DEV=/dev/sdc
 RESULTS_DSK=xfstests-$DATECODE-results
 SCRATCH_DSK=xfstests-$DATECODE-scratch
 
+/usr/local/lib/gce-logger disk setup
+
+cat > /var/www/varz <<EOF
+kernel_version $(uname -a)
+nr_cpus $(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
+total_mem $(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
+FSTESTCFG $FSTESTCFG
+FSTESTSET $FSTESTSET
+FSTESTOPT $FSTESTOPT
+FSTESTTYP $FSTESTTYP
+FSTESTAPI $FSTESTAPI
+FSTESTEXC $FSTESTEXC
+MNTOPTS $MNTOPTS
+EOF
+
+hostname > /var/www/hostname.inc
+
 gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
        --zone "$ZONE" --type "pd-standard"
 

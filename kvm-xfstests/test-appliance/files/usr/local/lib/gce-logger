@@ -1,7 +1,7 @@
 #!/bin/bash
 . /usr/local/lib/gce-funcs
 
-status=$(echo $* | sed -e 's/run xfstest //')
+status=$(echo $* | sed -e 's/^run xfstest //')
 if test -f /run/fstest-config
 then
     cfg="$(cat /run/fstest-config)"
@@ -14,5 +14,6 @@ then
 	   --metadata "status=$(date +%H:%M) $status" >& /dev/null &
     touch /run/last_logged
 fi
+echo $(date +%H:%M) $status > /var/www/statusz
 logger $cfg $*
 

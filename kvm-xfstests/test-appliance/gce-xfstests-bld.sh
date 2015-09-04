@@ -22,6 +22,7 @@ PACKAGES="bash-completion \
 	libsasl2-modules \
 	libssl1.0.0 \
 	libgdbm3 \
+	lighttpd \
 	lvm2 \
 	nano \
 	perl \
@@ -49,7 +50,9 @@ rm /run/xfstests.tar.gz
 gsutil cp gs://$BUCKET/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
-mv /usr/local/lib/gce-local.config /root/xfstests/local.config
+
+ln -s /results/runtests.log /var/www
+rm -rf /var/www/html
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config

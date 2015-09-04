@@ -265,6 +265,12 @@ case "$1" in
     setup)
 	gcloud config set core/project $GCE_PROJECT
 	gcloud config set compute/zone $GCE_ZONE
+	if test -z "$(gcloud compute firewall-rules list default-allow-http | sed -e 1d)"
+	then
+	    gcloud compute --project "$GCE_PROJECT" -q firewall-rules \
+		   create default-allow-http --allow tcp:80,icmp \
+		   --target-tags http-server
+	fi
 	exit 0
 	;;
     ssh)
@@ -465,7 +471,7 @@ then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"
 fi
 
-echo "Launching $MT..."
+echo "Launching $INSTANCE using $MT..."
 # echo "Using ARG: $ARG"
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
@@ -474,6 +480,7 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
+       --tags http-server \
        --image "$ROOT_FS"
 
 case "$ARG" in

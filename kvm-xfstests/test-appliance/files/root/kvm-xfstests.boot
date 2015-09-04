@@ -58,6 +58,8 @@ then
     then
 	/usr/local/lib/gce-setup
 	/root/runtests.sh >& /results/runtests.log
+
+	/usr/local/lib/gce-logger tests complete
 	egrep "$REGEXP" < /results/runtests.log > /results/summary
 	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
 	REPORT_EMAIL=$(gce_attribute report_email)

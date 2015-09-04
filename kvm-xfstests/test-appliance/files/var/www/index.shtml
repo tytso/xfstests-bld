@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>GCE xfstests</title>
+<style type="text/css" media="screen">
+html, body { height: 100%; }
+body { background: #e7e7e7; font-family: Verdana, sans-serif;
+font-size: 11pt; }
+a, a:visited { color: #000000; }
+#page { background: #ffffff; margin: 50px; border: 2px solid #c0c0c0;
+padding: 10px; }
+#header { background: #cc9900; border: 2px solid #7590ae; text-align:
+center; padding: 10px; color: #ffffff; }
+#header h1 { color: #000000; }
+#body { padding: 10px; }
+</style>
+</head>
+<body>
+<div id="page">
+ <div id="header">
+ <h1> GCE xfstests </h1>
+ <p> <A HREF="/"><!--#include virtual="hostname.inc" --></A> </p>
+ </div>
+ <div id="body">
+  <h2> Status </h2>
+  <p>
+  Date/Time: <!--#echo var="DATE_LOCAL" --> </br>
+  Status: <!--#include virtual="statusz" -->
+  </p>
+  <h2> Test Log </h2>
+  <iframe src="runtests.log" width="80%" height="700"></iframe>
+  <h2>Links</h2>
+  <p>
+    <a href="statusz">statusz</a>
+    <a href="varz">varz</a>
+    <a href="healthz">healthz</a>
+    <a href="runtests.log">runtests.log</a>
+  </p>
+ </div>
+</div>
+</body>
+</html>
