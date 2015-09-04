@@ -67,6 +67,14 @@ t=$(mktemp /tmp/gce-create.XXXXXXXX)
 sed -e "s/@BUCKET@/$GS_BUCKET/" < gce-xfstests-bld.sh > $t
 gsutil cp $t gs://$GS_BUCKET/gce-xfstests-bld.sh
 
+# Update the git-versions file
+if test -d ../../xfstests
+then
+    echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" \
+	 > ../../xfstests-bld.ver
+    cat ../../*.ver > files/root/xfstests/git-versions
+fi
+
 tar -X gce-exclude-files -C files -cf - . | gzip -9n > $t
 GS_FILES_TARBALL=gs://$GS_BUCKET/files.tar.gz
 
@@ -89,13 +97,19 @@ gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
        --scopes "$SCOPES" --image "$IMAGE" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "xfstests-bld"
 
-echo -n "Waiting for bootable image setup"
+echo -n "Waiting for bootable image setup."
 
+cnt=0
 while gcloud compute --project "$GCE_PROJECT" instances \
 	     describe xfstests-bld --zone $GCE_ZONE >& /dev/null
 do
-    echo -n "."
-    sleep 10
+    let cnt=$cnt+1
+    if test $cnt -ge 10
+    then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
 done
 echo " Done!"
 
