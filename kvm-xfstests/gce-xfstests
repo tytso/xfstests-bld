@@ -160,6 +160,34 @@ case "$1" in
 	done
 	exit 0
 	;;
+    start|start-instance|start-instances)
+	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
+	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	then
+	    echo "GCE instance $2 does not exist"
+	fi
+	shift
+	for i in "$*"
+	do
+	    gcloud compute --project "$GCE_PROJECT" -q instances start "$i" \
+		   --zone "$GCE_ZONE" &
+	done
+	exit 0
+	;;
+    stop|stop-instance|stop-instances)
+	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
+	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	then
+	    echo "GCE instance $2 does not exist"
+	fi
+	shift
+	for i in "$*"
+	do
+	    gcloud compute --project "$GCE_PROJECT" -q instances stop "$i" \
+		   --zone "$GCE_ZONE" &
+	done
+	exit 0
+	;;
     ls-disks|ls-disk)
 	gcloud compute --project "$GCE_PROJECT" disks list \
 	       --regexp ^xfstests.*
