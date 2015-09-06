@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# gce-kexec -- this script handles switching to the kernel to be
+# tested (using kexec), as well as those things that should be done as
+# soon as possible (such as transferring the sendgrid password to a
+# config file and erasing it)
 
 . /usr/local/lib/gce-funcs
 

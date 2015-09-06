@@ -13,10 +13,10 @@ fi
 
 . /root/test-config
 
-if test -e /usr/local/lib/gce-parse
+if test -e /usr/local/lib/gce-kexec
 then
     . /usr/local/lib/gce-funcs
-    /usr/local/lib/gce-parse
+    /usr/local/lib/gce-kexec
 fi
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
