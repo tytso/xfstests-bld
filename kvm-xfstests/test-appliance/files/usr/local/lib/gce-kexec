@@ -17,8 +17,8 @@ then
 	     > /etc/postfix/sasl_passwd
 	postmap /etc/postfix/sasl_passwd
 	postfix reload
-	gcloud compute instances -q add-metadata ${instance} \
-	       --metadata "sg_pass="
+	gcloud compute instances -q remove-metadata ${instance} \
+	       --keys sg_pass --zone "$ZONE"
     fi
 fi
 
