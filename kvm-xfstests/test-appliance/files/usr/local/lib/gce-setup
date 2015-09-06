@@ -42,10 +42,10 @@ gcloud compute -q instances attach-disk ${instance} \
        --device-name scratch --zone "$ZONE"
 
 gcloud compute -q instances set-disk-auto-delete ${instance} --auto-delete \
-       --disk "$SCRATCH_DSK" --zone "$ZONE"
+       --disk "$SCRATCH_DSK" --zone "$ZONE" &
 
 gcloud compute instances -q add-metadata ${instance} \
-	--metadata "kernel_version=$(uname -a)"
+	--metadata "kernel_version=$(uname -a)" &
 
 if ! test -b $RESULTS_DSK_DEV
 then
