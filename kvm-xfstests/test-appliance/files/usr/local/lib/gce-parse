@@ -17,6 +17,8 @@ then
     fi
 fi
 
+gcloud config set compute/zone $ZONE
+
 kexec=$(gce_attribute kexec)
 if test -z "$kexec" || grep -q fstestcfg /proc/cmdline; then exit 0; fi
 
