@@ -26,7 +26,8 @@ center; padding: 10px; color: #ffffff; }
   <h2> Status </h2>
   <p>
   Date/Time: <!--#echo var="DATE_LOCAL" --> </br>
-  Status: <!--#include virtual="statusz" -->
+  Status: <!--#include virtual="statusz" --> </br>
+  gce-xfstests command line: <!--#include virtual="cmdline" -->
   </p>
   <h2> Test Log </h2>
   <iframe src="runtests.log" width="80%" height="700"></iframe>

@@ -25,6 +25,7 @@ MNTOPTS $MNTOPTS
 EOF
 
 hostname > /var/www/hostname.inc
+gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
 gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
        --zone "$ZONE" --type "pd-standard"
@@ -70,6 +71,7 @@ w
 q
 EOF
 mount -t ext4 $RESULTS_DEV /results
+cp /var/www/cmdline /results
 
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)
