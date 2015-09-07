@@ -71,6 +71,12 @@ cat >> /etc/fstab <<EOF
 LABEL=results	/results ext4	noauto 0 2
 EOF
 
+ed /etc/lvm/lvm.conf <<EOF
+/issue_discards = /s/0/1/
+w
+q
+EOF
+
 echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> /etc/passwd
 echo "fsgqa:!::0:99999:7:::" >> /etc/shadow
 echo "fsgqa:x:31415:" >> /etc/group
