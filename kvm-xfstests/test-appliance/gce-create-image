@@ -47,12 +47,12 @@ done
 GS_SCRIPT=gs://$GS_BUCKET/gce-xfstests-bld.sh
 GS_TARBALL=gs://$GS_BUCKET/xfstests.tar.gz
 METADATA="startup-script-url=$GS_SCRIPT"
-MACHTYPE=n1-highmem-2
+GCE_MACHTYPE=n1-highmem-2
 
 if test "$fast" = "yes"
 then
     METADATA="$METADATA fast=yes"
-    MACHTYPE=n1-standard-1
+    GCE_MACHTYPE=n1-standard-1
 fi
 
 LOCAL_HASH=$(gsutil hash $TARBALL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
@@ -91,7 +91,7 @@ gcloud compute --project "$GCE_PROJECT" -q instances delete xfstests-bld \
 gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld 2> /dev/null
 
 gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
-       --zone "$GCE_ZONE" --machine-type $MACHTYPE \
+       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
        --network "default" --metadata "^ ^$METADATA" \
        --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" --image "$IMAGE" \

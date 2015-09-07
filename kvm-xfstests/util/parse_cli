@@ -107,6 +107,7 @@ while [ "$1" != "" ]; do
 	    ;;
 	-r) shift
 	    MEM=$1
+	    EXPLICIT_RAM=yes
 	    ;;
 	-g) shift
 	    FSTESTSET="$FSTESTSET,-g,$1"
@@ -119,6 +120,7 @@ while [ "$1" != "" ]; do
 	    ;;
 	-n) shift
 	    NR_CPU=$1
+	    EXPLICIT_CPU=yes
 	    ;;
 	-o) shift
 	    EXTRA_ARG=$1
@@ -147,7 +149,7 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	--no-action)
-	    NO_ACTION="echo Would execute:\n\t"
+	    NO_ACTION="echo -e Would execute:\n\t"
 	    SKIP_LOG=yes
 	    ;;
 	--no-log)
@@ -172,7 +174,7 @@ while [ "$1" != "" ]; do
 	    if test "$GCE_XFSTESTS" = "yes"
 	    then
 		shift
-		MACHTYPE=$1
+		GCE_MACHTYPE=$1
 	    else
 		print_help
 	    fi
@@ -205,7 +207,10 @@ while [ "$1" != "" ]; do
 		SNAPSHOT=""
 	    else
 		ARG="cmd=maint"
-		MACHTYPE="f1-micro"
+		if test -z "$GCE_MACHTYPE"
+		then
+		    GCE_MACHTYPE="f1-micro"
+		fi
 		OVERRIDE_KERNEL="none"
 	    fi
 	    ;;
