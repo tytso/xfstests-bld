@@ -76,4 +76,16 @@ then
 	/root/runtests.sh
 	poweroff -f > /dev/null 2>&1
     fi
+else
+    if test -n "$RUN_ON_GCE"
+    then
+	if test -n "$(gce_attribute kexec)"
+	then
+	    # If we kexec'ed into a test kernel, we probably want to
+	    # run tests, so set up the scratch volumes
+	    /usr/local/lib/gce-setup
+	    gcloud compute -q instances set-disk-auto-delete ${instance} \
+		   --auto-delete --disk "$instance-results" --zone "$ZONE" &
+	fi
+    fi
 fi
