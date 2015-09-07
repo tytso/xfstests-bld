@@ -8,6 +8,11 @@ then
     status="$cfg $status"
 fi
 
+if test -z "$HOOK_ARG"	# prevent recursion
+then
+    run_hooks logger $*
+fi
+
 if test -z "$(find /run/last_logged -mmin -1 -print 2> /dev/null)"
 then
     gcloud compute instances -q add-metadata ${instance} \

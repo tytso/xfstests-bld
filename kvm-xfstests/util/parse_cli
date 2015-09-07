@@ -148,6 +148,15 @@ while [ "$1" != "" ]; do
 		FSTESTEXC="$1"
 	    fi
 	    ;;
+	--hooks)
+	    if test "$GCE_XFSTESTS" = "yes"
+	    then
+		shift
+		GCE_HOOKS=$1
+	    else
+		print_help
+	    fi
+	    ;;
 	--no-action)
 	    NO_ACTION="echo -e Would execute:\n\t"
 	    SKIP_LOG=yes

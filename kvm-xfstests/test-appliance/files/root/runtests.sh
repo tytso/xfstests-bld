@@ -4,6 +4,14 @@ API_MAJOR=1
 API_MINOR=1
 . /root/test-config
 
+function gce_run_hooks()
+{
+    if test -n "$RUN_ON_GCE"
+    then
+	run_hooks $*
+    fi
+}
+
 if test -z "$FSTESTAPI" ; then
     echo "Missing TEST API!"
     umount /results
@@ -173,21 +181,24 @@ do
 	if test -f /tmp/exclude-tests ; then
 	    AEX="$AEX -E /tmp/exclude-tests"
 	fi
+	gce_run_hooks fs-config-begin $i
 	for j in $(seq 1 $RPT_COUNT) ; do
-	   bash ./check -T $AEX $FSTESTSET
-	   umount $TEST_DEV >& /dev/null
-	   if test "$FS" = "ext4" ; then
+	    gce_run_hooks pre-xfstests $i $j
+	    bash ./check -T $AEX $FSTESTSET
+	    gce_run_hooks post-xfstests $i $j
+	    umount $TEST_DEV >& /dev/null
+	    if test "$FS" = "ext4" ; then
 		/sbin/e2fsck -fy $TEST_DEV >& $RESULT_BASE/fsck.out
 		if test $? -gt 0 ; then
 		   cat $RESULT_BASE/fsck.out
 		fi
-	   elif test "$FS" = "xfs" ; then
+	    elif test "$FS" = "xfs" ; then
 		if ! xfs_repair -n $TEST_DEV >& /dev/null ; then
-		   xfs_repair $TEST_DEV
+		    xfs_repair $TEST_DEV
 		fi
-	   else
+	    else
 		/sbin/fsck.$FS $TEST_DEV
-	   fi
+	    fi
 	done
 	if test -n "$RUN_ON_GCE"
 	then
@@ -217,6 +228,7 @@ END	{ if (NR > 0) {
 	cp /proc/slabinfo $RESULT_BASE/slabinfo.after
 	cp /proc/meminfo $RESULT_BASE/meminfo.after
 	free -m
+	gce_run_hooks fs-config-end $i
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done

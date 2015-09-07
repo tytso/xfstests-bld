@@ -3,6 +3,8 @@
 . /root/test-config
 . /usr/local/lib/gce-funcs
 
+run_hooks pre-setup
+
 /usr/local/lib/gce-logger disk setup
 gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
@@ -44,3 +46,5 @@ do
 	echo -1000 > /proc/$PID/oom_score_adj
     done
 done
+
+run_hooks post-setup

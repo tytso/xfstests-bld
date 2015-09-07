@@ -369,6 +369,36 @@ then
     fi
 fi
 
+if test -z "$NO_ACTION" -a -n "$GCE_HOOKS"
+then
+    if ! test -e "$GCE_HOOKS"
+    then
+	echo "Can't find hooks file to upload at $GCE_HOOKS"
+	exit 1
+    fi
+    if test -d "$GCE_HOOKS"
+    then
+	tmpfile=$(mktemp)
+	tar -C "$GCE_HOOKS" -cf - . | gzip -9n > $tmpfile
+	GCE_HOOKS=$tmpfile
+	GS_HOOKS=gs://$GS_BUCKET/hooks.tar.gz
+    else
+	GS_HOOKS=gs://$GS_BUCKET/$(basename $GCE_HOOKS)
+    fi
+    get_local_hash $GCE_HOOKS
+    get_remote_hash $GS_HOOKS
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp $GCE_HOOKS $GS_HOOKS
+    fi
+    if test -n "$tmpfile"
+    then
+       /bin/rm -f "$tmpfile"
+       unset tmpfile
+    fi
+    ARG="$ARG hooks=$GS_HOOKS"
+fi
+
 if test -n "$GCE_KERNEL"
 then
     ARG="$ARG kexec=$GS_KERNEL"

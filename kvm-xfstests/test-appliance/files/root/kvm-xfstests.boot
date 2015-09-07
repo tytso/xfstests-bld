@@ -63,6 +63,7 @@ then
 	egrep "$REGEXP" < /results/runtests.log > /results/summary
 	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
 	REPORT_EMAIL=$(gce_attribute report_email)
+	run_hooks send-email
 	if test -n "$REPORT_EMAIL"
 	then
 	    mail -s "xfstests results $DATECODE - $(uname -r)" \
