@@ -170,6 +170,14 @@ while [ "$1" != "" ]; do
 		  KERNEL=$1
 		  OVERRIDE_KERNEL=$1
 		  ;;
+	--local-ssd)
+	    if test "$GCE_XFSTESTS" = "yes"
+	    then
+		DO_LOCAL_SSD=yes
+	    else
+		print_help
+	    fi
+	    ;;
 	--machtype)
 	    if test "$GCE_XFSTESTS" = "yes"
 	    then

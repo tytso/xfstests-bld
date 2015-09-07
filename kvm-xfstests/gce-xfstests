@@ -505,13 +505,18 @@ fi
 
 ARG="$ARG orig_cmdline=$(echo " $ORIG_CMDLINE" | sed -e 's/^ //' | base64 -w 0)"
 
+if test -n "$DO_LOCAL_SSD"
+then
+    SSD_ARG="--local-ssd interface=SCSI"
+fi
+
 echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 # echo "Using ARG: $ARG"
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create $INSTANCE --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
-       --maintenance-policy "MIGRATE" \
+       $SSD_ARG --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server \

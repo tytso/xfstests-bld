@@ -6,6 +6,12 @@
 SCRATCH_DSK=$instance-scratch
 SCRATCH_DEV=/dev/disk/by-id/google-scratch
 
+# Use local SSD if available
+if test -e /dev/disk/by-id/google-local-ssd-0
+then
+    SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
+fi
+
 if ! test -e $SCRATCH_DEV
 then
     gcloud compute -q disks create "$SCRATCH_DSK" --size "100" \
@@ -25,12 +31,13 @@ fi
 
 if ! vgs xt >& /dev/null
 then
-	pvcreate $SCRATCH_DEV
-	vgcreate xt $SCRATCH_DEV
-	lvcreate -L  5g -n vdb xt
-	lvcreate -L  5g -n vdc xt
-	lvcreate -L  5g -n vdd xt
-	lvcreate -L 20g -n vde xt
-	lvcreate -L 20g -n vdf xt
-	mke2fs -t ext4 -q /dev/mapper/xt-vdb
+    blkdiscard $SCRATCH_DEV
+    pvcreate $SCRATCH_DEV
+    vgcreate xt $SCRATCH_DEV
+    lvcreate -L  5g -n vdb xt
+    lvcreate -L  5g -n vdc xt
+    lvcreate -L  5g -n vdd xt
+    lvcreate -L 20g -n vde xt
+    lvcreate -L 20g -n vdf xt
+    mke2fs -t ext4 -q /dev/mapper/xt-vdb
 fi
