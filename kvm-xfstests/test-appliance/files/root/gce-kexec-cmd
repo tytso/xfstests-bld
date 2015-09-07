@@ -1,3 +1,0 @@
-#!/bin/bash
-
-kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0  fstestcfg=4k fstestset=-g,quick fstestopt=aex fstesttz=America/New_York fstesttyp=ext4 fstestapi=1.1"
