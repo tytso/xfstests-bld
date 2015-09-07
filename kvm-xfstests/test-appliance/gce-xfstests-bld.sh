@@ -65,9 +65,10 @@ chown root:root /root
 . /root/test-config
 
 mkdir -p $PRI_TST_MNT $SM_SCR_MNT $SM_TST_MNT $LG_TST_MNT $LG_SCR_MNT /results
+touch /results/runtests.log
 
 cat >> /etc/fstab <<EOF
-/dev/sdb	/results ext4	noauto 0 2
+LABEL=results	/results ext4	noauto 0 2
 EOF
 
 echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> /etc/passwd

@@ -1,15 +1,13 @@
 #!/bin/bash
 
-RESULTS_DEV=/dev/sdb
-SCRATCH_DEV=/dev/sdc
-
 . /root/test-config
 . /usr/local/lib/gce-funcs
 
-RESULTS_DSK=xfstests-$DATECODE-results
-SCRATCH_DSK=xfstests-$DATECODE-scratch
-
 /usr/local/lib/gce-logger disk setup
+gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
+
+/usr/local/lib/gce-setup-results &
+/usr/local/lib/gce-setup-scratch &
 
 cat > /var/www/varz <<EOF
 kernel_version $(uname -a)
@@ -25,86 +23,19 @@ MNTOPTS $MNTOPTS
 EOF
 
 hostname > /var/www/hostname.inc
-gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
-
-gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
-       --zone "$ZONE" --type "pd-standard"
-
-gcloud compute -q disks create "$SCRATCH_DSK" --size "100" \
-       --zone "$ZONE" --type "pd-ssd"
-
-gcloud compute -q instances attach-disk ${instance} \
-       --disk "$RESULTS_DSK" \
-       --device-name results --zone "$ZONE"
-
-gcloud compute -q instances attach-disk ${instance} \
-       --disk "$SCRATCH_DSK" \
-       --device-name scratch --zone "$ZONE"
-
-gcloud compute -q instances set-disk-auto-delete ${instance} --auto-delete \
-       --disk "$SCRATCH_DSK" --zone "$ZONE" &
-
-gcloud compute instances -q add-metadata ${instance} \
-	--metadata "kernel_version=$(uname -a)" &
-
-if ! test -b $RESULTS_DSK_DEV
-then
-	logger -s "Couldn't find block device $RESULTS_DSK_DEV"
-	exit 1
-fi
-
-if ! test -b $SCRATCH_DEV
-then
-	logger -s "Couldn't find block device $SCRATCH_DEV"
-	exit 1
-fi
-
-t=$(blkid $RESULTS_DEV)
-if test -z "$t"
-then
-	mke2fs -t ext4 $RESULTS_DEV
-fi
-
-ed /etc/fstab <<EOF
-/results/s/noauto/auto/
-w
-q
-EOF
-mount -t ext4 $RESULTS_DEV /results
-cp /var/www/cmdline /results
-
-gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
-(cd /results; tar xfz /tmp/check-time.tar.gz)
-for i in $(cd /results; echo check.time.*)
-do
-    r=$(echo $i | sed -e 's/check.time.//')
-    mkdir -p /results/results-$r
-    mv /results/check.time.$r /results/results-$r/check.time
-done
-
-t=$(blkid $SCRATCH_DEV)
-if test -z "$t"
-then
-	pvcreate $SCRATCH_DEV
-	vgcreate xt $SCRATCH_DEV
-	lvcreate -L  5g -n vdb xt
-	lvcreate -L  5g -n vdc xt
-	lvcreate -L  5g -n vdd xt
-	lvcreate -L 20g -n vde xt
-	lvcreate -L 20g -n vdf xt
-	mke2fs -t ext4 /dev/mapper/xt-vdb
-fi
-
-cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
-systemctl restart rsyslog.service
 
 kexec=$(gce_attribute kexec)
 
 case "$kexec" in
     *-onetime)
-	gsutil rm "$kexec"
+	gsutil rm "$kexec" &
 	;;
 esac
+
+wait
+
+cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
+systemctl restart rsyslog.service
 
 for i in /usr/sbin/rsyslogd /usr/sbin/sshd
 do

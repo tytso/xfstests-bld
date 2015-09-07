@@ -1,0 +1,36 @@
+#!/bin/bash
+
+. /root/test-config
+. /usr/local/lib/gce-funcs
+
+SCRATCH_DSK=$instance-scratch
+SCRATCH_DEV=/dev/disk/by-id/google-scratch
+
+if ! test -e $SCRATCH_DEV
+then
+    gcloud compute -q disks create "$SCRATCH_DSK" --size "100" \
+	   --zone "$ZONE" --type "pd-ssd"
+    gcloud compute -q instances attach-disk ${instance} \
+	   --disk "$SCRATCH_DSK" \
+	   --device-name scratch --zone "$ZONE"
+    gcloud compute -q instances set-disk-auto-delete ${instance} \
+	   --auto-delete --disk "$SCRATCH_DSK" --zone "$ZONE" &
+fi
+
+if ! test -e $SCRATCH_DEV
+then
+    logger -s "Couldn't create or create the scratch disk!"
+    exit 1
+fi
+
+if ! vgs xt >& /dev/null
+then
+	pvcreate $SCRATCH_DEV
+	vgcreate xt $SCRATCH_DEV
+	lvcreate -L  5g -n vdb xt
+	lvcreate -L  5g -n vdc xt
+	lvcreate -L  5g -n vdd xt
+	lvcreate -L 20g -n vde xt
+	lvcreate -L 20g -n vdf xt
+	mke2fs -t ext4 -q /dev/mapper/xt-vdb
+fi
