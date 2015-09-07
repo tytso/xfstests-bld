@@ -492,6 +492,11 @@ case "$ARG" in
 	if test -z "$NO_ACTION"
 	then
 	    sleep 1
+	    if test "$OVERRIDE_KERNEL" != none
+	    then
+		# Need to give more time for the kexec
+		sleep 30
+	    fi
 	fi
 	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh root@$INSTANCE
 	;;
