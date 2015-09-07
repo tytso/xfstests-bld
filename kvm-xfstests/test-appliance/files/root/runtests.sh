@@ -188,31 +188,31 @@ do
 	   else
 		/sbin/fsck.$FS $TEST_DEV
 	   fi
-	   if test -n "$RUN_ON_GCE"
-	   then
-	       gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
-	       if test -f /tmp/check-time.tar.gz
-	       then
-		   tar -C /tmp -xzf /tmp/check-time.tar.gz
-	       fi
-	       if ! test -f /tmp/check.time.$i
-	       then
-		   touch /results/results-$i/check.time
-	       fi
-	       cat /results/results-$i/check.time /tmp/check.time.$i \
-	    | awk '
+	done
+	if test -n "$RUN_ON_GCE"
+	then
+	    gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
+	    if test -f /tmp/check-time.tar.gz
+	    then
+		tar -C /tmp -xzf /tmp/check-time.tar.gz
+	    fi
+	    if ! test -f /tmp/check.time.$i
+	    then
+		touch /results/results-$i/check.time
+	    fi
+	    cat /results/results-$i/check.time /tmp/check.time.$i \
+		| awk '
 	{ t[$1] = $2 }
 END	{ if (NR > 0) {
 	    for (i in t) print i " " t[i]
 	  }
 	}' \
-	    | sort -n > /tmp/check.time.$i.new
-	       mv /tmp/check.time.$i.new /tmp/check.time.$i
-	       (cd /tmp ; tar -cf - check.time.* | gzip -9 \
-			> /tmp/check-time.tar.gz)
-	       gsutil cp /tmp/check-time.tar.gz gs://$GS_BUCKET >& /dev/null
-	   fi
-	done
+		| sort -n > /tmp/check.time.$i.new
+	    mv /tmp/check.time.$i.new /tmp/check.time.$i
+	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
+						     > /tmp/check-time.tar.gz)
+	    gsutil cp /tmp/check-time.tar.gz gs://$GS_BUCKET >& /dev/null
+	fi
 	echo 3 > /proc/sys/vm/drop_caches
 	cp /proc/slabinfo $RESULT_BASE/slabinfo.after
 	cp /proc/meminfo $RESULT_BASE/meminfo.after
