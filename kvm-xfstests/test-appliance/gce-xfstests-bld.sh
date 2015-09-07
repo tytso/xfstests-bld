@@ -42,6 +42,7 @@ postfix	postfix/mailname	string	xfstests.internal
 postfix	postfix/main_mailer_type	select	Local only
 EOF
 apt-get install -y $PACKAGES
+apt-get clean
 
 gsutil cp gs://$BUCKET/xfstests.tar.gz /run/xfstests.tar.gz
 tar -C /root -xzf /run/xfstests.tar.gz
