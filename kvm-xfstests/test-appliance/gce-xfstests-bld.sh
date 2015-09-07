@@ -33,6 +33,7 @@ PACKAGES="bash-completion \
 	time \
 	xz-utils"
 
+apt-get update
 apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
