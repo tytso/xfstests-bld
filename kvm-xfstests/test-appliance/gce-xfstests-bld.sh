@@ -99,6 +99,20 @@ rm -rf $GCE_STATE_DIR
 
 fast=$(gce_attribute fast)
 
+# This only works if with the very latest tune2fs, since the root
+# file system is mounted here.  Make sure we the root file system
+# has a unique UUID.
+if tune2fs -f -U random -L xfstests-root
+then
+    ed /etc/fstab <<EOF
+s/UUID=[a-f0-9-]*/LABEL=xfstests-root/
+w
+q
+EOF
+    /usr/sbin/update-grub
+    /usr/sbin/update-initramfs -u -k all
+fi
+
 if test "$fast" = "yes"
 then
     fstrim /
