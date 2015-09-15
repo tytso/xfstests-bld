@@ -88,7 +88,12 @@ fi
 CPUS=$(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
 MEM=$(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
 
-sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions > /results/run-stats
+cp /dev/null /results/run-stats
+if test -f /var/www/cmdline
+then
+    echo "CMDLINE: $(cat /var/www/cmdline)" >> /results/run-stats
+fi
+sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> /results/run-stats
 echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> /results/run-stats
 echo FSTESTCFG: \"$FSTESTCFG\" >> /results/run-stats
 echo FSTESTSET: \"$FSTESTSET\" >> /results/run-stats
