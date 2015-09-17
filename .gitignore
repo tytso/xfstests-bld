@@ -9,6 +9,8 @@
 .libs
 config.log
 config.status
+kvm-xfstests.sh
+gce-xfstests.sh
 bld
 acl/chacl/chacl
 acl/doc/CHANGES.gz
