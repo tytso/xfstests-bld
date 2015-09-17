@@ -1,5 +1,5 @@
 #!/bin/bash
-mke2fs -t ext4 -O encrypt -Fq /dev/ram0
+mke2fs -t ext4 -O encrypt -b 4096 -Fq /dev/ram0
 mount -t ext4 /dev/ram0 /mnt
 mkdir /mnt/a
 echo foobar | e4crypt add_key /mnt/a
