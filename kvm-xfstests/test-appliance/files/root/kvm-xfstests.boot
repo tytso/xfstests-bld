@@ -43,6 +43,12 @@ then
     echo $timezone > /etc/timezone
 fi
 
+# work around a bug which causes LVM to fail on older kernels
+if test -f /sys/kernel/uevent_helper
+then
+    echo > /sys/kernel/uevent_helper
+fi
+
 if test "$CMD" = "ver"
 then
 	/usr/local/sbin/ver
