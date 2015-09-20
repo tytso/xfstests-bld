@@ -130,7 +130,7 @@ then
 else
     mount -t tmpfs -o size=10G tmpfs /mnt
     mkdir -p /mnt/tmp
-    gcimagebundle -d /dev/sda -o /mnt/tmp/ --log_file=/tmp/bundle.log
+    gcimagebundle -d /dev/sda -o /mnt/tmp/ -f ext3 --log_file=/tmp/bundle.log
     gsutil cp /mnt/tmp/*.image.tar.gz gs://$BUCKET/gce-xfstests.image.tar.gz
     gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE)
 fi
