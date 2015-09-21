@@ -9,7 +9,7 @@ fi
 
 GCE_XFSTESTS=yes
 
-. $DIR/config
+. "$DIR/config"
 
 # Use different defaults for GCE because the background ruby monitoring
 # program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
@@ -20,8 +20,8 @@ MEM=7680
 # We use ROOT_FS for the GCE image; this can be set by the -I option
 ROOT_FS="xfstests"
 
-if test -r test-appliance/config.custom ; then
-   . $(pwd)/test-appliance/config.custom
+if test -r "$DIR/test-appliance/config.custom" ; then
+   . "$DIR/test-appliance/config.custom"
 fi
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
@@ -35,13 +35,13 @@ QUIET="quiet loglevel=0"
 
 get_local_hash()
 {
-    LOCAL_HASH=$(gsutil hash $1 2> /dev/null | grep "Hash (md5)" \
+    LOCAL_HASH=$(gsutil hash "$1" 2> /dev/null | grep "Hash (md5)" \
 			| awk '{print $3}')
 }
 
 get_remote_hash()
 {
-    REMOTE_HASH=$(gsutil stat $1 2> /dev/null | grep "Hash (md5)" \
+    REMOTE_HASH=$(gsutil stat "$1" 2> /dev/null | grep "Hash (md5)" \
 			 | awk '{print $3}')
 }
 
@@ -69,40 +69,41 @@ do_get_results_uri()
 do_get_results()
 {
     do_get_results_uri "$1"
-    TARBALL=/tmp/$(basename $URI)
+    TARBALL=/tmp/$(basename "$URI")
     if test -n "$do_checksum"
     then
-	get_local_hash $TARBALL
-	get_remote_hash $URI
+	get_local_hash "$TARBALL"
+	get_remote_hash "$URI"
 	if test "$LOCAL_HASH" != "$REMOTE_HASH"
 	then
-	    gsutil cp $URI $TARBALL 2> /dev/null
+	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
 	fi
     else
-	if ! test -f $TARBALL
+	if ! test -f "$TARBALL"
 	then
-	    gsutil cp $URI $TARBALL 2> /dev/null
+	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
 	fi
     fi
-    if ! test -f $TARBALL
+    if ! test -f "$TARBALL"
     then
 	echo "Couldn't download $TARBALL from $URI"
 	return 1
     fi
     if test -n "$do_unpack"
     then
-	DIRNAME=/tmp/$(basename $URI | sed -e 's/\(results.[0-9]*\).*/\1/' -e s'/\./-/')
-	/bin/rm -rf $DIRNAME 2> /dev/null
-	mkdir -p $DIRNAME
-	xzcat < $TARBALL | tar -C $DIRNAME -xf -
-	echo Unpacked results at $DIRNAME
+	DIRNAME=/tmp/$(basename "$URI" | sed -e 's/\(results.[0-9]*\).*/\1/' -e s'/\./-/')
+	/bin/rm -rf "$DIRNAME" 2> /dev/null
+	mkdir -p "$DIRNAME"
+	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
+	echo "Unpacked results at $DIRNAME"
 	return 0
     fi
     if test -n "$do_summary"
     then
-	xzcat < $TARBALL | tar -Oxf - ./runtests.log | $DIR/get-results "$do_summary" -
+	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log | \
+	    "$DIR/get-results" "$do_summary" -
     else
-	xzcat < $TARBALL | tar -Oxf - ./runtests.log
+	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log
     fi
 }
 
@@ -121,30 +122,30 @@ case "$1" in
 	then
 	    for i in $l
 	    do
-		echo $i
+		echo "$i"
 	    done
 	    exit 0
 	fi
 	inst_info=$(mktemp)
 	for i in $l
 	do
-	    gcloud compute --project "$GCE_PROJECT" instances \
-			describe --zone $GCE_ZONE $i --format=json > $inst_info
-	    kver=$(cat $inst_info | jq \
+	    gcloud compute --project "$GCE_PROJECT" instances describe \
+			--zone "$GCE_ZONE" "$i" --format=json > "$inst_info"
+	    kver=$(jq < "$inst_info" \
 		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
 			sed -e 's/^"//' -e 's/"$//' \
 			    -e 's/^Linux xfstests-[0-9]* //' -e 's/ .*//')
-	    status=$(cat $inst_info | jq \
+	    status=$(jq < "$inst_info" \
 		'.metadata.items[] | select(.key == "status") | .value' | \
 			sed -e 's/^"//' -e 's/"$//')
-	    echo $i - $kver - $status
+	    echo "$i - $kver - $status"
 	done
-	rm $inst_info
+	rm "$inst_info"
 	exit 0
 	;;
     rm|rm-instances|abort|abort-instances)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
-	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	     describe "$2" --zone "$GCE_ZONE" > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
@@ -153,21 +154,21 @@ case "$1" in
 	    deldisks="--delete-disks all"
 	fi
 	shift
-	for i in "$*"
+	for i in "$@"
 	do
 	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
-		   --zone "$GCE_ZONE" $deldisks &
+		   --zone "$GCE_ZONE" "$deldisks" &
 	done
 	exit 0
 	;;
     start|start-instance|start-instances)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
-	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	     describe "$2" --zone "$GCE_ZONE" > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
 	shift
-	for i in "$*"
+	for i in "$@"
 	do
 	    gcloud compute --project "$GCE_PROJECT" -q instances start "$i" \
 		   --zone "$GCE_ZONE" &
@@ -176,12 +177,12 @@ case "$1" in
 	;;
     stop|stop-instance|stop-instances)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
-	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	     describe "$2" --zone "$GCE_ZONE" > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
 	shift
-	for i in "$*"
+	for i in "$@"
 	do
 	    gcloud compute --project "$GCE_PROJECT" -q instances stop "$i" \
 		   --zone "$GCE_ZONE" &
@@ -195,7 +196,7 @@ case "$1" in
 	;;
     rm-disks|rm-disk)
 	shift
-	gcloud compute --project "$GCE_PROJECT" disks delete $*
+	gcloud compute --project "$GCE_PROJECT" disks delete "$@"
 	exit 0
 	;;
     ls-results|ls-gcs)
@@ -204,7 +205,7 @@ case "$1" in
 	    do_all=yes
 	fi
 	shift
-	for i in $*
+	for i in "$@"
 	do
 	    case $i in
 		--all|-a)
@@ -227,21 +228,21 @@ case "$1" in
 		arg="gs://$GS_BUCKET/results.*"
 	    fi
 	fi
-	gsutil ls $opt $arg
+	gsutil ls "$opt" "$arg"
 	exit 0
 	;;
     rm-results|rm-gcs)
 	shift
-	for i in $*
+	for i in "$@"
 	do
-	    do_get_results_uri $i
-	    gsutil rm $URI
+	    do_get_results_uri "$i"
+	    gsutil rm "$URI"
 	done
 	exit 0
 	;;
     get-results)
 	shift
-	for i in $*
+	for i in "$@"
 	do
 	    case $i in
 		--checksum|-c)
@@ -257,14 +258,14 @@ case "$1" in
 		    do_summary="-F"
 		    ;;
 		*)
-		    do_get_results $i
+		    do_get_results "$i"
 	    esac
 	done
 	exit 0
 	;;
     setup)
-	gcloud config set core/project $GCE_PROJECT
-	gcloud config set compute/zone $GCE_ZONE
+	gcloud config set core/project "$GCE_PROJECT"
+	gcloud config set compute/zone "$GCE_ZONE"
 	if test -z "$(gcloud compute firewall-rules list default-allow-http | sed -e 1d)"
 	then
 	    gcloud compute --project "$GCE_PROJECT" -q firewall-rules \
@@ -275,7 +276,7 @@ case "$1" in
 	;;
     ssh)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
-	     describe "$2" --zone $GCE_ZONE > /dev/null 2>&1
+	     describe "$2" --zone "$GCE_ZONE" > /dev/null 2>&1
 	then
 	    echo "GCE instance $2 does not exist"
 	fi
@@ -297,17 +298,17 @@ case "$1" in
 	esac
 	tmpfile=$(mktemp)
 	gcloud compute --project "$GCE_PROJECT" -q \
-	       copy-files "$2:/results/runtests.log" $tmpfile \
+	       copy-files "$2:/results/runtests.log" "$tmpfile" \
 	       --zone "$GCE_ZONE"
-	$DIR/get-results $OPT $tmpfile
-	/bin/rm -f $tmpfile
+	"$DIR/get-results" "$OPT" "$tmpfile"
+	/bin/rm -f "$tmpfile"
 	exit 0
 	;;
 esac
 
 ORIG_CMDLINE="$*"
 
-. $DIR/util/parse_cli
+. "$DIR/util/parse_cli"
 
 API="1.1"
 
@@ -361,11 +362,11 @@ then
 	echo "Can't find kernel at $GCE_KERNEL"
 	exit 1
     fi
-    get_local_hash $GCE_KERNEL
-    get_remote_hash $GS_KERNEL
+    get_local_hash "$GCE_KERNEL"
+    get_remote_hash "$GS_KERNEL"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp $GCE_KERNEL $GS_KERNEL
+	gsutil cp "$GCE_KERNEL" "$GS_KERNEL"
     fi
 fi
 
@@ -379,17 +380,17 @@ then
     if test -d "$GCE_HOOKS"
     then
 	tmpfile=$(mktemp)
-	tar -C "$GCE_HOOKS" -cf - . | gzip -9n > $tmpfile
+	tar -C "$GCE_HOOKS" -cf - . | gzip -9n > "$tmpfile"
 	GCE_HOOKS=$tmpfile
 	GS_HOOKS=gs://$GS_BUCKET/hooks.tar.gz
     else
-	GS_HOOKS=gs://$GS_BUCKET/$(basename $GCE_HOOKS)
+	GS_HOOKS=gs://$GS_BUCKET/$(basename "$GCE_HOOKS")
     fi
-    get_local_hash $GCE_HOOKS
-    get_remote_hash $GS_HOOKS
+    get_local_hash "$GCE_HOOKS"
+    get_remote_hash "$GS_HOOKS"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp $GCE_HOOKS $GS_HOOKS
+	gsutil cp "$GCE_HOOKS" "$GS_HOOKS"
     fi
     if test -n "$tmpfile"
     then
@@ -544,9 +545,9 @@ echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 # echo "Using ARG: $ARG"
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
-       instances create $INSTANCE --zone "$GCE_ZONE" \
+       instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
-       $SSD_ARG --maintenance-policy "MIGRATE" \
+       "$SSD_ARG" --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server \
@@ -563,6 +564,6 @@ case "$ARG" in
 		sleep 30
 	    fi
 	fi
-	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh root@$INSTANCE
+	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh "root@$INSTANCE"
 	;;
 esac

@@ -23,11 +23,11 @@ fi
 
 egrep "$REGEXP" "$IN"
 if test -n "$do_failure"; then
-    b=$(egrep ^BEGIN $IN | wc -l)
-    e=$(egrep ^END $IN | wc -l)
-    if test $b -gt $e ; then
-	l=$(egrep ^BEGIN $IN | tail -n 1 | sed -e 's/BEGIN //')
+    b=$(egrep ^BEGIN "$IN" | wc -l)
+    e=$(egrep ^END "$IN" | wc -l)
+    if test "$b" -gt "$e" ; then
+	l=$(egrep ^BEGIN "$IN" | tail -n 1 | sed -e 's/BEGIN //')
 	echo " "
-	echo Missing END $l
+	echo Missing END "$l"
     fi
 fi
