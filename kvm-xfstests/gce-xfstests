@@ -547,7 +547,7 @@ echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
-       "$SSD_ARG" --maintenance-policy "MIGRATE" \
+       $SSD_ARG --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server \
