@@ -157,7 +157,7 @@ case "$1" in
 	for i in "$@"
 	do
 	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
-		   --zone "$GCE_ZONE" "$deldisks" &
+		   --zone "$GCE_ZONE" $deldisks &
 	done
 	exit 0
 	;;
