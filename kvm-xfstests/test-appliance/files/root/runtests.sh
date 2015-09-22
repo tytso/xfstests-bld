@@ -50,12 +50,10 @@ RPT_COUNT=1
 while [ "$1" != "" ]; do
   case $1 in
     aex)
-	echo "Enabling auto exclude"
 	DO_AEX=t
 	;;
     count) shift
 	RPT_COUNT=$1
-	echo "Repeat each test $RPT_COUNT times"
 	;;
     *)
 	echo " "
@@ -67,8 +65,16 @@ done
 
 umount $PRI_TST_DEV >& /dev/null
 umount $SM_TST_DEV >& /dev/null
-/sbin/e2fsck -fy $PRI_TST_DEV
-if test $? -ge 8 ; then
+/sbin/e2fsck -fy $PRI_TST_DEV >& /tmp/fsck.$$
+FSCKCODE=$?
+if test $FSCKCODE -gt 1
+then
+    cat /tmp/fsck.$$
+    echo e2fsck failed with exit code $FSCKCODE
+fi
+
+if test $FSCKCODE -ge 8
+then
 	mke2fs -F -q -t ext4 $PRI_TST_DEV
 fi
 dmesg -n 5
