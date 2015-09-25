@@ -26,7 +26,7 @@ center; padding: 10px; color: #ffffff; }
   <h2> Status </h2>
   <p>
   Date/Time: <!--#echo var="DATE_LOCAL" --> </br>
-  Status: <!--#include virtual="statusz" --> </br>
+  Status: <!--#include virtual="status" --> </br>
   gce-xfstests command line: <!--#include virtual="cmdline" -->
   </p>
   <h2> Test Log </h2>
