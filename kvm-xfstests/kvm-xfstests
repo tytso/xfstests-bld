@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 DIR=.
 if test -n "$KVM_XFSTESTS_DIR"
