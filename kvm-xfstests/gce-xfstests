@@ -228,7 +228,7 @@ case "$1" in
 		arg="gs://$GS_BUCKET/results.*"
 	    fi
 	fi
-	gsutil ls "$opt" "$arg"
+	gsutil ls $opt "$arg"
 	exit 0
 	;;
     rm-results|rm-gcs)
