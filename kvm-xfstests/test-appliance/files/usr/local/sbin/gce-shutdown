@@ -1,23 +1,53 @@
 #!/bin/bash
 
+. /root/test-config
 . /usr/local/lib/gce-funcs
 
-if test -f /results/runtests.log
+if test -f /run/self-shutdown-requested
 then
-	egrep "$REGEXP" < /results/runtests.log > /results/summary
-	egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
-	REPORT_EMAIL=$(gce_attribute report_email)
-	run_hooks send-email
-	if test -n "$REPORT_EMAIL"
-	then
-	    mail -s "xfstests results $DATECODE - $(uname -r)" \
-		 "$REPORT_EMAIL" < /results/failures
-	fi
-	tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
-	gsutil cp /tmp/results.tar.xz \
-	       gs://$GS_BUCKET/results.$DATECODE.$(uname -r).tar.xz
-    
-fi    
+    /sbin/shutdown -h -P now "Self shutdown requested"
+fi
+
+if ! mkdir /run/gce-shutdown.singleton
+then
+    exit 0
+fi
+
+REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)|(^Shutdown reason)"
+REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
+
+reason=$(gce_attribute shutdown_reason)
+
+if test "$reason" != "abort" -a -f /results/runtests.log
+then
+    systemctl stop kvm-xfstests
+    if test -n "$reason"
+    then
+	echo "$reason" > /results/shutdown_reason
+	echo "Shutdown reason: $reason" >> /results/runtests.log
+    fi
+    egrep "$REGEXP" < /results/runtests.log > /results/summary
+    egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+
+    REPORT_EMAIL=$(gce_attribute report_email)
+    run_hooks send-email
+    if test -n "$REPORT_EMAIL"
+    then
+	mail -s "xfstests results $DATECODE - $(uname -r)" \
+	     "$REPORT_EMAIL" < /results/failures
+    fi
+    tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
+    gsutil cp /tmp/results.tar.xz \
+	   gs://$GS_BUCKET/results.$DATECODE.$(uname -r).tar.xz
+fi
+gcloud compute -q instances set-disk-auto-delete ${instance} \
+       --auto-delete --disk "$instance-results" --zone "$ZONE"
 run_hooks shutdown
 /usr/local/lib/gce-logger shutting down
-gcloud compute -q instances delete $(hostname) --zone $ZONE --delete-disks all
+if test -f /run/powerbtn
+then
+    /sbin/shutdown -h -P now "Power button pressed"
+else
+    touch /run/self-shutdown-requested
+    gcloud compute -q instances delete $(hostname) --zone $ZONE
+fi

@@ -156,6 +156,15 @@ case "$1" in
 	shift
 	for i in "$@"
 	do
+	    if test -n "$deldisks"
+	    then
+		reason="abort"
+	    else
+		reason="manual stop"
+	    fi
+	    gcloud compute --project "$GCE_PROJECT" -q instances \
+		   add-metadata "$i" --metadata "shutdown_reason=$reason" \
+		   --zone "$GCE_ZONE" > /dev/null
 	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
 		   --zone "$GCE_ZONE" $deldisks &
 	done
