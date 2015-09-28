@@ -8,7 +8,7 @@ case "$1" in
 	shift
 	;;
     --failures|-F)
-REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
+REGEXP="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
 	do_failure="yes"
 	shift
 	;;
