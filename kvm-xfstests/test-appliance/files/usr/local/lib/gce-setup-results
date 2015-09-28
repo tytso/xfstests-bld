@@ -7,8 +7,9 @@ RESULTS_DEV=/dev/disk/by-id/google-results
 
 if ! test -e $RESULTS_DEV
 then
-    gcloud compute -q disks create "$RESULTS_DSK" --size "10" \
-	   --zone "$ZONE" --type "pd-standard"
+    gcloud compute -q disks create "$RESULTS_DSK" \
+	   --size "${RESULTS_SIZE:-10}" \
+	   --zone "$ZONE" --type "${RESULTS_TYPE:-pd-standard}"
     gcloud compute -q instances attach-disk ${instance} \
 	   --disk "$RESULTS_DSK" \
 	   --device-name results --zone "$ZONE"

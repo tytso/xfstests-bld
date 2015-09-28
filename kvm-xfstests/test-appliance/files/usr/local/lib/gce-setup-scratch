@@ -13,8 +13,9 @@ fi
 
 if ! test -e $SCRATCH_DEV
 then
-    gcloud compute -q disks create "$SCRATCH_DSK" --size "100" \
-	   --zone "$ZONE" --type "pd-ssd"
+    gcloud compute -q disks create "$SCRATCH_DSK" \
+	   --size "${SCRATCH_SIZE:-100}" \
+	   --zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"
     gcloud compute -q instances attach-disk ${instance} \
 	   --disk "$SCRATCH_DSK" \
 	   --device-name scratch --zone "$ZONE"
@@ -33,10 +34,10 @@ then
     blkdiscard $SCRATCH_DEV
     pvcreate $SCRATCH_DEV
     vgcreate xt $SCRATCH_DEV
-    lvcreate -L  5g -n vdb xt
-    lvcreate -L  5g -n vdc xt
-    lvcreate -L  5g -n vdd xt
-    lvcreate -L 20g -n vde xt
-    lvcreate -L 20g -n vdf xt
+    lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
+    lvcreate -L "${VDC_SIZE:-5g}"  -n vdc xt
+    lvcreate -L "${VDD_SIZE:-5g}"  -n vdd xt
+    lvcreate -L "${VDE_SIZE:-20g}" -n vde xt
+    lvcreate -L "${VDF_SIZE:-20g}" -n vdf xt
     mke2fs -t ext4 -q /dev/mapper/xt-vdb
 fi
