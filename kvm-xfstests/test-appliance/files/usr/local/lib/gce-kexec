@@ -70,6 +70,12 @@ fstesttz=$(gce_attribute fstesttz)
 fstesttyp=$(gce_attribute fstesttyp)
 fstestapi=$(gce_attribute fstestapi)
 
+if test -n "$fstesttz" -a -f /usr/share/zoneinfo/$fstesttz
+then
+    ln -sf /usr/share/zoneinfo/$fstesttz /etc/localtime
+    echo $fstesttz > /etc/timezone
+fi
+
 if test -n "$mem"
 then
     kopt="$kopt mem=${mem}M"
@@ -89,4 +95,4 @@ run_hooks kexec
 /usr/local/lib/gce-logger kexec to test kernel
 systemctl stop rsyslog.service
 sync
-kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttz=$fstesttz fstesttyp=$fstesttyp fstestapi=$fstestapi"
+kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi"
