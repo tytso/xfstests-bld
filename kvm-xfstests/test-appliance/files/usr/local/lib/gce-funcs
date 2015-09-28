@@ -115,6 +115,19 @@ function run_hooks() {
     local HOOK_ARG="$*"
     export HOOK_ARG
 
+    if test "$hook" != "logger"
+    then
+	logger gce-xfstests: checking for hook $hook
+    fi
+    if test -f /root/hooks/$hook.block
+    then
+	logger gce-xfstests: blocking on $hook
+	while test -f /root/hooks/$hook.block
+	do
+	    sleep 1
+	done
+	logger gce-xfstests: done blocking on $hook
+    fi
     if test -e /root/hooks/$hook
     then
 	/root/hooks/$hook
