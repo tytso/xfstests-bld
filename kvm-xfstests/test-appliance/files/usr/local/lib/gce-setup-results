@@ -29,6 +29,10 @@ fi
 mount -t ext4 $RESULTS_DEV /results
 touch /results/runtests.log
 cp /var/www/cmdline /results
+if test -d /root/hooks
+then
+    cp -rp /root/hooks /results
+fi
 
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)
