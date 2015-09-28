@@ -349,20 +349,31 @@ then
     INSTANCE="$INSTANCE_NAME"
 fi
 
-GS_KERNEL=gs://$GS_BUCKET/bzImage
-if test -z "$GCE_KERNEL"
-then
-    GCE_KERNEL=$KERNEL
-fi
-
-if test "$OVERRIDE_KERNEL" = "none"
-then
-   GCE_KERNEL=""
-elif test -n "$OVERRIDE_KERNEL"
-then
-    GCE_KERNEL=$OVERRIDE_KERNEL
-    GS_KERNEL=gs://$GS_BUCKET/bzImage-$DATECODE-onetime
-fi
+case "$OVERRIDE_KERNEL" in
+    gs://*)
+	GS_KERNEL="$OVERRIDE_KERNEL"
+	GCE_KERNEL=""
+	;;
+    //*)
+	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | sed -e "s;//;gs://$GS_BUCKET/;")
+	GCE_KERNEL=""
+	;;
+    none)
+	GS_KERNEL=""
+	GCE_KERNEL=""
+	;;
+    "")
+	GS_KERNEL=gs://$GS_BUCKET/bzImage
+	if test -z "$GCE_KERNEL"
+	then
+	    GCE_KERNEL=$KERNEL
+	fi
+	;;
+    *)
+	GCE_KERNEL=$OVERRIDE_KERNEL
+	GS_KERNEL=gs://$GS_BUCKET/bzImage-$DATECODE-onetime
+	;;
+esac
 
 if test -z "$NO_ACTION" -a -n "$GCE_KERNEL"
 then
@@ -409,7 +420,7 @@ then
     ARG="$ARG hooks=$GS_HOOKS"
 fi
 
-if test -n "$GCE_KERNEL"
+if test -n "$GS_KERNEL"
 then
     ARG="$ARG kexec=$GS_KERNEL"
 fi
