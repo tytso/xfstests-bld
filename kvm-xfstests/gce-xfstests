@@ -98,7 +98,10 @@ do_get_results()
 	echo "Unpacked results at $DIRNAME"
 	return 0
     fi
-    if test -n "$do_summary"
+    if test -n "$get_syslog"
+    then
+	xzcat < "$TARBALL" | tar -Oxf - ./syslog
+    elif test -n "$do_summary"
     then
 	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log | \
 	    "$DIR/get-results" "$do_summary" -
@@ -256,6 +259,9 @@ case "$1" in
 	    case $i in
 		--checksum|-c)
 		    do_checksum=yes
+		    ;;
+		--syslog)
+		    get_syslog=yes
 		    ;;
 		--unpack)
 		    do_unpack=yes
