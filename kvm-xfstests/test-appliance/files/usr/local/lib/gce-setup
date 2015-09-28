@@ -1,6 +1,5 @@
 #!/bin/bash
 
-. /root/test-config
 . /usr/local/lib/gce-funcs
 
 run_hooks pre-setup

@@ -58,7 +58,6 @@ rm -rf /var/www/html
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
-echo "export GS_BUCKET=$BUCKET" >> /tmp/test-config
 mv /tmp/test-config /root/test-config
 rm -f /root/*~
 chown root:root /root
