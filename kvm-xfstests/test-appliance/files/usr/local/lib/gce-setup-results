@@ -33,6 +33,10 @@ if test -d /root/hooks
 then
     cp -rp /root/hooks /results
 fi
+if test -f /proc/config.gz
+then
+    cp /proc/config.gz /results
+fi
 
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)
