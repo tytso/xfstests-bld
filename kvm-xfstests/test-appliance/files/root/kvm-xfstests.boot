@@ -63,7 +63,7 @@ then
 	/root/runtests.sh >& /results/runtests.log
 
 	/usr/local/lib/gce-logger tests complete
-	gce-shutdown
+	/bin/rm -f /run/gce-finalize-wait
     else
 	/root/runtests.sh
 	poweroff -f > /dev/null 2>&1

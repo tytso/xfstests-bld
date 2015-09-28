@@ -87,6 +87,7 @@ chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
 systemctl enable kvm-xfstests.service
+systemctl enable gce-finalize.service
 
 if gsutil -m cp gs://$BUCKET/*.deb /run
 then

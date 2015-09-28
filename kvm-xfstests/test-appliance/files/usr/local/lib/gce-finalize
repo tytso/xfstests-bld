@@ -1,0 +1,13 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+
+touch /run/gce-finalize-wait
+while test -f /run/gce-finalize-wait
+do
+    sleep 1
+done
+
+run_hooks finalize
+
+exec /usr/local/sbin/gce-shutdown
