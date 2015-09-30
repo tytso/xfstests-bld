@@ -17,7 +17,8 @@ REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Fail
 
 reason=$(gce_attribute shutdown_reason)
 
-if test "$reason" != "abort" -a -f /results/runtests.log
+if test "$reason" != "abort" -a -f /results/runtests.log -a \
+   $(stat -c %s /results/runtests.log) -gt 0
 then
     systemctl stop kvm-xfstests
     if test -n "$reason"
