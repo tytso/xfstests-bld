@@ -143,6 +143,10 @@ do
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
+	if test "$FS" = "ext4" -a "$i" = "encrypt" -a \
+		! -f /sys/fs/ext4/features/encryption ; then
+	    continue
+	fi
 	if test -e "/root/conf/$i"; then
 		. "/root/conf/$i"
 	else
