@@ -143,10 +143,7 @@ do
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
-	if test "$FS" = "ext4" -a "$i" = "encrypt" -a \
-		! -f /sys/fs/ext4/features/encryption ; then
-	    continue
-	fi
+	unset REQUIRE_FEATURE
 	if test -e "/root/conf/$i"; then
 		. "/root/conf/$i"
 	else
@@ -185,6 +182,11 @@ do
 	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
 	echo -n "BEGIN TEST $i: $TESTNAME " ; date
 	logger "BEGIN TEST $i: $TESTNAME "
+	if test -n "$REQUIRE_FEATURE" -a \
+		! -f "/sys/fs/$FS/features/$REQUIRE_FEATURE" ; then
+	    echo "END TEST: Kernel does not support $REQUIRE_FEATURE"
+	    continue
+	fi
 	echo Device: $TEST_DEV
 	echo mk2fs options: $MKFS_OPTIONS
 	echo mount options: $EXT_MOUNT_OPTIONS
