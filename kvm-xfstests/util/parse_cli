@@ -101,16 +101,16 @@ while [ "$1" != "" ]; do
 	    do
 		validate_config_name "$i"
 	    done
-	    FSTESTCFG=$1
+	    FSTESTCFG="$1"
 	    ;;
 	-C) shift
 	    FSTESTOPT="$FSTESTOPT,count,$1"
 	    ;;
 	-m) shift
-	    MNTOPTS=$1
+	    MNTOPTS="$1"
 	    ;;
 	-r) shift
-	    MEM=$1
+	    MEM="$1"
 	    EXPLICIT_RAM=yes
 	    ;;
 	-g) shift
@@ -120,14 +120,14 @@ while [ "$1" != "" ]; do
 	    print_help
 	    ;;
 	-I) shift
-	    ROOT_FS=$1
+	    ROOT_FS="$1"
 	    ;;
 	-n) shift
-	    NR_CPU=$1
+	    NR_CPU="$1"
 	    EXPLICIT_CPU=yes
 	    ;;
 	-o) shift
-	    EXTRA_ARG=$1
+	    EXTRA_ARG="$1"
 	    ;;
 	-v)
 	    if test "$V" = "1" ; then
@@ -156,7 +156,7 @@ while [ "$1" != "" ]; do
 	    if test "$GCE_XFSTESTS" = "yes"
 	    then
 		shift
-		GCE_HOOKS=$1
+		GCE_HOOKS="$1"
 	    else
 		print_help
 	    fi
@@ -180,11 +180,11 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	--kernel) shift
-		  KERNEL=$1
+		  KERNEL="$1"
 		  if test -d "$KERNEL" ; then
-		      KERNEL=$KERNEL/arch/x86/boot/bzImage
+		      KERNEL="$KERNEL/arch/x86/boot/bzImage"
 		  fi
-		  OVERRIDE_KERNEL=$KERNEL
+		  OVERRIDE_KERNEL="$KERNEL"
 		  ;;
 	--local-ssd)
 	    if test "$GCE_XFSTESTS" = "yes"
@@ -198,7 +198,7 @@ while [ "$1" != "" ]; do
 	    if test "$GCE_XFSTESTS" = "yes"
 	    then
 		shift
-		GCE_MACHTYPE=$1
+		GCE_MACHTYPE="$1"
 	    else
 		print_help
 	    fi
@@ -206,7 +206,7 @@ while [ "$1" != "" ]; do
 	--instance-name)
 	    if test "$GCE_XFSTESTS" = "yes" ; then
 		shift
-		INSTANCE_NAME=$1
+		INSTANCE_NAME="$1"
 	    else
 		print_help
 	    fi
@@ -272,7 +272,7 @@ if test "$DO_AEX" = yes ; then
 fi
 
 if test -d "$KERNEL" ; then
-    KERNEL=$KERNEL/arch/x86/boot/bzImage
+    KERNEL="$KERNEL/arch/x86/boot/bzImage"
 fi
 
 FSTESTOPT=${FSTESTOPT/#,/}
