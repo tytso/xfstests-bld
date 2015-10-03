@@ -110,12 +110,13 @@ fast=$(gce_attribute fast)
 # This only works if with the very latest tune2fs, since the root
 # file system is mounted here.  Make sure we the root file system
 # has a unique UUID.
-logger Original root file system UUID $(blkid -s UUID -o value /dev/sda1)
+logger "Original root file system UUID $(blkid -s UUID -o value /dev/sda1)"
 if /sbin/tune2fs -f -U random -L xfstests-root /dev/sda1
 then
-    logger Root file system UUID now $(blkid -s UUID -o value /dev/sda1)
+    NEW_UUID=$(blkid -s UUID -o value /dev/sda1)
+    logger "Root file system UUID now $NEW_UUID"
     ed /etc/fstab <<EOF
-/^UUID/s/UUID=[a-f0-9-]*/LABEL=xfstests-root/
+/^UUID/s/UUID=[a-f0-9-]*/UUID=$NEW_UUID/
 w
 q
 EOF
