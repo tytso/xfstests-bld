@@ -8,7 +8,7 @@ function gce_run_hooks()
 {
     if test -n "$RUN_ON_GCE"
     then
-	run_hooks $*
+	run_hooks "$@"
     fi
 }
 
@@ -63,9 +63,9 @@ while [ "$1" != "" ]; do
   shift
 done
 
-umount $PRI_TST_DEV >& /dev/null
-umount $SM_TST_DEV >& /dev/null
-/sbin/e2fsck -fy $PRI_TST_DEV >& /tmp/fsck.$$
+umount "$PRI_TST_DEV" >& /dev/null
+umount "$SM_TST_DEV" >& /dev/null
+/sbin/e2fsck -fy "$PRI_TST_DEV" >& "/tmp/fsck.$$"
 FSCKCODE=$?
 if test $FSCKCODE -gt 1
 then
@@ -144,7 +144,7 @@ do
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
 	if test -e "/root/conf/$i"; then
-		. /root/conf/$i
+		. "/root/conf/$i"
 	else
 		echo "Unknown configuration $i!"
 		continue
@@ -158,27 +158,27 @@ do
 	if test -n "$MNTOPTS" ; then
 		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
 	fi
-	mkdir -p $RESULT_BASE
-	echo FS: $FS > $RESULT_BASE/config
-	echo TESTNAME: $TESTNAME >> $RESULT_BASE/config
-	echo TEST_DEV: $TEST_DEV >> $RESULT_BASE/config
-	echo TEST_DIR: $TEST_DIR >> $RESULT_BASE/config
-	echo SCRATCH_DEV: $SCRATCH_DEV >> $RESULT_BASE/config
-	echo SCRATCH_MNT: $SCRATCH_MNT >> $RESULT_BASE/config
-	echo MKFS_OPTIONS: $MKFS_OPTIONS >> $RESULT_BASE/config
-	echo EXT_MOUNT_OPTIONS: $EXT_MOUNT_OPTIONS >> $RESULT_BASE/config
+	mkdir -p "$RESULT_BASE"
+	echo FS: $FS > "$RESULT_BASE/config"
+	echo TESTNAME: $TESTNAME >> "$RESULT_BASE/config"
+	echo TEST_DEV: $TEST_DEV >> "$RESULT_BASE/config"
+	echo TEST_DIR: $TEST_DIR >> "$RESULT_BASE/config"
+	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
+	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
+	echo MKFS_OPTIONS: $MKFS_OPTIONS >> "$RESULT_BASE/config"
+	echo EXT_MOUNT_OPTIONS: $EXT_MOUNT_OPTIONS >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 		if test "$FS" = "ext4" ; then
-		    mke2fs -F -q -t ext4 $MKFS_OPTIONS $TEST_DEV
+		    mke2fs -F -q -t ext4 $MKFS_OPTIONS "$TEST_DEV"
 		elif test "$FS" = "xfs" ; then
-		    mkfs.xfs -f $MKFS_OPTIONS $TEST_DEV
+		    mkfs.xfs -f $MKFS_OPTIONS "$TEST_DEV"
 		else
-		    /sbin/mkfs.$FS $TEST_DEV
+		    /sbin/mkfs.$FS "$TEST_DEV"
 		fi
 	fi
 	echo 3 > /proc/sys/vm/drop_caches
-	cp /proc/slabinfo $RESULT_BASE/slabinfo.before
-	cp /proc/meminfo $RESULT_BASE/meminfo.before
+	cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
+	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
 	echo -n "BEGIN TEST $i: $TESTNAME " ; date
 	logger "BEGIN TEST $i: $TESTNAME "
 	echo Device: $TEST_DEV
@@ -186,8 +186,16 @@ do
 	echo mount options: $EXT_MOUNT_OPTIONS
 	export FSTYP=$FS
 	AEX=""
-	if test -n "$DO_AEX" -a -f "/root/conf/$i.exclude"; then
-	    AEX="-E /root/conf/$i.exclude"
+	if test -n "$DO_AEX" ; then
+	    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+		< "/root/conf/all.exclude" > "/results/results-$i/exclude"
+	    if test -f "/root/conf/$i.exclude"; then
+		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+		    < "/root/conf/$i.exclude" >> "/results/results-$i/exclude"
+	    fi
+	    if test $(stat -c %s "/results/results-$i/exclude") -gt 0 ; then
+		AEX="-E /results/results-$i/exclude"
+	    fi
         fi
 	if test -f /tmp/exclude-tests ; then
 	    AEX="$AEX -E /tmp/exclude-tests"
@@ -204,40 +212,40 @@ do
 		   cat $RESULT_BASE/fsck.out
 		fi
 	    elif test "$FS" = "xfs" ; then
-		if ! xfs_repair -n $TEST_DEV >& /dev/null ; then
-		    xfs_repair $TEST_DEV
+		if ! xfs_repair -n "$TEST_DEV" >& /dev/null ; then
+		    xfs_repair "$TEST_DEV"
 		fi
 	    else
-		/sbin/fsck.$FS $TEST_DEV
+		/sbin/fsck.$FS "$TEST_DEV"
 	    fi
 	done
 	if test -n "$RUN_ON_GCE"
 	then
-	    gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
+	    gsutil cp "gs://$GS_BUCKET/check-time.tar.gz" /tmp >& /dev/null
 	    if test -f /tmp/check-time.tar.gz
 	    then
 		tar -C /tmp -xzf /tmp/check-time.tar.gz
 	    fi
-	    if ! test -f /tmp/check.time.$i
+	    if ! test -f "/tmp/check.time.$i"
 	    then
-		touch /results/results-$i/check.time
+		touch "/results/results-$i/check.time"
 	    fi
-	    cat /results/results-$i/check.time /tmp/check.time.$i \
+	    cat "/results/results-$i/check.time" "/tmp/check.time.$i" \
 		| awk '
 	{ t[$1] = $2 }
 END	{ if (NR > 0) {
 	    for (i in t) print i " " t[i]
 	  }
 	}' \
-		| sort -n > /tmp/check.time.$i.new
-	    mv /tmp/check.time.$i.new /tmp/check.time.$i
+		| sort -n > "/tmp/check.time.$i.new"
+	    mv "/tmp/check.time.$i.new" "/tmp/check.time.$i"
 	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
 						     > /tmp/check-time.tar.gz)
-	    gsutil cp /tmp/check-time.tar.gz gs://$GS_BUCKET >& /dev/null
+	    gsutil cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null
 	fi
 	echo 3 > /proc/sys/vm/drop_caches
-	cp /proc/slabinfo $RESULT_BASE/slabinfo.after
-	cp /proc/meminfo $RESULT_BASE/meminfo.after
+	cp /proc/slabinfo "$RESULT_BASE/slabinfo.after"
+	cp /proc/meminfo "$RESULT_BASE/meminfo.after"
 	free -m
 	gce_run_hooks fs-config-end $i
 	echo -n "END TEST: $TESTNAME " ; date

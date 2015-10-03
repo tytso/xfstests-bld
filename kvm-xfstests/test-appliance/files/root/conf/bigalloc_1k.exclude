@@ -1,3 +1,4 @@
+# bigalloc does not support on-line defrag
 ext4/301
 ext4/302
 ext4/303
