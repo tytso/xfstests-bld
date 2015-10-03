@@ -4,4 +4,4 @@ DIR=@DIR@
 
 GCE_XFSTESTS_DIR=$DIR/kvm-xfstests
 export GCE_XFSTESTS_DIR
-exec $GCE_XFSTESTS_DIR/gce-xfstests $*
+exec $GCE_XFSTESTS_DIR/gce-xfstests "$@"

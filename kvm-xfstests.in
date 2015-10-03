@@ -4,4 +4,4 @@ DIR=@DIR@
 
 KVM_XFSTESTS_DIR=$DIR/kvm-xfstests
 export KVM_XFSTESTS_DIR
-exec $KVM_XFSTESTS_DIR/kvm-xfstests $*
+exec $KVM_XFSTESTS_DIR/kvm-xfstests "$@"
