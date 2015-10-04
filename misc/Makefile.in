@@ -10,7 +10,7 @@ my_dir = .
 CC = @CC@
 CFLAGS = @CFLAGS@
 
-PROGS= fname_benchmark  resize
+PROGS= fname_benchmark resize syncfs
 SCRIPTS= encrypt-fname-benchmark encrypt-smoketest
 
 all: $(PROGS)
@@ -20,6 +20,9 @@ fname_benchmark: fname_benchmark.c
 
 resize: resize.c
 	$(CC) -o resize -O2 $<
+
+syncfs: syncfs.c
+	$(CC) -o syncfs -O2 $<
 
 install:
 	mkdir -p $(DESTDIR)/bin
