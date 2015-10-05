@@ -19,7 +19,9 @@ then
 	   --metadata "status=$(date +%H:%M) $status" >& /dev/null &
     touch /run/last_logged
 fi
-echo $(date +%s) $status > /var/www/statusz
-echo $(date +%H:%M) $status > /var/www/status
+echo $(date +%s) "$status" > /var/www/statusz
+echo $(date +%H:%M) "$status" > /var/www/status
+echo "$status" > /results/status
+/root/xfstests/bin/syncfs /results/status
 logger $cfg $*
 

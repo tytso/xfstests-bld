@@ -38,6 +38,9 @@ then
     cp /proc/config.gz /results
 fi
 
+uname -r > /results/kernel_version
+echo "$DATECODE" > /results/datecode
+
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)
 for i in $(cd /results; echo check.time.*)
