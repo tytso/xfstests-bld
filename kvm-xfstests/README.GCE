@@ -1,6 +1,15 @@
 
 	      Running xfstests on Google Compute Engine
 
+Getting a Google Compute Engine account
+---------------------------------------
+
+If you don't have GCE account, you can go to https://cloud.google.com
+and sign up for a free trial.  This will get you $300 dollars worth of
+credit which you can use over a 60 day period (as of this writing).
+Given that a full test costs around a $1.50, and a smoke test costs
+pennies, that should be enough for plenty of testing.  :-)
+
 Configuration
 -------------
 
