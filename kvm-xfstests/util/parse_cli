@@ -97,7 +97,7 @@ while [ "$1" != "" ]; do
 	    DO_AEX=""
 	    ;;
 	-c) shift
-	    for i in ${1/,/ }
+	    for i in ${1//,/ }
 	    do
 		validate_config_name "$i"
 	    done
