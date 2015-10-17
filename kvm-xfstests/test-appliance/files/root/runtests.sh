@@ -102,7 +102,7 @@ cd /root/xfstests
 
 if test "$FSTESTCFG" = all
 then
-	FSTESTCFG="4k 1k ext3 encrypt nojournal ext3conv dioread_nolock data_journal inline bigalloc bigalloc_1k"
+	FSTESTCFG="$(cat /root/conf/all.list)"
 fi
 
 if test -n "$FSTESTEXC" ; then

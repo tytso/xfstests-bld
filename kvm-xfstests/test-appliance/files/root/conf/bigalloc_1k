@@ -3,5 +3,14 @@ export TEST_DEV=$SM_TST_DEV
 export TEST_DIR=$SM_TST_MNT
 export MKFS_OPTIONS="-q -b 1024 -O bigalloc"
 export EXT_MOUNT_OPTIONS=""
+
+# Until we can teach xfstests the difference between cluster size and
+# block size, avoid collapse_range, insert_range, and zero_range since
+# these will fail due the fact that these operations require
+# cluster-aligned ranges.
+export FSX_AVOID="-C -I -z"
+export FSSTRESS_AVOID="-f collapse=0 -f insert=0 -f zero=0"
+export XFS_IO_AVOID="fcollapse finsert zero"
+
 TESTNAME="Ext4 1k block w/bigalloc"
 

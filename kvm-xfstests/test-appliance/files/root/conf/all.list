@@ -1,0 +1,11 @@
+4k
+1k
+ext3
+encrypt
+nojournal
+ext3conv
+dioread_nolock
+data_journal_noleak
+inline
+bigalloc
+bigalloc_1k
