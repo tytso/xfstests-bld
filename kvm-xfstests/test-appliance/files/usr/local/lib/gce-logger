@@ -19,6 +19,7 @@ then
 	   --metadata "status=$(date +%H:%M) $status" >& /dev/null &
     touch /run/last_logged
 fi
+umask 022
 echo $(date +%s) "$status" > /var/www/statusz
 echo $(date +%H:%M) "$status" > /var/www/status
 echo "$status" > /results/status
