@@ -325,10 +325,6 @@ ORIG_CMDLINE="$*"
 
 . "$DIR/util/parse_cli"
 
-API="1.1"
-
-ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
-
 if test -n "$EXTRA_ARG"
 then
     ARG="$ARG kopt=$EXTRA_ARG"

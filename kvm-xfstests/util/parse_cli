@@ -3,6 +3,7 @@
 FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
+API="1.2"
 
 print_help ()
 {
@@ -165,6 +166,18 @@ while [ "$1" != "" ]; do
 	    NO_ACTION="echo -e Would execute:\n\t"
 	    SKIP_LOG=yes
 	    ;;
+	--no-punch)
+	    NO_PUNCH=yes
+	    ;;
+	--no-collapse)
+	    NO_COLLAPSE=yes
+	    ;;
+	--no-insert)
+	    NO_INSERT=yes
+	    ;;
+	--no-zero)
+	    NO_ZERO=yes
+	    ;;
 	--no-log)
 	    if test "$GCE_XFSTESTS" != "yes" ; then
 		SKIP_LOG=yes
@@ -268,7 +281,23 @@ if test "$ARG" = "cmd=ver" -a -z "$SKIP_LOG" ; then
 fi
 
 if test "$DO_AEX" = yes ; then
-    FSTESTOPT="${FSTESTOPT/#,/},aex"
+    FSTESTOPT="$FSTESTOPT,aex"
+fi
+
+if test "$NO_PUNCH" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_punch"
+fi
+
+if test "$NO_COLLAPSE" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_collapse"
+fi
+
+if test "$NO_INSERT" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_insert"
+fi
+
+if test "$NO_ZERO" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_zero"
 fi
 
 if test -d "$KERNEL" ; then
@@ -298,3 +327,5 @@ fi
 if test -n "$TZ" ; then
     ARG="$ARG fstesttz=$TZ"
 fi
+
+ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"

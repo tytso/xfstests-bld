@@ -12,10 +12,6 @@ QUIET="quiet loglevel=0"
 
 . $DIR/util/parse_cli
 
-API="1.1"
-
-ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
-
 if ! test -f "$KERNEL"; then
      echo "$KERNEL: kernel not found"
      exit 1

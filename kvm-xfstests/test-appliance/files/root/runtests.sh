@@ -1,7 +1,7 @@
 #!/bin/bash
 
 API_MAJOR=1
-API_MINOR=1
+API_MINOR=2
 . /root/test-config
 
 function gce_run_hooks()
@@ -54,6 +54,26 @@ while [ "$1" != "" ]; do
 	;;
     count) shift
 	RPT_COUNT=$1
+	;;
+    no_punch)
+	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f punch=0"
+	ALL_FSX_AVOID="$ALL_FSX_AVOID -H"
+	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID fpunch"
+	;;
+    no_collapse)
+	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f collapse=0"
+	ALL_FSX_AVOID="$ALL_FSX_AVOID -C"
+	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID fcollapse"
+	;;
+    no_insert)
+	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f insert=0"
+	ALL_FSX_AVOID="$ALL_FSX_AVOID -I"
+	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID finsert"
+	;;
+    no_zero)
+	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f zero=0"
+	ALL_FSX_AVOID="$ALL_FSX_AVOID -z"
+	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID zero"
 	;;
     *)
 	echo " "
@@ -144,11 +164,29 @@ do
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i
 	unset REQUIRE_FEATURE
+	unset FSX_AVOID
+	unset FSSTRESS_AVOID
+	unset XFS_IO_AVOID
 	if test -e "/root/conf/$i"; then
 		. "/root/conf/$i"
 	else
 		echo "Unknown configuration $i!"
 		continue
+	fi
+	if test -n "$ALL_FSX_AVOID"
+	then
+	    FSX_AVOID="$ALL_FSX_AVOID $FSX_AVOID"
+	    FSX_AVOID="${FSX_AVOID/# /}"
+	fi
+	if test -n "$ALL_FSSTRESS_AVOID"
+	then
+	    FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID $FSTRESS_AVOID"
+	    FSSTRESS_AVOID="${FSSTRESS_AVOID/# /}"
+	fi
+	if test -n "$ALL_XFS_IO_AVOID"
+	then
+	    XFS_IO_AVOID="$ALL_XFS_IO_AVOID $XFS_IO_AVOID"
+	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
 	echo $i > /run/fstest-config
 	if test -n "$EXT_MOUNT_OPTIONS" ; then
@@ -187,9 +225,27 @@ do
 	    echo "END TEST: Kernel does not support $REQUIRE_FEATURE"
 	    continue
 	fi
-	echo Device: $TEST_DEV
-	echo mk2fs options: $MKFS_OPTIONS
-	echo mount options: $EXT_MOUNT_OPTIONS
+	echo DEVICE: $TEST_DEV
+	echo MK2FS OPTIONS: $MKFS_OPTIONS
+	echo MOUNT OPTIONS: $EXT_MOUNT_OPTIONS
+	if test -n "$FSX_AVOID"
+	then
+	    echo FSX_AVOID: $FSX_AVOID
+	    echo FSX_AVOID: $FSX_AVOID >> "$RESULT_BASE/config"
+	    export FSX_AVOID
+	fi
+	if test -n "$FSSTRESS_AVOID"
+	then
+	    echo FSSTRESS_AVOID: $FSSTRESS_AVOID
+	    echo FSSTRESS_AVOID: $FSSTRESS_AVOID >> "$RESULT_BASE/config"
+	    export FSSTRESS_AVOID
+	fi
+	if test -n "$XFS_IO_AVOID"
+	then
+	    echo XFS_IO_AVOID: $XFS_IO_AVOID
+	    echo XFS_IO_AVOID: $XFS_IO_AVOID >> "$RESULT_BASE/config"
+	    export XFS_IO_AVOID
+	fi
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
