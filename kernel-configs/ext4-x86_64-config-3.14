@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86_64 3.14.52 Kernel Configuration
+# Linux/x86_64 3.14.53 Kernel Configuration
 #
 CONFIG_64BIT=y
 CONFIG_X86_64=y
@@ -1039,9 +1039,7 @@ CONFIG_ETHERNET=y
 # CONFIG_NET_VENDOR_AMD is not set
 # CONFIG_NET_VENDOR_ARC is not set
 # CONFIG_NET_VENDOR_ATHEROS is not set
-CONFIG_NET_CADENCE=y
-# CONFIG_ARM_AT91_ETHER is not set
-# CONFIG_MACB is not set
+# CONFIG_NET_CADENCE is not set
 # CONFIG_NET_VENDOR_BROADCOM is not set
 # CONFIG_NET_VENDOR_BROCADE is not set
 # CONFIG_NET_CALXEDA_XGMAC is not set
