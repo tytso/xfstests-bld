@@ -46,17 +46,7 @@ then
 fi
 
 kexec=$(gce_attribute kexec)
-if test -z "$kexec" || grep -q fstestcfg /proc/cmdline; then exit 0; fi
-
-if ! test -f /root/bzImage
-then
-    if ! gsutil cp $kexec /root/bzImage
-    then
-	logger "Couldn't find $kexec"
-	exit 1
-    fi
-    sync
-fi
+if grep -q fstestcfg /proc/cmdline; then exit 0; fi
 
 kopt=$(gce_attribute kopt)
 mem=$(gce_attribute mem)
@@ -69,6 +59,32 @@ fstestopt=$(gce_attribute fstestopt)
 fstesttz=$(gce_attribute fstesttz)
 fstesttyp=$(gce_attribute fstesttyp)
 fstestapi=$(gce_attribute fstestapi)
+
+if test -z "$kexec"
+then
+    cat >> /run/test-env <<EOF
+# Appended by gce-kexec
+FSTESTCFG="${fstestcfg//,/ }"
+FSTESTSET="${fstestset//,/ }"
+FSTESTOPT="${fstestopt//,/ }"
+FSTESTTYP="$fstesttyp"
+FSTESTAPI="${fstestapi//./ }"
+timezone="$fstesttz"
+MNTOPTS="$mount_opts"
+FSTESTEXC="${fstestexc//,/ }"
+EOF
+    exit 0
+fi
+
+if ! test -f /root/bzImage
+then
+    if ! gsutil cp $kexec /root/bzImage
+    then
+	logger "Couldn't find $kexec"
+	exit 1
+    fi
+    sync
+fi
 
 if test -n "$fstesttz" -a -f /usr/share/zoneinfo/$fstesttz
 then

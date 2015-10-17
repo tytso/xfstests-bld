@@ -13,12 +13,6 @@ fi
 
 . /root/test-config
 
-if test -e /usr/local/lib/gce-kexec
-then
-    . /usr/local/lib/gce-funcs
-    /usr/local/lib/gce-kexec
-fi
-
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
 FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
 FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
@@ -28,6 +22,25 @@ timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
+
+cat > /run/test-env <<EOF
+FSTESTCFG="$FSTESTCFG"
+FSTESTSET="$FSTESTSET"
+FSTESTOPT="$FSTESTOPT"
+FSTESTTYP="$FSTESTTYP"
+FSTESTAPI="$FSTESTAPI"
+timezone="$timezone"
+MNTOPTS="$MNTOPTS"
+CMD="$CMD"
+FSTESTEXC="$FSTESTEXC"
+EOF
+
+if test -e /usr/local/lib/gce-kexec
+then
+    . /usr/local/lib/gce-funcs
+    /usr/local/lib/gce-kexec
+    . /run/test-env
+fi
 
 export FSTESTCFG
 export FSTESTSET
