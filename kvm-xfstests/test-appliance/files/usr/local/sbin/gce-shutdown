@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if test -f /run/gce-xfstests-bld
+then
+    exit 0
+fi
+
 . /usr/local/lib/gce-funcs
 
 if test -f /run/self-shutdown-requested

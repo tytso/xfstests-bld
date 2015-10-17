@@ -33,6 +33,8 @@ PACKAGES="bash-completion \
 	time \
 	xz-utils"
 
+touch /run/gce-xfstests-bld
+
 apt-get update
 apt-get install -y debconf-utils
 debconf-set-selections <<EOF
