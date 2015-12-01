@@ -5,7 +5,7 @@ encrypt
 nojournal
 ext3conv
 dioread_nolock
-data_journal_noleak
+data_journal
 inline
 bigalloc
 bigalloc_1k
