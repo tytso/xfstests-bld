@@ -12,6 +12,7 @@ fi
 
 if test -n "$CROSS_COMPILE" ; then
     cross="--build=$(e2fsprogs-libs/config/config.guess) --host=$CROSS_COMPILE"
+    crossfio="--cc=$CROSS_COMPILE-gcc"
 fi
 
 case "$CROSS_COMPILE" in
@@ -82,7 +83,7 @@ if test -z "$DO_ANDROID"; then
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     ./configure $cross --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+     ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
 (cd xfstests-dev; \
@@ -94,6 +95,20 @@ fi
     LIBS=-lpthread \
     ./configure $cross ; \
     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+
+#
+# Hack around quota's lack of cross compilation support
+#
+if ! grep -q "@CC@" quota/Makefile.in ; then
+   echo "No @CC@"
+   ed quota/Makefile.in <<EOF
+1i
+CC	      = @CC@
+.
+w
+q
+EOF
+fi
 
 #
 # We haven't gotten quota working on android yet.  Shrug.
