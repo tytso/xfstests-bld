@@ -18,6 +18,7 @@ fi
 case "$CROSS_COMPILE" in
     *-android|*-androideabi)
 	DO_ANDROID=yes
+	SKIP_KVM_UTILS=yes
 	;;
 esac
 
@@ -124,4 +125,6 @@ if test -z "$DO_ANDROID"; then
      make V=1 $J; make V=1 $J install)
 fi
 
-(cd misc ; ./configure $cross ; make $J ; make install DESTDIR=$DESTDIR)
+if test -z "$SKIP_KVM_UTILS"; then
+    (cd misc ; ./configure $cross ; make $J ; make install DESTDIR=$DESTDIR)
+fi
