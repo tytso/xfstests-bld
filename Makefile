@@ -13,7 +13,7 @@ SUBDIRS =	acl \
 		xfsprogs-dev \
 		xfstests-dev
 
-all: xfsprogs-dev xfstests-dev fio quota kvm-xfstests/util/zerofree \
+all: xfsprogs-dev xfstests-dev fio quota \
 	gce-xfstests.sh kvm-xfstests.sh
 	./build-all
 
