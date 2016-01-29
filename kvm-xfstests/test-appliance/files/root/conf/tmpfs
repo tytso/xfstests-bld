@@ -1,0 +1,8 @@
+export FS=tmpfs
+export TEST_DEV=test:/tmp
+export TEST_DIR=/test/tmp
+export SCRATCH_DEV=test:/scratch
+export SCRATCH_MNT=/test/scratch
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="tmpfs"
+mkdir -p /test/tmp /test/scratch
