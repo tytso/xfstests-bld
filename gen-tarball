@@ -18,11 +18,10 @@ fi
 
 echo "GEN xfstests"
 rm -rf xfstests
-cp -r xfstests-dev xfstests
+(D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests)
+cp xfstests-dev/README* xfstests
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
 cat *.ver > xfstests/git-versions
-rm -rf xfstests/.git xfstests/autom4te.cache
-find xfstests -type f -name \*.\[cho\]  -o -name \*.l[ao] | xargs rm
 mkdir xfstests/bin
 cp bld/sbin/* xfstests/bin
 cp bld/bin/* xfstests/bin
