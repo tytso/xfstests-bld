@@ -120,7 +120,7 @@ if test -z "$DO_ANDROID"; then
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
-     aclocal ; autoconf ; \
+     autoreconf -fvi ; \
      ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
      make V=1 $J; make V=1 $J install)
 fi
