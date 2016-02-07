@@ -6,6 +6,7 @@ Wants=local-fs.target network-online.target network.target
 
 [Service]
 Type=oneshot
+IgnoreSIGPIPE=no
 ExecStart=/root/kvm-xfstests.boot
 TimeoutSec=0
 StandardOutput=tty
