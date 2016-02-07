@@ -16,10 +16,30 @@ else
     STRIP=strip
 fi
 
+while [ "$1" != "" ];
+do
+    case $1 in
+	--fast)
+	    fast=yes
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
 echo "GEN xfstests"
 rm -rf xfstests
-(D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests)
-cp xfstests-dev/README* xfstests
+if test "$fast" = "yes"
+then
+    cp -r xfstests-dev xfstests
+    rm -rf xfstests/.git xfstests/autom4te.cache
+else
+    (D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests)
+    cp xfstests-dev/README* xfstests
+fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
 cat *.ver > xfstests/git-versions
 mkdir xfstests/bin
