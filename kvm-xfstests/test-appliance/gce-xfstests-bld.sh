@@ -1,6 +1,8 @@
 #!/bin/bash
 
 BUCKET=@BUCKET@
+GS_TAR=@GS_TAR@
+BLD_INST=@BLD_INST@
 PACKAGES="bash-completion \
 	bc \
 	bsdmainutils \
@@ -132,12 +134,12 @@ sync
 if test "$fast" = "yes"
 then
     fstrim /
-    gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE) \
+    gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
 	   --keep-disks boot
 else
     mount -t tmpfs -o size=10G tmpfs /mnt
     mkdir -p /mnt/tmp
     gcimagebundle -d /dev/sda -o /mnt/tmp/ -f ext3 --log_file=/tmp/bundle.log
-    gsutil cp /mnt/tmp/*.image.tar.gz gs://$BUCKET/gce-xfstests.image.tar.gz
-    gcloud compute -q instances delete xfstests-bld --zone $(basename $ZONE)
+    gsutil cp /mnt/tmp/*.image.tar.gz "$GS_TAR"
+    gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE)
 fi

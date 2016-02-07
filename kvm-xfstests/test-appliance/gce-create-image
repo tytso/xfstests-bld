@@ -22,7 +22,10 @@ COMPUTE_RW=https://www.googleapis.com/auth/compute
 SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
 IMAGE=https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8
-
+ROOT_FS=xfstests
+BLD_INST=xfstests-bld
+BLD_DISK=xfstests-bld
+GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
 if ! test -f $TARBALL ; then
@@ -35,6 +38,12 @@ do
     case $1 in
 	--fast)
 	    fast=yes
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    BLD_INST="xfstests-bld-$1"
+	    BLD_DISK="xfstests-bld-$1"
+	    GS_TAR="gs://$GS_BUCKET/gce-xfstests-$1.image.tar.gz"
 	    ;;
 	*)
 	    echo "unknown option: $1"
@@ -64,7 +73,9 @@ fi
 
 t=$(mktemp /tmp/gce-create.XXXXXXXX)
 
-sed -e "s/@BUCKET@/$GS_BUCKET/" < gce-xfstests-bld.sh > $t
+sed -e "s/@BUCKET@/$GS_BUCKET/" \
+    -e "s;@GS_TAR@;$GS_TAR;" \
+    -e "s/@BLD_INST@/$BLD_INST/" < gce-xfstests-bld.sh > $t
 gsutil cp $t gs://$GS_BUCKET/gce-xfstests-bld.sh
 
 # Update the git-versions file
@@ -86,22 +97,22 @@ then
 fi
 rm -f $t
 
-gcloud compute --project "$GCE_PROJECT" -q instances delete xfstests-bld \
+gcloud compute --project "$GCE_PROJECT" -q instances delete "$BLD_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
-gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld 2> /dev/null
+gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" 2> /dev/null
 
-gcloud compute --project "$GCE_PROJECT" instances create "xfstests-bld" \
+gcloud compute --project "$GCE_PROJECT" instances create "$BLD_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
        --network "default" --metadata "^ ^$METADATA" \
        --maintenance-policy "MIGRATE" \
        --scopes "$SCOPES" --image "$IMAGE" \
-       --boot-disk-type "pd-standard" --boot-disk-device-name "xfstests-bld"
+       --boot-disk-type "pd-standard" --boot-disk-device-name "$BLD_DISK"
 
 echo -n "Waiting for bootable image setup."
 
 cnt=0
 while gcloud compute --project "$GCE_PROJECT" instances \
-	     describe xfstests-bld --zone $GCE_ZONE >& /dev/null
+	     describe "$BLD_INST" --zone $GCE_ZONE >& /dev/null
 do
     let cnt=$cnt+1
     if test $cnt -ge 10
@@ -113,16 +124,17 @@ do
 done
 echo " Done!"
 
-gcloud compute --project "$GCE_PROJECT" -q images delete xfstests
+gcloud compute --project "$GCE_PROJECT" -q images delete "$ROOT_FS" >& /dev/null
 if test "$fast" = "yes"
 then
-    gcloud compute --project "$GCE_PROJECT" -q images create xfstests \
+    gcloud compute --project "$GCE_PROJECT" -q images create "$ROOT_FS" \
 	   --description "Linux Kernel File System Test Appliance" \
-	   --source-disk xfstests-bld --source-disk-zone "$GCE_ZONE"
-    gcloud compute --project "$GCE_PROJECT" -q disks delete xfstests-bld \
+	   --source-disk "$BLD_DISK" --source-disk-zone "$GCE_ZONE"
+    gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" \
 	   --zone "$GCE_ZONE"
 else
-    gcloud compute --project "$GCE_PROJECT" -q images create xfstests \
+    gcloud compute --project "$GCE_PROJECT" -q images create "$ROOT_FS" \
 	   --description "Linux Kernel File System Test Appliance" \
-	   --source-uri gs://$GS_BUCKET/gce-xfstests.image.tar.gz
+	   --source-uri "$GS_TAR"
+    gsutil rm "$GS_TAR"
 fi
