@@ -422,6 +422,45 @@ then
     ARG="$ARG hooks=$GS_HOOKS"
 fi
 
+if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
+then
+    LOCAL_XFSTESTS="$DIR/../xfstests.tar.gz"
+    GS_XFSTESTS="gs://$GS_BUCKET/xfstests.tar.gz"
+    if ! test -f "$LOCAL_XFSTESTS"
+    then
+	echo "The xfstests.tar.gz file has not been built!"
+	exit 1
+    fi
+    get_local_hash "$LOCAL_XFSTESTS"
+    get_remote_hash "$GS_XFSTESTS"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$LOCAL_XFSTESTS" "$GS_XFSTESTS"
+    fi
+    ARG="$ARG tarxfstests=$GS_XFSTESTS"
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
+then
+    LOCAL_FILES=$(mktemp /tmp/files.XXXXXXXX)
+    GS_FILES="gs://$GS_BUCKET/files.tar.gz"
+    if ! test -d "$DIR/test-appliance"
+    then
+	echo "Can't find the test-appliance directory!"
+	exit 1
+    fi
+    (cd "$DIR/test-appliance"; \
+     tar -X gce-exclude-files -C files -cf - . | gzip -9n > $LOCAL_FILES)
+    get_local_hash "$LOCAL_FILES"
+    get_remote_hash "$GS_FILES"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$LOCAL_FILES" "$GS_FILES"
+    fi
+    ARG="$ARG tarfiles=$GS_FILES"
+    rm -f "$LOCAL_FILES"
+fi
+
 if test -n "$GS_KERNEL"
 then
     ARG="$ARG kexec=$GS_KERNEL"
