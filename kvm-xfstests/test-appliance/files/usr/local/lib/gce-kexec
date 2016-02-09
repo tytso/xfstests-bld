@@ -64,6 +64,7 @@ tarfiles=$(gce_attribute tarfiles)
 
 if test -n "$tarxfstests" ; then
     gsutil cp "$tarxfstests" /run/xfstests.tar.gz
+    rm -rf /root/xfstests
     tar -C /root -xzf /run/xfstests.tar.gz
     rm /run/xfstests.tar.gz
 fi

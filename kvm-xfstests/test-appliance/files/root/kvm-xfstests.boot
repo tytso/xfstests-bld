@@ -40,6 +40,17 @@ then
     . /usr/local/lib/gce-funcs
     /usr/local/lib/gce-kexec
     . /run/test-env
+elif test -b /dev/vdh
+then
+    mkdir /tmp/upload
+    tar -C /tmp/upload -xf /dev/vdh
+    if test -f /tmp/upload/xfstests.tar.gz; then
+	rm -rf /root/xfstests
+	tar -C /root -xzf /tmp/upload/xfstests.tar.gz
+    fi
+    if test -f /tmp/upload/files.tar.gz; then
+	tar -C / -xzf /tmp/upload/files.tar.gz
+    fi
 fi
 
 export FSTESTCFG

@@ -163,20 +163,15 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	--update-xfstests)
-	    if test "$GCE_XFSTESTS" = "yes"
+	    if ! test -f "$DIR/../xfstests.tar.gz"
 	    then
-		UPDATE_XFSTESTS=yes
-	    else
-		print_help
+		echo "The xfstests.tar.gz file has not been built!"
+		exit 1
 	    fi
+	    UPDATE_XFSTESTS=yes
 	    ;;
 	--update-files)
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		UPDATE_FILES=yes
-	    else
-		print_help
-	    fi
+	    UPDATE_FILES=yes
 	    ;;
 	--no-action)
 	    NO_ACTION="echo -e Would execute:\n\t"

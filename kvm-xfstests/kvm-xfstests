@@ -46,6 +46,30 @@ if ionice -h > /dev/null ; then
     IONICE="ionice -n 5"
 fi
 
+VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
+trap 'rm -f "$VDH"' 0
+
+if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
+then
+    tar -r -f $VDH -C "$DIR/.." xfstests.tar.gz
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
+then
+    TDIR=$(mktemp -d /tmp/files.XXXXXXXX)
+    if test -z "$TDIR"; then
+	echo "Couldn't create temp directory"
+	exit 1
+    fi
+    (cd "$DIR/test-appliance"; \
+     tar -X kvm-exclude-files -C files -cf - . | \
+	 gzip -9n > "$TDIR/files.tar.gz")
+    tar -r -f $VDH -C "$TDIR" files.tar.gz
+    rm -rf "$TDIR"
+fi
+
+chmod 400 "$VDH"
+
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=none,if=virtio \
@@ -54,6 +78,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDE,cache=none,if=virtio \
 	-drive file=$VDF,cache=none,if=virtio \
 	-drive file=$VDG,cache=none,if=virtio \
+	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
 	-nographic -smp $NR_CPU -m $MEM \
         $CONSOLE \
         $MONITOR \
