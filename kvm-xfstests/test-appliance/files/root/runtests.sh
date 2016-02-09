@@ -211,6 +211,8 @@ do
 		    mke2fs -F -q -t ext4 $MKFS_OPTIONS "$TEST_DEV"
 		elif test "$FS" = "xfs" ; then
 		    mkfs.xfs -f $MKFS_OPTIONS "$TEST_DEV"
+		elif test "$FS" = "tmpfs" ; then
+		    :
 		else
 		    /sbin/mkfs.$FS "$TEST_DEV"
 		fi
@@ -277,6 +279,8 @@ do
 		if ! xfs_repair -n "$TEST_DEV" >& /dev/null ; then
 		    xfs_repair "$TEST_DEV"
 		fi
+	    elif test "$FS" = "tmpfs" ; then
+		:
 	    else
 		/sbin/fsck.$FS "$TEST_DEV"
 	    fi
