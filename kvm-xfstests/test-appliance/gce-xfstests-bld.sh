@@ -57,7 +57,16 @@ gsutil cp gs://$BUCKET/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
 
-ln -s /results/runtests.log /var/www
+for i in /results/runtests.log /var/log/syslog \
+       /var/log/messages /var/log/kern.log
+do
+    ln -s "$i" /var/www
+done
+
+for i in diskstats meminfo lockdep lock_stat slabinfo vmstat
+do
+    ln /var/www/cgi-bin/print_proc "/var/www/cgi-bin/$i"
+done
 rm -rf /var/www/html
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config

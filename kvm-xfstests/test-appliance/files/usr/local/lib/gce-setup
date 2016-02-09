@@ -24,6 +24,11 @@ MNTOPTS $MNTOPTS
 EOF
 
 hostname > /var/www/hostname.inc
+for i in diskstats meminfo lockdep lock_stat slabinfo vmstat
+do
+    chmod 444 "/proc/$i"
+done
+chmod 644 /var/log/messages /var/log/syslog /var/log/kern.log
 
 kexec=$(gce_attribute kexec)
 

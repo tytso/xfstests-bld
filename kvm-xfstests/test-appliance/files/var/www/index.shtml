@@ -33,6 +33,17 @@ center; padding: 10px; color: #ffffff; }
   <iframe src="runtests.log" width="80%" height="700"></iframe>
   <h2>Links</h2>
   <p>
+    <a href="kern.log">kern.log</a>
+    <a href="messages">messages</a>
+    <a href="syslog">syslog</a>
+    <a href="/cgi-bin/diskstats">diskstats</a>
+    <a href="/cgi-bin/lockdep">lockdep</a>
+    <a href="/cgi-bin/lock_stat">lock_stat</a>
+    <a href="/cgi-bin/meminfo">meminfo</a>
+    <a href="/cgi-bin/slabinfo">slabinfo</a>
+    <a href="/cgi-bin/vmstat">vmstat</a>
+  </p>
+  <p>
     <a href="statusz">statusz</a>
     <a href="varz">varz</a>
     <a href="healthz">healthz</a>
