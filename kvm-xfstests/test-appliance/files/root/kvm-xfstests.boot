@@ -47,9 +47,11 @@ then
     if test -f /tmp/upload/xfstests.tar.gz; then
 	rm -rf /root/xfstests
 	tar -C /root -xzf /tmp/upload/xfstests.tar.gz
+	rm -f /tmp/upload/xfstests.tar.gz
     fi
     if test -f /tmp/upload/files.tar.gz; then
 	tar -C / -xzf /tmp/upload/files.tar.gz
+	rm -f /tmp/upload/files.tar.gz
     fi
 fi
 

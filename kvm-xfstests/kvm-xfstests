@@ -48,6 +48,7 @@ fi
 
 VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
 trap 'rm -f "$VDH"' 0
+tar -c -f "$VDH" -T /dev/null
 
 if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
 then
