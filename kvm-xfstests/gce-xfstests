@@ -140,8 +140,11 @@ case "$1" in
 			    -e 's/^Linux xfstests-[0-9]* //' -e 's/ .*//')
 	    status=$(jq < "$inst_info" \
 		'.metadata.items[] | select(.key == "status") | .value' | \
+			    sed -e 's/^"//' -e 's/"$//')
+	    ip=$(jq < "$inst_info" \
+		    '.networkInterfaces[] | .accessConfigs[] | select(.name == "external-nat") | .natIP' | \
 			sed -e 's/^"//' -e 's/"$//')
-	    echo "$i - $kver - $status"
+	    echo "$i $ip - $kver - $status"
 	done
 	rm "$inst_info"
 	exit 0
