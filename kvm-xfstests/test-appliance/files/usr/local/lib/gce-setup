@@ -7,6 +7,9 @@ run_hooks pre-setup
 /usr/local/lib/gce-logger disk setup
 gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
+gcloud compute instances -q add-metadata ${instance} \
+       --metadata "kernel_version=$(uname -a)" &
+
 /usr/local/lib/gce-setup-results &
 /usr/local/lib/gce-setup-scratch &
 
