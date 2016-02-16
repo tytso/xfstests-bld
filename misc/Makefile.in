@@ -11,7 +11,7 @@ CC = @CC@
 CFLAGS = @CFLAGS@
 
 PROGS= fname_benchmark resize syncfs
-SCRIPTS= encrypt-fname-benchmark encrypt-smoketest
+SCRIPTS= encrypt-fname-benchmark encrypt-smoketest encrypt-test-revalidate
 
 all: $(PROGS)
 

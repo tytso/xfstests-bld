@@ -1,0 +1,33 @@
+#!/bin/sh -vx
+dmesg -n 7
+umount /dev/vdc
+mke2fs -t ext4 -O encrypt,^metadata_csum -Fq /dev/vdc
+mount /vdc
+mkdir /vdc/a /vdc/b
+echo foobar | e4crypt add_key /vdc/a
+cp /etc/motd /vdc/a
+ln -s motd /vdc/a/link
+cp -r /root/xfstests /vdc/a
+umount /vdc
+mount /vdc
+ls -l /vdc/a
+cat /vdc/a/link
+cat /vdc/a/motd
+keys=$(keyctl show | grep ext4 | awk '{print $1}')
+echo $keys | xargs -n 1 keyctl invalidate
+f=$(find /vdc/a -maxdepth 1 -type f)
+ls -l /vdc/a/NOEXIST
+ls -l /vdc/a/xfstests/README
+ls -l /vdc/a
+ls -l $f
+echo foobar | e4crypt add_key
+ls -l /vdc/a/NOEXIST
+ls -l /vdc/a/xfstests/README
+ls -l $f
+ls -l /vdc/a
+keys=$(keyctl show | grep ext4 | awk '{print $1}')
+echo $keys | xargs -n 1 keyctl invalidate
+ls -l /vdc/a/NOEXIST
+ls -l /vdc/a/xfstests/README
+ls -l $f
+ls -l /vdc/a
