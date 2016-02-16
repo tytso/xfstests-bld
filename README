@@ -7,23 +7,36 @@ If you are testing a 32-bit x86 kernel you must use the
 root_fs.img.i386.  If you are using a 64-bit kernel, you may use
 either the i386 or x86_64 root_fs.img file.
 
+Information on how to use these images can be found at the Quick Start
+guide, located at:
 
-The "corresponding source" of the GPL binaries found in these KVM images
-can be found in the source packages for the Jessie testing
-distribution as of April 1, 2015:
+  https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/quick-start?h=META
 
-	http://snapshot.debian.org/archive/debian/20150401T032713Z/
+
+The "corresponding source" of the GPL binaries found in these KVM
+images can be found in the source packages for the Debian
+distribution's Jessie release as of June 19, 2015:
+
+	http://snapshot.debian.org/archive/debian/20150619T152821Z/
+
+... as well as the following git repositories:
+
+e2fsprogs	v1.43-WIP-2015-05-18-64-g2334bd3 (Sat, 5 Sep 2015 22:21:35 -0400)
+fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
+quota		7367f5d (Wed, 27 Jan 2016 12:16:25 +0100)
+xfsprogs	v4.2.0 (Mon, 7 Sep 2015 10:14:31 +1000)
+xfstests-bld	922655f (Thu, 11 Feb 2016 22:34:53 -0500)
+xfstests	linux-v3.8-942-ga5b1ad9 (Sat, 13 Feb 2016 12:26:31 -0500)
 
 The gen-image script found in the kvm-xfstests/test-appliance
-directory of the xfstests-bld git repository, plus debootstrap,
-constitutes the scripts used to control the creation of these KVM
-images.
+directory of the xfstests-bld git repository, plus Debian jessie's
+debootstrap, constitutes the scripts used to control the creation of
+these KVM images.
 
-The following git repositories was used to build these images:
+Local changes to xfstests can be found at:
 
-efsprogs	v1.42.12-548-g8804a96 (Tue, 5 May 2015 10:52:12 -0400)
-fio		fio-2.2.6 (Fri, 27 Feb 2015 08:30:04 -0700)
-quota		022aabf (Wed, 26 Nov 2014 10:22:08 +0100)
-xfsprogs	v3.2.2-36-g502544b (Mon, 13 Apr 2015 09:33:50 +1000)
-xfstests-bld	843186f (Tue, 5 May 2015 23:53:00 -0400)
-xfstests	linux-v3.8-656-gc3d3e1e (Mon, 4 May 2015 22:56:13 +1000)
+    https://github.com/tytso/xfstests tags/release-2015-02-15-a5b1ad9
+
+The URL's for the other git repositories and scripts to download the
+sources from those repositories can be found in xfstests-bld's
+scripts.
