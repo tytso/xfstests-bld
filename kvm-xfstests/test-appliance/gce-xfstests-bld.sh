@@ -38,6 +38,7 @@ PACKAGES="bash-completion \
 touch /run/gce-xfstests-bld
 
 apt-get update
+apt-get -y --with-new-pkgs upgrade
 apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
