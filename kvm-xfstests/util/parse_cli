@@ -111,7 +111,19 @@ while [ "$1" != "" ]; do
 	    MNTOPTS="$1"
 	    ;;
 	-r) shift
-	    MEM="$1"
+	    case "$1" in
+		*[mM])
+		    MEM=$(echo "$1" | sed -e 's/[mM]$//')
+		    ;;
+		*[gG])
+		    temparg=$(echo "$1" | sed -e 's/[gG]$//')
+		    MEM=$(expr "$temparg" \* 1024)
+		    unset temparg
+		    ;;
+		*)
+		    MEM="$1"
+		    ;;
+	    esac
 	    EXPLICIT_RAM=yes
 	    ;;
 	-g) shift
