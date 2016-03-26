@@ -234,6 +234,14 @@ while [ "$1" != "" ]; do
 		print_help
 	    fi
 	    ;;
+	--pmem-device)
+	    if test "$GCE_XFSTESTS" = "yes"
+	    then
+		PMEM_DEVICE=yes
+	    else
+		print_help
+	    fi
+	    ;;
 	--machtype)
 	    if test "$GCE_XFSTESTS" = "yes"
 	    then
@@ -357,6 +365,27 @@ fi
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
     (cd $DIR/.. ; ./gen-tarball --fast)
+fi
+
+case "$FSTESTCFG" in
+    dax|dax,*|*,dax,*|*,dax)
+	PMEM_DEVICE=yes
+	;;
+esac
+
+if test -n "$PMEM_DEVICE" ; then
+    if test -n "$EXTRA_ARG" ; then
+	EXTRA_ARG="$EXTRA_ARG:"
+    fi
+    EXTRA_ARG="${EXTRA_ARG}"'memmap=4G!9G:memmap=9G!14G'
+    if test -z "$EXPLICIT_RAM" -a -z "$GCE_MACHTYPE"; then
+	MEM=26624
+	NR_CPU=4
+	EXPLICIT_RAM=yes
+	EXPLICIT_CPU=yes
+    elif test "$MEM" -lt 14436 ; then
+	MEM=14436
+    fi
 fi
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
