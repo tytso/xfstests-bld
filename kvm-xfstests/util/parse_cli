@@ -3,7 +3,7 @@
 FSTESTCFG=all
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
-API="1.2"
+API="1.3"
 
 print_help ()
 {
@@ -140,7 +140,7 @@ while [ "$1" != "" ]; do
 	    EXPLICIT_CPU=yes
 	    ;;
 	-o) shift
-	    EXTRA_ARG="$1"
+	    EXTRA_ARG=$(echo "$1" | sed -e 's/ /:/g')
 	    ;;
 	-v)
 	    if test "$V" = "1" ; then

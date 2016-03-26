@@ -48,7 +48,7 @@ fi
 kexec=$(gce_attribute kexec)
 if grep -q fstestcfg /proc/cmdline; then exit 0; fi
 
-kopt=$(gce_attribute kopt)
+kopt=$(gce_attribute kopt | sed -e 's/:/ /')
 mem=$(gce_attribute mem)
 cpus=$(gce_attribute nr_cpus)
 mount_opts=$(gce_attribute mount_opts)

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 API_MAJOR=1
-API_MINOR=2
+API_MINOR=3
 . /root/test-config
 
 function gce_run_hooks()
