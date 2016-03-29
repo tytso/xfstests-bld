@@ -45,6 +45,7 @@ wait
 
 cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
 systemctl restart rsyslog.service
+dmesg >& /results/dmesg
 
 for i in /usr/sbin/rsyslogd /usr/sbin/sshd
 do
