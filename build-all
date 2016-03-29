@@ -61,6 +61,15 @@ fi
 
 rm $DESTDIR/lib/libaio.so*
 
+mkdir -p xfstests/lib
+mkdir -p xfstests/bin
+(cd dbench; \
+    autoheader ; autoconf ; \
+    CFLAGS="$LCF -I$DESTDIR/include" \
+    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+    ./configure $cross --datadir=/root/xfstests/lib; \
+    make $J ; cp dbench ../xfstests/bin ; cp client.txt ../xfstests/lib)
+
 (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
     ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
     CFLAGS="$LCF -I$DESTDIR/include" \

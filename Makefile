@@ -5,6 +5,7 @@
 SUBDIRS =	acl \
 		android-compat \
 		attr \
+		dbench \
 		e2fsprogs-libs \
 		fio \
 		quota \

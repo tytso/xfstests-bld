@@ -43,6 +43,14 @@ dmapi/doc/CHANGES.gz
 dmapi/include/builddefs
 dmapi/include/xfs
 dmapi/libtool
+dbench/Makefile
+dbench/autom4te.cache/
+dbench/config.h.in
+dbench/config.h
+dbench/configure
+dbench/dbench
+dbench/tbench
+dbench/tbench_srv
 libaio/src/libaio.a
 libaio/src/libaio.so.1.0.1
 e2fsprogs-libs/intl/libgnuintl.h
