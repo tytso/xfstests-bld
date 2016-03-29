@@ -19,8 +19,74 @@ case "$CROSS_COMPILE" in
     *-android|*-androideabi)
 	DO_ANDROID=yes
 	SKIP_KVM_UTILS=yes
+	SKIP_QUOTA=yes
+	SKIP_FIO=yes
 	;;
 esac
+
+function set_skip_all () {
+    SKIP_E2FSLIBS=yes
+    SKIP_ATTR=yes
+    SKIP_ACL=yes
+    SKIP_AIO=yes
+    SKIP_DBENCH=yes
+    SKIP_FIO=yes
+    SKIP_XFSPROGS=yes
+    SKIP_XFSTESTS=yes
+    SKIP_QUOTA=yes
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--skip-dbench)
+	    SKIP_DBENCH=yes
+	    ;;
+	--skip-quota)
+	    SKIP_QUOTA=yes
+	    ;;
+	--attr-only)
+	    set_skip_all
+	    unset SKIP_ATTR
+	    ;;
+	--acl-only)
+	    set_skip_all
+	    unset SKIP_ACL
+	    ;;
+	--aio-only)
+	    set_skip_all
+	    unset SKIP_AIO
+	    ;;
+	--e2fslibs-only)
+	    set_skip_all
+	    unset SKIP_E2FSLIBS
+	    ;;
+	--dbench-only)
+	    set_skip_all
+	    unset SKIP_DBENCH
+	    ;;
+	--fio-only)
+	    set_skip_all
+	    unset SKIP_FIO
+	    ;;
+	--quota-only)
+	    set_skip_all
+	    unset SKIP_QUOTA
+	    ;;
+	--xfsprogs-only)
+	    set_skip_all
+	    unset SKIP_XFSPROGS
+	    ;;
+	--xfstests-only)
+	    set_skip_all
+	    unset SKIP_XFSTESTS
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
 
 nr_cpus=$(getconf _NPROCESSORS_ONLN)
 J=-j$(expr $nr_cpus \* 2)
@@ -36,59 +102,67 @@ if test -n "$DO_ANDROID" ; then
     LLF="-pie"
 fi
 
-(cd e2fsprogs-libs; \
-    CFLAGS="$LCF -I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=/ --disable-nls; make $J; make DESTDIR=$DESTDIR $J install)
+if test -z "$SKIP_E2FSLIBS" ; then
+    (cd e2fsprogs-libs; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=/ --disable-nls; make $J; \
+     make DESTDIR=$DESTDIR $J install)
+fi
 
-(cd attr; \
-    CFLAGS="$LCF -I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=$DESTDIR --disable-nls; \
-    make $J ; \
-    make $J install-dev ; make install)
+if test -z "$SKIP_ATTR" ; then
+    (cd attr; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     make $J ; \
+     make $J install-dev ; make install)
+fi
 
-(cd acl; \
-    CPPFLAGS="-I$DESTDIR/include" \
-    CFLAGS="$LCF -I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --prefix=$DESTDIR --disable-nls; \
-    make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
-    make $J install-dev ; \
-    make $J install)
+if test -z "$SKIP_ACL" ; then
+    (cd acl; \
+     CPPFLAGS="-I$DESTDIR/include" \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+     make $J install-dev ; \
+     make $J install)
+fi
 
-(cd libaio; ./configure $cross --disable-nls;  make $J prefix=$DESTDIR install)
+if test -z "$SKIP_AIO" ; then
+    (cd libaio; ./configure $cross --disable-nls;
+     make $J prefix=$DESTDIR install)
+    rm $DESTDIR/lib/libaio.so*
+fi
 
-rm $DESTDIR/lib/libaio.so*
+if test -z "$SKIP_DBENCH" ; then
+    mkdir -p xfstests/lib
+    mkdir -p xfstests/bin
+    (cd dbench; \
+     autoheader ; autoconf ; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --datadir=/root/xfstests/lib; \
+     make $J ; cp dbench ../xfstests/bin ; cp client.txt ../xfstests/lib)
+fi
 
-mkdir -p xfstests/lib
-mkdir -p xfstests/bin
-(cd dbench; \
-    autoheader ; autoconf ; \
-    CFLAGS="$LCF -I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    ./configure $cross --datadir=/root/xfstests/lib; \
-    make $J ; cp dbench ../xfstests/bin ; cp client.txt ../xfstests/lib)
-
-(cd xfsprogs-dev; make $J realclean ; make $J configure ; \
-    ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
-    CFLAGS="$LCF -I$DESTDIR/include" \
-    CPPFLAGS="-I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    LIBS=-lpthread \
-    ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
-    make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
-    DIST_ROOT=$DESTDIR make $J install; \
-    DIST_ROOT=$DESTDIR make $J install-dev)
+if test -z "$SKIP_XFSPROGS" ; then
+    (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
+     ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     CPPFLAGS="-I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LIBS=-lpthread \
+     ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
+     make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
+     DIST_ROOT=$DESTDIR make $J install; \
+     DIST_ROOT=$DESTDIR make $J install-dev)
+fi
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 
-#
-# We don't support building fio for Android, and there is an old
-# version of fio in external/fio in AOSP, so we'll leave it be for
-# now.
-# 
-if test -z "$DO_ANDROID"; then
+if test -z "$SKIP_FIO"; then
     (cd fio; \
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
@@ -96,15 +170,18 @@ if test -z "$DO_ANDROID"; then
      ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
-(cd xfstests-dev; \
-    ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
-    autoheader ; autoconf ; \
-    CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" \
-    CPPFLAGS="-I$DESTDIR/include" \
-    LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-    LIBS=-lpthread \
-    ./configure $cross ; \
-    make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+if test -z "$SKIP_XFSPROGS" ; then
+    (cd xfstests-dev; \
+     ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
+     autoheader ; autoconf ; \
+     CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" \
+     CPPFLAGS="-I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LIBS=-lpthread \
+     ./configure $cross ; \
+     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" \
+	  LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+fi
 
 #
 # Hack around quota's lack of cross compilation support
@@ -120,10 +197,7 @@ q
 EOF
 fi
 
-#
-# We haven't gotten quota working on android yet.  Shrug.
-#
-if test -z "$DO_ANDROID"; then
+if test -z "$SKIP_QUOTA"; then
     (cd quota; \
      ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
