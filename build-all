@@ -21,6 +21,7 @@ case "$CROSS_COMPILE" in
 	SKIP_KVM_UTILS=yes
 	SKIP_QUOTA=yes
 	SKIP_FIO=yes
+	SKIP_DBENCH=yes
 	;;
 esac
 
