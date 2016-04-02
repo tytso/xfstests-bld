@@ -54,7 +54,7 @@ You will need to install the following packages (debian package names
 used):
 
 	jq xz-utils git autoconf2.59 libtool-bin automake libc6-dev
-	gcc make e2fslibs-dev pkg-config gettext
+	gcc make e2fslibs-dev pkg-config gettext libpopt-dev
 
 You will also need to install the Google Cloud SDK.
 
