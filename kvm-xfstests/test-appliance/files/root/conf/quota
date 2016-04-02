@@ -1,0 +1,6 @@
+export FS=ext4
+export TEST_DEV=$SM_TST_DEV
+export TEST_DIR=$SM_TST_MNT
+export MKFS_OPTIONS="-q -O quota"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 with quota feature"

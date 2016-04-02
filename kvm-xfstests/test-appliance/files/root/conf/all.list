@@ -4,8 +4,8 @@ ext3
 encrypt
 nojournal
 ext3conv
+adv
 dioread_nolock
 data_journal
-inline
 bigalloc
 bigalloc_1k
