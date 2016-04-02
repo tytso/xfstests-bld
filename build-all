@@ -1,4 +1,4 @@
-#!/bin/bash -vx
+#!/bin/bash
 
 if test -f config.custom ; then
 	. config.custom
@@ -25,6 +25,10 @@ case "$CROSS_COMPILE" in
 	;;
 esac
 
+function build_start () {
+    echo "------------------------ Starting build of $*"
+}
+
 function set_skip_all () {
     SKIP_E2FSLIBS=yes
     SKIP_ATTR=yes
@@ -35,6 +39,7 @@ function set_skip_all () {
     SKIP_XFSPROGS=yes
     SKIP_XFSTESTS=yes
     SKIP_QUOTA=yes
+    SKIP_KVM_UTILS=yes
 }
 
 while [ "$1" != "" ]; do
@@ -75,11 +80,15 @@ while [ "$1" != "" ]; do
 	    ;;
 	--xfsprogs-only)
 	    set_skip_all
-	    unset SKIP_XFSPROGS
+	    unset SKIP_XFSTESTS
 	    ;;
 	--xfstests-only)
 	    set_skip_all
 	    unset SKIP_XFSTESTS
+	    ;;
+	--kvm-utils-only)
+	    set_skip_all
+	    unset SKIP_KVM_UTILS
 	    ;;
 	*)
 	    echo "Unknown option: $1"
@@ -97,6 +106,7 @@ DESTDIR=$(pwd)/bld
 mkdir -p $DESTDIR
 
 if test -n "$DO_ANDROID" ; then
+    build_start "Android compatibility library"
     (cd android-compat; ./configure $cross ;  make $J prefix=$DESTDIR install)
     android_compat="-landroid_compat"
     LCF="-fpie -include android_compat.h"
@@ -104,6 +114,7 @@ if test -n "$DO_ANDROID" ; then
 fi
 
 if test -z "$SKIP_E2FSLIBS" ; then
+    build_start "e2fslibs"
     (cd e2fsprogs-libs; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
@@ -112,6 +123,7 @@ if test -z "$SKIP_E2FSLIBS" ; then
 fi
 
 if test -z "$SKIP_ATTR" ; then
+    build_start "extended attribute library"
     (cd attr; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
@@ -121,6 +133,7 @@ if test -z "$SKIP_ATTR" ; then
 fi
 
 if test -z "$SKIP_ACL" ; then
+    build_start "ACL library"
     (cd acl; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
@@ -132,12 +145,14 @@ if test -z "$SKIP_ACL" ; then
 fi
 
 if test -z "$SKIP_AIO" ; then
+    build_start "AIO library"
     (cd libaio; ./configure $cross --disable-nls;
      make $J prefix=$DESTDIR install)
     rm $DESTDIR/lib/libaio.so*
 fi
 
 if test -z "$SKIP_DBENCH" ; then
+    build_start "dbench"
     mkdir -p xfstests/lib
     mkdir -p xfstests/bin
     (cd dbench; \
@@ -149,6 +164,7 @@ if test -z "$SKIP_DBENCH" ; then
 fi
 
 if test -z "$SKIP_XFSPROGS" ; then
+    build_start "xfsprogs"
     (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
@@ -171,7 +187,8 @@ if test -z "$SKIP_FIO"; then
      ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
-if test -z "$SKIP_XFSPROGS" ; then
+if test -z "$SKIP_XFSTESTS" ; then
+    build_start "xfstests"
     (cd xfstests-dev; \
      ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
      autoheader ; autoconf ; \
@@ -184,21 +201,21 @@ if test -z "$SKIP_XFSPROGS" ; then
 	  LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
 fi
 
-#
-# Hack around quota's lack of cross compilation support
-#
-if ! grep -q "@CC@" quota/Makefile.in ; then
-   echo "No @CC@"
-   ed quota/Makefile.in <<EOF
+if test -z "$SKIP_QUOTA"; then
+    build_start "quota-tools"
+    #
+    # Hack around older quota-tools's lack of cross compilation support
+    #
+    if ! grep -q "@CC@" quota/Makefile.in ; then
+	echo "No @CC@"
+	ed quota/Makefile.in <<EOF
 1i
 CC	      = @CC@
 .
 w
 q
 EOF
-fi
-
-if test -z "$SKIP_QUOTA"; then
+    fi
     (cd quota; \
      ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
