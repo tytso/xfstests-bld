@@ -33,6 +33,9 @@ while [ "$1" != "" ]; do
     --update)
       DO_UPDATE=yes
       ;;
+    --pause)
+	PAUSE_DEBUG=yes
+	;;
     -a|--add_packages) shift
       ADD_PACKAGES="$ADD_PACKAGES $1"
       ;;
@@ -136,6 +139,11 @@ find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
 find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
 rm -rf $ROOTDIR/usr/share/man
 find $ROOTDIR/var/log -type f | xargs rm
+
+if test -n "$PAUSE_DEBUG"
+then
+    ${SHELL:-/bin/sh}
+fi
 
 umount $ROOTDIR/var/cache/apt/archives
 umount $ROOTDIR/var/lib/apt/lists
