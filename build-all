@@ -222,7 +222,7 @@ EOF
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      autoreconf -fvi ; \
-     ./configure $cross --enable-ext2direct=no --prefix=$DESTDIR ; \
+     ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
      make V=1 $J; make V=1 $J install)
 fi
 
