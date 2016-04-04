@@ -111,6 +111,8 @@ if test -n "$DO_ANDROID" ; then
     android_compat="-landroid_compat"
     LCF="-fpie -include android_compat.h"
     LLF="-pie"
+else
+    LCF="-g -O2"
 fi
 
 if test -z "$SKIP_E2FSLIBS" ; then
