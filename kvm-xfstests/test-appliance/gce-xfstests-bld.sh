@@ -50,6 +50,8 @@ EOF
 apt-get install -y $PACKAGES
 apt-get clean
 
+sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
+
 gsutil cp gs://$BUCKET/xfstests.tar.gz /run/xfstests.tar.gz
 tar -C /root -xzf /run/xfstests.tar.gz
 rm /run/xfstests.tar.gz
