@@ -71,7 +71,7 @@ pathname to your build chroot directory):
 # cd /u1
 # debootstrap --arch=i386 jessie /u1/jessie-root
 # schroot -c jessie -u root
-(jessie)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
+(jessie)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
 (jessie)root@closure:/u1# exit
 
 4) Copy config to config.custom, and then change the lines which
