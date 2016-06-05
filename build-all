@@ -160,6 +160,7 @@ if test -z "$SKIP_DBENCH" ; then
     (cd dbench; \
      autoheader ; autoconf ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
+     CPPFLAGS="-I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
      ./configure $cross --datadir=/root/xfstests/lib; \
      make $J ; cp dbench ../xfstests/bin ; cp client.txt ../xfstests/lib)
