@@ -37,7 +37,7 @@ while [ "$1" != "" ]; do
 	PAUSE_DEBUG=yes
 	;;
     -a|--add_packages) shift
-      ADD_PACKAGES="$ADD_PACKAGES $1"
+      PACKAGES="$PACKAGES $1"
       ;;
     *)
       echo "usage: gen-image [--save_raw_root] [--update] [--mirror MIRROR_LOC]"
@@ -48,10 +48,14 @@ while [ "$1" != "" ]; do
 done
 
 if test $DO_NETWORKING = "yes"; then
-    ADD_PACKAGES="$ADD_PACKAGES $(cat net-packages)"
+    PACKAGES="$PACKAGES $(cat net-packages)"
 fi
-
-export ADD_PACKAGES
+PACKAGES="$PACKAGES $(cat xfstests-packages)"
+PACKAGES=$(echo $PACKAGES | sed 's/ /,/g')
+case $PACKAGES in
+     apt,*|*,apt,*|*,apt)	EXCLUDE="" ;;
+     *)				EXCLUDE="--exclude=apt"
+esac
 
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
 then
@@ -84,8 +88,6 @@ if test $DO_UPDATE = "yes" ; then
    exit 0
 fi
 
-variant=xfstests
-
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
 mkdir -p debs
@@ -100,7 +102,7 @@ mkdir -p $ROOTDIR/debs
 mount --bind debs $ROOTDIR/debs
 mkdir -p $ROOTDIR/imgdir
 mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
-debootstrap --variant=$variant $ARCH $SUITE $ROOTDIR $MIRROR $DIR/kvm-xfstest.script
+debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE $ARCH $SUITE $ROOTDIR $MIRROR
 update_xfstests
 for i in vda vdb vdc vdd vde vdf results
 do
