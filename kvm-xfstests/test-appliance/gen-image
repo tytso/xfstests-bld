@@ -1,6 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This shell script must be run as root
+
+SAVE_ARGS=("$@")
 
 SUITE=jessie
 MIRROR=http://mirrors.kernel.org/debian
@@ -34,8 +36,20 @@ while [ "$1" != "" ]; do
       DO_UPDATE=yes
       ;;
     --pause)
-	PAUSE_DEBUG=yes
-	;;
+      PAUSE_DEBUG=yes
+      ;;
+    --out_tar|--out-tar)
+      OUT_TAR="$DIR/root_fs.tar.gz"
+      ;;
+    --out_tar=*|--out-tar=*)
+      OUT_TAR="$(echo $1 | sed 's/--out[-_]tar=//')"
+      ;;
+    --log)
+      DO_LOG="$DIR/gen-image.log"
+      ;;
+    --log=*)
+      DO_LOG="$(echo $1 | sed 's/--log=//')"
+      ;;
     -a|--add_packages) shift
       PACKAGES="$PACKAGES $1"
       ;;
@@ -46,6 +60,31 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+if test -n "$DO_LOG" ; then
+    if test -z "$GEN_IMAGE_LOG" ; then
+	export GEN_IMAGE_LOG="$DO_LOG"
+	set -- "${SAVE_ARGS[@]}"
+	exec script -c "$0 $*" "$DO_LOG"
+    fi
+fi
+
+if test -n "$OUT_TAR" ; then
+    if test "$FAKECHROOT" != "true" ; then
+	set -- "${SAVE_ARGS[@]}"
+	exec fakechroot $0 "$@"
+    fi
+    if test -z "$FAKEROOTKEY" ; then
+	set -- "${SAVE_ARGS[@]}"
+	exec fakeroot $0 "$@"
+    fi
+    PATH="/sbin:/usr/sbin:$PATH"
+else
+    if test "$EUID" -ne 0 ; then
+	echo "You must run this script as root (or use --out_tar)"
+	exit 1;
+    fi
+fi
 
 if test $DO_NETWORKING = "yes"; then
     PACKAGES="$PACKAGES $(cat net-packages)"
@@ -67,6 +106,7 @@ update_xfstests()
    tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
    rsync --exclude-from kvm-exclude-files -avH files/* $ROOTDIR
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests
+   chown -R root:root $ROOTDIR/root
 }
 
 finalize_rootfs()
@@ -74,6 +114,36 @@ finalize_rootfs()
    e2fsck -fyD $RAW_ROOT_FS
    e2fsck -fy -E discard $RAW_ROOT_FS
    qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+}
+
+cleanup_rootdir()
+{
+    if test -z "$OUT_TAR"; then
+	if test -d $ROOTDIR ; then
+	    umount $ROOTDIR/var/cache/apt/archives
+	    umount $ROOTDIR/var/lib/apt/lists
+	    for i in debs imgdir ;
+	    do
+		umount $ROOTDIR/$i
+		rmdir $ROOTDIR/$i
+	    done
+	    umount $ROOTDIR
+	    rmdir $ROOTDIR
+	fi
+    else
+	if test "$SAVE_RAW_ROOT" = "yes" ; then
+	    echo "Raw root directory has been saved at" $ROOTDIR
+	else
+	    rm -rf $ROOTDIR
+	fi
+    fi
+}
+
+cleanup_on_abort()
+{
+    cleanup_rootdir
+    rm -f "$RAW_ROOT_FS"
+    trap - INT TERM
 }
 
 mkdir -p $ROOTDIR
@@ -91,18 +161,33 @@ fi
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
 mkdir -p debs
-cp /dev/null $RAW_ROOT_FS
-mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
-mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+if test -z "$OUT_TAR"; then
+   cp /dev/null $RAW_ROOT_FS
+   mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
+   mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+fi
 mkdir -p $ROOTDIR/var/cache/apt/archives
-mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
 mkdir -p $ROOTDIR/var/lib/apt/lists
-mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
 mkdir -p $ROOTDIR/debs
-mount --bind debs $ROOTDIR/debs
 mkdir -p $ROOTDIR/imgdir
-mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
-debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE $ARCH $SUITE $ROOTDIR $MIRROR
+if test -z "$OUT_TAR"; then
+   mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
+   mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
+   mount --bind debs $ROOTDIR/debs
+   mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
+else
+   ln var.cache.apt.archives/* $ROOTDIR/var/cache/apt/archives
+   ln var.lib.apt.lists/* $ROOTDIR/var/lib/apt/lists
+   ln debs/* $ROOTDIR/debs
+   export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
+fi
+trap cleanup_on_abort INT TERM
+debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE $ARCH $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
+if test $? -ne 0 ; then
+    echo "Deboostrap failed, aborting."
+    cleanup_on_abort
+    exit 1
+fi
 update_xfstests
 for i in vda vdb vdc vdd vde vdf results
 do
@@ -141,22 +226,77 @@ find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
 find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
 rm -rf $ROOTDIR/usr/share/man
 find $ROOTDIR/var/log -type f | xargs rm
+if test -n "$OUT_TAR"; then
+    rm -f $ROOTDIR/dev $ROOTDIR/proc
+    mkdir $ROOTDIR/dev $ROOTDIR/proc
+    mknod -m 622 $ROOTDIR/dev/console c 5 1
+    mknod -m 666 $ROOTDIR/dev/null c 1 3
+    mknod -m 666 $ROOTDIR/dev/zero c 1 5
+    mknod -m 666 $ROOTDIR/dev/ptmx c 5 2
+    mknod -m 666 $ROOTDIR/dev/tty c 5 0
+    mknod -m 444 $ROOTDIR/dev/random c 1 8
+    mknod -m 444 $ROOTDIR/dev/urandom c 1 9
+    chown root:tty $ROOTDIR/dev/{console,ptmx,tty}
+    if test "$(uname -m)" = x86_64 ; then
+	rm $ROOTDIR/lib64/ld-linux-x86-64.so.2
+	mkdir -p $ROOTDIR/lib64
+	ln -s /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 $ROOTDIR/lib64/
+    fi
+    if test -f $ROOTDIR/sbin/ldconfig.REAL ; then
+	mv $ROOTDIR/sbin/ldconfig.REAL $ROOTDIR/sbin/ldconfig
+	ed $ROOTDIR/var/lib/dpkg/diversions <<EOF > /dev/null 2>&1
+/^\/sbin\/ldconfig.REAL$/
+.-1,.+1d
+wq
+EOF
+    fi
+    if test -f $ROOTDIR/usr/bin/ldd.REAL ; then
+	mv $ROOTDIR/usr/bin/ldd.REAL $ROOTDIR/usr/bin/ldd
+	ed $ROOTDIR/var/lib/dpkg/diversions <<EOF > /dev/null 2>&1
+/^\/usr\/bin\/ldd.REAL$/
+.-1,.+1d
+wq
+EOF
+    fi
+fi
 
 if test -n "$PAUSE_DEBUG"
 then
     ${SHELL:-/bin/sh}
 fi
 
-umount $ROOTDIR/var/cache/apt/archives
-umount $ROOTDIR/var/lib/apt/lists
-for i in debs imgdir ;
-do
-    umount $ROOTDIR/$i
-    rmdir $ROOTDIR/$i
-done
-umount $ROOTDIR
-rmdir $ROOTDIR
+rm -rf $ROOTDIR/var/cache/apt/archives/partial \
+	$ROOTDIR/var/lib/apt/lists/partial
+if test -n "$OUT_TAR"; then
+    (cd $ROOTDIR/var/cache/apt/archives ; \
+     for i in * ; do \
+	 if test ! -f $DIR/var.cache.apt.archives/$i ; then \
+	     echo caching $i ; \
+	     ln $i $DIR/var.cache.apt.archives/ ; \
+	 fi ; \
+     done)
+    (cd $ROOTDIR/var/lib/apt/lists ; \
+     for i in * ; do \
+	 if test ! -f $DIR/var.lib.apt.lists/$i ; then \
+	     echo caching $i ; \
+	     ln $i $DIR/var.lib.apt.lists/ ; \
+	 fi ; \
+     done)
+    find $ROOTDIR/var/cache/apt/archives $ROOTDIR/var/lib/apt/lists \
+	 $ROOTDIR/debs -type f | xargs rm
+    rmdir $ROOTDIR/debs
+    rmdir $ROOTDIR/imgdir
+    case "$OUT_TAR" in
+	*.gz)	ZFLAG="-z" ;;
+	*)	ZFLAG="" ;
+    esac
+    tar -C $ROOTDIR -c $ZFLAG -f "$OUT_TAR" .
+    cleanup_rootdir
+    exit 0
+fi
 
+trap - INT TERM
+cleanup_rootdir
 tune2fs -O has_journal $RAW_ROOT_FS
 finalize_rootfs
 
