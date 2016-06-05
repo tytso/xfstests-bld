@@ -33,6 +33,7 @@ function set_skip_all () {
     SKIP_E2FSLIBS=yes
     SKIP_ATTR=yes
     SKIP_ACL=yes
+    SKIP_POPT=yes
     SKIP_AIO=yes
     SKIP_DBENCH=yes
     SKIP_FIO=yes
@@ -57,6 +58,10 @@ while [ "$1" != "" ]; do
 	--acl-only)
 	    set_skip_all
 	    unset SKIP_ACL
+	    ;;
+	--popt-only)
+	    set_skip_all
+	    unset SKIP_POPT
 	    ;;
 	--aio-only)
 	    set_skip_all
@@ -137,6 +142,18 @@ fi
 if test -z "$SKIP_ACL" ; then
     build_start "ACL library"
     (cd acl; \
+     CPPFLAGS="-I$DESTDIR/include" \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+     make $J install-dev ; \
+     make $J install)
+fi
+
+if test -z "$SKIP_POPT" ; then
+    build_start "POPT library"
+    (cd popt; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
