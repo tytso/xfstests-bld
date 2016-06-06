@@ -189,6 +189,18 @@ while [ "$1" != "" ]; do
 	--update-files)
 	    UPDATE_FILES=yes
 	    ;;
+	--numa) shift
+	    if test "$GCE_XFSTESTS" = "yes"
+	    then
+		print_help
+	    fi
+	    NUMA_NUM="$1"
+	    case "$NUMA_NUM" in
+		''|*[!0-9]*)
+		    echo "Invalid number of NUMA nodes: $NUMA_NUM"
+		    exit 1
+	    esac
+	    ;;
 	--no-action)
 	    NO_ACTION="echo -e Would execute:\n\t"
 	    SKIP_LOG=yes
@@ -386,6 +398,21 @@ if test -n "$PMEM_DEVICE" ; then
     elif test "$MEM" -lt 14436 ; then
 	MEM=14436
     fi
+fi
+
+if test -n "$NUMA_NUM" ; then
+    if test "$NUMA_NUM" -lt 2 ; then
+	echo "Invalid number of NUMA nodes ($NUMA_NUM) too small"
+	exit 1
+    fi
+    if test "$NUMA_NUM" -gt "$NR_CPU" ; then
+	echo "Can't have more NUMA nodes than CPUs"
+	exit 1
+    fi
+    NUMA="-numa node"
+    for i in $(seq 2 "$NUMA_NUM") ; do
+	NUMA="$NUMA -numa node"
+    done
 fi
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
