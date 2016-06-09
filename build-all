@@ -172,15 +172,15 @@ fi
 
 if test -z "$SKIP_DBENCH" ; then
     build_start "dbench"
-    mkdir -p xfstests/lib
-    mkdir -p xfstests/bin
+    mkdir -p $DESTDIR/lib
+    mkdir -p $DESTDIR/bin
     (cd dbench; \
      autoheader ; autoconf ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      CPPFLAGS="-I$DESTDIR/include" \
      LIBS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --datadir=/root/xfstests/lib; \
-     make $J ; cp dbench ../xfstests/bin ; cp client.txt ../xfstests/lib)
+     make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
 fi
 
 if test -z "$SKIP_XFSPROGS" ; then
