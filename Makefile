@@ -11,6 +11,7 @@ SUBDIRS =	acl \
 		quota \
 		libaio \
 		misc \
+		popt \
 		xfsprogs-dev \
 		xfstests-dev
 
