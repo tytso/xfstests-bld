@@ -26,6 +26,9 @@ while [ "$1" != "" ]; do
     --save_raw_root)
       SAVE_RAW_ROOT=yes;
       ;;
+    --suite) shift
+      SUITE=$1
+      ;;
     --mirror) shift
       MIRROR=$1
       ;;
@@ -86,10 +89,12 @@ else
     fi
 fi
 
+LIBSSL=$(apt-cache depends libssl-dev | grep 'Depends: libssl1' |\
+		awk '{print $2};')
 if test $DO_NETWORKING = "yes"; then
     PACKAGES="$PACKAGES $(cat net-packages)"
 fi
-PACKAGES="$PACKAGES $(cat xfstests-packages)"
+PACKAGES="$PACKAGES $(cat xfstests-packages) $LIBSSL"
 PACKAGES=$(echo $PACKAGES | sed 's/ /,/g')
 case $PACKAGES in
      apt,*|*,apt,*|*,apt)	EXCLUDE="" ;;

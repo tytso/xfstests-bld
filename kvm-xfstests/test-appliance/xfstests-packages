@@ -14,7 +14,6 @@ gawk
 joe-jupp
 keyutils
 less
-libssl1.0.0
 libgdbm3
 lvm2
 makedev
@@ -22,4 +21,7 @@ perl
 procps
 psmisc
 strace
+systemd
+systemd-sysv
 time
+udev
