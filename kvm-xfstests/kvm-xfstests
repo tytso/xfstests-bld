@@ -80,9 +80,8 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDF,cache=none,if=virtio \
 	-drive file=$VDG,cache=none,if=virtio \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
-	-object rng-random,filename=/dev/urandom,id=rng0 \
-	-device virtio-rng-pci,rng=rng0 \
 	-nographic -smp $NR_CPU -m $MEM \
+	$VIRTIO_RNG \
 	$CONSOLE \
 	$MONITOR \
 	$SERIAL \

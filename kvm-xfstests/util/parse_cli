@@ -271,6 +271,13 @@ while [ "$1" != "" ]; do
 		print_help
 	    fi
 	    ;;
+	--no-virtio-rng)
+	    if test "$GCE_XFSTESTS" = "yes" ; then
+		print_help
+	    else
+		NO_VIRTIO_RNG=yes
+	    fi
+	    ;;
 	smoke)
 	    FSTESTCFG=4k
 	    FSTESTSET="$FSTESTSET,-g,quick"
@@ -413,6 +420,11 @@ if test -n "$NUMA_NUM" ; then
     for i in $(seq 2 "$NUMA_NUM") ; do
 	NUMA="$NUMA -numa node"
     done
+fi
+
+if test -z "$NO_VIRTIO_RNG" ; then
+    VIRTIO_RNG="-object rng-random,filename=/dev/urandom,id=rng0 \
+	-device virtio-rng-pci,rng=rng0"
 fi
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
