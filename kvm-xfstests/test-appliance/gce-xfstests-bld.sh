@@ -121,37 +121,13 @@ logger -s "xfstests GCE appliance build completed (build instance id $ID)"
 . /usr/local/lib/gce-funcs
 rm -rf $GCE_STATE_DIR
 
-fast=$(gce_attribute fast)
-
-# This only works if with the very latest tune2fs, since the root
-# file system is mounted here.  Make sure we the root file system
-# has a unique UUID.
-logger "Original root file system UUID $(blkid -s UUID -o value /dev/sda1)"
-if /sbin/tune2fs -f -U random -L xfstests-root /dev/sda1
-then
-    NEW_UUID=$(blkid -s UUID -o value /dev/sda1)
-    logger "Root file system UUID now $NEW_UUID"
-    ed /etc/fstab <<EOF
-/^UUID/s/UUID=[a-f0-9-]*/UUID=$NEW_UUID/
-w
-q
-EOF
-    /usr/sbin/update-grub
-    /usr/sbin/update-initramfs -u -k all
-fi
+# Set label
+/sbin/tune2fs -L xfstests-root /dev/sda1
 
 journalctl > /image-build.log
 sync
 
-if test "$fast" = "yes"
-then
-    fstrim /
-    gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
-	   --keep-disks boot
-else
-    mount -t tmpfs -o size=10G tmpfs /mnt
-    mkdir -p /mnt/tmp
-    gcimagebundle -d /dev/sda -o /mnt/tmp/ -f ext3 --log_file=/tmp/bundle.log
-    gsutil cp /mnt/tmp/*.image.tar.gz "$GS_TAR"
-    gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE)
-fi
+find /var/cache/man /var/cache/apt /var/lib/apt/lists -type f -print | xargs rm
+fstrim /
+gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
+	--keep-disks boot
