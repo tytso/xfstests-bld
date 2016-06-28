@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if test -f config.custom ; then
 	. config.custom
 else
@@ -136,7 +138,7 @@ if test -z "$SKIP_ATTR" ; then
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; \
      make $J ; \
-     make $J install-dev ; make install)
+     make $J install-dev ; make $J install)
 fi
 
 if test -z "$SKIP_ACL" ; then
@@ -147,7 +149,6 @@ if test -z "$SKIP_ACL" ; then
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; \
      make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
-     make $J install-dev ; \
      make $J install)
 fi
 
@@ -159,7 +160,6 @@ if test -z "$SKIP_POPT" ; then
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; \
      make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
-     make $J install-dev ; \
      make $J install)
 fi
 
