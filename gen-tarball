@@ -42,9 +42,9 @@ else
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
 cat *.ver > xfstests/git-versions
-mkdir xfstests/bin
-cp bld/sbin/* xfstests/bin
-cp bld/bin/* xfstests/bin
+mkdir -p xfstests/bin xfstests/lib
+cp bld/bin/* bld/sbin/* xfstests/bin
+cp bld/lib/client.txt xfstests/lib
 echo "STRIP xfstests/*"
 find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
 echo "TAR xfstests"
