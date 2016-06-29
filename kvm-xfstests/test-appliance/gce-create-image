@@ -22,10 +22,11 @@ DATECODE=$(date +%Y%m%d%H%M)
 
 SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
-IMAGE=https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8
 ROOT_FS=xfstests
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
+IMAGE_FAMILY=debian-8
+IMAGE_PROJECT=debian-cloud
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
@@ -96,8 +97,8 @@ gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" 2> /dev/null
 gcloud compute --project "$GCE_PROJECT" instances create "$BLD_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
        --network "default" --metadata "^ ^$METADATA" \
-       --maintenance-policy "MIGRATE" \
-       --scopes "$SCOPES" --image "$IMAGE" \
+       --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
+       --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$BLD_DISK"
 
 echo -n "Waiting for bootable image setup."
