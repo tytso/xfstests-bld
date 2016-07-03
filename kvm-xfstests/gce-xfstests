@@ -582,7 +582,7 @@ then
     ARG="$ARG nr_cpus=$NR_CPU"
 fi
 
-ARG="$ARG gs_bucket=$GS_BUCKET"
+ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
 
 # Don't print the sendgrid password
 if test -n "$NO_ACTION" -a -n "$GCE_SG_PASS"

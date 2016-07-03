@@ -101,9 +101,21 @@ mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
+cp /lib/systemd/system/serial-getty@.service \
+	/etc/systemd/system/telnet-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
+	/lib/systemd/system/serial-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e 's/After=rc.local.service/After=network.target/' \
+	/etc/systemd/system/telnet-getty@.service
+
 systemctl enable kvm-xfstests.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
+systemctl enable telnet-getty@ttyS1.service
+systemctl enable telnet-getty@ttyS2.service
+systemctl enable telnet-getty@ttyS3.service
 
 if gsutil -m cp gs://$BUCKET/*.deb /run
 then
