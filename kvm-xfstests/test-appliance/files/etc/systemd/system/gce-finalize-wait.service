@@ -1,0 +1,13 @@
+[Unit]
+Description=GCE finalization waiter job
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/gce-finalize-wait
+TimeoutSec=0
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target

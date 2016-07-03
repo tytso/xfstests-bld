@@ -1,12 +1,8 @@
 #!/bin/bash
 
-. /usr/local/lib/gce-funcs
+killall gce-finalize-wait
 
-touch /run/gce-finalize-wait
-while test -f /run/gce-finalize-wait
-do
-    sleep 1
-done
+. /usr/local/lib/gce-funcs
 
 run_hooks finalize
 

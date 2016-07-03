@@ -29,7 +29,11 @@ then
     if test -n "$reason"
     then
 	echo "$reason" > /results/shutdown_reason
-	echo "Shutdown reason: $reason" >> /results/runtests.log
+    fi
+    if test -f /results/shutdown_reason
+    then
+	echo "Shutdown reason: $(cat /results/shutdown_reason)" \
+	     >> /results/runtests.log
     fi
     egrep "$REGEXP" < /results/runtests.log > /results/summary
     egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures

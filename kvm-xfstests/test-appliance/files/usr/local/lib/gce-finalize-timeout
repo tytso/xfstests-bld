@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo "Timeout" > /results/shutdown_reason
+
+exec /usr/local/lib/gce-finalize

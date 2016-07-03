@@ -1,13 +1,8 @@
 [Unit]
 Description=GCE finalization
-After=local-fs.target
-Wants=local-fs.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/local/lib/gce-finalize
+Type=simple
+ExecStart=/usr/local/lib/gce-finalize-timeout
 TimeoutSec=0
 StandardOutput=tty
-
-[Install]
-WantedBy=multi-user.target

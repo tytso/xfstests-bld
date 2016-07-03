@@ -1,0 +1,9 @@
+#!/bin/bash
+
+touch /run/gce-finalize-wait
+while test -f /run/gce-finalize-wait
+do
+    sleep 1
+done
+
+exec /usr/local/lib/gce-finalize

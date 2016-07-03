@@ -102,7 +102,8 @@ chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
 systemctl enable kvm-xfstests.service
-systemctl enable gce-finalize.service
+systemctl enable gce-finalize-wait.service
+systemctl enable gce-finalize.timer
 
 if gsutil -m cp gs://$BUCKET/*.deb /run
 then

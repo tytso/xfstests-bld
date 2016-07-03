@@ -1,0 +1,9 @@
+[Unit]
+Description=GCE finalization timer
+
+[Timer]
+OnBootSec=12h
+Unit=gce-finalize.service
+
+[Install]
+WantedBy=timers.target
