@@ -1,0 +1,33 @@
+#!/bin/sh
+
+REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)|(^Shutdown reason)"
+
+case "$1" in
+    --summary|-s)
+	# this is the default
+	shift
+	;;
+    --failures|-F)
+REGEXP="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
+	do_failure="yes"
+	shift
+	;;
+esac
+
+IN="$*"
+
+if test -z "$IN"
+then
+    IN=-
+fi
+
+egrep "$REGEXP" "$IN"
+if test -n "$do_failure"; then
+    b=$(egrep ^BEGIN "$IN" | wc -l)
+    e=$(egrep ^END "$IN" | wc -l)
+    if test "$b" -gt "$e" ; then
+	l=$(egrep ^BEGIN "$IN" | tail -n 1 | sed -e 's/BEGIN //')
+	echo " "
+	echo Missing END "$l"
+    fi
+fi
