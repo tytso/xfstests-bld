@@ -197,10 +197,12 @@ do
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
 	echo $i > /run/fstest-config
-	if test -n "$EXT_MOUNT_OPTIONS" ; then
+	if test "$FS" = "ext4" ; then
+	    if test -n "$EXT_MOUNT_OPTIONS" ; then
 		EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
-	else
+	    else
 		EXT_MOUNT_OPTIONS="-o block_validity"
+	    fi
 	fi
 	if test -n "$MNTOPTS" ; then
 		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
@@ -217,6 +219,8 @@ do
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 		if test "$FS" = "ext4" ; then
 		    mke2fs -F -q -t ext4 $MKFS_OPTIONS "$TEST_DEV"
+		elif test "$FS" = "ext2" ; then
+		    mke2fs -F -q -t ext2 $MKFS_OPTIONS "$TEST_DEV"
 		elif test "$FS" = "xfs" ; then
 		    mkfs.xfs -f $MKFS_OPTIONS "$TEST_DEV"
 		elif test "$FS" = "tmpfs" ; then
