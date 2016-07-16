@@ -74,3 +74,7 @@ then
 		cd ..
 	fi
 fi
+
+# Make sure acl doesn't try regenerate these files because of the
+# vagrancies of the timestamps when they were checked out
+touch acl/aclocal.m4 acl/configure acl/Makefile.in
