@@ -226,7 +226,7 @@ if test -z "$SKIP_QUOTA"; then
     #
     # Hack around older quota-tools's lack of cross compilation support
     #
-    if ! grep -q "@CC@" quota/Makefile.in ; then
+    if test -f quota/Makefile.in && ! grep -q "@CC@" quota/Makefile.in ; then
 	echo "No @CC@"
 	ed quota/Makefile.in <<EOF
 1i
@@ -243,7 +243,7 @@ EOF
      export CPPFLAGS="-I$DESTDIR/include" ; \
      autoreconf -fvi ; \
      ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
-     make V=1 $J; make V=1 $J install)
+     make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
