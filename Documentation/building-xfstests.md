@@ -26,8 +26,9 @@ actually do the dirty deed.
 There may be updates in some or any of these git trees for these
 subcomponents.  You can use "git pull" or "git fetch" as necessary to
 update them.  (Please take care before updating the fio repository;
-some updates have in the past caused test regressions so it may be
-preferable to let things be as far as the fio repo is concerned.)
+some updates to the fio tree have caused test regressions in the past,
+so it may be preferable to let things be as far as the fio repo is
+concerned.)
 
 ## Building the xfstests tarball
 
@@ -54,17 +55,22 @@ xfstests binaries are built.
 * The (shared) libraries used for linking the executables
 
 In practice, the largest impact will be the compiler toolchain; and on
-the x86 platform, whether 32-bit or 64-bit binaries are generated.  By
-default xfstests-bld will link the binaries statically to avoid
-problems between the build environment and the runtime environment.
-However, statically linked binaries are significantly larger.  Using a
-chroot environment to guarantee that the runtime and build
-environments are in sync makes it safe to use dynamically linked
-executables.
+the x86 platform, whether 32-bit or 64-bit binaries are generated.
 
-The xfstests-bld infrastructure can also use an non-standard compiler
-toolchain without needing an entirely separate build environment.
-This can be useful for cross compilation.
+The subsections listed below are optional, in that if you are only
+interested in building 64-bit x86 binaries to be run on a 64-bit x86
+kernel, you can probably use your desktop Linux environment to build
+the xfstests.tar.gz file.  However, there reasons why you may want to
+use a more sophisticated way of building xfstests.
+
+For example, by default xfstests-bld will link the binaries statically
+to avoid problems between the build environment and the runtime
+environment.  However, statically linked binaries are significantly
+larger.  Using a chroot environment to guarantee that the runtime and
+build environments are in sync results in substantial space savings
+(almost an order of magnitude) since it becomes safe to use
+dynamically linked executables.
+
 
 ### Building in a chroot environment
 
@@ -75,11 +81,11 @@ If you want to build a 64-bit test image, just remove the --arch=i386
 in step #3, and use a schroot name of "jessie-64" instead of
 "jessie-32".
 
-1)  Install the necessary packages to build host OS
+1. Install the necessary packages to build host OS
 
         % sudo apt-get install schroot debootstrap
 
-2) Add the following to /etc/schroot/schroot.conf, replacing "tytso"
+2.  Add the following to /etc/schroot/schroot.conf, replacing "tytso"
 with your username, and /u1/jessie-32 with path where you plan to
 put your build chroot
 
@@ -90,7 +96,7 @@ put your build chroot
         users=tytso,root
         root-users=tytso
 
-3) Create the build chroot (again, replace /u1/jessie-root with the
+3. Create the build chroot (again, replace /u1/jessie-root with the
 pathname to your build chroot directory):
 
         % cd /u1
@@ -99,36 +105,45 @@ pathname to your build chroot directory):
         (jessie-32)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
         (jessie-32)root@closure:/u1# exit
 
-4) Copy config to config.custom, and then change the lines which
+4. Copy config to config.custom, and then change the lines which
 define SUDO_ENV and BUILD_ENV to:
 
         SUDO_ENV="schroot -c jessie-32 -u root --"
         BUILD_ENV="schroot -c jessie-32 --"
 
-5)  Kick off the build!
+5. Kick off the build!
 
         ./do-all
 
 
-### Using a alternate compiler toolchain
+### Using an alternate compiler toolchain
 
-To configure an alternate toolchain, the shell variable CROSS_COMPILE
+A common reason for using an alternate compiler toolchain is to allow
+you to cross-compile xfstests for a different target architecture.
+This is done by setting the CROSS_COMPILE and TOOLCHAIN_DIR shell
+variables in the top-level config file, or (this is preferable) in the
+config.custom file.
+
+To use an alternate toolchain, the shell variable CROSS_COMPILE
 should be set to the target architecture.  For example, on a Debian
-stretch system, you can install the gcc-arm-linux-gnueabihf package
+stretch system, you can install the gcc-arm-linux-gnueabihf to build package
 and then set CROSS_COMPILE to "arm-linux-gnueabihf" to cross compile
 for the Debian armhf platform.
 
 The TOOLCHAIN_DIR shell variable can be used to specify the location
 for the alternate compiler toolchain if it is not your path.  For
-example, if you follow the instructions found at
-https://developer.android.com/ndk/guides/standalone_toolchain.html and
-run the script make-standalone-toolchain.sh, specifying the output
-directory /u1/arm64-toolchain you would set TOOLCHAIN_DIR to that
-directory, and then set CROSS_COMPILE to aarch64-linux-android.
+example, let's assume you've install the Android Native Delevelopment
+Toolkit (NDK) and used the make-standalone-toolchain.sh to install a
+toolchain in /u1/arm64-toolchain.  (See the [Android NDK
+documentation](https://developer.android.com/ndk/guides/standalone_toolchain.html)
+for more information.)  To use the standalone toolchain designed for
+Android, configure TOOLCHAIN_DIR to /u1/arm64-toolchain and
+CROSS_COMPILE to aarch64-linux-android.
 
 ### Instructions for building an armhf root_fs.tar.gz file
 
-The armhf_root_fs.tar.gz file was generated as follows:
+The armhf_root_fs.tar.gz file is used for testing file systems on
+Android devices, and was generated as follows:
 
 1.  Copy the xfstests-bld git tree to a debian build host running the
 armhf platform.

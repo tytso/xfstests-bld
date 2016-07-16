@@ -30,8 +30,8 @@ sufficient testing.
 If you want to build your own test appliance VM, you will first need
 to [build the xfstests.tar.gz tarball](building-xfstests.md) which
 contains the file system tests and its dependencies, and then use the
-gen-image script to build the root_fs image.  Please see the relevant
-documentation files for more details.
+gen-image script to [build the root_fs image](building-rootfs.md).
+Please see the relevant documentation files for more details.
 
 ## Setup and configuration
 

@@ -4,6 +4,10 @@ You probably will want to start by reading
 [kvm-quickstart.md](kvm-quickstart.md) first, even if you intend to
 eventually use gce-xfstests.
 
+* [android-xfstests.md](android-xfstests.md)
+  * Instructions for running xfstests on an Android device
+* [building-rootfs](building-rootfs.md)
+  * Documentation for the gen-image script
 * [building-xfstests](building-xfstests.md)
   * Instructions for building xfstests
 * [gce-xfstests.md](gce-xfstests.md)
