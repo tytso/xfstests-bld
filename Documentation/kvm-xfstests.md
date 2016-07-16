@@ -55,16 +55,15 @@ By default, the scratch disks used by test-appliance will be set up
 automatically, and are stored in the kvm-xfstests directory with the
 names vdb, vdc, vdd, ... up to vdg.  However, it is slightly faster to
 use logical volumes.  To do this override the VDB..VDG variables:
-```
-VG=closure
 
-VDB=/dev/$VG/test-4k
-VDC=/dev/$VG/scratch
-VDD=/dev/$VG/test-1k
-VDE=/dev/$VG/scratch2
-VDF=/dev/$VG/scratch3
-VDG=/dev/$VG/results
-```
+        VG=closure
+
+        VDB=/dev/$VG/test-4k
+        VDC=/dev/$VG/scratch
+        VDD=/dev/$VG/test-1k
+        VDE=/dev/$VG/scratch2
+        VDF=/dev/$VG/scratch3
+        VDG=/dev/$VG/results
 
 If you chose to do this, the logical volumes for VDB, VDC, VDD, and
 VDG should be 5 gigabytes, while VDE and VDF should be 20 gigabyte
@@ -92,9 +91,9 @@ file found in kvm-xfstests/util/parse_cli.
 
 The general form of the kvm-xfstests command to run tests in the test
 appliance is:
-```bash
-kvm-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
-```
+
+        kvm-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
+
 
 By default <cfg> defaults to all, which will run the following
 configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
@@ -132,13 +131,12 @@ in the /root/test-env file (which is sourced automatically when you
 start an interactive shell).  You can then set FSTESTCFG and FSTESTSET
 to control which tests you would like to run, and then run the test
 runner script, /root/runtests.sh.  For example:
-```bash
-% kvm-xfstests shell
-# FSTESTCFG="4k encrypt"
-# FSTESTSET="generic/001 generic/002 ext4/001"
-# /root/runtests.sh
-...
-```
+
+        % kvm-xfstests shell
+        # FSTESTCFG="4k encrypt"
+        # FSTESTSET="generic/001 generic/002 ext4/001"
+        # /root/runtests.sh
+        ...
 
 To stop the VM, you can run the "poweroff" command, but a much faster way
 to shut down the VM is to use the command sequence "C-a x" (that is,

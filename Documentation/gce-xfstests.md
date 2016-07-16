@@ -38,12 +38,11 @@ configuration parameters in order to have reports e-mailed to you:
   * The email addressed for which test results should be sent.
 
 An example ~/.config/kvm-xfstests might look like this:
-```bash
-GS_BUCKET=tytso-xfstests
-GCE_PROJECT=tytso-linux
-GCE_ZONE=us-central1-c
-GCE_KERNEL=/build/ext4-64/arch/x86/boot/bzImage
-```
+
+        GS_BUCKET=tytso-xfstests
+        GCE_PROJECT=tytso-linux
+        GCE_ZONE=us-central1-c
+        GCE_KERNEL=/build/ext4-64/arch/x86/boot/bzImage
 
 ## Creating the image
 
@@ -51,9 +50,9 @@ GCE_KERNEL=/build/ext4-64/arch/x86/boot/bzImage
 
 2.  Install the following packages (debian package names
 used):
-```bash
-apt-get install jq xz-utils git autoconf2.59 libtool-bin automake libc6-dev gcc make e2fslibs-dev pkg-config gettext libpopt-dev
-```
+
+        apt-get install jq xz-utils git autoconf2.59 libtool-bin automake \
+        	libc6-dev gcc make e2fslibs-dev pkg-config gettext libpopt-dev
 
 3.  make ; make tarball
 

@@ -77,47 +77,38 @@ in step #3, and use a schroot name of "jessie-64" instead of
 
 1)  Install the necessary packages to build host OS
 
-```sh
-% sudo apt-get install schroot debootstrap
-```
+        % sudo apt-get install schroot debootstrap
 
 2) Add the following to /etc/schroot/schroot.conf, replacing "tytso"
 with your username, and /u1/jessie-32 with path where you plan to
 put your build chroot
 
-```
-[jessie-32]
-description=Debian Jessie 32-bit
-type=directory
-directory=/u1/jessie-32
-users=tytso,root
-root-users=tytso
-```
+        [jessie-32]
+        description=Debian Jessie 32-bit
+        type=directory
+        directory=/u1/jessie-32
+        users=tytso,root
+        root-users=tytso
 
 3) Create the build chroot (again, replace /u1/jessie-root with the
 pathname to your build chroot directory):
 
-```sh
-% cd /u1
-% sudo debootstrap --arch=i386 jessie /u1/jessie-32
-% schroot -c jessie-32 -u root
-(jessie-32)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
-(jessie-32)root@closure:/u1# exit
-```
+        % cd /u1
+        % sudo debootstrap --arch=i386 jessie /u1/jessie-32
+        % schroot -c jessie-32 -u root
+        (jessie-32)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap
+        (jessie-32)root@closure:/u1# exit
 
 4) Copy config to config.custom, and then change the lines which
 define SUDO_ENV and BUILD_ENV to:
 
-```sh
-SUDO_ENV="schroot -c jessie-32 -u root --"
-BUILD_ENV="schroot -c jessie-32 --"
-```
+        SUDO_ENV="schroot -c jessie-32 -u root --"
+        BUILD_ENV="schroot -c jessie-32 --"
 
 5)  Kick off the build!
 
-```sh
-./do-all
-```
+        ./do-all
+
 
 ### Using a alternate compiler toolchain
 
@@ -146,34 +137,32 @@ armhf platform.
 example, if you are doing this on a Debian build server, assuming you
 are a Debian developer with access to the Debian build architecture (I
 was using harris.debian.org)
-```bash
-schroot -b -c jessie -n tytso-jessie
-dd-schroot-cmd -c tytso-jessie apt-get install build-essential \
-	autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
-	qemu-utils gettext e2fslibs-dev git debootstrap \
-	fakechroot libdbus-1-3
-schroot -r -c tytso-jessie
-```
+
+        schroot -b -c jessie -n tytso-jessie
+        dd-schroot-cmd -c tytso-jessie apt-get install build-essential \
+        	autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
+        	qemu-utils gettext e2fslibs-dev git debootstrap \
+        	fakechroot libdbus-1-3
+        schroot -r -c tytso-jessie
 Alternatively, make sure the build system is installed with Debian
 Stable (e.g., Jessie), and install the following packages:
-```bash
-	apt-get install build-essential autoconf autoconf2.64 automake \
-	libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git \
-	debootstrap fakechroot libdbus-1-3
-```
+
+        % apt-get install build-essential autoconf autoconf2.64 automake \
+        	libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git \
+        	debootstrap fakechroot libdbus-1-3
+
 3.  Build the xfstests.tar.gz file (which contains the actual xfstests binaries built for armhf)
-```bash
-	cd xfstests-bld
-	make
-	make tarball
-```
+
+        cd xfstests-bld
+        make
+        make tarball
+
 4.   Create the root_fs.tar.gz chroot environment
-```bash
-	cd kvm-xfstests/test-appliance
-	./gen-image --out-tar
-```
+
+        cd kvm-xfstests/test-appliance
+        ./gen-image --out-tar
+
 5.  If you are on a Debian build server, clean up after yourself.
-```bash
-	schroot -e -c tytso-jessie
-	rm -rf /home/tytso/xfstests-bld
-```
+
+        schroot -e -c tytso-jessie
+        rm -rf /home/tytso/xfstests-bld
