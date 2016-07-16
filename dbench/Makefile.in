@@ -13,6 +13,7 @@ LIBS=@LIBS@ -lpopt
 
 CC=@CC@
 CFLAGS=@CFLAGS@ -I. -DVERSION=\"$(VERSION)\" -DDATADIR=\"$(datadir)\"
+LDFLAGS=@LDFLAGS@
 EXEEXT=@EXEEXT@
 
 DB_OBJS = fileio.o util.o dbench.o child.o system.o snprintf.o
@@ -22,13 +23,13 @@ SRV_OBJS = util.o tbench_srv.o socklib.o
 all: dbench tbench tbench_srv
 
 dbench: $(DB_OBJS)
-	$(CC) -o $@ $(DB_OBJS) $(LIBS)
+	$(CC) -o $@ $(LDFLAGS) $(DB_OBJS) $(LIBS)
 
 tbench: $(TB_OBJS)
-	$(CC) -o $@ $(TB_OBJS) $(LIBS)
+	$(CC) -o $@ $(LDFLAGS) $(TB_OBJS) $(LIBS)
 
 tbench_srv: $(SRV_OBJS)
-	$(CC) -o $@ $(SRV_OBJS) $(LIBS)
+	$(CC) -o $@ $(LDFLAGS) $(SRV_OBJS) $(LIBS)
 
 # Careful here: don't install client.txt over itself.
 install: all

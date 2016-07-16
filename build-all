@@ -126,7 +126,7 @@ if test -z "$SKIP_E2FSLIBS" ; then
     build_start "e2fslibs"
     (cd e2fsprogs-libs; \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=/ --disable-nls; make $J; \
      make DESTDIR=$DESTDIR $J install)
 fi
@@ -135,9 +135,9 @@ if test -z "$SKIP_ATTR" ; then
     build_start "extended attribute library"
     (cd attr; \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; \
-     make $J ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" ; \
      make $J install-dev ; make $J install)
 fi
 
@@ -146,9 +146,10 @@ if test -z "$SKIP_ACL" ; then
     (cd acl; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; \
-     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" \
+	  LIBTOOL="/usr/bin/libtool --tag=CC" ; \
      make $J install)
 fi
 
@@ -178,6 +179,7 @@ if test -z "$SKIP_DBENCH" ; then
      autoheader ; autoconf ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      CPPFLAGS="-I$DESTDIR/include" \
+     LDFLAGS="$EXEC_LDFLAGS" \
      LIBS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --datadir=/root/xfstests/lib; \
      make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
@@ -247,5 +249,6 @@ EOF
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
-    (cd misc ; ./configure $cross ; make $J ; make install DESTDIR=$DESTDIR)
+    (cd misc ; LDFLAGS="$EXEC_LDFLAGS" ./configure $cross ; \
+     make $J ; make install DESTDIR=$DESTDIR)
 fi
