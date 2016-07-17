@@ -3,6 +3,9 @@
 Please read the [kvm-quickstart](kvm-quickstart.md) instructions
 first, since this will allow you to get started quickly.
 
+If you don't have any familiarity with xfstests, you may also want to
+read this [introduction to xfstests](what-is-xfstests.md).
+
 ## Installation
 
 The kvm-xfstests system consists of a series of shell scripts, and a
@@ -141,6 +144,23 @@ runner script, /root/runtests.sh.  For example:
 To stop the VM, you can run the "poweroff" command, but a much faster way
 to shut down the VM is to use the command sequence "C-a x" (that is,
 Control-a followed by the character 'x'). 
+
+## Local debugging ports
+
+While kvm-xfstests is running, you can telnet to a number of TCP ports
+(which are bound to localhost).  Ports 7500, 7501, and 7502 will
+connect you to a shell prompts while the tests are running (if you
+want to check on /proc/slabinfo, enable tracing, etc.)  You can also
+use these ports in conjuction with "kvm-xfstests shell" if you want
+additional windows to capture traces using ftrace.
+
+You can also access the qemu monitor on port 7498, and you can debug the
+kernel using remote gdb on localhost port 7499.  Just run "gdb
+/path/to/vmlinux", and then use the command "target remote
+localhost:7499".  (Pro tip: it's helpful to temporarily add
+"EXTRA_CFLAGS += -O0" to fs/{ext4,jbd2}/Makefile, and to make sure you
+have CONFIG_DEBUG_INFO, CONFIG_DEBUG_INFO_DWARF4, and
+CONFIG_FRAME_POINTER enabled.)
 
 ## Log files
 

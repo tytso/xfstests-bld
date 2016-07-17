@@ -1,10 +1,10 @@
 # xfstests-bld
 
 The xfstests-bld project was originally designed as system to make it
-easy to build xfstests in way that isolated it from the versions of
-various libraries such as libaio, xfsprogs, that were available in a
-particular distribution.  It has since evolved to have three primary
-functions:
+easy to build [xfstests](Documentation/what-is-xfstests.md) in way
+that isolated it from the versions of various libraries such as
+libaio, xfsprogs, that were available in a particular distribution.
+It has since evolved to have three primary functions:
 
 * [Building xfstests](Documentation/building-xfstests.md) to create a tar.gz file
 * Running xfstests in a virtual machine using qemu/kvm ([kvm-xfstests](Documentation/kvm-xfstests.md))
@@ -16,6 +16,9 @@ directory](Documentation/00-index.md).
 
 If you are first getting started using xfstests, you should probably
 read the [Quickstart guide](Documentation/kvm-quickstart.md) first.
+If you don't know much about xfstests, you may also want to read this
+[introduction to xfstests](Documentation/what-is-xfstests.md).
+
 
 ## License
 
