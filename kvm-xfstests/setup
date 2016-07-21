@@ -1,12 +1,19 @@
 #!/bin/sh
-qemu-img create -f raw vdb 5g
-qemu-img create -f raw vdc 5g
-qemu-img create -f raw vdd 5g
-qemu-img create -f raw vde 20g
-qemu-img create -f raw vdf 20g
-qemu-img create -f raw vdg 5g
-mke2fs -t ext4 -F vdb
-mke2fs -t ext4 -b 1024 -F vdd
-mke2fs -t ext4 -F vdg
+
+DIR=.
+if test -n "$KVM_XFSTESTS_DIR"
+then
+    DIR="$KVM_XFSTESTS_DIR"
+fi
+
+qemu-img create -f raw "$DIR/vdb" 5g
+qemu-img create -f raw "$DIR/vdc" 5g
+qemu-img create -f raw "$DIR/vdd" 5g
+qemu-img create -f raw "$DIR/vde" 20g
+qemu-img create -f raw "$DIR/vdf" 20g
+qemu-img create -f raw "$DIR/vdg" 5g
+mke2fs -q -t ext4 -F "$DIR/vdb"
+mke2fs -q -t ext4 -b 1024 -F "$DIR/vdd"
+mke2fs -q -t ext4 -F "$DIR/vdg"
 
 
