@@ -47,14 +47,3 @@ CONSOLE=" -serial mon:stdio"
 # GCE_ZONE=us-central1-c
 # GCE_KERNEL=/u1/ext4-64/arch/x86/boot/bzImage
 
-if test -f $CONFIG_DIR/kvm-xfstests; then
-   . $CONFIG_DIR/kvm-xfstests
-fi
-
-if test -f $DIR/config.custom ; then
-   . $DIR/config.custom
-fi
-
-if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
-   . $KVM_CONFIG
-fi

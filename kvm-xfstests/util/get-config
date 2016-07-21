@@ -1,0 +1,26 @@
+#
+# Read the config files used for kvm-xfstests
+#
+# Shell scripts should use this file as follows:
+#
+#DIR=.
+#if test -n "$KVM_XFSTESTS_DIR"
+#then
+#    DIR="$KVM_XFSTESTS_DIR"
+#fi
+#
+# . "$DIR/util/get-config"
+
+. $DIR/config
+
+if test -f $CONFIG_DIR/kvm-xfstests; then
+   . $CONFIG_DIR/kvm-xfstests
+fi
+
+if test -f $DIR/config.custom ; then
+   . $DIR/config.custom
+fi
+
+if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
+   . $KVM_CONFIG
+fi

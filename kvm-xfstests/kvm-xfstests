@@ -6,7 +6,7 @@ then
     DIR="$KVM_XFSTESTS_DIR"
 fi
 
-. $DIR/config
+. "$DIR/util/get-config"
 
 QUIET="quiet loglevel=0"
 

@@ -1,15 +1,13 @@
 #!/bin/bash
 
+GCE_XFSTESTS=yes
 DIR=.
-
 if test -n "$GCE_XFSTESTS_DIR"
 then
     DIR="$GCE_XFSTESTS_DIR"
 fi
 
-GCE_XFSTESTS=yes
-
-. "$DIR/config"
+. "$DIR/util/get-config"
 
 # Use different defaults for GCE because the background ruby monitoring
 # program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
