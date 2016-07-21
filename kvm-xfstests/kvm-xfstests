@@ -42,6 +42,15 @@ then
 	$DIR/setup
 fi
 
+for i in "$VDB" "$VDC" "$VDD" "$VDE" "$VDF" "$VDG"
+do
+    if ! test -e "$i"
+    then
+	echo "Fatal error: disk $i does not exit.  Config error?"
+	exit 1;
+    fi
+done
+
 if ionice -h > /dev/null ; then
     IONICE="ionice -n 5"
 fi
