@@ -114,6 +114,13 @@ update_xfstests()
    chown -R root:root $ROOTDIR/root
 }
 
+fix_symlinks()
+{
+    if test -n "$OUT_TAR"; then
+	symlinks -crd rootdir
+    fi
+}
+
 finalize_rootfs()
 {
    e2fsck -fyD $RAW_ROOT_FS
@@ -206,6 +213,7 @@ echo "fsgqa:!::" >> $ROOTDIR/etc/gshadow
 mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
 chmod 755 $ROOTDIR/root
+fix_symlinks
 
 DEBS=$(find debs -name \*.deb)
 if test -n "$DEBS"
@@ -295,6 +303,7 @@ if test -n "$OUT_TAR"; then
 	*.gz)	ZFLAG="-z" ;;
 	*)	ZFLAG="" ;
     esac
+    fix_symlinks
     tar -C $ROOTDIR -c $ZFLAG -f "$OUT_TAR" .
     cleanup_rootdir
     exit 0
