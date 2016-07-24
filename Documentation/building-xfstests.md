@@ -157,7 +157,7 @@ was using harris.debian.org)
         dd-schroot-cmd -c tytso-jessie apt-get install build-essential \
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks
+                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync
         schroot -r -c tytso-jessie
 Alternatively, make sure the build system is installed with Debian
 Stable (e.g., Jessie), and install the following packages:
@@ -165,7 +165,7 @@ Stable (e.g., Jessie), and install the following packages:
         % apt-get install build-essential build-essential \
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks
+                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync
 
 3.  Build the xfstests.tar.gz file (which contains the actual xfstests binaries built for armhf)
 
