@@ -1,0 +1,5 @@
+#!/bin/sh
+rsync -avH --delete --exclude-from=exclude-files build-32/ harris.debian.org:/home/tytso/xfstests-bld/xfstests-bld
+rsync -avH --delete base harris.debian.org:/home/tytso/xfstests-bld
+echo /home/tytso/xfstests-bld/base/objects > /tmp/alternates
+scp /tmp/alternates harris.debian.org:/home/tytso/xfstests-bld/xfstests-bld/.git/objects/info/alternates

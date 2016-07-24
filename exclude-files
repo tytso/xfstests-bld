@@ -1,0 +1,12 @@
+bld
+xfstests
+kvm-xfstests/vd?
+log.*
+root_fs.*
+MAKELOG*
+var.cache.apt.archives
+var.lib.apt.lists
+debs
+rootdir
+mirror
+config.custom

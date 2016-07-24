@@ -10,23 +10,22 @@ either the i386 or x86_64 root_fs.img file.
 Information on how to use these images can be found at the Quick Start
 guide, located at:
 
-  https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/tree/quick-start?h=META
-
+    https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
 
 The "corresponding source" of the GPL binaries found in these KVM
 images can be found in the source packages for the Debian
-distribution's Jessie release as of June 19, 2015:
+distribution's Jessie release as of February 15, 2016:
 
-	http://snapshot.debian.org/archive/debian/20150619T152821Z/
+	http://snapshot.debian.org/archive/debian/20160215T221907Z/
 
 ... as well as the following git repositories:
 
-e2fsprogs	v1.43-WIP-2015-05-18-64-g2334bd3 (Sat, 5 Sep 2015 22:21:35 -0400)
+e2fsprogs	v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
 fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
-quota		7367f5d (Wed, 27 Jan 2016 12:16:25 +0100)
-xfsprogs	v4.2.0 (Mon, 7 Sep 2015 10:14:31 +1000)
-xfstests-bld	922655f (Thu, 11 Feb 2016 22:34:53 -0500)
-xfstests	linux-v3.8-942-ga5b1ad9 (Sat, 13 Feb 2016 12:26:31 -0500)
+quota		81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
+xfsprogs	v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
+xfstests-bld	4247cb8 (Sat, 16 Jul 2016 21:58:00 -0400)
+xfstests	linux-v3.8-1105-gacd7210 (Fri, 15 Jul 2016 11:16:57 -0400)
 
 The gen-image script found in the kvm-xfstests/test-appliance
 directory of the xfstests-bld git repository, plus Debian jessie's
@@ -35,7 +34,7 @@ these KVM images.
 
 Local changes to xfstests can be found at:
 
-    https://github.com/tytso/xfstests tags/release-2015-02-15-a5b1ad9
+    https://github.com/tytso/xfstests release-2016-07-17-acd7210
 
 The URL's for the other git repositories and scripts to download the
 sources from those repositories can be found in xfstests-bld's

@@ -1,0 +1,2 @@
+#!/bin/bash
+scp harris.debian.org:/home/tytso/xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance/root_fs.tar.gz armhf_root_fs.tar.gz

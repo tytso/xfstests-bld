@@ -4,3 +4,5 @@ README.sig
 base
 build-32
 build-64
+armhf_root_fs.tar.gz
+armhf_root_fs.tar.sig
