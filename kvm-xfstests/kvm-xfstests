@@ -81,6 +81,7 @@ fi
 chmod 400 "$VDH"
 
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
+	-machine type=pc,accel=kvm:tcg \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=none,if=virtio \
 	-drive file=$VDC,cache=none,if=virtio \
