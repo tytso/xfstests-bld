@@ -12,8 +12,8 @@ qemu-img create -f raw "$DIR/vdd" 5g
 qemu-img create -f raw "$DIR/vde" 20g
 qemu-img create -f raw "$DIR/vdf" 20g
 qemu-img create -f raw "$DIR/vdg" 5g
-mke2fs -q -t ext4 -F "$DIR/vdb"
-mke2fs -q -t ext4 -b 1024 -F "$DIR/vdd"
-mke2fs -q -t ext4 -F "$DIR/vdg"
+/sbin/mke2fs -q -t ext4 -F "$DIR/vdb"
+/sbin/mke2fs -q -t ext4 -b 1024 -F "$DIR/vdd"
+/sbin/mke2fs -q -t ext4 -F "$DIR/vdg"
 
 
