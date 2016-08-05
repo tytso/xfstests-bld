@@ -615,6 +615,7 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server \
+       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
        "$IMAGE_FLAG" "$ROOT_FS"
 
 case "$ARG" in

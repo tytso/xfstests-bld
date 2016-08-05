@@ -30,6 +30,16 @@ some updates to the fio tree have caused test regressions in the past,
 so it may be preferable to let things be as far as the fio repo is
 concerned.)
 
+## Installing the necessary packages to build xfstests
+
+In order to build xfstests, a number of prerequisite packages are
+needed.  They can be installed using the command:
+
+        % sudo apt-get install build-essential autoconf autoconf2.64 \
+                automake libgdbm-dev libtool-bin qemu-utils gettext \
+                e2fslibs-dev git debootstrap fakechroot libdbus-1-3 \
+                autopoint pkg-config symlinks
+
 ## Building the xfstests tarball
 
 1.  Run "make clean"

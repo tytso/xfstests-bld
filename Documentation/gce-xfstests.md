@@ -44,19 +44,15 @@ An example ~/.config/kvm-xfstests might look like this:
         GCE_ZONE=us-central1-c
         GCE_KERNEL=/build/ext4-64/arch/x86/boot/bzImage
 
-## Creating the image
+## Installing software required for using gce-xfstests
 
-1. Install the Google Cloud SDK.
+1.  Install the Google Cloud SDK.  Instructions for can be found at:
+https://cloud.google.com/sdk/docs/quickstart-linux
 
 2.  Install the following packages (debian package names
 used):
 
-        apt-get install jq xz-utils git autoconf2.59 libtool-bin automake \
-        	libc6-dev gcc make e2fslibs-dev pkg-config gettext libpopt-dev
-
-3.  make ; make tarball
-
-4.  cd kvm-xfstests/test-appliance ; ./gce-create-image
+        % apt-get install jq xz-utils
 
 ## Running gce-xfstests
 
@@ -141,3 +137,26 @@ option.
 
 The --unpack option will cause the complete results directory
 to be unpacked into a directory in /tmp instead.
+
+## Creating a new GCE test appliance image
+
+By default gce-xfstests will use the prebuilt image which is made
+available in the xfstests-cloud project.  However, if you want to
+build your own image, you must first build the xfstests tarball as
+described in the [instructions for building
+xfstests](building-xfstests.md).  Next, with the working directory set
+to kvm-xfstests/test-appliance, run the gce-create-image script:
+
+        % cd kvm-xfstests/test-appliance ; ./gce-create-image
+
+The gce-create-image command creates a new image with a name such as
+"xfstests-201607170247" where 20160717... is a date and timestamp when
+the image was created.  This image is created as part of an image
+family called xfstests, and so the most recent xfstests image is the
+one that will be used by default.  In order to use the xfstests image
+family created in your GCE project, you will need to add to your
+configuration file the following after the GCE_PROJECT variable is
+defined (to be the name of your GCE project):
+
+        GCE_IMAGE_PROJECT="$GCE_PROJECT"
+
