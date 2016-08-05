@@ -17,7 +17,20 @@ if test -f $CONFIG_DIR/kvm-xfstests; then
    . $CONFIG_DIR/kvm-xfstests
 fi
 
-if test -f $DIR/config.custom ; then
+if test -z "$GCE_ACCOUNT" -a -n "$(ls $DIR/config-* 2> /dev/null)" ; then
+   # We aren't just using GCE_ACCOUNT=$(...) to work around a performance
+   # bug in gcloud.  This will hopefully be fixed soon.  :-)
+   tmpfile=$(mktemp)
+   gcloud config list --format='value(core.account)' core/account \
+	2>/dev/null > "$tmpfile"
+	GCE_ACCOUNT="$(cat $tmpfile)"
+	rm "$tmpfile"
+	unset tmpfile
+fi
+
+if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
+   . "$DIR/config-$GCE_ACCOUNT"
+elif test -f $DIR/config.custom ; then
    . $DIR/config.custom
 fi
 
