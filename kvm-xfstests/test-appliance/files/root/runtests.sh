@@ -146,7 +146,7 @@ fi
 cat /results/run-stats
 
 for i in btrfs ext4 generic shared udf xfs config; do
-    rm -rf /results/results-*/$i
+    rm -rf /results/results-*/$i /results/*/results-*/$i 2> /dev/null
 done
 
 cp /proc/slabinfo /results/slabinfo.before
@@ -167,7 +167,6 @@ do
 	fi
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
-	export RESULT_BASE=/results/results-$i
 	unset REQUIRE_FEATURE
 	unset FSX_AVOID
 	unset FSSTRESS_AVOID
@@ -211,6 +210,11 @@ do
 	fi
 	if test -n "$MNTOPTS" ; then
 		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+	fi
+	export RESULT_BASE="/results/$FS/results-$i"
+	if test ! -d "$RESULT_BASE" -a -d "/results/results-$i" ; then
+	    mkdir -p "/results/$FS"
+	    mv "/results/results-$i" "$RESULT_BASE"
 	fi
 	mkdir -p "$RESULT_BASE"
 	echo FS: $FS > "$RESULT_BASE/config"
@@ -269,13 +273,13 @@ do
 	AEX=""
 	if test -n "$DO_AEX" ; then
 	    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		< "/root/conf/all.exclude" > "/results/results-$i/exclude"
+		< "/root/conf/all.exclude" > "$RESULT_BASE/exclude"
 	    if test -f "/root/conf/$i.exclude"; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/conf/$i.exclude" >> "/results/results-$i/exclude"
+		    < "/root/conf/$i.exclude" >> "$RESULT_BASE/exclude"
 	    fi
-	    if test $(stat -c %s "/results/results-$i/exclude") -gt 0 ; then
-		AEX="-E /results/results-$i/exclude"
+	    if test $(stat -c %s "$RESULT_BASE/exclude") -gt 0 ; then
+		AEX="-E $RESULT_BASE/exclude"
 	    fi
         fi
 	if test -f /tmp/exclude-tests ; then
@@ -309,19 +313,20 @@ do
 	    then
 		tar -C /tmp -xzf /tmp/check-time.tar.gz
 	    fi
-	    if ! test -f "/tmp/check.time.$i"
-	    then
-		touch "/results/results-$i/check.time"
+	    check_time="/tmp/check.time.$FS.$i"
+	    if test ! -f "$check_time" -a -f "/tmp/check.time.$i"; then
+		mv "/tmp/check.time.$i" "$check_time"
 	    fi
-	    cat "/results/results-$i/check.time" "/tmp/check.time.$i" \
+	    touch "$RESULT_BASE/check.time" "$check_time"
+	    cat "$RESULT_BASE/check.time" "$check_time" \
 		| awk '
 	{ t[$1] = $2 }
 END	{ if (NR > 0) {
 	    for (i in t) print i " " t[i]
 	  }
 	}' \
-		| sort -n > "/tmp/check.time.$i.new"
-	    mv "/tmp/check.time.$i.new" "/tmp/check.time.$i"
+		| sort -n > "${check_time}.new"
+	    mv ${check_time}.new" $check_time"
 	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
 						     > /tmp/check-time.tar.gz)
 	    gsutil cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null
