@@ -100,11 +100,6 @@ fi
 dmesg -n 5
 cd /root/xfstests
 
-if test "$FSTESTCFG" = all
-then
-	FSTESTCFG="$(cat /root/conf/all.list)"
-fi
-
 if test -n "$FSTESTEXC" ; then
 	echo $FSTESTEXC | tr , \\n > /tmp/exclude-tests
 else
@@ -158,8 +153,18 @@ cp /proc/slabinfo /results/slabinfo.before
 cp /proc/meminfo /results/meminfo.before
 
 free -m
-for i in $FSTESTCFG
+while test -n "$FSTESTCFG"
 do
+	i="${FSTESTCFG%% *}"
+	case "$FSTESTCFG" in
+	    *\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
+	    *)    FSTESTCFG=""
+	esac
+	if test -f "/root/conf/$i.list"; then
+	    FSTESTCFG="$(cat /root/conf/$i.list | sed -e '/#/d') $FSTESTCFG"
+	    FSTESTCFG="$(echo $FSTESTCFG)"
+	    continue
+	fi
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
 	export RESULT_BASE=/results/results-$i

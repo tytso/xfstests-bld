@@ -59,7 +59,7 @@ validate_config_name()
     CONFDIR="$DIR/test-appliance/files/root/conf"
     if test -d "$CONFDIR"
     then
-	if test -f "$CONFDIR/$1"
+	if test -f "$CONFDIR/$1" -o -f "$CONFDIR/$1.list"
 	then
 	    return
 	else
@@ -71,6 +71,7 @@ validate_config_name()
 
     # Fallback in case we are installed stand-alone
     case "$1" in
+	all) ;;
 	1k) ;;
 	4k) ;;
 	bigalloc) ;;
