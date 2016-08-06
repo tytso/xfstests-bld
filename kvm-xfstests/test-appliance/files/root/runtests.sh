@@ -12,6 +12,22 @@ function gce_run_hooks()
     fi
 }
 
+function get_fs_config()
+{
+    local fs="$1"
+
+    if test "$fs" == "$FS_CONFIGURED" ; then
+	return
+    fi
+    FS_DIR="/root/fs/$fs"
+    if test ! -d $FS_DIR ; then
+	echo "File system $fs not supported"
+	exit 1
+    fi
+    . "$FS_DIR/config"
+    FS_CONFIGURED="$fs"
+}
+
 if test -z "$FSTESTAPI" ; then
     echo "Missing TEST API!"
     umount /results
@@ -85,17 +101,21 @@ done
 
 umount "$PRI_TST_DEV" >& /dev/null
 umount "$SM_TST_DEV" >& /dev/null
-/sbin/e2fsck -fy "$PRI_TST_DEV" >& "/tmp/fsck.$$"
+get_fs_config $FSTESTTYP
+if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
+    format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
+fi
+check_filesystem "$PRI_TST_DEV" >& "/tmp/fsck.$$"
 FSCKCODE=$?
+cat "/tmp/fsck.$$"
 if test $FSCKCODE -gt 1
 then
     cat /tmp/fsck.$$
-    echo e2fsck failed with exit code $FSCKCODE
 fi
 
 if test $FSCKCODE -ge 8
 then
-	mke2fs -F -q -t ext4 $PRI_TST_DEV
+    format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
 fi
 dmesg -n 5
 cd /root/xfstests
@@ -190,6 +210,7 @@ do
 		fi
 		;;
 	esac
+	get_fs_config "$FS"
 	if test -n "$ALL_FSX_AVOID"
 	then
 	    FSX_AVOID="$ALL_FSX_AVOID $FSX_AVOID"
@@ -206,16 +227,7 @@ do
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
 	echo $i > /run/fstest-config
-	if test "$FS" = "ext4" ; then
-	    if test -n "$EXT_MOUNT_OPTIONS" ; then
-		EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
-	    else
-		EXT_MOUNT_OPTIONS="-o block_validity"
-	    fi
-	fi
-	if test -n "$MNTOPTS" ; then
-		EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
-	fi
+	setup_mount_opts
 	export RESULT_BASE="/results/$FS/results-$i"
 	if test ! -d "$RESULT_BASE" -a -d "/results/results-$i" ; then
 	    mkdir -p "/results/$FS"
@@ -229,19 +241,9 @@ do
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
 	echo MKFS_OPTIONS: $MKFS_OPTIONS >> "$RESULT_BASE/config"
-	echo EXT_MOUNT_OPTIONS: $EXT_MOUNT_OPTIONS >> "$RESULT_BASE/config"
+	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
-		if test "$FS" = "ext4" ; then
-		    mke2fs -F -q -t ext4 $MKFS_OPTIONS "$TEST_DEV"
-		elif test "$FS" = "ext2" ; then
-		    mke2fs -F -q -t ext2 $MKFS_OPTIONS "$TEST_DEV"
-		elif test "$FS" = "xfs" ; then
-		    mkfs.xfs -f $MKFS_OPTIONS "$TEST_DEV"
-		elif test "$FS" = "tmpfs" ; then
-		    :
-		else
-		    /sbin/mkfs.$FS "$TEST_DEV"
-		fi
+	    format_filesystem "$TEST_DEV" "$DEFAULT_MKFS_OPTIONS"
 	fi
 	echo 3 > /proc/sys/vm/drop_caches
 	cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
@@ -255,7 +257,7 @@ do
 	fi
 	echo DEVICE: $TEST_DEV
 	echo MK2FS OPTIONS: $MKFS_OPTIONS
-	echo MOUNT OPTIONS: $EXT_MOUNT_OPTIONS
+	show_mount_opts
 	if test -n "$FSX_AVOID"
 	then
 	    echo FSX_AVOID: $FSX_AVOID
@@ -295,20 +297,10 @@ do
 	    gce_run_hooks pre-xfstests $i $j
 	    bash ./check -T $AEX $FSTESTSET
 	    gce_run_hooks post-xfstests $i $j
-	    umount $TEST_DEV >& /dev/null
-	    if test "$FS" = "ext4" ; then
-		/sbin/e2fsck -fy $TEST_DEV >& $RESULT_BASE/fsck.out
-		if test $? -gt 0 ; then
-		   cat $RESULT_BASE/fsck.out
-		fi
-	    elif test "$FS" = "xfs" ; then
-		if ! xfs_repair -n "$TEST_DEV" >& /dev/null ; then
-		    xfs_repair "$TEST_DEV"
-		fi
-	    elif test "$FS" = "tmpfs" ; then
-		:
-	    else
-		/sbin/fsck.$FS "$TEST_DEV"
+	    umount "$TEST_DEV" >& /dev/null
+	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out
+	    if test $? -gt 0 ; then
+		cat $RESULT_BASE/fsck.out
 	    fi
 	done
 	if test -n "$RUN_ON_GCE"

@@ -1,0 +1,44 @@
+#
+# Configuration file for ext2
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	 local dev="$1"
+	 local ret
+
+	 /sbin/e2fsck -fy "$dev"
+	 ret="$?"
+	 echo e2fsck failed with exit code "$ret"
+	 return "$ret"
+}
+
+function format_filesystem()
+{
+	 local dev="$1"
+	 local opts="$2"
+	 local ret
+
+	 /sbin/mke2fs -F -q -t ext2 $opts "$dev"
+	 ret="$?"
+	 return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$EXT_MOUNT_OPTIONS" ; then
+	EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
+    else
+	EXT_MOUNT_OPTIONS="-o block_validity"
+    fi
+    if test -n "$MNTOPTS" ; then
+	EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+    fi
+}
+
+function show_mount_opts()
+{
+    echo EXT_MOUNT_OPTIONS: "$EXT_MOUNT_OPTIONS"
+}

@@ -1,0 +1,43 @@
+#
+# Configuration file for xfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	 local dev="$1"
+	 local ret
+
+	 xfs_repair "$dev"
+	 ret="$?"
+	 echo xfs_repair failed with exit code "$ret"
+	 return "$ret"
+}
+
+function format_filesystem()
+{
+	 local dev="$1"
+	 local opts="$2"
+	 local ret
+
+	 mkfs.xfs -f $opts "$dev"
+	 ret="$?"
+	 return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$XFS_MOUNT_OPTIONS" ; then
+            XFS_MOUNT_OPTIONS="$XFS_MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    XFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function show_mount_opts()
+{
+    echo XFS_MOUNT_OPTIONS: "$XFS_MOUNT_OPTIONS"
+}
