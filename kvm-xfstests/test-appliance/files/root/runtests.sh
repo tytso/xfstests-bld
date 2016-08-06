@@ -177,14 +177,19 @@ do
 		echo "Unknown configuration $i!"
 		continue
 	fi
-	if ! test -b $TEST_DEV ; then
-		echo "Test device $TEST_DEV does not exist, skipping $i config"
-		continue
-	fi
-	if ! test -b $SCRATCH_DEV ; then
-		echo "Scratch device $SCRATCH_DEV does not exist, skipping $i config"
-		continue
-	fi
+	case "$TEST_DEV" in
+	    *:/*) ;;
+	    *)
+		if ! test -b $TEST_DEV ; then
+		    echo "Test device $TEST_DEV does not exist, skipping $i config"
+		    continue
+		fi
+		if ! test -b $SCRATCH_DEV ; then
+		    echo "Scratch device $SCRATCH_DEV does not exist, skipping $i config"
+		    continue
+		fi
+		;;
+	esac
 	if test -n "$ALL_FSX_AVOID"
 	then
 	    FSX_AVOID="$ALL_FSX_AVOID $FSX_AVOID"
