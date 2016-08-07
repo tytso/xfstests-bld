@@ -1,0 +1,115 @@
+#!/bin/bash
+
+DIR=..
+. "$DIR/util/get-config"
+
+if test -r config.custom ; then
+   . ./config.custom
+fi
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+GS_RO=https://www.googleapis.com/auth/devstorage.read_only
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+DATECODE=$(date +%Y%m%d%H%M)
+
+SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
+
+ROOT_FS=xfstests
+EXP_INST=xfstests-exp
+EXP_DISK=xfstests-exp
+IMG_DISK=xfstests-img
+TMP_DISK=xfstests-tmp
+DEB_IMAGE_FAMILY=debian-8
+DEB_IMAGE_PROJECT=debian-cloud
+GS_TAR="gs://$GS_BUCKET/xfstests.image.tar.gz"
+
+if ! test -f $TARBALL ; then
+   echo $TARBALL does not exist!
+   exit 1
+fi
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	-I) shift
+	    ROOT_FS="$1"
+	    EXP_INST="xfstests-exp-$1"
+	    EXP_DISK="xfstests-exp-$1"
+	    GS_TAR="gs://$GS_BUCKET/xfstests-$1.image.tar.gz"
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+GS_SCRIPT=gs://$GS_BUCKET/gce-export.sh
+METADATA="startup-script-url=$GS_SCRIPT"
+GCE_MACHTYPE=n1-standard-1
+
+t=$(mktemp /tmp/gce-export.XXXXXXXX)
+
+sed -e "s/@BUCKET@/$GS_BUCKET/" \
+    -e "s;@GS_TAR@;$GS_TAR;" \
+    -e "s/@EXP_INST@/$EXP_INST/" < gce-export.sh > $t
+gsutil cp $t $GS_SCRIPT
+
+if test "$ROOT_FS" = "xfstests" ;
+then
+    IMAGE_FLAG="--image-family"
+else
+    IMAGE_FLAG="--image"
+fi
+
+gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
+       --zone "$GCE_ZONE" 2> /dev/null
+gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
+       --zone "$GCE_ZONE" 2> /dev/null
+gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
+       --zone "$GCE_ZONE" 2> /dev/null
+gcloud compute --project "$GCE_PROJECT" -q disks delete "$TMP_DISK" \
+       --zone "$GCE_ZONE" 2> /dev/null
+
+gcloud compute --project "$GCE_PROJECT" -q disks create "$IMG_DISK" \
+       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
+       "$IMAGE_FLAG" "$ROOT_FS" --type pd-standard --zone "$GCE_ZONE" \
+       --size 10GB
+
+gcloud compute --project "$GCE_PROJECT" -q disks create "$TMP_DISK" \
+       --type pd-standard --zone "$GCE_ZONE" --size 20GB
+
+gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
+       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "default" \
+       --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
+       --metadata "^ ^$METADATA" \
+       --disk name=$IMG_DISK,device-name=image-disk,auto-delete=yes \
+       --disk name=$TMP_DISK,device-name=temporary-disk,auto-delete=yes \
+       --image-family "$DEB_IMAGE_FAMILY" --image-project "$DEB_IMAGE_PROJECT" \
+       --boot-disk-type "pd-standard" --boot-disk-device-name "$EXP_DISK"
+
+echo "Image export will be to: $GS_TAR"
+echo -n "Waiting for creation image export"
+
+cnt=0
+while gcloud compute --project "$GCE_PROJECT" instances \
+	     describe "$EXP_INST" --zone $GCE_ZONE >& /dev/null
+do
+    let cnt=$cnt+1
+    if test $cnt -ge 10
+    then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
+done
+echo " Done!"
