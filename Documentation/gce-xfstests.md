@@ -5,8 +5,8 @@
 If you don't have GCE account, you can go to https://cloud.google.com
 and sign up for a free trial.  This will get you $300 dollars worth of
 credit which you can use over a 60 day period (as of this writing).
-Given that a full test costs around a $1.50, and a smoke test costs
-pennies, that should be enough for plenty of testing.  :-)
+Given that a full test for ext4 costs around a $1.50, and a smoke test
+costs pennies, that should be enough for plenty of testing.  :-)
 
 ### Setting up a GCE project
 
@@ -36,7 +36,7 @@ test VM's so that you don't have unexpected charges to your account.
 
 The gce-xfstests system needs a Google Cloud Storage (GCS) bucket to
 send kernel images to be tested and to save the results from the test
-runs.  If you are already using, again, you can use a pre-existing
+runs.  If you are already using GCS you can use a pre-existing
 bucket, but it is strongly adviseable that you use a dedicated bucket
 for this purpose.  Detailed instructions for creating a new bucket can
 be found in the [GCS
@@ -61,16 +61,17 @@ month --- and it's highly unlikely that you will be running more than
 for sendgrid to decide you are a not a robot spammer, so please start
 the process right away while you familiarize yourself with the rest of
 gce-xfstests.  To start, visit the [Sendgrid
-website](http://www.sendgrid.com) and lick on the "Try for Free"
+website](http://www.sendgrid.com) and click on the "Try for Free"
 button.
 
 One note: unfortunately, if you are using a mail client which
 preferentially shows you HTML formatted mail, although the test
-reports are sent as plain ASCII Text, unfortunately the way mail gets
-processed through sendgrid, it gets sent with both a HTML and text
-part --- and the HTML part is missing the verbatim tag, so it gets
-completely mangled as a result.  So you may need to tell your client
-to explicitly show you the text version of the e-mail in order to get
+reports are sent as plain ASCII Text from the VM, unfortunately, due
+to the way mail gets processed through sendgrid, it will arrive in
+your inbox with with both a HTML and text part --- and the HTML part
+is missing the verbatim tag, so when viewed it looks completely
+mangled as a result.  So you may need to tell your mail client to
+explicitly show you the text version of the e-mail in order to get
 something readable.  Of course, if you use a text-based mail reader
 such as mutt, or pine, this won't be an issue.  :-)
 
