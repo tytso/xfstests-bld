@@ -6,24 +6,24 @@ DEFAULT_MKFS_OPTIONS=""
 
 function check_filesystem()
 {
-	 local dev="$1"
-	 local ret
+    local dev="$1"
+    local ret
 
-	 /sbin/e2fsck -fy "$dev"
-	 ret="$?"
-	 echo e2fsck failed with exit code "$ret"
-	 return "$ret"
+    /sbin/e2fsck -fy "$dev"
+    ret="$?"
+    echo e2fsck exited with status "$ret"
+    return "$ret"
 }
 
 function format_filesystem()
 {
-	 local dev="$1"
-	 local opts="$2"
-	 local ret
+    local dev="$1"
+    local opts="$2"
+    local ret
 
-	 /sbin/mke2fs -F -q -t ext4 $opts "$dev"
-	 ret="$?"
-	 return "$ret"
+    /sbin/mke2fs -F -q -t ext4 $opts "$dev"
+    ret="$?"
+    return "$ret"
 }
 
 function setup_mount_opts()

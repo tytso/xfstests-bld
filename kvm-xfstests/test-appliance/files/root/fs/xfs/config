@@ -6,24 +6,24 @@ DEFAULT_MKFS_OPTIONS=""
 
 function check_filesystem()
 {
-	 local dev="$1"
-	 local ret
+    local dev="$1"
+    local ret
 
-	 xfs_repair "$dev"
-	 ret="$?"
-	 echo xfs_repair failed with exit code "$ret"
-	 return "$ret"
+    xfs_repair "$dev"
+    ret="$?"
+    echo xfs_repair exited with status "$ret"
+    return "$ret"
 }
 
 function format_filesystem()
 {
-	 local dev="$1"
-	 local opts="$2"
-	 local ret
+    local dev="$1"
+    local opts="$2"
+    local ret
 
-	 mkfs.xfs -f $opts "$dev"
-	 ret="$?"
-	 return "$ret"
+    mkfs.xfs -f $opts "$dev"
+    ret="$?"
+    return "$ret"
 }
 
 function setup_mount_opts()

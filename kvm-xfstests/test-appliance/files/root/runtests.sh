@@ -112,7 +112,6 @@ if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
 fi
 check_filesystem "$PRI_TST_DEV" >& "/tmp/fsck.$$"
 FSCKCODE=$?
-cat "/tmp/fsck.$$"
 if test $FSCKCODE -gt 1
 then
     cat /tmp/fsck.$$

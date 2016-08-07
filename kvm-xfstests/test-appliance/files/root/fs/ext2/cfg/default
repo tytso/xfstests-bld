@@ -1,4 +1,4 @@
 SIZE=small
-export MKFS_OPTIONS="-q"
+export MKFS_OPTIONS=""
 export EXT_MOUNT_OPTIONS=""
 TESTNAME="ext2"
