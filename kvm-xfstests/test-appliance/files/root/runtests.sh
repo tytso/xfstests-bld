@@ -207,10 +207,9 @@ do
 	    continue
 	fi
 	# Reset variables from the previous (potentially aborted) config
-	unset REQUIRE_FEATURE
-	unset FSX_AVOID
-	unset FSSTRESS_AVOID
-	unset XFS_IO_AVOID
+	unset SIZE REQUIRE_FEATURE
+	unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID
+	unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
 	reset_vars
 	get_fs_config "$FS"
 	i=$(test_name_alias $i)
@@ -227,6 +226,35 @@ do
 	else
 		echo "Unknown configuration $FS/$i!"
 		continue
+	fi
+	if test -z "$TEST_DEV" ; then
+	    if test -z "$SIZE" ; then
+		echo "No TEST_DEV and no SIZE"
+		continue
+	    fi
+	    if test "$SIZE" = "large" ; then
+		export TEST_DEV=$LG_TST_DEV
+		export TEST_DIR=$LG_TST_MNT
+	    else
+		if test "$FSTESTTYP" = "$FS" -a \
+		   "$DEFAULT_MKFS_OPTS" = "$(get_mkfs_opts)"
+		then
+		    export TEST_DEV=$PRI_TST_DEV
+		    export TEST_DIR=$PRI_TST_MNT
+		else
+		    export TEST_DEV=$SM_TST_DEV
+		    export TEST_DIR=$SM_TST_MNT
+		fi
+	    fi
+	fi
+	if test -z "$SCRATCH_DEV" ; then
+	    if test "$SIZE" = "large" ; then
+		export SCRATCH_DEV=$LG_SCR_DEV
+		export SCRATCH_MNT=$LG_SCR_MNT
+	    else
+		export SCRATCH_DEV=$SM_SCR_DEV
+		export SCRATCH_MNT=$SM_SCR_MNT
+	    fi
 	fi
 	case "$TEST_DEV" in
 	    *:/*) ;;
@@ -273,7 +301,7 @@ do
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
-	    format_filesystem "$TEST_DEV" "$DEFAULT_MKFS_OPTIONS"
+	    format_filesystem "$TEST_DEV" "$(get_mkfs_opts)"
 	fi
 	echo 3 > /proc/sys/vm/drop_caches
 	cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"

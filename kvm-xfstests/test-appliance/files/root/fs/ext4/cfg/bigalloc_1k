@@ -1,6 +1,5 @@
-export TEST_DEV=$SM_TST_DEV
-export TEST_DIR=$SM_TST_MNT
-export MKFS_OPTIONS="-q -b 1024 -O bigalloc"
+SIZE=small
+export MKFS_OPTIONS="-b 1024 -O bigalloc"
 export EXT_MOUNT_OPTIONS=""
 
 # Until we can teach xfstests the difference between cluster size and

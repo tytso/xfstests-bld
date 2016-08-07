@@ -1,8 +1,5 @@
-export TEST_DEV=$LG_TST_DEV
-export TEST_DIR=$LG_TST_MNT
-export SCRATCH_DEV=$LG_SCR_DEV
-export SCRATCH_MNT=$LG_SCR_MNT
-export MKFS_OPTIONS="-q -O bigalloc"
+SIZE=large
+export MKFS_OPTIONS="-O bigalloc"
 export EXT_MOUNT_OPTIONS=""
 
 # Until we can teach xfstests the difference between cluster size and

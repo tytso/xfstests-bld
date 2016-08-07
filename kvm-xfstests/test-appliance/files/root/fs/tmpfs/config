@@ -25,6 +25,12 @@ function setup_mount_opts()
     fi
 }
 
+function get_mkfs_opts()
+{
+    :
+}
+
+
 function show_mkfs_opts()
 {
     :

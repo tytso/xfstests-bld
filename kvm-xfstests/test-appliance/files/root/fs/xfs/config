@@ -37,6 +37,11 @@ function setup_mount_opts()
     fi
 }
 
+function get_mkfs_opts()
+{
+    echo "$XFS_MKFS_OPTIONS"
+}
+
 function show_mount_opts()
 {
     echo XFS_MOUNT_OPTIONS: "$XFS_MOUNT_OPTIONS"

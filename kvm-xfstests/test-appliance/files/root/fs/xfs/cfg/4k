@@ -1,4 +1,3 @@
-export TEST_DEV=$SM_TST_DEV
-export TEST_DIR=$SM_TST_MNT
+SIZE=small
 export XFS_MKFS_OPTIONS="-bsize=4096"
 TESTNAME="XFS 4k block"

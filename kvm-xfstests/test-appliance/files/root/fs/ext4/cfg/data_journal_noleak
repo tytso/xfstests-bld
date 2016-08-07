@@ -1,6 +1,5 @@
-export TEST_DEV=$PRI_TST_DEV
-export TEST_DIR=$PRI_TST_MNT
-export MKFS_OPTIONS="-q"
+SIZE=small
+export MKFS_OPTIONS=""
 export EXT_MOUNT_OPTIONS="data=journal"
 
 # Due to a buffer_head leak bug, avoid collapse_range, insert_range,

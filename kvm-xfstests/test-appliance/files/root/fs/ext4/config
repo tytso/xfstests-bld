@@ -38,6 +38,11 @@ function setup_mount_opts()
     fi
 }
 
+function get_mkfs_opts()
+{
+    echo "$MKFS_OPTIONS"
+}
+
 function show_mkfs_opts()
 {
     echo MKFS_OPTIONS: "$MKFS_OPTIONS"
