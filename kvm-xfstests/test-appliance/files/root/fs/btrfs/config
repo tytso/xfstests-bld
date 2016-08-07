@@ -1,0 +1,64 @@
+#
+# Configuration file for btrfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    local dev="$1"
+    local ret
+
+    btrfs check --repair "$dev"
+    ret="$?"
+    echo xfs_repair failed with exit code "$ret"
+    return "$ret"
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+    local ret
+
+    mkfs.btrfs -f $opts "$dev"
+    ret="$?"
+    return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$MOUNT_OPTIONS" ; then
+            MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo MOUNT_OPTIONS: "$MOUNT_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo MKFS_OPTIONS: "$MKFS_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset MOUNT_OPTIONS
+    unset MKFS_OPTIONS
+}

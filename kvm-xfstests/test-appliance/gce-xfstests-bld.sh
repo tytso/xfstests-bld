@@ -24,6 +24,7 @@ PACKAGES="bash-completion \
 	libsasl2-modules \
 	libssl1.0.0 \
 	libgdbm3 \
+	liblzo2-2 \
 	lighttpd \
 	lvm2 \
 	nano \

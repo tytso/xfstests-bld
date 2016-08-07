@@ -15,6 +15,7 @@ joe-jupp
 keyutils
 less
 libgdbm3
+liblzo2-2
 lvm2
 makedev
 perl
