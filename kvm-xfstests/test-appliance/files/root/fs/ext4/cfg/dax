@@ -1,4 +1,3 @@
-export FS=ext4
 export TEST_DEV=/dev/pmem0
 export TEST_DIR=$SM_TST_MNT
 export SCRATCH_DEV=/dev/pmem1

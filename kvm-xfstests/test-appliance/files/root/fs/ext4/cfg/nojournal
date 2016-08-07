@@ -1,4 +1,3 @@
-export FS=ext4
 export TEST_DEV=$PRI_TST_DEV
 export TEST_DIR=$PRI_TST_MNT
 export MKFS_OPTIONS="-q -O ^has_journal"

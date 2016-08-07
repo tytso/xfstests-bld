@@ -25,7 +25,22 @@ function setup_mount_opts()
     fi
 }
 
+function show_mkfs_opts()
+{
+    :
+}
+
 function show_mount_opts()
 {
     echo TMPFS_MOUNT_OPTIONS: "$TMPFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset TMPFS_MOUNT_OPTIONS
 }

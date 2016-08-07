@@ -1,6 +1,5 @@
-export FS=ext2
 export TEST_DEV=$SM_TST_DEV
 export TEST_DIR=$SM_TST_MNT
-export MKFS_OPTIONS="-q"
+export MKFS_OPTIONS="-q -b 1024"
 export EXT_MOUNT_OPTIONS=""
-TESTNAME="ext2"
+TESTNAME="Ext4 1k block"

@@ -41,3 +41,22 @@ function show_mount_opts()
 {
     echo XFS_MOUNT_OPTIONS: "$XFS_MOUNT_OPTIONS"
 }
+
+function show_mkfs_opts()
+{
+    echo XFS_MKFS_OPTIONS: "$XFS_MKFS_OPTIONS"
+}
+
+function test_name_alias()
+{
+    case "$1" in
+	default)	echo "4k" ;;
+	*)		echo "$1" ;;
+    esac
+}
+
+function reset_vars()
+{
+    unset XFS_MOUNT_OPTIONS
+    unset XFS_MKFS_OPTIONS
+}

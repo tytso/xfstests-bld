@@ -22,10 +22,11 @@ function get_fs_config()
     FS_DIR="/root/fs/$fs"
     if test ! -d $FS_DIR ; then
 	echo "File system $fs not supported"
-	exit 1
+	return 1
     fi
     . "$FS_DIR/config"
     FS_CONFIGURED="$fs"
+    return 0
 }
 
 if test -z "$FSTESTAPI" ; then
@@ -101,7 +102,11 @@ done
 
 umount "$PRI_TST_DEV" >& /dev/null
 umount "$SM_TST_DEV" >& /dev/null
-get_fs_config $FSTESTTYP
+if ! get_fs_config $FSTESTTYP ; then
+    echo "Unsupported primary file system type $FSTESTTYP"
+    exit 1
+fi
+
 if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
     format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
 fi
@@ -165,8 +170,10 @@ fi
 
 cat /results/run-stats
 
-for i in btrfs ext4 generic shared udf xfs config; do
-    rm -rf /results/results-*/$i /results/*/results-*/$i 2> /dev/null
+for i in $(find /results -name results-\* -type d)
+do
+    find $i/* -type d -print | xargs rm -rf 2> /dev/null
+    find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
 done
 
 cp /proc/slabinfo /results/slabinfo.before
@@ -180,21 +187,45 @@ do
 	    *\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
 	    *)    FSTESTCFG=""
 	esac
-	if test -f "/root/conf/$i.list"; then
-	    FSTESTCFG="$(cat /root/conf/$i.list | sed -e '/#/d') $FSTESTCFG"
+	case "$i" in
+	    */*)
+		FS="${i%%/*}"
+		i="${i#*/}"
+		;;
+	    *)
+		if test -d "/root/fs/$i"
+		then
+		    FS="$i"
+		    i=default
+		else
+		    FS="$FSTESTTYP"
+		fi
+		;;
+	esac
+	if test ! -d "/root/fs/$FS" ; then
+	    echo "Unknown file system type $FS"
+	    continue
+	fi
+	# Reset variables from the previous (potentially aborted) config
+	unset REQUIRE_FEATURE
+	unset FSX_AVOID
+	unset FSSTRESS_AVOID
+	unset XFS_IO_AVOID
+	reset_vars
+	get_fs_config "$FS"
+	i=$(test_name_alias $i)
+	if test -f "/root/fs/$FS/cfg/$i.list"; then
+	    FSTESTCFG="$(cat /root/fs/$FS/cfg/$i.list | sed -e '/#/d' \
+			-e '/^$/d' -e s:^:$FS/:) $FSTESTCFG"
 	    FSTESTCFG="$(echo $FSTESTCFG)"
 	    continue
 	fi
 	export SCRATCH_DEV=$SM_SCR_DEV
 	export SCRATCH_MNT=$SM_SCR_MNT
-	unset REQUIRE_FEATURE
-	unset FSX_AVOID
-	unset FSSTRESS_AVOID
-	unset XFS_IO_AVOID
-	if test -e "/root/conf/$i"; then
-		. "/root/conf/$i"
+	if test -f "/root/fs/$FS/cfg/$i"; then
+		. "/root/fs/$FS/cfg/$i"
 	else
-		echo "Unknown configuration $i!"
+		echo "Unknown configuration $FS/$i!"
 		continue
 	fi
 	case "$TEST_DEV" in
@@ -210,7 +241,6 @@ do
 		fi
 		;;
 	esac
-	get_fs_config "$FS"
 	if test -n "$ALL_FSX_AVOID"
 	then
 	    FSX_AVOID="$ALL_FSX_AVOID $FSX_AVOID"
@@ -240,7 +270,7 @@ do
 	echo TEST_DIR: $TEST_DIR >> "$RESULT_BASE/config"
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
-	echo MKFS_OPTIONS: $MKFS_OPTIONS >> "$RESULT_BASE/config"
+	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 	    format_filesystem "$TEST_DEV" "$DEFAULT_MKFS_OPTIONS"
@@ -256,7 +286,7 @@ do
 	    continue
 	fi
 	echo DEVICE: $TEST_DEV
-	echo MK2FS OPTIONS: $MKFS_OPTIONS
+	show_mkfs_opts
 	show_mount_opts
 	if test -n "$FSX_AVOID"
 	then
@@ -279,11 +309,15 @@ do
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
-	    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		< "/root/conf/all.exclude" > "$RESULT_BASE/exclude"
-	    if test -f "/root/conf/$i.exclude"; then
+	    if test -f "/root/fs/$FS/exclude" ; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/conf/$i.exclude" >> "$RESULT_BASE/exclude"
+		    < "/root/fs/$FS/exclude" > "$RESULT_BASE/exclude"
+	    else
+		cp /dev/null "$RESULT_BASE/exclude"
+	    fi
+	    if test -f "/root/fs/$FS/cfg/$i.exclude"; then
+		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+		    < "/root/fs/$FS/cfg/$i.exclude" >> "$RESULT_BASE/exclude"
 	    fi
 	    if test $(stat -c %s "$RESULT_BASE/exclude") -gt 0 ; then
 		AEX="-E $RESULT_BASE/exclude"

@@ -56,41 +56,46 @@ validate_test_name()
 
 validate_config_name()
 {
-    CONFDIR="$DIR/test-appliance/files/root/conf"
+    local arg="$1"
+    local fs
+    local cfg
+
+    CONFDIR="$DIR/test-appliance/files/root/fs"
     if test -d "$CONFDIR"
     then
-	if test -f "$CONFDIR/$1" -o -f "$CONFDIR/$1.list"
+	case "$arg" in
+	    */*)
+		fs="${arg%%/*}"
+		cfg="${arg#*/}"
+		;;
+	    *)
+		if test -d "$CONFDIR/$arg"
+		then
+		    fs="$arg"
+		    cfg=default
+		else
+		    fs="$PRIMARY_FSTYPE"
+		    cfg="$arg"
+		fi
+		;;
+	esac
+	if test ! -d "$CONFDIR/$fs" ; then
+	    echo -e "Invalid file system type: $fs\n"
+	    print_help
+	    exit 1
+	fi
+	. "$CONFDIR/$fs/config"
+	cfg=$(test_name_alias $cfg)
+	if test -f "$CONFDIR/$fs/cfg/$cfg" -o \
+		-f "$CONFDIR/$fs/cfg/$cfg.list"
 	then
 	    return
 	else
-	    echo -e "Invalid config name: $1\n"
+	    echo -e "Invalid config name: $arg\n"
 	    print_help
 	    exit 1
 	fi
     fi
-
-    # Fallback in case we are installed stand-alone
-    case "$1" in
-	all) ;;
-	1k) ;;
-	4k) ;;
-	bigalloc) ;;
-	bigalloc_1k) ;;
-	data_journal) ;;
-	dioread_nolock) ;;
-	encrypt) ;;
-	encrypt-nodelalloc) ;;
-	ext3) ;;
-	ext3conv) ;;
-	inline) ;;
-	metacsum) ;;
-	nojournal) ;;
-	xfs) ;;
-	*)
-	    echo "Invalid config name: $1"
-	    exit 1
-	    ;;
-    esac
 }
 
 while [ "$1" != "" ]; do
