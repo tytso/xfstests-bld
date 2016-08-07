@@ -384,7 +384,7 @@ END	{ if (NR > 0) {
 	  }
 	}' \
 		| sort -n > "${check_time}.new"
-	    mv ${check_time}.new" $check_time"
+	    mv "${check_time}.new" "$check_time"
 	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
 						     > /tmp/check-time.tar.gz)
 	    gsutil cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null

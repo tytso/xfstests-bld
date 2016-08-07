@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIR=..
-. $DIR/config
+. "$DIR/util/get-config"
 
 if test -r config.custom ; then
    . ./config.custom
