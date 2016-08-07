@@ -8,6 +8,73 @@ credit which you can use over a 60 day period (as of this writing).
 Given that a full test costs around a $1.50, and a smoke test costs
 pennies, that should be enough for plenty of testing.  :-)
 
+### Setting up a GCE project
+
+Although you can use a pre-existing project, it is a good idea to set
+up a new GCE project for gce-xfstests.  To set up a GCE project, go to
+the [GCE Projects page](https://console.cloud.google.com/projects),
+pick a project name and then click on the blue "Create Project" button
+at the top of the page.  The GCE projects namespace is a global one,
+so you will need to pick something like unique, such as
+"yourName-xfstests" or "yourUserName-xfstests".  After you create it,
+you will need to [enable
+billing](https://support.google.com/cloud/answer/6293499#enable-billing)
+for your newly created project.
+
+Next, go to [GCE Instances
+page](https://console.cloud.google.com/compute/instances) in order to
+enable the GCE API for your project.  You can optionally try creating
+a VM instances via the web interface, or follow the quickstart
+tutorial if you like, although this won't be necessary, since the
+gce-xfstests command line interface will take care of starting and
+stopping instances for you automatically.  If you do start up some
+test instances yourself, please make a point of going to the GCE
+Instances page when you are done to make sure you have shut down any
+test VM's so that you don't have unexpected charges to your account.
+
+### Setting up a GCS bucket
+
+The gce-xfstests system needs a Google Cloud Storage (GCS) bucket to
+send kernel images to be tested and to save the results from the test
+runs.  If you are already using, again, you can use a pre-existing
+bucket, but it is strongly adviseable that you use a dedicated bucket
+for this purpose.  Detailed instructions for creating a new bucket can
+be found in the [GCS
+Quickstart](https://cloud.google.com/storage/docs/quickstart-console).
+
+### Setting up a Sendgrid account
+
+Since virtual machines in GCE aren't allowed to send connect to the
+normal outgoing mail ports (in order prevent abuse by spammers), in
+order to send e-mail we have to use a cloud mail service.  Using a
+cloud mail service is optional --- you can wait for the test to
+complete and then use the gce-xfstests ls-results and get-results
+command to fetch the test results --- but it's very handy to have the
+test reports show up in your inbox once they are finished.
+
+The gce-xfstests system uses sendgrid, so if you would like to get
+e-mailed reports, you will need to sign up for a free Sendgrid
+account.  Sendgrid is designed for companies who want to do bulk
+mailings, so the free account is good for up to 25,000 e-mails per
+month --- and it's highly unlikely that you will be running more than
+100 test runs per month, let alone 25,000!  It may take a day or two
+for sendgrid to decide you are a not a robot spammer, so please start
+the process right away while you familiarize yourself with the rest of
+gce-xfstests.  To start, visit the [Sendgrid
+website](http://www.sendgrid.com) and lick on the "Try for Free"
+button.
+
+One note: unfortunately, if you are using a mail client which
+preferentially shows you HTML formatted mail, although the test
+reports are sent as plain ASCII Text, unfortunately the way mail gets
+processed through sendgrid, it gets sent with both a HTML and text
+part --- and the HTML part is missing the verbatim tag, so it gets
+completely mangled as a result.  So you may need to tell your client
+to explicitly show you the text version of the e-mail in order to get
+something readable.  Of course, if you use a text-based mail reader
+such as mutt, or pine, this won't be an issue.  :-)
+
+
 ## Configuration
 
 You will need to set up the following configuration parameters in
