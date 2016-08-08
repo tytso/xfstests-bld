@@ -269,6 +269,14 @@ while [ "$1" != "" ]; do
 		print_help
 	    fi
 	    ;;
+	--image-project)
+	    if test "$GCE_XFSTESTS" = "yes" ; then
+		shift
+		GCE_IMAGE_PROJECT="$1"
+	    else
+		print_help
+	    fi
+	    ;;
 	--instance-name)
 	    if test "$GCE_XFSTESTS" = "yes" ; then
 		shift
