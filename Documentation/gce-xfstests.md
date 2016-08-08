@@ -122,6 +122,25 @@ used):
 
         % apt-get install jq xz-utils
 
+## Add yourself to the gce-xfstests group
+
+By default gce-xfstests uses the pre-built image which is made
+available via the xfstests-cloud project.  In order gain access to
+this image, you will need add the google account used for your GCE
+project to the gce-xfstests Google Groups.  To do this, go the
+[gce-xfstests Google
+Groups](https://groups.google.com/forum/#!forum/gce-xfstests) page and
+click on the blue "Join group" button.  This group is an
+announcement-only so it will not have a large number of posts.
+
+The pre-built image will receive periodic updates, and while we try to
+keep backwards compatibility, it may be that some new images may
+require updating your local copy of the xfstests-bld git repository to
+get the latest version of the gce-xfstests script.
+
+If you don't want to use the pre-built image see the section "Creating
+a new GCE test appliance image" below.
+
 ## Running gce-xfstests
 
 Running gce-xfstests is much like kvm-xfstests; see the README file in
@@ -218,8 +237,8 @@ to be unpacked into a directory in /tmp instead.
 
 ## Creating a new GCE test appliance image
 
-By default gce-xfstests will use the prebuilt image which is made
-available in the xfstests-cloud project.  However, if you want to
+By default gce-xfstests uses the prebuilt image which is made
+available via the xfstests-cloud project.  However, if you want to
 build your own image, you must first build the xfstests tarball as
 described in the [instructions for building
 xfstests](building-xfstests.md).  Next, with the working directory set
