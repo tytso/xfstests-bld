@@ -55,14 +55,7 @@ done
 
 GS_SCRIPT=gs://$GS_BUCKET/gce-export.sh
 METADATA="startup-script-url=$GS_SCRIPT"
-GCE_MACHTYPE=n1-standard-1
-
-t=$(mktemp /tmp/gce-export.XXXXXXXX)
-
-sed -e "s/@BUCKET@/$GS_BUCKET/" \
-    -e "s;@GS_TAR@;$GS_TAR;" \
-    -e "s/@EXP_INST@/$EXP_INST/" < gce-export.sh > $t
-gsutil cp $t $GS_SCRIPT
+GCE_MACHTYPE=n1-highmem-4
 
 if test "$ROOT_FS" = "xfstests" ;
 then
@@ -71,29 +64,34 @@ else
     IMAGE_FLAG="--image"
 fi
 
+if test -z "$GCE_IMAGE_PROJECT" ; then
+    GCE_IMAGE_PROJECT="xfstests-cloud"
+fi
+
+t=$(mktemp /tmp/gce-export.XXXXXXXX)
+
+sed -e "s/@BUCKET@/$GS_BUCKET/" \
+    -e "s;@GS_TAR@;$GS_TAR;" \
+    -e "s;@GCE_ZONE@;$GCE_ZONE;" \
+    -e "s;@GCE_IMAGE_PROJECT@;$GCE_IMAGE_PROJECT;" \
+    -e "s;@GCE_PROJECT@;$GCE_PROJECT;" \
+    -e "s;@IMAGE_FLAG@;$IMAGE_FLAG;" \
+    -e "s;@ROOT_FS@;$ROOT_FS;" \
+    -e "s;@IMG_DISK@;$IMG_DISK;" \
+    -e "s/@EXP_INST@/$EXP_INST/" < gce-export.sh > $t
+gsutil cp $t $GS_SCRIPT
+
 gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
 gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
 gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
-gcloud compute --project "$GCE_PROJECT" -q disks delete "$TMP_DISK" \
-       --zone "$GCE_ZONE" 2> /dev/null
-
-gcloud compute --project "$GCE_PROJECT" -q disks create "$IMG_DISK" \
-       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
-       "$IMAGE_FLAG" "$ROOT_FS" --type pd-standard --zone "$GCE_ZONE" \
-       --size 10GB
-
-gcloud compute --project "$GCE_PROJECT" -q disks create "$TMP_DISK" \
-       --type pd-standard --zone "$GCE_ZONE" --size 20GB
 
 gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "default" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --metadata "^ ^$METADATA" \
-       --disk name=$IMG_DISK,device-name=image-disk,auto-delete=yes \
-       --disk name=$TMP_DISK,device-name=temporary-disk,auto-delete=yes \
        --image-family "$DEB_IMAGE_FAMILY" --image-project "$DEB_IMAGE_PROJECT" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$EXP_DISK"
 
