@@ -608,6 +608,9 @@ fi
 echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 # echo "Using ARG: $ARG"
 
+gcloud compute --project "$GCE_PROJECT" firewall-rules create \
+       allow-http --allow tcp:80 >& /dev/null &
+
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
