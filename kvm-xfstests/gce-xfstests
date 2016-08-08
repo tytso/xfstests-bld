@@ -305,6 +305,16 @@ case "$1" in
 	       get-serial-port-output "$2" --zone "$GCE_ZONE"
 	exit 0
 	;;
+    serial)
+	if test "$2" == "--port"
+	then
+	    shift
+	    PORT="--port $2"
+	    shift
+	fi
+	exec gcloud beta compute --project "$GCE_PROJECT" -q \
+	     connect-to-serial-port --zone "$GCE_ZONE" $PORT "$2"
+	;;
     get-results)
 	case "$2" in
 	    --failures|-F)

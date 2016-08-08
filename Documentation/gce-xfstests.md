@@ -141,6 +141,16 @@ Fetch the serial console from a test instance.  This is a
 convenience shorthand for: "gcloud compute --project
 GCE_PROJECT get-serial-port-output INSTANCE --zone GCE_ZONE".
 
+### gce-xfstests console [--port N] INSTANCE
+
+Connect to serial port N on a test instance.  Port 1 is the serial
+console; the magic sysrq key can be accessed via the Enter key,
+followed by the tilde ('~') key, followed by the 'B' key.  Ports 2, 3,
+and 4 will connect to a serial port with a shell running on it.  In
+the future serial port #4 may be repurposed to allow a remote gdb
+connection to kgdb, if the kernel under test is built with with kgdb
+support.
+
 ### gce-xfstests ls-instances [-l ]
 
 List the current test instances.  With the -l option, it will
