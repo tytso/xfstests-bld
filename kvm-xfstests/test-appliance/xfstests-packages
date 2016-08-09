@@ -25,4 +25,5 @@ strace
 systemd
 systemd-sysv
 time
+uuid-runtime
 udev
