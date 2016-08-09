@@ -127,7 +127,7 @@ used):
 By default gce-xfstests uses the pre-built image which is made
 available via the xfstests-cloud project.  In order gain access to
 this image, you will need add the google account used for your GCE
-project to the gce-xfstests Google Groups.  To do this, go the
+project to the gce-xfstests Google Group.  To do this, go the
 [gce-xfstests Google
 Groups](https://groups.google.com/forum/#!forum/gce-xfstests) page and
 click on the blue "Join group" button.  This group is an

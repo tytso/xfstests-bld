@@ -74,10 +74,10 @@ we use /dev/vdd instead for the 1k block file system, and the test
 runner will run mke2fs to format /dev/vdd before starting the xfstests
 run for that file system configuration.  For this reason, /dev/vdd is
 sometimes called the TEST-1K device -- although there are many other
-file systme configurations which will use /dev/vdd.
+file system configurations which will use /dev/vdd.
 
 The /dev/vde and /dev/vdf file systems are the BIGTEST and BIGSCRATCH
-disks, and are used for thsoe file system configrations which require
+disks, and are used for those file system configrations which require
 a 20GB TEST and SCRATCH device.  Like the TEST-1K device, the BIGTEST
 device will be reformated using mke2fs at the beginning of an xfstests
 run for that file system configuration.
@@ -87,4 +87,4 @@ of individual virtio devices, gce-xfstests uses Logical Volumes using
 LVM stored on a GCE Local SSD.  Unfortunately, this means that the
 TEST-4K device is reformatted each time the gce-xfstests VM is
 started; and so we don't get the benefits of testing the file system
-against a device suffering from long-term aging,
+against a device suffering from long-term aging.
