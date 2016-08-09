@@ -138,6 +138,15 @@ if test -f /var/www/cmdline
 then
     echo "CMDLINE: $(cat /var/www/cmdline)" >> /results/run-stats
 fi
+if test -n "$RUN_ON_GCE"
+then
+    . /usr/local/lib/gce-funcs
+    image=$(gcloud compute disks describe --format='value(sourceImage)' \
+		${instance} | \
+		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \
+		    -e 's;global/images/;;')
+    echo "FSTESTIMG: $image" >> /results/run-stats
+fi
 sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> /results/run-stats
 echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> /results/run-stats
 echo FSTESTCFG: \"$FSTESTCFG\" >> /results/run-stats
@@ -149,7 +158,6 @@ echo CPUS:      \"$CPUS\" >> /results/run-stats
 echo MEM:       \"$MEM\" >> /results/run-stats
 if test -n "$RUN_ON_GCE"
 then
-    . /usr/local/lib/gce-funcs
     DMI_MEM=$(sudo dmidecode -t memory 2> /dev/null | \
 		     grep "Maximum Capacity: " | \
 		     sed -e 's/.*: //')
