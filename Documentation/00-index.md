@@ -2,7 +2,8 @@
 
 You probably will want to start by reading
 [kvm-quickstart.md](kvm-quickstart.md) first, even if you intend to
-eventually use gce-xfstests.
+eventually use gce-xfstests.  Also please see the top-level
+[README](../README.md) file for this project.
 
 * [android-xfstests](android-xfstests.md)
   * Instructions for running xfstests on an Android device

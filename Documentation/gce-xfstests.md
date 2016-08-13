@@ -64,17 +64,26 @@ gce-xfstests.  To start, visit the [Sendgrid
 website](http://www.sendgrid.com) and click on the "Try for Free"
 button.
 
-One note: unfortunately, if you are using a mail client which
-preferentially shows you HTML formatted mail, although the test
-reports are sent as plain ASCII Text from the VM, unfortunately, due
-to the way mail gets processed through sendgrid, it will arrive in
-your inbox with with both a HTML and text part --- and the HTML part
-is missing the verbatim tag, so when viewed it looks completely
-mangled as a result.  So you may need to tell your mail client to
-explicitly show you the text version of the e-mail in order to get
-something readable.  Of course, if you use a text-based mail reader
-such as mutt, or pine, this won't be an issue.  :-)
+Once you have set up a Sendgrid account, get a new API key by going to
+the url
+[https://app.sendgrid.com/settings/api_keys](https://app.sendgrid.com/settings/api_keys)
+and click on the blue "Create API Key" button and select "General API
+Key".  Pick a name such as "gce-xfstests" and enter it into the "Name
+of this key".  Then click on the Mail Send's "Full Access" bubble and
+then click on the blue "Save" button.  Copy the API key that was
+generated and use it to set the GCE_SG_API configuration variable in
+gce-xfstests's config file.
 
+Then go to Sendgrid's Tracking Settings web page at
+[https://app.sendgrid.com/settings/tracking](https://app.sendgrid.com/settings/tracking)
+and make sure all of the Tracking settings are set to inactive.  If
+one of the trackers, such as Click Tracking, are enabled, click on the
+down arrow in the Options column, and then click on "Off" to disable
+the tracker.  This is important, because the reports are sent as plain
+ASCII text, and the way sendgrid tries to translate the text report
+into HTML results in something that looks really mangled if you are
+using a mail client that tries to display the HTML version of an
+e-mail message.
 
 ## Configuration
 
@@ -98,12 +107,16 @@ You will need to set up the following configuration parameters in
 If you have a sendgrid account, you can set the following
 configuration parameters in order to have reports e-mailed to you:
 
-* GCE_SG_USER
-  * The username for the sendgrid account used to send email
-* GCE_SG_PASS
-  * The password for the sendgrid account used to send email
+* GCE_SG_API
+  * The Sendgrid API used to send the test report
 * GCE_REPORT_EMAIL
   * The email addressed for which test results should be sent.
+* GCE_REPORT_SENDER
+  * The email used as the sender for the test report.  This defaults
+    to the GCE_REPORT_EMAIL configuration parameter.  If the domain used
+    by GCE_REPORT_EMAIL has restrictive SPF settings, and you don't have
+    control over the domain used by GCE_REPORT_EMAIL, you may need to
+    choose a different sender address.
 
 An example ~/.config/kvm-xfstests might look like this:
 
