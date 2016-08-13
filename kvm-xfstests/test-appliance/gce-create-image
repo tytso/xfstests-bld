@@ -1,5 +1,6 @@
 #!/bin/bash
 
+GCE_XFSTESTS=yes
 DIR=..
 . "$DIR/util/get-config"
 

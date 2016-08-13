@@ -13,11 +13,15 @@
 
 . $DIR/config
 
-if test -f $CONFIG_DIR/kvm-xfstests; then
+if test -n "$GCE_XFSTESTS" -a -f "$CONFIG_DIR/gce-xfstests" ; then
+   . $CONFIG_DIR/gce-xfstests
+elif test -f "$CONFIG_DIR/kvm-xfstests"; then
    . $CONFIG_DIR/kvm-xfstests
 fi
 
-if test -z "$GCE_ACCOUNT" -a -n "$(ls $DIR/config-* 2> /dev/null)" ; then
+if test -n "$GCE_XFSTESTS" -a -z "$GCE_ACCOUNT" -a \
+   -n "$(ls $DIR/config-* 2> /dev/null)"
+then
    # We aren't just using GCE_ACCOUNT=$(...) to work around a performance
    # bug in gcloud.  This will hopefully be fixed soon.  :-)
    tmpfile=$(mktemp)
