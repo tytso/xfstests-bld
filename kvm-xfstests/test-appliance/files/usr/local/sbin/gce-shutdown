@@ -40,10 +40,23 @@ then
 
     REPORT_EMAIL=$(gce_attribute report_email)
     run_hooks send-email
+    if test -f /usr/local/lib/sg_key ; then
+	. /usr/local/lib/sg_key
+    fi
     if test -n "$REPORT_EMAIL"
     then
-	mail -s "xfstests results $DATECODE - $(uname -r)" \
-	     "$REPORT_EMAIL" < /results/failures
+	subj="xfstests results $DATECODE - $(uname -r)"
+	if test -n "$SENDGRID_API_KEY" ; then
+	    sg_from=$(gce_attribute report_sender)
+	    if test -z "$sg_from"
+	    then
+		sg_from="$USER@$HOSTNAME"
+	    fi
+	    /usr/local/sbin/send-mail.py --sender "$sg_from" \
+		 -s "$subj" "$REPORT_EMAIL" < /results/failures
+	else
+	    mail -s "$subj" "$REPORT_EMAIL" < /results/failures
+	fi
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \

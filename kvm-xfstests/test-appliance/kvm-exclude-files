@@ -1,3 +1,4 @@
+usr/local/lib/python2.7
 root/xfstests/local.config
 etc/postfix/main.cf
 etc/lighttpd

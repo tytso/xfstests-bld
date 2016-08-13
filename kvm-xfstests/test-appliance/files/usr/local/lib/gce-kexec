@@ -22,6 +22,14 @@ then
     fi
 fi
 
+sg_api=$(gce_attribute sg_api)
+if test -n "$sg_api"
+then
+    echo "export SENDGRID_API_KEY=$sg_api" > /usr/local/lib/sg_key
+    gcloud compute instances -q remove-metadata ${instance} \
+	   --keys sg_api --zone "$ZONE"
+fi
+    
 gcloud config set compute/zone $ZONE
 
 if test -f /dev/disk/by-label/results
