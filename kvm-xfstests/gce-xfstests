@@ -280,15 +280,8 @@ case "$1" in
 	exit 0
 	;;
     setup)
-	gcloud config set core/project "$GCE_PROJECT"
-	gcloud config set compute/zone "$GCE_ZONE"
-	if test -z "$(gcloud compute firewall-rules list default-allow-http | sed -e 1d)"
-	then
-	    gcloud compute --project "$GCE_PROJECT" -q firewall-rules \
-		   create default-allow-http --allow tcp:80,icmp \
-		   --target-tags http-server
-	fi
-	exit 0
+	"$DIR/util/gce-do-setup"
+	exit $?
 	;;
     ssh)
 	if ! gcloud compute --project "$GCE_PROJECT" -q instances \
@@ -631,9 +624,6 @@ fi
 
 echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 # echo "Using ARG: $ARG"
-
-gcloud compute --project "$GCE_PROJECT" firewall-rules create \
-       allow-http --allow tcp:80 >& /dev/null &
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \

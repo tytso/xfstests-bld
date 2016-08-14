@@ -88,7 +88,7 @@ e-mail message.
 ## Configuration
 
 You will need to set up the following configuration parameters in
-~/.config/kvm-xfststs:
+~/.config/gce-xfststs:
 
 * GS_BUCKET
   * The name of the Google Storage bucket which should be used by
@@ -118,7 +118,7 @@ configuration parameters in order to have reports e-mailed to you:
     control over the domain used by GCE_REPORT_EMAIL, you may need to
     choose a different sender address.
 
-An example ~/.config/kvm-xfstests might look like this:
+An example ~/.config/gce-xfstests might look like this:
 
         GS_BUCKET=tytso-xfstests
         GCE_PROJECT=tytso-linux
@@ -133,7 +133,7 @@ https://cloud.google.com/sdk/docs/quickstart-linux
 2.  Install the following packages (debian package names
 used):
 
-        % apt-get install jq xz-utils
+        % apt-get install jq xz-utils dnsutils python-crcmod
 
 ## Add yourself to the gce-xfstests group
 
@@ -153,6 +153,14 @@ get the latest version of the gce-xfstests script.
 
 If you don't want to use the pre-built image see the section "Creating
 a new GCE test appliance image" below.
+
+## Run "gce-xfstests setup"
+
+The command "gce-xfstests setup" will set some GCE settings for
+gce-xfstests, but more importantly, it will sanity check the
+configuration parameters for correctness and print some errors or
+warnings messages if it detects potential problems that might prevent
+gce-xfstests from functioning correctly.
 
 ## Running gce-xfstests
 

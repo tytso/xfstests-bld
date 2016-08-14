@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+# For a more fool-proof gce-xfstests setup,,,
+#
+
+GCE_XFSTESTS=yes
+DIR=.
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
+. "$DIR/util/get-config"
+
+if ! type gcloud >& /dev/null ; then
+   echo "You apparently do not have the Google Cloud SDK installed"
+   echo "Please visit https://cloud.google.com/sdk/docs/quickstart-linux"
+   echo "and follow the instructions there"
+   exit 1
+fi
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "GCE_ZONE" \
+	-o -z "GCE_KERNEL"
+then
+    echo -e "Please make sure the following configuration variables are set in"
+    echo -e "~/.config/gce-xfstests or one of the other config files:"
+    echo -e "\tGS_BUCKET, GCE_PROJECT, GCE_ZONE, GCE_KERNEL\n"
+    echo -e "Optionally you can also set the follow variables to enable"
+    echo -e "test reports to be sent via e-mail:"
+    echo -e "\tGCE_SG_USER, GCE_SG_PASS, GCE_REPORT_EMAIL"
+    exit 1
+fi
+
+orig_account=$(gcloud auth list --filter status=ACTIVE --format="value(account)")
+
+if ! gcloud config configurations activate gce-xfstests >& /dev/null ; then
+    gcloud config configurations create --activate gce-xfstests
+fi
+account=$(gcloud auth list --filter status=ACTIVE --format="value(account)")
+
+if test -z "$account" ; then
+    if test -n "$orig_account"; then
+	gcloud config set account "$orig_account"
+    else
+	echo "No GCE credentials available.  Please follow the"
+	echo "instructions to obtain the Google Cloud credentials"
+	echo "you wish to use for gce-xfstests"
+	gcloud config set core/project "$GCE_PROJECT"
+	if ! gcloud auth login --brief ; then
+	    echo "Failed to get GCE credentials"
+	    exit 1
+	fi
+    fi
+fi
+
+gcloud config set core/project "$GCE_PROJECT"
+gcloud config set compute/zone "$GCE_ZONE"
+
+if ! gcloud projects describe "$GCE_PROJECT" > /dev/null ; then
+    echo -e "Invalid GCE project: $GCE_PROJECT\n"
+    bad_config=yes
+fi
+
+if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+    echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+    bad_config=yes
+fi
+
+if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
+    echo -e "Invalid GCE zone: $GCE_ZONE\n"
+    bad_config=yes
+fi
+
+if test -n "$GCE_IMAGE_PROJECT" ; then
+    project="$GCE_IMAGE_PROJECT"
+else
+    project=xfstests-cloud
+fi
+
+if ! gcloud compute images describe-from-family --project $project \
+     xfstests > /dev/null ; then
+    if test -n "$GCE_IMAGE_PROJECT" ; then
+	echo "Bad image project: $GCE_IMAGE_PROJECT"
+    else
+	echo "You need to add yourself to the gce-xfstests Googlegroup"
+	echo -e "Please visit:\n"
+	echo -e "\thttps://groups.google.com/forum/#!forum/gce-xfstests\n"
+    fi
+    bad_config=1
+fi
+
+if test -n "$bad_config"; then
+    exit 1
+fi
+
+if test -n "$GCE_REPORT_EMAIL" ; then
+    if test -z "$GCE_SG_API" ; then
+	echo "Missing Sendgrid API key; you need to set GCE_SG_API"
+    fi
+    if test -n "$GCE_REPORT_SENDER" ; then
+	addr="$GCE_REPORT_SENDER"
+    else
+	addr="$GCE_REPORT_EMAIL"
+    fi
+    addr=$(echo $addr | sed -e 's/.*@//')
+    spf=$(dig -t txt +short "$addr" | grep v=spf1)
+    if test -n "$spf" && ! echo "$spf" | grep -q "include:sendgrid.net" ; then
+	echo "Warning: the spf record for the domain $addr does not"
+	echo "mention sendgrid.net:"
+	echo -e "\n\t$spf\n"
+	echo -e "If you can not change the SPF record for $addr,"
+	echo -e "you should consider configuring a different sender"
+	echo -e "via the GCE_REPORT_SENDER configuration variable.\n"
+	echo -e "If you can change the SPF record, please add"
+	echo -e "'include:sendgrid.net' before the 'all' mechanism"
+	echo -e "in the spf record for $addr.  Otherwise, mail sent to"
+	echo -e "'$GCE_REPORT_EMAIL' from '$GCE_REPORT_SENDER' may be"
+	echo -e "rejected as spam.\n"
+    fi
+fi
+
+if test -z "$(gcloud compute firewall-rules list allow-http | sed -e 1d)"
+then
+    gcloud compute --project "$GCE_PROJECT" firewall-rules create \
+	   allow-http --allow tcp:80 --target-tags http-server >& /dev/null &
+fi
+exit 0
