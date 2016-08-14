@@ -1,6 +1,15 @@
 # Running xfstests on Google Compute Engine
 
-## Getting a Google Compute Engine account
+In order to run xfstests on Google Compute Engine, you will need to do
+a number of tasks, which are described below:
+
+* Get a Google Compute Engine account
+* Install the gce-xfstests script
+* Install the software needed by gce-xfstests
+* Get access to the File system test appliance
+* Run "gce-xfstests setup"
+
+## Get a Google Compute Engine account
 
 If you don't have GCE account, you can go to https://cloud.google.com
 and sign up for a free trial.  This will get you $300 dollars worth of
@@ -85,7 +94,37 @@ into HTML results in something that looks really mangled if you are
 using a mail client that tries to display the HTML version of an
 e-mail message.
 
-## Configuration
+## Get and install the gce-xfstests script
+
+The gce-xfstests and its associated helper scripts are part of the
+xfstests-bld git repository.  If you have not fetched it, you will
+need to do so now:
+
+        git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+
+The gce-xfstests driver script needs to be customized so it can find
+the "real" gce-xfstests script, which is located in
+fstests/kvm-xfstests/gce-xfstests.   To do this:
+
+        cd fstests
+        make gce-xfstests.sh
+
+And then copy this script to a directory in your PATH.  For example,
+if ~/bin is in your shell's search path:
+
+        cp gce-xfstests.sh ~/bin/gce-xfstests
+
+## Install software required by gce-xfstests
+
+1.  Install the Google Cloud SDK.  Instructions for can be found at:
+https://cloud.google.com/sdk/docs/quickstart-linux
+
+2.  Install the following packages (debian package names
+used):
+
+        % apt-get install jq xz-utils dnsutils python-crcmod
+
+## Configure gce-xfstests
 
 You will need to set up the following configuration parameters in
 ~/.config/gce-xfststs:
@@ -125,16 +164,6 @@ An example ~/.config/gce-xfstests might look like this:
         GCE_ZONE=us-central1-c
         GCE_KERNEL=/build/ext4-64/arch/x86/boot/bzImage
 
-## Installing software required for using gce-xfstests
-
-1.  Install the Google Cloud SDK.  Instructions for can be found at:
-https://cloud.google.com/sdk/docs/quickstart-linux
-
-2.  Install the following packages (debian package names
-used):
-
-        % apt-get install jq xz-utils dnsutils python-crcmod
-
 ## Add yourself to the gce-xfstests group
 
 By default gce-xfstests uses the pre-built image which is made
@@ -162,12 +191,19 @@ configuration parameters for correctness and print some errors or
 warnings messages if it detects potential problems that might prevent
 gce-xfstests from functioning correctly.
 
-## Running gce-xfstests
+# Running gce-xfstests
 
-Running gce-xfstests is much like kvm-xfstests; see the README file in
-this directory for more details.
+Running gce-xfstests is much like [kvm-xfstests](kvm-xfstests.md):
 
-The gce-xfstests command also has a few other commands:
+	gce-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
+
+As with kvm-xfstests, you can also use "gce-xfstests smoke" and
+"gce-xfstests full", to run the a quick smoke test and the full file
+system regression test.  The command "gce-xfstests help" will provide
+a quick summary of how tests can be run.
+
+The gce-xfstests command also has a few other commands, some of which
+are described below:
 
 ### gce-xfstests ssh INSTANCE
 
