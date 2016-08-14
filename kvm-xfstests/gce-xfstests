@@ -323,6 +323,14 @@ case "$1" in
 	/bin/rm -f "$tmpfile"
 	exit 0
 	;;
+    create-image)
+	"$DIR/test-appliance/gce-create-image"
+	exit $?
+	;;
+    export-image)
+	"$DIR/test-appliance/gce-export-image"
+	exit $?
+	;;
 esac
 
 ORIG_CMDLINE="$*"

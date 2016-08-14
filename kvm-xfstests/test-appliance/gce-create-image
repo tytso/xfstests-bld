@@ -2,6 +2,10 @@
 
 GCE_XFSTESTS=yes
 DIR=..
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
 . "$DIR/util/get-config"
 
 if test -r config.custom ; then
@@ -14,6 +18,8 @@ then
 	echo "your config file"
 	exit 1
 fi
+
+cd "$DIR/test-appliance"
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
