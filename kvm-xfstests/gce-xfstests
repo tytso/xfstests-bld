@@ -324,11 +324,18 @@ case "$1" in
 	exit 0
 	;;
     create-image)
-	"$DIR/test-appliance/gce-create-image"
+	shift
+	"$DIR/test-appliance/gce-create-image" "$@"
 	exit $?
 	;;
     export-image)
-	"$DIR/test-appliance/gce-export-image"
+	shift
+	"$DIR/test-appliance/gce-export-image" "$@"
+	exit $?
+	;;
+    import-image)
+	shift
+	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;
 esac

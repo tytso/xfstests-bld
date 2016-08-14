@@ -8,10 +8,6 @@ then
 fi
 . "$DIR/util/get-config"
 
-if test -r config.custom ; then
-   . ./config.custom
-fi
-
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
 	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
@@ -64,15 +60,23 @@ GS_SCRIPT=gs://$GS_BUCKET/gce-export.sh
 METADATA="startup-script-url=$GS_SCRIPT"
 GCE_MACHTYPE=n1-highmem-4
 
+if test -z "$GCE_IMAGE_PROJECT" ; then
+    GCE_IMAGE_PROJECT="xfstests-cloud"
+fi
+
+format="--format=flattened(name,creationTimestamp,archiveSizeBytes)"
+
+echo "Exporting from image project $GCE_IMAGE_PROJECT:"
+
 if test "$ROOT_FS" = "xfstests" ;
 then
     IMAGE_FLAG="--image-family"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+	   describe-from-family "$ROOT_FS" $format
 else
     IMAGE_FLAG="--image"
-fi
-
-if test -z "$GCE_IMAGE_PROJECT" ; then
-    GCE_IMAGE_PROJECT="xfstests-cloud"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+	   describe "$ROOT_FS" $format
 fi
 
 t=$(mktemp /tmp/gce-export.XXXXXXXX)

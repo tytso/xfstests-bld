@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if test -z "$DO_SCRIPT" ; then
+   export DO_SCRIPT=yes
+   exec script -f -c "$0 $*" /root/gce-export.log
+fi
+
+date
+
 BUCKET="@BUCKET@"
 GS_TAR="@GS_TAR@"
 GCE_ZONE="@GCE_ZONE@"
@@ -60,6 +67,8 @@ dd if=/dev/disk/by-id/google-image-disk of=/mnt/tmp/disk.raw conv=sparse bs=4096
 cd /mnt/tmp
 tar cvf - disk.raw | pigz > myimage.tar.gz
 
-gsutil cp /mnt/tmp/myimage.tar.gz $GS_TAR
+date
+gsutil -q cp /mnt/tmp/myimage.tar.gz $GS_TAR
+gsutil -q cp /root/gce-export.log "gs://$BUCKET/gce-export.log"
 
 gcloud compute -q instances delete "$EXP_INST" --zone "$GCE_ZONE"
