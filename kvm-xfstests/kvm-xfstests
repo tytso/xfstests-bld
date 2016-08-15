@@ -81,12 +81,12 @@ chmod 400 "$VDH"
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-machine type=pc,accel=kvm:tcg \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
-	-drive file=$VDB,cache=none,if=virtio \
-	-drive file=$VDC,cache=none,if=virtio \
-	-drive file=$VDD,cache=none,if=virtio \
-	-drive file=$VDE,cache=none,if=virtio \
-	-drive file=$VDF,cache=none,if=virtio \
-	-drive file=$VDG,cache=none,if=virtio \
+	-drive file=$VDB,cache=none,if=virtio,format=raw \
+	-drive file=$VDC,cache=none,if=virtio,format=raw \
+	-drive file=$VDD,cache=none,if=virtio,format=raw \
+	-drive file=$VDE,cache=none,if=virtio,format=raw \
+	-drive file=$VDF,cache=none,if=virtio,format=raw \
+	-drive file=$VDG,cache=none,if=virtio,format=raw \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
 	-nographic -smp $NR_CPU -m $MEM \
 	$VIRTIO_RNG \
