@@ -1,7 +1,7 @@
 # Running xfstests on Google Compute Engine
 
-In order to run xfstests on Google Compute Engine, you will need to do
-a number of tasks, which are described below:
+Before running on Google Compute Engine for the first time, you will
+need to do a number of setup tasks:
 
 * Get a Google Compute Engine account
 * Install the gce-xfstests script
@@ -180,18 +180,28 @@ keep backwards compatibility, it may be that some new images may
 require updating your local copy of the xfstests-bld git repository to
 get the latest version of the gce-xfstests script.
 
-If you don't want to use the pre-built image see the section "Creating
-a new GCE test appliance image" below.
+If you don't want to use the pre-built image, please see the section
+"Creating a new GCE test appliance image" below for instructions to
+build your own image from source.
 
 ## Run "gce-xfstests setup"
 
 The command "gce-xfstests setup" will set some GCE settings for
 gce-xfstests, but more importantly, it will sanity check the
-configuration parameters for correctness and print some errors or
-warnings messages if it detects potential problems that might prevent
-gce-xfstests from functioning correctly.
+configuration parameters for gce-xfstests.  If there are any problems
+or potential problems, it will report them so you can fix them.
 
 # Running gce-xfstests
+
+Once you have completed all of the set up tasks listed above, you can
+now start using gce-xfstests.  The GCE_KERNEL configuration parameter
+should be set to the location of your build directory or the kernel
+that you want to boot.  So for example, you could set it to
+/build/ext4, or /build/ext4/arch/x86/boot/bzImage.  By setting it to
+the top-level of the build directory, you can apply a patch to your
+kernel, build it, and then run "gce-xfstests smoke".  This speeds up
+your edit, compile, debug cycle, so you can improve your development
+velocity.
 
 Running gce-xfstests is much like [kvm-xfstests](kvm-xfstests.md):
 
@@ -292,25 +302,31 @@ option.
 The --unpack option will cause the complete results directory
 to be unpacked into a directory in /tmp instead.
 
-## Creating a new GCE test appliance image
+# Creating a new GCE test appliance image
 
 By default gce-xfstests uses the prebuilt image which is made
 available via the xfstests-cloud project.  However, if you want to
 build your own image, you must first build the xfstests tarball as
 described in the [instructions for building
-xfstests](building-xfstests.md).  Next, with the working directory set
-to kvm-xfstests/test-appliance, run the gce-create-image script:
+xfstests](building-xfstests.md).  Then run the command "gce-xfstests
+create-image".  This will create a new GCE image with a name such as
+"xfstests-201608132226" where 201608132226 indicates when the image
+was created (in this case, August 13, 2016 at 22:26).
 
-        % cd kvm-xfstests/test-appliance ; ./gce-create-image
+This image will be created as part of an image family called xfstests.
+By default, when you start a test using gce-xfstests, the most
+recently created image in the xfstests image faily will be used.
 
-The gce-create-image command creates a new image with a name such as
-"xfstests-201607170247" where 20160717... is a date and timestamp when
-the image was created.  This image is created as part of an image
-family called xfstests, and so the most recent xfstests image is the
-one that will be used by default.  In order to use the xfstests image
-family created in your GCE project, you will need to add to your
-configuration file the following after the GCE_PROJECT variable is
-defined (to be the name of your GCE project):
+In order to use the xfstests image family created in your GCE project
+(instead of the xfstests-cloud project), add the following to your
+`/.config/gce-xfstests configuration file after the GCE_PROJECT
+variable is defined:
 
         GCE_IMAGE_PROJECT="$GCE_PROJECT"
 
+Normally, the most recently created image in the xfstests image family
+will be used by default.  You can however override this by using the
+-I option to specify a specific image file.  (For example:
+"gce-xfstests -I xfstests-201608130052 smoke".)  You can also use the
+--image-project command line option to override the GCE_IMAGE_PROJECT
+setting in your configuration file.

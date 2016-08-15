@@ -112,7 +112,10 @@ pathname to your build chroot directory):
         % cd /u1
         % sudo debootstrap --arch=i386 jessie /u1/jessie-32
         % schroot -c jessie-32 -u root
-        (jessie-32)root@closure:/u1# apt-get install build-essential autoconf autoconf2.64 automake libgdbm-dev libtool-bin qemu-utils gettext e2fslibs-dev git debootstrap fakechroot libdbus-1-3 autopoint pkg-config symlinks
+        (jessie-32)root@closure:/u1# apt-get install build-essential \
+                autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
+                qemu-utils gettext e2fslibs-dev git debootstrap fakechroot \
+                libdbus-1-3 autopoint pkg-config symlinks
         (jessie-32)root@closure:/u1# exit
 
 4. Copy config to config.custom, and then change the lines which
