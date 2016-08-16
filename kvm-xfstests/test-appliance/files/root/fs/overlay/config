@@ -1,0 +1,62 @@
+#
+# Configuration file for tmpfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	 return 0
+}
+
+function format_filesystem()
+{
+	umount $SM_TST_DEV >& /dev/null
+	/sbin/mke2fs -F -q -t ext4 $SM_TST_DEV
+	mount -t ext4 $SM_TST_DEV $SM_TST_MNT
+	mkdir -p $SM_TST_MNT/ovl $SM_TST_MNT/testarea
+	      
+	umount $SM_SCR_DEV >& /dev/null
+	/sbin/mke2fs -F -q -t ext4 $SM_SCR_DEV
+	mount -t ext4 $SM_SCR_DEV $SM_SCR_MNT
+	mkdir -p $SM_SCR_MNT/ovl $SM_SCR_MNT/testarea
+
+	return 0
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "OVERLAY_MOUNT_OPTIONS" ; then
+            OVERLAY_MOUNT_OPTIONS="$OVERLAY_MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    OVERLAY_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    :
+}
+
+
+function show_mkfs_opts()
+{
+    :
+}
+
+function show_mount_opts()
+{
+    echo OVERLAY_MOUNT_OPTIONS: "$OVERLAY_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset TMPFS_MOUNT_OPTIONS
+}

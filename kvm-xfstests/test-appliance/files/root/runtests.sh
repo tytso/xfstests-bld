@@ -264,6 +264,7 @@ do
 	    fi
 	fi
 	case "$TEST_DEV" in
+	    */ovl) ;;
 	    *:/*) ;;
 	    *)
 		if ! test -b $TEST_DEV ; then
