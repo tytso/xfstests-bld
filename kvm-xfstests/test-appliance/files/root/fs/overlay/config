@@ -1,12 +1,27 @@
 #
-# Configuration file for tmpfs
+# Configuration file for overlayfs
 #
 
 DEFAULT_MKFS_OPTIONS=""
 
 function check_filesystem()
 {
-	 return 0
+	umount $SM_TST_DEV >& /dev/null
+	/sbin/e2fsck -fy "$SM_TST_DEV"
+	ret="$?"
+	mount -t ext4 $SM_TST_DEV $SM_TST_MNT
+	echo e2fsck exited with status "$ret"
+
+	umount $SM_SCR_DEV >& /dev/null
+	/sbin/e2fsck -fy "$SM_SCR_DEV"
+	ret2="$?"
+	mount -t ext4 $SM_SCR_DEV $SM_SCR_MNT
+	echo e2fsck exited with status "$ret2"
+
+	if test "$ret" -eq 0 ; then
+		ret=$ret2
+	fi
+	return "$ret"
 }
 
 function format_filesystem()
