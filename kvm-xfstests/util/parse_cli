@@ -28,7 +28,9 @@ print_help ()
     echo "	-r ram		- Specify memory to be used in megabytes"
     echo "	-X test		- Exclude test from running"
     echo "	--kernel file	- Boot the specified kernel"
-    if test "$GCE_XFSTESTS" = "yes" ; then
+    if test "$GCE_XFSTESTS" != "yes" ; then
+	echo "	--initrd initrd	- Boot with the specified initrd"
+    else
 	echo "	--pmem-device	- Set up persistent memory devices for DAX"
     fi
     echo "	--no-log	- Don't save the log file for this run"
@@ -255,6 +257,16 @@ while [ "$1" != "" ]; do
 		      KERNEL="$KERNEL/arch/x86/boot/bzImage"
 		  fi
 		  OVERRIDE_KERNEL="$KERNEL"
+		  ;;
+	--initrd) shift
+		  if test "$GCE_XFSTESTS" = "yes"
+		  then
+		      print_help
+		  fi
+		  INITRD="$1"
+		  if test ! -f "$INITRD" ; then
+		      print_help
+		  fi
 		  ;;
 	--local-ssd)
 	    if test "$GCE_XFSTESTS" = "yes"
