@@ -17,7 +17,7 @@ then
                 exit 1
 	fi
 	if test -n "$XFSPROGS_COMMIT"; then
-		cd xfsprogs
+		cd xfsprogs-dev
 		git branch xfstests-bld $XFSPROGS_COMMIT
 		git checkout xfstests-bld
 		cd ..

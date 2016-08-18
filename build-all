@@ -87,7 +87,7 @@ while [ "$1" != "" ]; do
 	    ;;
 	--xfsprogs-only)
 	    set_skip_all
-	    unset SKIP_XFSTESTS
+	    unset SKIP_XFSPROGS
 	    ;;
 	--xfstests-only)
 	    set_skip_all
