@@ -1,6 +1,6 @@
 # Configuration file for xfstests-bld
 
-XFSTESTS_GIT=git://oss.sgi.com/xfs/cmds/xfstests.git
+XFSTESTS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
 XFSPROGS_GIT=git://oss.sgi.com/xfs/cmds/xfsprogs.git
 FIO_GIT=git://git.kernel.dk/fio.git
 QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
