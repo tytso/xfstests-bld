@@ -3,7 +3,7 @@
 #
 #QEMU=/usr/local/bin/qemu-system-x86_64
 QEMU=/usr/bin/kvm
-KERNEL=/u1/ext4/arch/x86/boot/bzImage
+KERNEL=$HOME/linux
 NR_CPU=2
 MEM=2048
 CONFIG_DIR=$HOME/.config
