@@ -1,10 +1,4 @@
-vda
-vdb
-vdc
-vdd
-vde
-vdf
-vdg
+disks
 log.*
 baseline.*
 *~

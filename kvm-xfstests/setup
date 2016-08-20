@@ -6,14 +6,15 @@ then
     DIR="$KVM_XFSTESTS_DIR"
 fi
 
-qemu-img create -f raw "$DIR/vdb" 5g
-qemu-img create -f raw "$DIR/vdc" 5g
-qemu-img create -f raw "$DIR/vdd" 5g
-qemu-img create -f raw "$DIR/vde" 20g
-qemu-img create -f raw "$DIR/vdf" 20g
-qemu-img create -f raw "$DIR/vdg" 5g
-/sbin/mke2fs -q -t ext4 -F "$DIR/vdb"
-/sbin/mke2fs -q -t ext4 -b 1024 -F "$DIR/vdd"
-/sbin/mke2fs -q -t ext4 -F "$DIR/vdg"
+mkdir -p $DIR/disks
+qemu-img create -f raw "$DIR/disks/vdb" 5g
+qemu-img create -f raw "$DIR/disks/vdc" 5g
+qemu-img create -f raw "$DIR/disks/vdd" 5g
+qemu-img create -f raw "$DIR/disks/vde" 20g
+qemu-img create -f raw "$DIR/disks/vdf" 20g
+qemu-img create -f raw "$DIR/disks/vdg" 5g
+/sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdb"
+/sbin/mke2fs -q -t ext4 -b 1024 -F "$DIR/disks/vdd"
+/sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdg"
 
 
