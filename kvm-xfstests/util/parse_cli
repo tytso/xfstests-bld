@@ -21,14 +21,15 @@ print_help ()
     echo "	-m mountopts	- Append mount options to fs config"
     echo "	-n nr_cpus	- Specify the number of cpu's"
     if test "$GCE_XFSTESTS" != "yes" ; then
+	echo "	-numa num	- Ask KVM to create <num> NUMA nodes"
 	echo "	-N		- Enable networking (requires root)"
     fi
     echo "	-o opts		- Extra kernel command line options"
     echo "	-r ram		- Specify memory to be used in megabytes"
     echo "	-X test		- Exclude test from running"
-    if test "$GCE_XFSTESTS" != "yes" ; then
-	echo "	--kernel file	- Boot the specified kernel"
-
+    echo "	--kernel file	- Boot the specified kernel"
+    if test "$GCE_XFSTESTS" = "yes" ; then
+	echo "	--pmem-device	- Set up persistent memory devices for DAX"
     fi
     echo "	--no-log	- Don't save the log file for this run"
     echo "	--no-action	- Print the command to start the VM"
@@ -39,6 +40,17 @@ print_help ()
     echo ""
     echo "xfstest names have the form: ext4/NNN generic/NNN shared/NNN"
     echo ""
+    if test "$GCE_XFSTESTS" = "yes" ; then
+	echo "Common gce-xfststs commands:"
+        echo "	ls		- List running xfstests instances"
+        echo "	abort		- Abort a xfstests instance"
+        echo "	ls-results	- List saved test results"
+        echo "	get-results	- Get and display a specified test result"
+        echo "	setup		- Set up gce-xfststs (only needs to be run once)"
+        echo "	ssh		- Login to a running test instance"
+        echo "	console		- Get the console messages from a test instance"
+        echo "	serial		- Attach to the serial port of a test instance"
+    fi
     exit 1
 }
 

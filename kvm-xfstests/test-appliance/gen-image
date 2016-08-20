@@ -58,6 +58,8 @@ while [ "$1" != "" ]; do
       ;;
     *)
       echo "usage: gen-image [--save_raw_root] [--update] [--mirror MIRROR_LOC]"
+      echo "                 [-a|--add_packages packages] [--networking] "
+      echo "                 [--suite SUITE] [--out_tar[=DIR]]"
       exit 1
       ;;
   esac
