@@ -7,6 +7,7 @@ QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 
 FIO_COMMIT=e6989e1
 QUOTA_COMMIT=81aca5cee
+XFSPROGS_COMMIT=53cefc406eb1047c
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
