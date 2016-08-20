@@ -18,7 +18,7 @@ IN="$*"
 
 if test -z "$IN"
 then
-    IN=$(/bin/ls -t log.* | head -1)
+    IN=$(/bin/ls -t logs/log.* | head -1)
 fi
 
 egrep "$REGEXP" "$IN"

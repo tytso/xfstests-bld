@@ -31,7 +31,8 @@ EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
 if test -n "$SKIP_LOG" ; then
     LOGFILE=/tmp/log.$(date +%Y%m%d%H%M)
 else
-    LOGFILE=$DIR/log.$(date +%Y%m%d%H%M)
+    mkdir -p "$DIR/logs"
+    LOGFILE="$DIR/logs/log.$(date +%Y%m%d%H%M)"
 fi
 
 if ! test -e $VDB -a -e $VDC -a -e $VDD -a -e $VDE -a -e $VDF -a -e $VDG
