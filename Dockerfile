@@ -15,7 +15,7 @@ COPY . /devel/xfstests-bld
 # Install deps.
 RUN apt-get update && \
     apt-get install -y \
-    	    autoconf  \
+	    autoconf \
 	    automake \
 	    build-essential \
 	    curl \
@@ -37,12 +37,13 @@ RUN apt-get update && \
     cd /devel/xfstests-bld && \
     make && \
     make tarball && \
-    make -C kvm-xfstests prefix=/usr/local install && \
-    cp xfstests.tar.gz /usr/local/lib && \
+    make -C kvm-xfstests prefix=/usr/local \
+        PREBUILT_URL=https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.x86_64 install && \
+	cp xfstests.tar.gz /usr/local/lib && \
     cd /devel && \
     rm -rf /devel/xfstests-bld && \
     apt-get purge -y \
-    	    autoconf  \
+	    autoconf \
 	    automake \
 	    build-essential \
 	    gettext \
@@ -56,8 +57,8 @@ RUN apt-get update && \
 
 # This is build enviroment so there is no sane default command here,
 # this command simply demonstrate that the enviroment is sane
-CMD wget -O /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/initrd.img && \
-    wget -O /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/vmlinuz && \
+CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/initrd.img && \
+    curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/vmlinuz && \
     kvm-xfstests --kernel /tmp/vmlinuz \
        		    --initrd /tmp/initrd.img \
 		    --update-files --update-xfstests-tar smoke
