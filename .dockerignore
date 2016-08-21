@@ -1,0 +1,14 @@
+.git
+.gitignore
+.dockerignore
+bld
+fio
+quota
+xfsprogs-dev
+xfsprogs-dev
+xfstests
+kvm-xfstests/test-appliance/var.cache.apt.archives
+kvm-xfstests/test-appliance/var.lib.apt.lists
+kvm-xfstests/test-appliance/debs
+kvm-xfstests/test-appliance/root_fs.*
+!kvm-xfstests/test-appliance/root_fs.img
