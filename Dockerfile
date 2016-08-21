@@ -57,8 +57,8 @@ RUN apt-get update && \
 
 # This is build enviroment so there is no sane default command here,
 # this command simply demonstrate that the enviroment is sane
-CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/initrd.img && \
-    curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/i386/os/images/pxeboot/vmlinuz && \
+CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/initrd.img && \
+    curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/vmlinuz && \
     kvm-xfstests --kernel /tmp/vmlinuz \
        		    --initrd /tmp/initrd.img \
 		    --update-files --update-xfstests-tar smoke
