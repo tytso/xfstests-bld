@@ -24,7 +24,7 @@ install:
 	fi
 	mkdir -p $(DESTDIR)$(prefix)/bin
 	for i in kvm-xfstests gce-xfstests ; do \
-		sed -e "s;@DIR@;$(prefix)/lib;" < ../$$i.in > \
+		sed -e "s;@DIR@;$(prefix)/lib;" < $$i.in > \
 			$(DESTDIR)$(prefix)/bin/$$i ; \
 		chmod +x $(DESTDIR)$(prefix)/bin/$$i ; \
 	done

@@ -55,8 +55,8 @@ RUN apt-get update && \
 	    uuid-dev && \
     apt-get autoremove -y
 
-# This is build enviroment so there is no sane default command here,
-# this command simply demonstrate that the enviroment is sane
+# This is build environment so there is no sane default command here,
+# this command simply demonstrate that the environment is sane
 CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/initrd.img && \
     curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/vmlinuz && \
     kvm-xfstests --kernel /tmp/vmlinuz \

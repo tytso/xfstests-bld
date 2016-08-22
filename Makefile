@@ -22,11 +22,11 @@ all: xfsprogs-dev xfstests-dev fio quota \
 xfsprogs-dev xfstests-dev fio quota:
 	./get-all
 
-gce-xfstests.sh: gce-xfstests.in
+gce-xfstests.sh: kvm-xfstests/gce-xfstests.in
 	sed -e "s;@DIR@;$$(pwd);" < $< > $@
 	chmod +x $@
 
-kvm-xfstests.sh: kvm-xfstests.in
+kvm-xfstests.sh: kvm-xfstests/kvm-xfstests.in
 	sed -e "s;@DIR@;$$(pwd);" < $< > $@
 	chmod +x $@
 
