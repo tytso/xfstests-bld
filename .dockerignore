@@ -16,5 +16,6 @@ kvm-xfstests/config.custom
 kvm-xfstests/test-appliance/var.cache.apt.archives
 kvm-xfstests/test-appliance/var.lib.apt.lists
 kvm-xfstests/test-appliance/debs
+kvm-xfstests/test-appliance/mirror
 kvm-xfstests/test-appliance/root_fs.*
 !kvm-xfstests/test-appliance/root_fs.img

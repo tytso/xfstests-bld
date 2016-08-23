@@ -6,6 +6,7 @@ config.custom
 test-appliance/var.cache.apt.archives
 test-appliance/var.lib.apt.lists
 test-appliance/debs
+test-appliance/mirror
 test-appliance/root_fs.*
 !test-appliance/root_fs.img
 logs
