@@ -3,8 +3,12 @@
 # because we have bias towards aligning on power-of-two block numbers.
 # It is a flaky test for some configurations, so skip it.
 generic/223
-#
-# Ext4/304 fails for all configurations, and this appears to be at
+
+# ext4/304 fails for all configurations, and this appears to be at
 # test or fio bug.
 #
 ext4/304
+
+# ext4/022 will dead lock all kernels unless you have a patch to fix
+# up inode expansion
+ext4/022
