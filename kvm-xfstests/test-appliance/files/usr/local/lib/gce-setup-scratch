@@ -31,7 +31,6 @@ fi
 
 if ! vgs xt >& /dev/null
 then
-    blkdiscard $SCRATCH_DEV
     pvcreate $SCRATCH_DEV
     vgcreate xt $SCRATCH_DEV
     lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
