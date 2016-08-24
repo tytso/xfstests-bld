@@ -1,9 +1,11 @@
 *~
+*.o
 *.old
 *.rej
 .git
 .gitignore
 .dockerignore
+config.custom
 bld
 fio
 quota

@@ -8,11 +8,7 @@
 # VERSION 0.1
 FROM debian
 
-MAINTAINER Theodore Y. Ts'o tytso@mit.edu
-
-COPY . /devel/xfstests-bld
-
-# Install deps.
+# Install dependencies
 RUN apt-get update && \
     apt-get install -y \
 	    autoconf \
@@ -33,8 +29,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \
-       /usr/share/man /usr/share/locale /usr/share/zoneinfo && \
-    cd /devel/xfstests-bld && \
+       /usr/share/man /usr/share/locale /usr/share/zoneinfo
+
+MAINTAINER Theodore Y. Ts'o tytso@mit.edu
+
+COPY . /devel/xfstests-bld
+
+RUN cd /devel/xfstests-bld && \
     make && \
     make tarball && \
     make -C kvm-xfstests prefix=/usr/local \

@@ -8,11 +8,7 @@
 # VERSION 0.1
 FROM debian
 
-MAINTAINER Theodore Y. Ts'o tytso@mit.edu
-
-COPY . /usr/local/lib/kvm-xfstests
-
-# Install deps.
+# Install Dependencies
 RUN apt-get update && \
     apt-get install -y \
 	    curl \
@@ -21,8 +17,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \
-       /usr/share/man /usr/share/locale /usr/share/zoneinfo && \
-    cd /usr/local/lib/kvm-xfstests && \
+       /usr/share/man /usr/share/locale /usr/share/zoneinfo
+
+MAINTAINER Theodore Y. Ts'o tytso@mit.edu
+
+COPY . /usr/local/lib/kvm-xfstests
+
+RUN cd /usr/local/lib/kvm-xfstests && \
     mkdir -p /usr/local/bin && \
     sed -e 's;@DIR@;/usr/local/lib;' < kvm-xfstests.in > /usr/local/bin/kvm-xfstests && \
     chmod +x /usr/local/bin/kvm-xfstests && \
