@@ -25,14 +25,15 @@ DATECODE=$(date +%Y%m%d%H%M)
 
 SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
+DATECODE=$(date +%Y%m%d%H%M)
 ROOT_FS=xfstests
-EXP_INST=xfstests-exp
-EXP_DISK=xfstests-exp
-IMG_DISK=xfstests-img
-TMP_DISK=xfstests-tmp
+IMAGE_FLAG="--image-family"
+EXP_INST="xfstests-exp-$DATECODE"
+EXP_DISK="xfstests-exp-$DATECODE"
+IMG_DISK="xfstests-img-$DATECODE"
+TMP_DISK="xfstests-tmp-$DATECODE"
 DEB_IMAGE_FAMILY=debian-8
 DEB_IMAGE_PROJECT=debian-cloud
-GS_TAR="gs://$GS_BUCKET/xfstests.image.tar.gz"
 
 if ! test -f $TARBALL ; then
    echo $TARBALL does not exist!
@@ -42,12 +43,27 @@ fi
 while [ "$1" != "" ];
 do
     case $1 in
+	-F) shift
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
+	    ;;
 	-I) shift
 	    ROOT_FS="$1"
-	    EXP_INST="xfstests-exp-$1"
-	    EXP_DISK="xfstests-exp-$1"
-	    GS_TAR="gs://$GS_BUCKET/xfstests-$1.image.tar.gz"
+	    IMAGE_FLAG="--image"
 	    ;;
+	-D) shift
+	    IMG_DISK="$1";
+	    ROOT_FS=""
+	    IMAGE_FLAG=""
+	    ;;
+	-o) shift
+	    GS_TAR="$1";
+	    ;;
+	--project) shift
+		   GCE_IMAGE_PROJECT="$1"
+		   ;;
+	--skip-uuid) SKIP_UUID="yes" ;;
+	--debug) DO_DEBUG="yes" ;;
 	*)
 	    echo "unknown option: $1"
 	    exit 1
@@ -61,22 +77,33 @@ METADATA="startup-script-url=$GS_SCRIPT"
 GCE_MACHTYPE=n1-highmem-4
 
 if test -z "$GCE_IMAGE_PROJECT" ; then
-    GCE_IMAGE_PROJECT="xfstests-cloud"
+    if test -z "$ROOT_FS" ; then
+	GCE_IMAGE_PROJECT="$GCE_PROJECT"
+    else
+	GCE_IMAGE_PROJECT="xfstests-cloud"
+    fi
 fi
 
 format="--format=flattened(name,creationTimestamp,archiveSizeBytes)"
 
-echo "Exporting from image project $GCE_IMAGE_PROJECT:"
+echo "Exporting from project $GCE_IMAGE_PROJECT:"
 
-if test "$ROOT_FS" = "xfstests" ;
-then
-    IMAGE_FLAG="--image-family"
+if test "$IMAGE_FLAG" = "--image-family" ; then
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
     gcloud compute --project "$GCE_IMAGE_PROJECT" images \
 	   describe-from-family "$ROOT_FS" $format
-else
-    IMAGE_FLAG="--image"
+elif test "$IMAGE_FLAG" = "--image" ; then
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
     gcloud compute --project "$GCE_IMAGE_PROJECT" images \
 	   describe "$ROOT_FS" $format
+else
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$IMG_DISK.image.tar.gz}"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" disks \
+	   describe "$IMG_DISK" $format
+fi
+
+if test "$?" -gt 0 ; then
+    exit 1
 fi
 
 t=$(mktemp /tmp/gce-export.XXXXXXXX)
@@ -88,9 +115,17 @@ sed -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GCE_PROJECT@;$GCE_PROJECT;" \
     -e "s;@IMAGE_FLAG@;$IMAGE_FLAG;" \
     -e "s;@ROOT_FS@;$ROOT_FS;" \
+    -e "s;@SKIP_UUID@;$SKIP_UUID;" \
     -e "s;@IMG_DISK@;$IMG_DISK;" \
     -e "s/@EXP_INST@/$EXP_INST/" < gce-export.sh > $t
+
+if test -n "$DO_DEBUG" ; then
+    echo "Script file left in $t"
+    exit 0
+fi
+
 gsutil cp $t $GS_SCRIPT
+/bin/rm -f $t
 
 gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
