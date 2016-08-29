@@ -28,6 +28,7 @@ RUN cd /usr/local/lib/kvm-xfstests && \
     sed -e 's;@DIR@;/usr/local/lib;' < kvm-xfstests.in > /usr/local/bin/kvm-xfstests && \
     chmod +x /usr/local/bin/kvm-xfstests && \
     cd test-appliance && \
+    ln -s /linux /root/linux && \
     if ! test -f root_fs.img ; then \
         curl -o root_fs.img \
 	    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386 ; \
