@@ -142,6 +142,7 @@ journalctl > /image-build.log
 sync
 
 find /var/cache/man /var/cache/apt /var/lib/apt/lists -type f -print | xargs rm
+rm -f /etc/ssh/ssh_host_key* /etc/ssh/ssh_host_*_key*
 fstrim /
 gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
 	--keep-disks boot
