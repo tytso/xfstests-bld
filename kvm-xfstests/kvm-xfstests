@@ -93,7 +93,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDF,cache=none,if=virtio,format=raw \
 	-drive file=$VDG,cache=none,if=virtio,format=raw \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
-	-nographic -smp $NR_CPU -m $MEM \
+	-vga none -nographic -smp $NR_CPU -m $MEM \
 	$VIRTIO_RNG \
 	$CONSOLE \
 	$MONITOR \
