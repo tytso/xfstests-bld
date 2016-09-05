@@ -45,7 +45,7 @@ gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)
 for i in $(cd /results; echo check.time.*)
 do
-    r=$(echo $i | sed -e 's/check.time.//')
-    mkdir -p /results/results-$r
-    mv /results/check.time.$r /results/results-$r/check.time
+    r=$(echo $i | sed -e 's/check\.time\.//' | sed -e 's;\.;/results-;')
+    mkdir -p /results/$r
+    mv /results/$i /results/$r/check.time
 done
