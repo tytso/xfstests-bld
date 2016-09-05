@@ -7,5 +7,6 @@ export EXT_MOUNT_OPTIONS="data=journal"
 export FSX_AVOID="-C -I -z"
 export FSSTRESS_AVOID="-f collapse=0 -f insert=0 -f zero=0"
 export XFS_IO_AVOID="fcollapse finsert zero"
+TEST_SET_EXCLUDE="-x collapse,insert,zero"
 
 TESTNAME="Ext4 4k block w/data=journal"

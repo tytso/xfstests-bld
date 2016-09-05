@@ -76,21 +76,25 @@ while [ "$1" != "" ]; do
 	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f punch=0"
 	ALL_FSX_AVOID="$ALL_FSX_AVOID -H"
 	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID fpunch"
+	FSTESTSET="$FSTESTSET -x punch"
 	;;
     no_collapse)
 	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f collapse=0"
 	ALL_FSX_AVOID="$ALL_FSX_AVOID -C"
 	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID fcollapse"
+	FSTESTSET="$FSTESTSET -x collapse"
 	;;
     no_insert)
 	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f insert=0"
 	ALL_FSX_AVOID="$ALL_FSX_AVOID -I"
 	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID finsert"
+	FSTESTSET="$FSTESTSET -x insert"
 	;;
     no_zero)
 	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f zero=0"
 	ALL_FSX_AVOID="$ALL_FSX_AVOID -z"
 	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID zero"
+	FSTESTSET="$FSTESTSET -x zero"
 	;;
     *)
 	echo " "
@@ -215,7 +219,7 @@ do
 	fi
 	# Reset variables from the previous (potentially aborted) config
 	unset SIZE REQUIRE_FEATURE
-	unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID
+	unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
 	unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
 	reset_vars
 	get_fs_config "$FS"
@@ -342,6 +346,11 @@ do
 	    echo XFS_IO_AVOID: $XFS_IO_AVOID >> "$RESULT_BASE/config"
 	    export XFS_IO_AVOID
 	fi
+	if test -n "$TEST_SET_EXCLUDE"
+	then
+	    echo TEST_SET_EXCLUDE: $TEST_SET_EXCLUDE
+	    echo TEST_SET_EXCLUDE: $XFS_IO_AVOID >> "$RESULT_BASE/config"
+	fi
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
@@ -365,7 +374,7 @@ do
 	gce_run_hooks fs-config-begin $i
 	for j in $(seq 1 $RPT_COUNT) ; do
 	    gce_run_hooks pre-xfstests $i $j
-	    bash ./check -T $AEX $FSTESTSET
+	    bash ./check -T $AEX $FSTESTSET $TEST_SET_EXCLUDE
 	    gce_run_hooks post-xfstests $i $j
 	    umount "$TEST_DEV" >& /dev/null
 	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out
