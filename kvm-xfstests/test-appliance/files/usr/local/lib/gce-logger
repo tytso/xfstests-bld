@@ -8,6 +8,14 @@ then
     status="$cfg $status"
 fi
 
+if test ! -f /run/kver -o ! -s /run/kver ; then
+    gce_attribute kernel_version > /run/kver
+fi
+if test ! -s /run/kver ; then
+    gcloud compute instances -q add-metadata ${instance} \
+       --metadata "kernel_version=$(uname -a)"
+fi
+
 if test -z "$HOOK_ARG"	# prevent recursion
 then
     run_hooks logger $*
