@@ -125,7 +125,9 @@ if test $FSCKCODE -ge 8
 then
     format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
 fi
-dmesg -n 5
+if test ! -f /.dockerenv ; then
+    dmesg -n 5
+fi
 cd /root/xfstests
 
 if test -n "$FSTESTEXC" ; then
@@ -315,7 +317,9 @@ do
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 	    format_filesystem "$TEST_DEV" "$(get_mkfs_opts)"
 	fi
-	echo 3 > /proc/sys/vm/drop_caches
+	if test ! -f /.dockerenv ; then
+	    echo 3 > /proc/sys/vm/drop_caches
+	fi
 	cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
 	echo -n "BEGIN TEST $i: $TESTNAME " ; date
@@ -407,7 +411,9 @@ END	{ if (NR > 0) {
 						     > /tmp/check-time.tar.gz)
 	    gsutil cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null
 	fi
-	echo 3 > /proc/sys/vm/drop_caches
+	if test ! -f /.dockerenv ; then
+	    echo 3 > /proc/sys/vm/drop_caches
+	fi
 	cp /proc/slabinfo "$RESULT_BASE/slabinfo.after"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.after"
 	free -m

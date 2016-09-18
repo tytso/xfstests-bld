@@ -10,7 +10,7 @@ bld
 fio
 quota
 xfsprogs-dev
-xfsprogs-dev
+xfstests-dev
 xfstests
 kvm-xfstests/logs
 kvm-xfstests/disks

@@ -13,6 +13,7 @@ RUN apt-get update && \
     apt-get install -y \
 	    autoconf \
 	    automake \
+	    bc \
 	    build-essential \
 	    curl \
 	    gettext \
@@ -21,11 +22,7 @@ RUN apt-get update && \
 	    libtool-bin \
 	    pkg-config \
 	    pigz \
-	    qemu-kvm \
-	    qemu-utils \
-	    uuid-dev \
-	    net-tools \
-	    iptables && \
+	    uuid-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \
@@ -36,13 +33,19 @@ MAINTAINER Theodore Y. Ts'o tytso@mit.edu
 COPY . /devel/xfstests-bld
 
 RUN cd /devel/xfstests-bld && \
+    cp config config.custom && \
+    echo "XFSTESTS_GIT=https://github.com/tytso/xfstests" >> config.custom && \
     make && \
     make tarball && \
-    make -C kvm-xfstests prefix=/usr/local \
-        PREBUILT_URL=https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.x86_64 install && \
-	cp xfstests.tar.gz /usr/local/lib && \
+    tar -C /root -xf xfstests.tar.gz && \
+    cd kvm-xfstests/test-appliance && \
+    cp docker-entrypoint /entrypoint && \
+    rsync --exclude-from docker-exclude-files -avH files/* / && \
+    chown -R root:root /root && \
+    useradd -u 31415 -s /bin/bash -m fsgqa && \
     cd /devel && \
     rm -rf /devel/xfstests-bld && \
+    mkdir -p /results && \
     apt-get purge -y \
 	    autoconf \
 	    automake \
@@ -56,10 +59,5 @@ RUN cd /devel/xfstests-bld && \
 	    uuid-dev && \
     apt-get autoremove -y
 
-# This is build environment so there is no sane default command here,
-# this command simply demonstrate that the environment is sane
-CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/initrd.img && \
-    curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/24/Server/x86_64/os/images/pxeboot/vmlinuz && \
-    kvm-xfstests --kernel /tmp/vmlinuz \
-       		    --initrd /tmp/initrd.img \
-		    --update-files --update-xfstests-tar smoke
+ENTRYPOINT ["/entrypoint"]
+CMD ["-g","quick"]
