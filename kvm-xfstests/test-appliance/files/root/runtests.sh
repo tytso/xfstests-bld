@@ -412,6 +412,8 @@ END	{ if (NR > 0) {
 	cp /proc/meminfo "$RESULT_BASE/meminfo.after"
 	free -m
 	gce_run_hooks fs-config-end $i
+	umount "$TEST_DIR" >& /dev/null
+	umount "$SCRATCH_MNT" >& /dev/null
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
