@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FSTESTCFG=all
+FSTESTCFG=""
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
 API="1.3"
@@ -118,6 +118,12 @@ while [ "$1" != "" ]; do
 	    DO_AEX=""
 	    ;;
 	-c) shift
+	    if test -n "$FSTESTCFG" ; then
+		echo "The '-c' option (or 'smoke') can only be specified once. "
+		echo "If you want to run tests in multiple configurations," \
+			"use -c CFG1,CFG2,..."
+		exit 1
+	    fi
 	    for i in ${1//,/ }
 	    do
 		validate_config_name "$i"
@@ -317,6 +323,11 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	smoke)
+	    if test -n "$FSTESTCFG" ; then
+		echo "You can use either '-c' or 'smoke', not both! " \
+			"'smoke' means '-c 4k -g quick'."
+		exit 1
+	    fi
 	    FSTESTCFG=4k
 	    FSTESTSET="$FSTESTSET,-g,quick"
 	    ;;
@@ -356,6 +367,10 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
+
+if test -z "$FSTESTCFG" ; then
+    FSTESTCFG=all
+fi
 
 if test -z "$FSTESTSET" -a -z "$ARG"
 then
