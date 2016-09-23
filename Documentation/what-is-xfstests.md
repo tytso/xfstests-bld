@@ -13,12 +13,12 @@ will run a full set of xfstests before sending patches to Linus, and
 will require that any major changes be tested using xfstests before
 they are submitted for integration.
 
-## Individal tests in xfstests
+## Individual tests in xfstests
 
 Tests in xfstests were originally named using a three digit number.
 In 2013 the tests were moved into different classes, depending on
 whether the test was file system specific, "generic" (meaning it was
-was file system indepedent), or "shared" (meaning that test was not
+was file system independent), or "shared" (meaning that test was not
 truly generic, but which was useful on a handful of file systems).  In
 this scheme, tests would have names such as:
 
@@ -77,9 +77,9 @@ sometimes called the TEST-1K device -- although there are many other
 file system configurations which will use /dev/vdd.
 
 The /dev/vde and /dev/vdf file systems are the BIGTEST and BIGSCRATCH
-disks, and are used for those file system configrations which require
+disks, and are used for those file system configurations which require
 a 20GB TEST and SCRATCH device.  Like the TEST-1K device, the BIGTEST
-device will be reformated using mke2fs at the beginning of an xfstests
+device will be reformatted using mke2fs at the beginning of an xfstests
 run for that file system configuration.
 
 The gce-xfstests uses the same set of block devices, although instead

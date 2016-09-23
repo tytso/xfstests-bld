@@ -12,10 +12,10 @@ need to do a number of setup tasks:
 ## Get a Google Compute Engine account
 
 If you don't have GCE account, you can go to https://cloud.google.com
-and sign up for a free trial.  This will get you $300 dollars worth of
-credit which you can use over a 60 day period (as of this writing).
-Given that a full test for ext4 costs around a $1.50, and a smoke test
-costs pennies, that should be enough for plenty of testing.  :-)
+and sign up for a free trial.  This will get you $300 worth of credit
+which you can use over a 60 day period (as of this writing).  Given
+that a full test for ext4 costs around $1.50, and a smoke test costs
+pennies, that should be enough for plenty of testing.  :-)
 
 ### Setting up a GCE project
 
@@ -46,7 +46,7 @@ test VM's so that you don't have unexpected charges to your account.
 The gce-xfstests system needs a Google Cloud Storage (GCS) bucket to
 send kernel images to be tested and to save the results from the test
 runs.  If you are already using GCS you can use a pre-existing
-bucket, but it is strongly adviseable that you use a dedicated bucket
+bucket, but it is strongly advisable that you use a dedicated bucket
 for this purpose.  Detailed instructions for creating a new bucket can
 be found in the [GCS
 Quickstart](https://cloud.google.com/storage/docs/quickstart-console).
@@ -127,7 +127,7 @@ used):
 ## Configure gce-xfstests
 
 You will need to set up the following configuration parameters in
-~/.config/gce-xfststs:
+~/.config/gce-xfstests:
 
 * GS_BUCKET
   * The name of the Google Storage bucket which should be used by
@@ -219,7 +219,7 @@ are described below:
 
 Remotely login as root to a test instances.  This is a
 convenience shorthand for: "gcloud compute --project
-GCE_PROJECT ssh root@INSTNACE --zone GCE_ZONE".
+GCE_PROJECT ssh root@INSTANCE --zone GCE_ZONE".
 
 ### gce-xfstests console INSTANCE
 
@@ -287,7 +287,7 @@ Storage bucket.  This is a convenience command for
 ### gce-xfstests rm-results RESULT_FILE
 
 Delete a specified result tarball.  This is a convenience
-command for "gsutil ls gs://GS_BUCKET/RESULT_FILE".
+command for "gsutil rm gs://GS_BUCKET/RESULT_FILE".
 
 ### gce-xfstests get-results [--unpack | --summary | --failures ] RESULT_FILE
 
@@ -296,7 +296,7 @@ the Google Cloud Storage bucket.  The --summary or --failures
 option will cause the log file to be piped into the
 "get-results" script to summarize the log file using the "-s"
 or "-F" option, respectively.  The "--failures" or "-F" option
-results in a more succint summary than the "--summary" or "-s"
+results in a more succinct summary than the "--summary" or "-s"
 option.
 
 The --unpack option will cause the complete results directory
@@ -315,11 +315,11 @@ was created (in this case, August 13, 2016 at 22:26).
 
 This image will be created as part of an image family called xfstests.
 By default, when you start a test using gce-xfstests, the most
-recently created image in the xfstests image faily will be used.
+recently created image in the xfstests image family will be used.
 
 In order to use the xfstests image family created in your GCE project
 (instead of the xfstests-cloud project), add the following to your
-`/.config/gce-xfstests configuration file after the GCE_PROJECT
+`~/.config/gce-xfstests` configuration file after the GCE_PROJECT
 variable is defined:
 
         GCE_IMAGE_PROJECT="$GCE_PROJECT"

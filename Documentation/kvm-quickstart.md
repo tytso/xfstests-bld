@@ -5,17 +5,18 @@
         apt-get install qemu-kvm
 
 2.  Run the following commands to install the xfstests-bld repository
-and download a pre-compiled test 6appliance image.  We use the 32-bit
-test appliance here since it can support both 32-bit and 64-bit kernels.
+    and download a pre-compiled test appliance image.  We use the
+    32-bit test appliance here since it can support both 32-bit and
+    64-bit kernels.
 
         git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
         cd fstests/kvm-xfstests
         wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
 
-3.  Build a kernel with all of the necessary drives for kvm built into
-    the kernel.  No modules should be used, since kvm-xfstests will
-    run the kernel directly from the build tree. This means that there
-    is no need to install any modules or create an initrd, which
+3.  Build a kernel with all of the necessary drivers for kvm built
+    into the kernel.  No modules should be used, since kvm-xfstests
+    will run the kernel directly from the build tree. This means that
+    there is no need to install any modules or create an initrd, which
     significantly speeds up the edit, compile, test, debug development
     cycle.  There are sample 32-bit and 64-bit kernels in the
     kernel-configs directory; pick one whose version number is close
@@ -31,11 +32,11 @@ test appliance here since it can support both 32-bit and 64-bit kernels.
         TZ=America/New_York
         KERNEL=/build/ext4/arch/x86/boot/bzImage
 
-6.  In the top-level directory of your checked outxfstests-git
-repository, run "make kvm-xfstests.sh" and then copy this generated
-file to a directory which is your shell's PATH.  This allows you to
-run the kvm-xfstests binary without needing to set the working
-directory to the kvm-tests directory.
+6.  In the top-level directory of your checked out xfstests-bld
+    repository, run "make kvm-xfstests.sh" and then copy this
+    generated file to a directory which is your shell's PATH.  This
+    allows you to run the kvm-xfstests binary without needing to set
+    the working directory to the kvm-xfstests directory.
 
         cd fstests
         make kvm-xfstests.sh

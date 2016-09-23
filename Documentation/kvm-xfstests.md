@@ -41,8 +41,9 @@ Please see the relevant documentation files for more details.
 The configuration file for kvm-xfstests is found in the kvm-xfstests
 directory and is named config.  You can edit this file directly, but
 the better thing to do is to place override values in
-~/config/kvm-xfstests or in kvm-xfststs/config.custom.  Please look at
-the kvm-xfstests/config file to see the shell variables you can set.
+~/.config/kvm-xfstests or in kvm-xfstests/config.custom.  Please look
+at the kvm-xfstests/config file to see the shell variables you can
+set.
 
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
@@ -51,8 +52,8 @@ primary build tree that you use for kernel development.  Please use as
 the base for the .config file one of the kernel configurations from
 the kernel-config directory.  It is important that the kernel have all
 of the paravirtual device driver support needed for qemu included in
-the base kernel, since any modules will be ignored, and test appliance
-does not use an initial ramdisk.
+the base kernel, since any modules will be ignored, and the test
+appliance does not use an initial ramdisk.
 
 By default, the scratch disks used by test-appliance will be set up
 automatically, and are stored in the kvm-xfstests directory with the
@@ -86,8 +87,8 @@ kvm-xfstests/kvm-xfstests shell script.
 
 Please run "kvm-xfstests help" to get a quick summary of the available
 command-line syntax.  Not all of the available command-line options
-are documented; some of the more specialized optiosn will require that
-you Read The Fine Source --- in particular, in the auxliary script
+are documented; some of the more specialized options will require that
+you Read The Fine Source --- in particular, in the auxiliary script
 file found in kvm-xfstests/util/parse_cli.
 
 ### Running file system tests
@@ -114,8 +115,8 @@ which runs a subset of the tests designed for a fast smoke test.
 For developer convenience, "kvm-xfstests smoke" is short-hand for
 "kvm-xfstests -c 4k -g quick", which runs the fast subset of tests
 using just 4k block file system configuration.  In addition
-"kvm-xfstests full" is short-hand for "kvm-xfstests -g quto" which
-runs all of the tests using a large set of file system configuration.
+"kvm-xfstests full" is short-hand for "kvm-xfstests -g auto" which
+runs all of the tests using a large set of file system configurations.
 This will take quite a while, so it's best run overnight.  (Or it may
 be better to run the full set of tests using gce-xfstests.)
 
@@ -151,7 +152,7 @@ While kvm-xfstests is running, you can telnet to a number of TCP ports
 (which are bound to localhost).  Ports 7500, 7501, and 7502 will
 connect you to a shell prompts while the tests are running (if you
 want to check on /proc/slabinfo, enable tracing, etc.)  You can also
-use these ports in conjuction with "kvm-xfstests shell" if you want
+use these ports in conjunction with "kvm-xfstests shell" if you want
 additional windows to capture traces using ftrace.
 
 You can also access the qemu monitor on port 7498, and you can debug the

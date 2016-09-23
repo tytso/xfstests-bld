@@ -16,7 +16,7 @@ and create something which works for your distribution.  Please let me
 know if create something which works well for other distributions.
 
 1.  "make ; make tarball" to generate the xfstests.tar.gz file.
-2.  cd to kvm-xfststs/test-appliance, and run as root the shell script
+2.  cd to kvm-xfstests/test-appliance, and run as root the shell script
     "gen-image".  This will create the root_fs.img file.
 3.  build a kernel which does not use modules (at least for all of the
     device drivers required for running under kvm).  There are sample
@@ -25,7 +25,7 @@ know if create something which works well for other distributions.
     to build the root_fs.img file in 32-bit build chroot.  You can use
     a 32-bit userspace with a 64-bit kernel; in fact, this is a good
     way to sanity check the ioctl compatibility code.
-4.  Adjust the KERNEL= line in kvm-xfststs/config to point at your
+4.  Adjust the KERNEL= line in kvm-xfstests/config to point at your
     kernel's bzImage file.
 5.  cd to kvm-xfstests, and run "kvm-xfstests smoke".  More details of
     how to run kvm-xfstests can be found in kvm-xfstests/README.  If

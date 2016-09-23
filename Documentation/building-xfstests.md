@@ -2,7 +2,7 @@
 
 The xfstests-bld package makes it easy to build xfstests in a hermetic
 build environment (so it is not dependent on possibly out-of-date
-distro versions of libaio, xfsprogs, etc.).  This was the original 
+distro versions of libaio, xfsprogs, etc.).  This was the original
 raison d'etre for xfstests-bld, which explains why it was so named.
 
 ## Fetching the external git trees
@@ -45,7 +45,7 @@ needed.  They can be installed using the command:
 1.  Run "make clean"
 
 2.  Run "make".  This will run autoconf (if necessary) in the various
-subcompoents, run "make" or the equivalent to build all of the
+subcomponents, run "make" or the equivalent to build all of the
 subcomponents, and then finally run "make install" to install the
 build artifacts into the bld directory.  The actual work is done via
 the "build-all" script.
@@ -145,8 +145,8 @@ for the Debian armhf platform.
 
 The TOOLCHAIN_DIR shell variable can be used to specify the location
 for the alternate compiler toolchain if it is not your path.  For
-example, let's assume you've install the Android Native Delevelopment
-Toolkit (NDK) and used the make-standalone-toolchain.sh to install a
+example, let's assume you've installed the Android Native Development
+Kit (NDK) and used the make-standalone-toolchain.sh to install a
 toolchain in /u1/arm64-toolchain.  (See the [Android NDK
 documentation](https://developer.android.com/ndk/guides/standalone_toolchain.html)
 for more information.)  To use the standalone toolchain designed for
