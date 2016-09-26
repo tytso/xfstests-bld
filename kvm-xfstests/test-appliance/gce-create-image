@@ -83,6 +83,7 @@ if test -d ../../xfstests
 then
     echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" \
 	 > ../../xfstests-bld.ver
+    mkdir -p files/root/xfstests
     cat ../../*.ver > files/root/xfstests/git-versions
 fi
 

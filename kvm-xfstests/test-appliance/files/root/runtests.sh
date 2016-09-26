@@ -146,6 +146,7 @@ then
 fi
 if test -n "$RUN_ON_GCE"
 then
+    cp /usr/local/lib/gce-local.config /root/xfstests/local.config
     . /usr/local/lib/gce-funcs
     image=$(gcloud compute disks describe --format='value(sourceImage)' \
 		${instance} | \
