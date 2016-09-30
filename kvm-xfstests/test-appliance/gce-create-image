@@ -90,6 +90,11 @@ fi
 tar -X gce-exclude-files -C files -cf - . | gzip -9n > $t
 GS_FILES_TARBALL=gs://$GS_BUCKET/files.tar.gz
 
+if test -f files/root/xfstests/git-versions
+then
+    rm -f files/root/xfstests/git-versions
+fi
+
 LOCAL_HASH=$(gsutil hash $t 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
 REMOTE_HASH=$(gsutil stat $GS_FILES_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
 if test "$LOCAL_HASH" != "$REMOTE_HASH"
