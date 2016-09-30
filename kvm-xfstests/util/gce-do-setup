@@ -19,8 +19,8 @@ if ! type gcloud >& /dev/null ; then
    exit 1
 fi
 
-if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "GCE_ZONE" \
-	-o -z "GCE_KERNEL"
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE" \
+	-o -z "$GCE_KERNEL"
 then
     echo -e "Please make sure the following configuration variables are set in"
     echo -e "~/.config/gce-xfstests or one of the other config files:"
