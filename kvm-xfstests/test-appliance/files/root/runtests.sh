@@ -379,7 +379,7 @@ do
 	gce_run_hooks fs-config-begin $i
 	for j in $(seq 1 $RPT_COUNT) ; do
 	    gce_run_hooks pre-xfstests $i $j
-	    bash ./check -T $AEX $FSTESTSET $TEST_SET_EXCLUDE
+	    bash ./check -T $AEX $TEST_SET_EXCLUDE $FSTESTSET
 	    gce_run_hooks post-xfstests $i $j
 	    umount "$TEST_DEV" >& /dev/null
 	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out
