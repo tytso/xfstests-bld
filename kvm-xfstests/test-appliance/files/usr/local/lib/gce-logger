@@ -10,6 +10,9 @@ fi
 
 if test ! -f /run/kver -o ! -s /run/kver ; then
     gce_attribute kernel_version > /run/kver
+    if test "$(cat /run/kver)" != "$(uname -a)" ; then
+	rm -f /run/kver
+    fi
 fi
 if test ! -s /run/kver ; then
     gcloud compute instances -q add-metadata ${instance} \
