@@ -122,7 +122,7 @@ https://cloud.google.com/sdk/docs/quickstart-linux
 2.  Install the following packages (debian package names
 used):
 
-        % apt-get install jq xz-utils dnsutils python-crcmod
+        % sudo apt-get install jq xz-utils dnsutils python-crcmod
 
 ## Configure gce-xfstests
 
