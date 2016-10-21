@@ -106,7 +106,7 @@ while [ "$1" != "" ]; do
 done
 
 nr_cpus=$(getconf _NPROCESSORS_ONLN)
-J=-j$(expr $nr_cpus \* 2)
+J=-j$(expr $nr_cpus \* 1)
 
 DESTDIR=$(pwd)/bld
 
@@ -189,6 +189,7 @@ if test -z "$SKIP_XFSPROGS" ; then
     build_start "xfsprogs"
     (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
+     aclocal -I m4 ; autoconf -I m4 ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      CPPFLAGS="-I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
