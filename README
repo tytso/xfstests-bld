@@ -1,4 +1,4 @@
-These KVM test appliance image are designed to be used with the
+These KVM test appliance images are designed to be used with the
 kvm-xfstests system which can be found here:
 
 	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
@@ -14,18 +14,21 @@ guide, located at:
 
 The "corresponding source" of the GPL binaries found in these KVM
 images can be found in the source packages for the Debian
-distribution's Jessie release as of February 15, 2016:
+distribution's Jessie release as of August 8, 2016:
 
-	http://snapshot.debian.org/archive/debian/20160215T221907Z/
+	http://snapshot.debian.org/archive/debian/20160808T105701Z/
+
+... and the Jessie Backports for the e2fsprogs and btrfs-progs
+packages as of September 5, 2016,
 
 ... as well as the following git repositories:
 
-e2fsprogs	v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
-fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
+e2fsprogs	v1.43.3-30-g8df85fb (Sun, 4 Sep 2016 21:32:35 -0400)
+fio		fio-2.14-41-g0f2f71f (Sat, 22 Oct 2016 21:58:09 -0400)
 quota		81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
-xfsprogs	v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
-xfstests-bld	4247cb8 (Sat, 16 Jul 2016 21:58:00 -0400)
-xfstests	linux-v3.8-1105-gacd7210 (Fri, 15 Jul 2016 11:16:57 -0400)
+xfsprogs	v4.8.0-rc3 (Mon, 3 Oct 2016 14:25:45 +1100)
+xfstests-bld	5f92174 (Fri, 21 Oct 2016 17:41:20 -0400)
+xfstests	linux-v3.8-1221-g9de991f (Sat, 22 Oct 2016 22:20:31 -0400)
 
 The gen-image script found in the kvm-xfstests/test-appliance
 directory of the xfstests-bld git repository, plus Debian jessie's
@@ -34,7 +37,8 @@ these KVM images.
 
 Local changes to xfstests can be found at:
 
-    https://github.com/tytso/xfstests release-2016-07-17-acd7210
+    https://github.com/tytso/xfstests release-2016-10-22-9de991f
+    https://github.com/tytso/fio release-2016-10-22-0f2f71f
 
 The URL's for the other git repositories and scripts to download the
 sources from those repositories can be found in xfstests-bld's
