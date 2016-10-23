@@ -1,5 +1,6 @@
 #!/bin/bash
 
+rsync -avH --delete debs xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance
 date
 schroot -b -c jessie -n tytso-jessie
 date
