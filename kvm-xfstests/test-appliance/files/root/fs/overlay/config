@@ -4,18 +4,32 @@
 
 DEFAULT_MKFS_OPTIONS=""
 
+function __fsck()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/e2fsck -fy "$dev"
+		;;
+	    xfs)
+		xfs_repair "$dev"
+		;;
+	esac
+}
+
 function check_filesystem()
 {
 	umount $SM_TST_DEV >& /dev/null
-	/sbin/e2fsck -fy "$SM_TST_DEV"
+	__fsck "$SM_TST_DEV"
 	ret="$?"
-	mount -t ext4 $SM_TST_DEV $SM_TST_MNT
+	mount -t $FSTESTTYP $SM_TST_DEV $SM_TST_MNT
 	echo e2fsck exited with status "$ret"
 
 	umount $SM_SCR_DEV >& /dev/null
-	/sbin/e2fsck -fy "$SM_SCR_DEV"
+	__fsck "$SM_SCR_DEV"
 	ret2="$?"
-	mount -t ext4 $SM_SCR_DEV $SM_SCR_MNT
+	mount -t $FSTESTTYP $SM_SCR_DEV $SM_SCR_MNT
 	echo e2fsck exited with status "$ret2"
 
 	if test "$ret" -eq 0 ; then
@@ -24,16 +38,30 @@ function check_filesystem()
 	return "$ret"
 }
 
+function __mkfs()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/mke2fs -F -q -t ext4 "$dev"
+		;;
+	    xfs)
+		mkfs.xfs -f -m rmapbt=1,reflink=1 "$dev"
+		;;
+	esac
+}
+
 function format_filesystem()
 {
 	umount $SM_TST_DEV >& /dev/null
-	/sbin/mke2fs -F -q -t ext4 $SM_TST_DEV
-	mount -t ext4 $SM_TST_DEV $SM_TST_MNT
+	__mkfs $SM_TST_DEV
+	mount -t $FSTESTTYP $SM_TST_DEV $SM_TST_MNT
 	mkdir -p $SM_TST_MNT/ovl $SM_TST_MNT/testarea
 	      
 	umount $SM_SCR_DEV >& /dev/null
-	/sbin/mke2fs -F -q -t ext4 $SM_SCR_DEV
-	mount -t ext4 $SM_SCR_DEV $SM_SCR_MNT
+	__mkfs $SM_SCR_DEV
+	mount -t $FSTESTTYP $SM_SCR_DEV $SM_SCR_MNT
 	mkdir -p $SM_SCR_MNT/ovl $SM_SCR_MNT/testarea
 
 	return 0
