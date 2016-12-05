@@ -18,24 +18,35 @@ function __fsck()
 	esac
 }
 
-function check_filesystem()
+function __check_filesystem()
 {
-	umount $SM_TST_DEV >& /dev/null
-	__fsck "$SM_TST_DEV"
+	local tst_dev="$1"
+	local tst_mnt="$2"
+	local scr_dev="$3"
+	local scr_mnt="$4"
+
+	umount $tst_dev >& /dev/null
+	__fsck "$tst_dev"
 	ret="$?"
-	mount -t $FSTESTTYP $SM_TST_DEV $SM_TST_MNT
+	mount -t $FSTESTTYP $tst_dev $tst_mnt
 	echo e2fsck exited with status "$ret"
 
-	umount $SM_SCR_DEV >& /dev/null
-	__fsck "$SM_SCR_DEV"
+	umount $scr_dev >& /dev/null
+	__fsck "$scr_dev"
 	ret2="$?"
-	mount -t $FSTESTTYP $SM_SCR_DEV $SM_SCR_MNT
+	mount -t $FSTESTTYP $scr_dev $scr_mnt
 	echo e2fsck exited with status "$ret2"
 
 	if test "$ret" -eq 0 ; then
 		ret=$ret2
 	fi
 	return "$ret"
+}
+
+function check_filesystem()
+{
+	echo check_filesystem\(\) should be overriden by a test cfg file.
+	return -1
 }
 
 function __mkfs()
@@ -52,19 +63,30 @@ function __mkfs()
 	esac
 }
 
-function format_filesystem()
+function __format_filesystem()
 {
-	umount $SM_TST_DEV >& /dev/null
-	__mkfs $SM_TST_DEV
-	mount -t $FSTESTTYP $SM_TST_DEV $SM_TST_MNT
-	mkdir -p $SM_TST_MNT/ovl $SM_TST_MNT/testarea
-	      
-	umount $SM_SCR_DEV >& /dev/null
-	__mkfs $SM_SCR_DEV
-	mount -t $FSTESTTYP $SM_SCR_DEV $SM_SCR_MNT
-	mkdir -p $SM_SCR_MNT/ovl $SM_SCR_MNT/testarea
+	local tst_dev="$1"
+	local tst_mnt="$2"
+	local scr_dev="$3"
+	local scr_mnt="$4"
+
+	umount $tst_dev >& /dev/null
+	__mkfs $tst_dev
+	mount -t $FSTESTTYP $tst_dev $tst_mnt
+	mkdir -p $tst_mnt/ovl $tst_mnt/testarea
+
+	umount $scr_dev >& /dev/null
+	__mkfs $scr_dev
+	mount -t $FSTESTTYP $scr_dev $scr_mnt
+	mkdir -p $scr_mnt/ovl $scr_mnt/testarea
 
 	return 0
+}
+
+function format_filesystem()
+{
+	echo format_filesystem\(\) should be overriden by a test cfg file.
+	return -1
 }
 
 function setup_mount_opts()
@@ -96,7 +118,10 @@ function show_mount_opts()
 
 function test_name_alias()
 {
-    echo "$1"
+    case "$1" in
+	default)	echo "small" ;;
+	*)		echo "large" ;;
+    esac
 }
 
 function reset_vars()

@@ -1,0 +1,18 @@
+function check_filesystem()
+{
+	__check_filesystem "$SM_TST_DEV" "$SM_TST_MNT" "$SM_SCR_DEV" "$SM_SCR_MNT"
+}
+
+function format_filesystem()
+{
+	__format_filesystem "$SM_TST_DEV" "$SM_TST_MNT" "$SM_SCR_DEV" "$SM_SCR_MNT"
+}
+
+SIZE=small
+export TEST_DEV=$SM_TST_MNT/ovl
+export TEST_DIR=$SM_TST_MNT/testarea
+export SCRATCH_DEV=$SM_SCR_MNT/ovl
+export SCRATCH_MNT=$SM_SCR_MNT/testarea
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="overlayfs small"
+mkdir -p /test/tmp /test/scratch
