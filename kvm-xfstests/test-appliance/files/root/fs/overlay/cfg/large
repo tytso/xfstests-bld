@@ -1,0 +1,18 @@
+function check_filesystem()
+{
+	__check_filesystem "$LG_TST_DEV" "$LG_TST_MNT" "$LG_SCR_DEV" "$LG_SCR_MNT"
+}
+
+function format_filesystem()
+{
+	__format_filesystem "$LG_TST_DEV" "$LG_TST_MNT" "$LG_SCR_DEV" "$LG_SCR_MNT"
+}
+
+SIZE=large
+export TEST_DEV=$LG_TST_MNT/ovl
+export TEST_DIR=$LG_TST_MNT/testarea
+export SCRATCH_DEV=$LG_SCR_MNT/ovl
+export SCRATCH_MNT=$LG_SCR_MNT/testarea
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="overlayfs large"
+mkdir -p /test/tmp /test/scratch

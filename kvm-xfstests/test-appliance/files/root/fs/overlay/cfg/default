@@ -1,7 +1,0 @@
-export TEST_DEV=$SM_TST_MNT/ovl
-export TEST_DIR=$SM_TST_MNT/testarea
-export SCRATCH_DEV=$SM_SCR_MNT/ovl
-export SCRATCH_MNT=$SM_SCR_MNT/testarea
-export EXT_MOUNT_OPTIONS=""
-TESTNAME="overlayfs"
-mkdir -p /test/tmp /test/scratch
