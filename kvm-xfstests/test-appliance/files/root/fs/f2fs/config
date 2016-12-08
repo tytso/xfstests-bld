@@ -1,0 +1,62 @@
+#
+# Configuration file for f2fs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    local dev="$1"
+    local ret
+
+    /sbin/fsck.f2fs -f "$dev"
+    ret="$?"
+    echo fsck.f2fs exited with status "$ret"
+    return "$ret"
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+
+    /sbin/mkfs.f2fs -q $opts "$dev"
+    return $?
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$F2FS_MOUNT_OPTIONS" ; then
+	    F2FS_MOUNT_OPTIONS="$F2FS_MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    F2FS_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo MKFS_OPTIONS: "$MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo F2FS_MOUNT_OPTIONS: "$F2FS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset F2FS_MOUNT_OPTIONS
+    unset MKFS_OPTIONS
+}

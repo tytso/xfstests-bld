@@ -59,7 +59,7 @@ print_help ()
 validate_test_name()
 {
     case "$1" in
-	btrfs*|cifs*|ext4*|generic*|shared*|udf*|xfs*|overlay*) ;;
+	btrfs*|cifs*|ext4*|f2fs*|generic*|shared*|udf*|xfs*|overlay*) ;;
 	*)
 	    echo -e "Invalid test name: $1\n"
 	    print_help
