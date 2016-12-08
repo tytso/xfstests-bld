@@ -11,7 +11,7 @@
 
         git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
         cd fstests/kvm-xfstests
-        wget -O test_appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+        wget -O test-appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
 
 3.  Build a kernel with all of the necessary drivers for kvm built
     into the kernel.  No modules should be used, since kvm-xfstests
