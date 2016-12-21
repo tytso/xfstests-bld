@@ -308,21 +308,6 @@ case "$1" in
 	exec gcloud beta compute --project "$GCE_PROJECT" -q \
 	     connect-to-serial-port --zone "$GCE_ZONE" $PORT "$2"
 	;;
-    get-results)
-	case "$2" in
-	    --failures|-F)
-		OPT="-F"
-		shift
-		;;
-	esac
-	tmpfile=$(mktemp)
-	gcloud compute --project "$GCE_PROJECT" -q \
-	       copy-files "$2:/results/runtests.log" "$tmpfile" \
-	       --zone "$GCE_ZONE"
-	"$DIR/get-results" "$OPT" "$tmpfile"
-	/bin/rm -f "$tmpfile"
-	exit 0
-	;;
     create-image)
 	shift
 	"$DIR/test-appliance/gce-create-image" "$@"
