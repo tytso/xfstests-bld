@@ -9,6 +9,7 @@ dbus
 dmsetup
 dump
 ed
+f2fs-tools
 file
 gawk
 joe-jupp

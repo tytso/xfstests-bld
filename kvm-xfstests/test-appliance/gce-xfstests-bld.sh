@@ -16,6 +16,7 @@ PACKAGES="bash-completion \
 	dump \
 	e3 \
 	ed \
+	f2fs-tools \
 	file \
 	gawk \
 	kexec-tools \
