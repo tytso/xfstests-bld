@@ -28,3 +28,4 @@ systemd-sysv
 time
 uuid-runtime
 udev
+xz-utils
