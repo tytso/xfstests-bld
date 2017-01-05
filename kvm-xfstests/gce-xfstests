@@ -456,7 +456,8 @@ then
 	exit 1
     fi
     (cd "$DIR/test-appliance"; \
-     tar -X gce-exclude-files --exclude=etc -C files -cf - . | \
+     tar -X gce-exclude-files --exclude=etc -C files \
+		--owner=root --group=root --mode=go+u-w -cf - . | \
 	 gzip -9n > $LOCAL_FILES)
     get_local_hash "$LOCAL_FILES"
     get_remote_hash "$GS_FILES"

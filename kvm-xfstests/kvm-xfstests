@@ -75,7 +75,8 @@ then
 	exit 1
     fi
     (cd "$DIR/test-appliance"; \
-     tar -X kvm-exclude-files -C files -cf - . | \
+     tar -X kvm-exclude-files -C files \
+		--owner=root --group=root --mode=go+u-w -cf - . | \
 	 gzip -9n > "$TDIR/files.tar.gz")
     tar -r -f $VDH -C "$TDIR" files.tar.gz
     rm -rf "$TDIR"

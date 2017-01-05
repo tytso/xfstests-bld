@@ -87,7 +87,8 @@ then
     cat ../../*.ver > files/root/xfstests/git-versions
 fi
 
-tar -X gce-exclude-files -C files -cf - . | gzip -9n > $t
+tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
+	-cf - . | gzip -9n > $t
 GS_FILES_TARBALL=gs://$GS_BUCKET/files.tar.gz
 
 if test -f files/root/xfstests/git-versions

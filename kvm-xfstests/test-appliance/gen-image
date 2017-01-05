@@ -114,6 +114,7 @@ update_xfstests()
    rsync --exclude-from kvm-exclude-files -avH files/* $ROOTDIR
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests
    chown -R root:root $ROOTDIR/root
+   chmod -R go+u-w $ROOTDIR/root
 }
 
 fix_symlinks()
