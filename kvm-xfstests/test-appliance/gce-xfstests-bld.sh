@@ -119,7 +119,7 @@ systemctl enable telnet-getty@ttyS1.service
 systemctl enable telnet-getty@ttyS2.service
 systemctl enable telnet-getty@ttyS3.service
 
-if gsutil -m cp gs://$BUCKET/*.deb /run
+if gsutil -m cp gs://$BUCKET/debs/*.deb /run
 then
     dpkg -i --ignore-depends=e2fsprogs /run/*.deb
     rm -f /run/*.deb

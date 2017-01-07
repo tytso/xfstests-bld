@@ -104,6 +104,9 @@ then
 fi
 rm -f $t
 
+mkdir -p debs
+gsutil rsync -cd debs gs://$GS_BUCKET/debs
+
 gcloud compute --project "$GCE_PROJECT" -q instances delete "$BLD_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
 gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" 2> /dev/null
