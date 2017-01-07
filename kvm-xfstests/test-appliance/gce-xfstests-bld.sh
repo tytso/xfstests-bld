@@ -7,6 +7,7 @@ PACKAGES="bash-completion \
 	bc \
 	bsdmainutils \
 	bsd-mailx \
+	btrfs-progs/jessie-backports \
 	bzip2 \
 	cpio \
 	dc \
@@ -14,6 +15,7 @@ PACKAGES="bash-completion \
 	dbus \
 	dmsetup \
 	dump \
+	e2fsprogs/jessie-backports \
 	e3 \
 	ed \
 	f2fs-tools \
@@ -22,7 +24,9 @@ PACKAGES="bash-completion \
 	kexec-tools \
 	keyutils \
 	less \
+	libcomerr2/jessie-backports \
 	libsasl2-modules \
+	libss2/jessie-backports \
 	libssl1.0.0 \
 	libgdbm3 \
 	liblzo2-2 \
