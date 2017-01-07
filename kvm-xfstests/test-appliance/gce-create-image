@@ -59,24 +59,17 @@ do
     shift
 done
 
-GS_SCRIPT=gs://$GS_BUCKET/gce-xfstests-bld.sh
-GS_TARBALL=gs://$GS_BUCKET/xfstests.tar.gz
+GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
 METADATA="startup-script-url=$GS_SCRIPT"
 GCE_MACHTYPE=n1-standard-1
 
-LOCAL_HASH=$(gsutil hash $TARBALL 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
-REMOTE_HASH=$(gsutil stat $GS_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
-if test "$LOCAL_HASH" != "$REMOTE_HASH"
-then
-	gsutil cp $TARBALL $GS_TARBALL
-fi
+td=$(mktemp -d /tmp/gce-create.XXXXXXXX)
 
-t=$(mktemp /tmp/gce-create.XXXXXXXX)
-
+cp $TARBALL $td/xfstests.tar.gz
 sed -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GS_TAR@;$GS_TAR;" \
-    -e "s/@BLD_INST@/$BLD_INST/" < gce-xfstests-bld.sh > $t
-gsutil cp $t gs://$GS_BUCKET/gce-xfstests-bld.sh
+    -e "s/@BLD_INST@/$BLD_INST/" < gce-xfstests-bld.sh \
+				 > $td/gce-xfstests-bld.sh
 
 # Update the git-versions file
 if test -d ../../xfstests
@@ -88,21 +81,15 @@ then
 fi
 
 tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
-	-cf - . | gzip -9n > $t
-GS_FILES_TARBALL=gs://$GS_BUCKET/files.tar.gz
+	-cf - . | gzip -9n > $td/files.tar.gz
+
+gsutil rsync -c $td gs://$GS_BUCKET/create-image
 
 if test -f files/root/xfstests/git-versions
 then
     rm -f files/root/xfstests/git-versions
 fi
-
-LOCAL_HASH=$(gsutil hash $t 2> /dev/null |  grep "Hash (md5)" | awk '{print $3}')
-REMOTE_HASH=$(gsutil stat $GS_FILES_TARBALL 2> /dev/null | grep "Hash (md5)" | awk '{print $3}')
-if test "$LOCAL_HASH" != "$REMOTE_HASH"
-then
-	gsutil cp $t $GS_FILES_TARBALL
-fi
-rm -f $t
+rm -rf $td
 
 mkdir -p debs
 gsutil rsync -cd debs gs://$GS_BUCKET/debs

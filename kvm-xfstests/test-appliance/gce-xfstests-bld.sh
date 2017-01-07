@@ -54,11 +54,11 @@ apt-get clean
 
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
-gsutil cp gs://$BUCKET/xfstests.tar.gz /run/xfstests.tar.gz
+gsutil cp gs://$BUCKET/create-image/xfstests.tar.gz /run/xfstests.tar.gz
 tar -C /root -xzf /run/xfstests.tar.gz
 rm /run/xfstests.tar.gz
 
-gsutil cp gs://$BUCKET/files.tar.gz /run/files.tar.gz
+gsutil cp gs://$BUCKET/create-image/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
 
