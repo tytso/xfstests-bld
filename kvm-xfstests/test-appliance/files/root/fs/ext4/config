@@ -36,6 +36,18 @@ function setup_mount_opts()
     if test -n "$MNTOPTS" ; then
 	EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
     fi
+    if echo "$EXT_MOUNT_OPTIONS" | grep -q test_dummy_encryption; then
+        local mode='\x00\x00\x00\x00'
+        local raw="$(printf ""\\\\x%02x"" $(seq 0 63))"
+        if lscpu | grep "Byte Order" | grep -q Little ; then
+            local size='\x40\x00\x00\x00'
+        else
+            local size='\x00\x00\x00\x40'
+        fi
+        local key="${mode}${raw}${size}"
+        keyctl new_session
+        echo -n -e "${key}" | keyctl padd logon fscrypt:4242424242424242 @s
+    fi
 }
 
 function get_mkfs_opts()
