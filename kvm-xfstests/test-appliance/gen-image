@@ -203,6 +203,15 @@ if test $? -ne 0 ; then
     cleanup_on_abort
     exit 1
 fi
+./get-backports-pkgs "$SUITE" "$ROOTDIR"
+DEBS=$(while read pkg path; do echo $path ; done <"/$ROOTDIR/debootstrap/debpaths")
+chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
+rm -rf "$ROOTDIR/debootstrap"
+DEBS=$(find debs -name \*.deb)
+if test -n "$DEBS"
+then
+    chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
+fi
 update_xfstests
 for i in vda vdb vdc vdd vde vdf results
 do
@@ -217,12 +226,6 @@ mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
 chmod 755 $ROOTDIR/root
 fix_symlinks
-
-DEBS=$(find debs -name \*.deb)
-if test -n "$DEBS"
-then
-    chroot $ROOTDIR dpkg --ignore-depends=e2fsprogs -i $DEBS
-fi
 
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
