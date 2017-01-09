@@ -373,6 +373,15 @@ do
 		AEX="-E $RESULT_BASE/exclude"
 	    fi
         fi
+	rm -f "$RESULT_BASE/exclude-opt"
+	if test -f "/root/fs/$FS/exclude-opt" ; then
+	    AEX="$AEX $(cat /root/fs/$FS/exclude-opt)"
+	    cat /root/fs/$FS/exclude-opt >> "$RESULT_BASE/exclude-opt"
+	fi
+	if test -f "/root/fs/$FS/cfg/exclude-opt" ; then
+	    AEX="$AEX $(cat /root/fs/$FS/cfg/exclude-opt)"
+	    cat /root/fs/cfg/$FS/exclude-opt >> "$RESULT_BASE/exclude-opt"
+	fi
 	if test -f /tmp/exclude-tests ; then
 	    AEX="$AEX -E /tmp/exclude-tests"
 	fi
