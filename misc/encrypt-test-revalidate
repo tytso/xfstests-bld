@@ -1,15 +1,28 @@
 #!/bin/sh -vx
+. /root/test-config
+
 dmesg -n 7
-umount /dev/vdc
-mke2fs -t ext4 -O encrypt,^metadata_csum -Fq /dev/vdc
-mount /vdc
+mkdir -p /vdc
+
+do_mount ()
+{
+    mount -t ext4 $VDC /vdc
+}
+
+do_unmount ()
+{
+    umount /vdc
+}
+
+mke2fs -t ext4 -O encrypt,^metadata_csum -Fq $VDC
+do_mount
 mkdir /vdc/a /vdc/b
 echo foobar | e4crypt add_key /vdc/a
 cp /etc/motd /vdc/a
 ln -s motd /vdc/a/link
 cp -r /root/xfstests /vdc/a
-umount /vdc
-mount /vdc
+do_unmount
+do_mount
 ls -l /vdc/a
 cat /vdc/a/link
 cat /vdc/a/motd
@@ -31,3 +44,4 @@ ls -l /vdc/a/NOEXIST
 ls -l /vdc/a/xfstests/README
 ls -l $f
 ls -l /vdc/a
+do_unmount
