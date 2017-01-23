@@ -5,7 +5,7 @@ XFSPROGS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 FIO_GIT=git://git.kernel.dk/fio.git
 QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 
-FIO_COMMIT=fio-2.16
+FIO_COMMIT=54441e7
 QUOTA_COMMIT=2b37958
 XFSPROGS_COMMIT=v4.9.0
 
