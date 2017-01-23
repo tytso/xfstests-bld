@@ -18,7 +18,7 @@ PACKAGES="bash-completion \
 	e2fsprogs/jessie-backports \
 	e3 \
 	ed \
-	f2fs-tools \
+	f2fs-tools/jessie-backports \
 	file \
 	gawk \
 	kexec-tools \
