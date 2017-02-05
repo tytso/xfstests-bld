@@ -1,0 +1,3 @@
+# Without a journal, tests for log state won't pass
+generic/050
+generic/052
