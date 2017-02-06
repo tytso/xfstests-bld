@@ -190,7 +190,7 @@ do
     find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
 done
 
-cp /proc/slabinfo /results/slabinfo.before
+[ -e /proc/slabinfo ] && cp /proc/slabinfo /results/slabinfo.before
 cp /proc/meminfo /results/meminfo.before
 
 free -m
@@ -321,7 +321,7 @@ do
 	if test ! -f /.dockerenv ; then
 	    echo 3 > /proc/sys/vm/drop_caches
 	fi
-	cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
+	[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
 	echo -n "BEGIN TEST $i: $TESTNAME " ; date
 	logger "BEGIN TEST $i: $TESTNAME "
@@ -424,7 +424,7 @@ END	{ if (NR > 0) {
 	if test ! -f /.dockerenv ; then
 	    echo 3 > /proc/sys/vm/drop_caches
 	fi
-	cp /proc/slabinfo "$RESULT_BASE/slabinfo.after"
+	[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULT_BASE/slabinfo.after"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.after"
 	free -m
 	gce_run_hooks fs-config-end $i
@@ -434,5 +434,5 @@ END	{ if (NR > 0) {
 	logger "END TEST $i: $TESTNAME "
 done
 
-cp /proc/slabinfo /results/slabinfo.after
+[ -e /proc/slabinfo ] && cp /proc/slabinfo /results/slabinfo.after
 cp /proc/meminfo /results/meminfo.after
