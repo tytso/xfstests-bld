@@ -1,16 +1,52 @@
 #!/bin/bash
 
-rsync -avH --delete debs xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance
-date
-schroot -b -c jessie -n tytso-jessie
-date
-dd-schroot-cmd -y -c tytso-jessie apt-get install build-essential \
-	autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
-	qemu-utils gettext e2fslibs-dev git debootstrap \
-	fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync ccache
-cd ~/xfstests-bld/xfstests-bld
-schroot -r -c tytso-jessie -- bash -c "date ; make clean ; date ; make ; date ; make tarball ; date ; cd kvm-xfstests/test-appliance ; ./gen-image --out-tar ; date"
-schroot -e -c tytso-jessie
-date
+CHROOT_NAME=tytso-jessie
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--no-setup)
+	    SKIP_SETUP=yes
+	    SKIP_TEARDOWN=yes
+	    ;;
+	--setup-only)
+	    SKIP_BUILD=yes
+	    SKIP_TEARDOWN=yes
+	    ;;
+	--teardown)
+	    SKIP_SETUP=yes
+	    SKIP_BUILD=yes
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
 
 
+if test -z "$SKIP_SETUP"
+then
+    date
+    schroot -b -c jessie -n $CHROOT_NAME
+    date
+    dd-schroot-cmd -y -c $CHROOT_NAME apt-get install build-essential \
+		   autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
+		   qemu-utils gettext e2fslibs-dev git debootstrap \
+		   fakechroot libdbus-1-3 autopoint pkg-config symlinks \
+		   rsync ccache
+fi
+
+if test -z "$SKIP_BUILD"
+then
+    cd ~
+    rsync -avH --delete debs xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance
+    cd ~/xfstests-bld/xfstests-bld
+    schroot -r -c $CHROOT_NAME -- bash -c "date ; make clean ; date ; make ; date ; make tarball ; date ; cd kvm-xfstests/test-appliance ; ./gen-image --out-tar ; date"
+fi
+
+if test -z "$SKIP_TEARDOWN"
+then
+   schroot -e -c $CHROOT_NAME
+   date
+fi
