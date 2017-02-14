@@ -1,0 +1,37 @@
+#!/bin/sh
+
+. /root/test-config
+
+if [ $VDB != "/dev/vdb" ];
+then
+	ln -s $VDB /dev/vdb
+	ln -s $VDC /dev/vdc
+	ln -s $VDD /dev/vdd
+	ln -s $VDE /dev/vde
+	ln -s $VDF /dev/vdf
+fi
+
+mkdir -p /vdb /vdc /vdd /vde /vdf
+
+if test -z "$FS"
+then
+   FS="$FSTESTTYP"
+fi
+
+if test -z "$FS"
+then
+   FS=ext4
+fi
+
+if ! grep -q /dev/vdb /etc/fstab
+then
+   cat >> /etc/fstab << EOF
+/dev/vdb	/vdb	$FS	defaults 0 2
+/dev/vdc	/vdc	$FS	defaults 0 2
+/dev/vdd	/vdd	$FS	defaults 0 2
+/dev/vde	/vde	$FS	defaults 0 2
+/dev/vdf	/vdf	$FS	defaults 0 2
+EOF
+fi
+
+exit 0

@@ -12,7 +12,10 @@ CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 
 PROGS= fname_benchmark resize syncfs
-SCRIPTS= encrypt-fname-benchmark encrypt-smoketest encrypt-test-revalidate
+SCRIPTS= encrypt-fname-benchmark \
+	encrypt-smoketest \
+	encrypt-test-revalidate \
+	setup-fstab
 
 all: $(PROGS)
 
