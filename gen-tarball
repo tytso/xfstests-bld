@@ -47,6 +47,10 @@ cat *.ver > xfstests/git-versions
 mkdir -p xfstests/bin xfstests/lib
 cp bld/bin/* bld/sbin/* xfstests/bin
 cp bld/lib/client.txt xfstests/lib
+for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
+do
+    ln -s ../$i xfstests/bin
+done
 echo "STRIP xfstests/*"
 find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
 echo "TAR xfstests"
