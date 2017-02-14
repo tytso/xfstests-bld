@@ -1,5 +1,5 @@
 SIZE=small
-export MKFS_OPTIONS=""
+export EXT_MKFS_OPTIONS=""
 export EXT_MOUNT_OPTIONS="data=journal"
 
 # Due to a buffer_head leak bug, avoid collapse_range, insert_range,
