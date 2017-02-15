@@ -250,6 +250,6 @@ EOF
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
-    (cd misc ; LDFLAGS="$EXEC_LDFLAGS" ./configure $cross ; \
+    (cd misc ; LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ./configure $cross ; \
      make $J ; make install DESTDIR=$DESTDIR)
 fi
