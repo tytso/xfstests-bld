@@ -317,7 +317,7 @@ fi
 
 trap - INT TERM
 cleanup_rootdir
-tune2fs -O has_journal $RAW_ROOT_FS
+#tune2fs -O has_journal $RAW_ROOT_FS
 finalize_rootfs
 
 if test "$SAVE_RAW_ROOT" = "yes" ; then
