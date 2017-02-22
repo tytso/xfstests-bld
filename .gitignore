@@ -87,5 +87,6 @@ MAKELOG
 /misc/fname_benchmark
 /misc/resize
 /misc/syncfs
+/misc/zerofree
 /misc/Makefile
 /misc/autom4te.cache
