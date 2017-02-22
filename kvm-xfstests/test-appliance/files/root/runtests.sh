@@ -233,8 +233,6 @@ do
 	    FSTESTCFG="$(echo $FSTESTCFG)"
 	    continue
 	fi
-	export SCRATCH_DEV=$SM_SCR_DEV
-	export SCRATCH_MNT=$SM_SCR_MNT
 	if test -f "/root/fs/$FS/cfg/$i"; then
 		. "/root/fs/$FS/cfg/$i"
 	else
