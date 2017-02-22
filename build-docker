@@ -1,0 +1,8 @@
+#!/bin/bash
+
+date
+time docker build -t tytso/xfstests-bld https://github.com/tytso/xfstests-bld.git
+date
+time docker build -t tytso/kvm-xfstests https://github.com/tytso/xfstests-bld.git#:kvm-xfstests
+date
+
