@@ -185,6 +185,7 @@ mkdir -p $ROOTDIR/var/cache/apt/archives
 mkdir -p $ROOTDIR/var/lib/apt/lists
 mkdir -p $ROOTDIR/debs
 mkdir -p $ROOTDIR/imgdir
+mkdir -p $ROOTDIR/vtmp
 if test -z "$OUT_TAR"; then
    mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
    mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists

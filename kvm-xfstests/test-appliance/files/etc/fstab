@@ -4,5 +4,6 @@
 proc            /proc           proc    defaults        0       0
 tmpfs		/tmp		tmpfs	mode=1777	0	0
 debugfs		/sys/kernel/debug debugfs defaults	0	0
+v_tmp		/vtmp	9p	trans=virtio,version=9p2000.L,noauto	0	0
 /dev/rootfs	/	ext4    noatime 0 1
 /dev/vdg	/results ext4	defaults 0 2
