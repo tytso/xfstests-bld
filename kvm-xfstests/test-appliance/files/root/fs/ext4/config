@@ -28,7 +28,7 @@ function format_filesystem()
 
 function setup_mount_opts()
 {
-    MKFS_OPTIONS="$EXT_MKFS_OPTIONS"
+    export MKFS_OPTIONS="$EXT_MKFS_OPTIONS"
     if test -n "$EXT_MOUNT_OPTIONS" ; then
 	EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
     else
