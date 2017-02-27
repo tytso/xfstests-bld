@@ -45,7 +45,7 @@ fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
 cat *.ver > xfstests/git-versions
 mkdir -p xfstests/bin xfstests/lib
-cp bld/bin/* bld/sbin/* xfstests/bin
+cp bld/bin/* bld/sbin/* bld/usr/bin/* xfstests/bin
 cp bld/lib/client.txt xfstests/lib
 for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
 do

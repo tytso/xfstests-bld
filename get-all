@@ -75,6 +75,20 @@ then
 	fi
 fi
 
+if test ! -d stress-ng -a -n "$STRESS_NG_GIT"
+then
+	if ! git clone $STRESS_NG_GIT stress-ng; then
+		echo "Failed to get stress-ng from $STRESS_NG_GIT"
+                exit 1
+	fi
+	if test -n "$STRESS_NG_COMMIT"; then
+		cd stress-ng
+		git branch xfstests-bld $STRESS_NG_COMMIT
+		git checkout xfstests-bld
+		cd ..
+	fi
+fi
+
 # Make sure acl doesn't try regenerate these files because of the
 # vagrancies of the timestamps when they were checked out
 touch acl/aclocal.m4 acl/configure acl/Makefile.in

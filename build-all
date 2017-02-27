@@ -43,7 +43,14 @@ function set_skip_all () {
     SKIP_XFSTESTS=yes
     SKIP_QUOTA=yes
     SKIP_KVM_UTILS=yes
+    SKIP_STRESS_NG=yes
 }
+
+if test ! -d stress-ng
+then
+    SKIP_STRESS_NG=yes
+fi
+
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -84,6 +91,10 @@ while [ "$1" != "" ]; do
 	--quota-only)
 	    set_skip_all
 	    unset SKIP_QUOTA
+	    ;;
+	--stress-ng-only)
+	    set_skip_all
+	    unset SKIP_STRESS_NG
 	    ;;
 	--xfsprogs-only)
 	    set_skip_all
@@ -169,6 +180,18 @@ if test -z "$SKIP_AIO" ; then
     (cd libaio; ./configure $cross --disable-nls;
      make $J prefix=$DESTDIR install)
     rm $DESTDIR/lib/libaio.so*
+fi
+
+if test -z "$SKIP_STRESS_NG" ; then
+    build_start "stress-ng"
+    mkdir -p $DESTDIR/lib
+    mkdir -p $DESTDIR/bin
+    (cd stress-ng; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     make $J ; make DESTDIR=$DESTDIR $J install ; \
+     ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../stress-ng.ver ; \
+    )
 fi
 
 if test -z "$SKIP_DBENCH" ; then

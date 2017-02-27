@@ -81,6 +81,7 @@ MAKELOG
 /popt/test2
 /popt/test-poptrc
 /quota/
+/stress-ng/
 /xfsprogs-dev/
 /xfstests-dev/
 /xfstests/

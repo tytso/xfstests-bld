@@ -12,6 +12,7 @@ SUBDIRS =	acl \
 		libaio \
 		misc \
 		popt \
+		stress-ng \
 		xfsprogs-dev \
 		xfstests-dev
 

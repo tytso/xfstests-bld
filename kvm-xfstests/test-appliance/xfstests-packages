@@ -17,6 +17,7 @@ keyutils
 less
 libgdbm3
 liblzo2-2
+libbsd0
 lvm2
 makedev
 perl
