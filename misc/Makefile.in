@@ -11,7 +11,7 @@ CC = @CC@
 CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 
-PROGS= fname_benchmark resize syncfs zerofree
+PROGS= fname_benchmark postmark resize syncfs zerofree
 SCRIPTS= encrypt-fname-benchmark \
 	encrypt-smoketest \
 	encrypt-test-revalidate \
@@ -34,6 +34,9 @@ install:
 		cp $$i $(DESTDIR)/bin ; \
 		chmod +x $(DESTDIR)/bin/$$i ; \
 	done
+
+postmark: postmark.c
+	$(CC) $(LDFLAGS) -o postmark -O2 $<
 
 zerofree: ../kvm-xfstests/util/zerofree.c
 	$(CC) $(LDFLAGS) -o zerofree -O2 $< -lext2fs
