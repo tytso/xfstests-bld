@@ -111,7 +111,8 @@ fi
 update_xfstests()
 {
    tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
-   rsync --exclude-from kvm-exclude-files -avH files/* $ROOTDIR
+   tar -X kvm-exclude-files -C files \
+	--owner=root --group=root --mode=go+u-w -c . | tar -C $ROOTDIR -x
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests
    chown -R root:root $ROOTDIR/root
    chmod -R go+u-w $ROOTDIR/root
