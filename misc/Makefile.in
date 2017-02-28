@@ -11,7 +11,7 @@ CC = @CC@
 CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 
-PROGS= fname_benchmark postmark resize syncfs zerofree
+PROGS= fname_benchmark postmark resize syncfs
 SCRIPTS= encrypt-fname-benchmark \
 	encrypt-smoketest \
 	encrypt-test-revalidate \
@@ -42,7 +42,7 @@ zerofree: ../kvm-xfstests/util/zerofree.c
 	$(CC) $(LDFLAGS) -o zerofree -O2 $< -lext2fs
 
 clean:
-	rm -f $(PROGS)
+	rm -f $(PROGS) zerofree
 
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	cd $(top_builddir); CONFIG_FILES=$(my_dir)/Makefile ./config.status
