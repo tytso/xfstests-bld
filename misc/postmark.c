@@ -52,28 +52,28 @@ Versions:
 1.52 - Fixed error in time base for terse report.  (Thanks to Collin Park)
 
 1.53 - Fixed error in report of deleted files (Thanks to Alf Wachsmann)
+
+1.60 - Added more accurate timing from Andiry Xu and cleanups by Theodore Ts'o
 */
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 #include <fcntl.h>
 
-#define PM_VERSION "v1.51 : 8/14/01"
+#define PM_VERSION "v1.60 : 2017-02-27"
 
 #ifdef _WIN32
 #include <io.h>
 #include <direct.h>
 
-#define GETWD(x) getcwd(x,MAX_LINE)
 #define MKDIR(x) mkdir(x)
 #define SEPARATOR "\\"
 #else
-extern char *getwd();
 
-#define GETWD(x) getwd(x)
 #define MKDIR(x) mkdir(x,0700)
 #define SEPARATOR "/"
 #endif
@@ -511,15 +511,6 @@ int size; /* number of bytes of junk to create */
    return(new_source);
 }
 
-/* returns differences in times -
-   1 second is the minimum to avoid divide by zero errors */
-//time_t diff_time(t1,t0)
-//time_t t1;
-//time_t t0;
-//{
-//   return((t1-=t0)?t1:1);
-//}
-
 float diff_time(struct timeval t1, struct timeval t0)
 {
 	return (t1.tv_sec - t0.tv_sec) + (float)(t1.tv_usec - t0.tv_usec) / 1000000;
@@ -580,7 +571,7 @@ int deleted; /* files deleted back-to-back */
    elapsed=diff_time(end_time,start_time);
    t_elapsed=diff_time(t_end_time,t_start_time);
 
-   fprintf(fp,"%.4f %.4f %.2f ", elapsed, t_elapsed, 
+   fprintf(fp,"%.4f %.4f %.2f ", elapsed, t_elapsed,
       (float)transactions/t_elapsed);
    fprintf(fp, "%.2f %.2f %.2f ", (float)files_created/elapsed, 
       (float)simultaneous/diff_time(t_start_time,start_time),
@@ -1095,7 +1086,7 @@ char *param; /* optional: name of output file */
       fprintf(fp,"Files are %s in size\n",scale(file_size_low));
 
    fprintf(fp,"Working director%s: %s\n",(file_system_count>1)?"ies":"y",
-      (file_system_count==0)?GETWD(current_dir):"");
+      (file_system_count==0)?getcwd(current_dir, sizeof(current_dir)):"");
 
    for (traverse=file_systems; traverse; traverse=traverse->next)
       printf("\t%s (weight=%d)\n",traverse->system.name,traverse->system.size);
