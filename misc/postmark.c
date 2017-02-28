@@ -8,7 +8,7 @@ Appliance on various platforms, including Solaris 2 on an Ultra-170,
 and Windows NT on a Compaq ProLiant. However, this PostMark source
 code is distributed under the Artistic License appended to the end
 of this file. As such, no support is provided. However, please report
-any errors to the author, Jeffrey Katcher <katcher@netcom.com>, or to
+any errors to the author, Jeffrey Katcher <katcher@netapp.com>, or to
 Andy Watson <watson@netapp.com>.
 
 Versions:
@@ -39,25 +39,24 @@ Versions:
 
 1.14 - Automatically stop run if work files are depleted
 
-1.5 - It was pointed out by many (most recently Michael Flaster) that the
+1.5 - Many people (most recently Michael Flaster) have emphasized that the
       pseudo-random number generator was more pseudo than random.  After
       a review of the literature and extensive benchmarking, I've replaced
       the previous PRNG with the Mersenne Twister.  While an excellent PRNG,
       it retains much of the performance of the previous implementation. 
       URL: http://www.math.keio.ac.jp/~matumoto/emt.html
       Also changed MB definition to 1024KB, tweaked show command
+
+1.51 - Added command to load config file from CLI
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#ifdef	HAVE_FCNTL_H
 #include <fcntl.h>
-#endif
+
+#define PM_VERSION "v1.51 : 8/14/01"
 
 #ifdef _WIN32
 #include <io.h>
@@ -102,6 +101,7 @@ extern int cli_set_bias_create();
 extern int cli_set_report();
 
 extern int cli_run();
+extern int cli_load();
 extern int cli_show();
 extern int cli_help();
 extern int cli_quit();
@@ -122,6 +122,7 @@ cmd command_list[]={ /* table of CLI commands */
       "Sets the chance of choosing create over delete"},
    {"set report",cli_set_report,"Choose verbose or terse report format"},
    {"run",cli_run,"Runs one iteration of benchmark"},
+   {"load",cli_load,"Read configuration file"},
    {"show",cli_show,"Displays current configuration"},
    {"help",cli_help,"Prints out available commands"},
    {"quit",cli_quit,"Exit program"},
@@ -237,46 +238,40 @@ char *param; /* remainder of command line */
    return(1);
 }
 
+int cli_generic_int(var,param,error)
+int *var; /* pointer to variable to set */
+char *param; /* remainder of command line */
+char *error; /* error message */
+{
+   int value;
+
+   if (param && (value=atoi(param))>0)
+      *var=value;
+   else
+      fprintf(stderr,"Error: %s\n",error);
+
+   return(1);
+}
+
 /* UI callback for 'set number' command - sets number of files to create */
 int cli_set_number(param)
 char *param; /* remainder of command line */
 {
-   int size;
-
-   if (param && (size=atoi(param))>0)
-      simultaneous=size;
-   else
-      fprintf(stderr,"Error: no file number specified\n");
-
-   return(1);
+   return(cli_generic_int(&simultaneous,param,"invalid number of files"));
 }
 
 /* UI callback for 'set seed' command - initial value for random number gen */
 int cli_set_seed(param)
 char *param; /* remainder of command line */
 {
-   int size;
-
-   if (param && (size=atoi(param))>0)
-      seed=size;
-   else
-      fprintf(stderr,"Error: no random number seed specified\n");
-
-   return(1);
+   return(cli_generic_int(&seed,param,"invalid seed for random numbers"));
 }
 
 /* UI callback for 'set transactions' - configure number of transactions */
 int cli_set_transactions(param)
 char *param; /* remainder of command line */
 {
-   int size;
-
-   if (param && (size=atoi(param))>0)
-      transactions=size;
-   else
-      fprintf(stderr,"Error: no transactions specified\n");
-
-   return(1);
+   return(cli_generic_int(&transactions,param,"no transactions specified"));
 }
 
 int parse_weight(params)
@@ -411,42 +406,22 @@ char *param; /* remainder of command line */
 int cli_set_subdirs(param)
 char *param; /* remainder of command line */
 {
-   int subdirs;
-
-   if (param && (subdirs=atoi(param))>=0)
-      subdirectories=subdirs;
-   else
-      fprintf(stderr,"Error: invalid number of subdirectories specified\n");
-
-   return(1);
+   return(cli_generic_int(&subdirectories,param,
+      "invalid number of subdirectories"));
 }
 
 /* UI callback for 'set read' - configure read block size (integer) */
 int cli_set_read(param)
 char *param; /* remainder of command line */
 {
-   int size;
-
-   if (param && (size=atoi(param))>0)
-      read_block_size=size;
-   else
-      fprintf(stderr,"Error: no block size specified\n");
-
-   return(1);
+   return(cli_generic_int(&read_block_size,param,"invalid read block size"));
 }
 
 /* UI callback for 'set write' - configure write block size (integer) */
 int cli_set_write(param)
 char *param; /* remainder of command line */
 {
-   int size;
-
-   if (param && (size=atoi(param))>0)
-      write_block_size=size;
-   else
-      fprintf(stderr,"Error: no block size specified\n");
-
-   return(1);
+   return(cli_generic_int(&write_block_size,param,"invalid write block size"));
 }
 
 /* UI callback for 'set buffering' - sets buffering mode on or off
@@ -468,7 +443,7 @@ char *param; /* remainder of command line */
 {
    int value;
 
-   if (param && (value=atoi(param))>=-1  && value<=10)
+   if (param && (value=atoi(param))>=-1 && value<=10)
       bias_read=value;
    else
       fprintf(stderr,
@@ -483,7 +458,7 @@ char *param; /* remainder of command line */
 {
    int value;
 
-   if (param && (value=atoi(param))>=-1  && value<=10)
+   if (param && (value=atoi(param))>=-1 && value<=10)
       bias_create=value;
    else
       fprintf(stderr,
@@ -631,7 +606,7 @@ int find_free_file()
    return(-1); /* return -1 only if no free files found */
 }
 
-/* write 'size' bytes to file 'fd' using unbuffered I/O */
+/* write 'size' bytes to file 'fd' using unbuffered I/O and close file */
 void write_blocks(fd,size)
 int fd;
 int size;   /* bytes to write to file */
@@ -647,9 +622,11 @@ int size;   /* bytes to write to file */
    write(fd,file_source+offset,i); /* write remainder */
 
    bytes_written+=size; /* update counter */
+
+   close(fd);
 }
 
-/* write 'size' bytes to file 'fp' using buffered I/O */
+/* write 'size' bytes to file 'fp' using buffered I/O and close file */
 void fwrite_blocks(fp,size)
 FILE *fp;
 int size;   /* bytes to write to file */
@@ -665,6 +642,8 @@ int size;   /* bytes to write to file */
    fwrite(file_source+offset,i,1,fp); /* write remainder */
    
    bytes_written+=size; /* update counter */
+
+   fclose(fp);
 }
 
 void create_file_name(dest)
@@ -713,15 +692,9 @@ int buffered; /* 1=buffered I/O (default), 0=unbuffered I/O */
       if (fp || fd!=-1)
          {
          if (buffered)
-            {
             fwrite_blocks(fp,file_table[free_file].size);
-            fclose(fp);
-            }
          else
-            {
             write_blocks(fd,file_table[free_file].size);
-            close(fd);
-            }
          }
       else
          fprintf(stderr,"Error: cannot open '%s' for writing\n",
@@ -810,15 +783,9 @@ int buffered; /* 1=buffered I/O (default), 0=unbuffered I/O */
          block=RND(file_size_high-file_table[number].size)+1;
 
          if (buffered)
-            {
             fwrite_blocks(fp,block);
-            fclose(fp);
-            }
          else
-            {
             write_blocks(fd,block);
-            close(fd);
-            }
 
          file_table[number].size+=block;
          files_appended++;
@@ -1077,6 +1044,20 @@ char *param; /* unused */
    return(1); /* return 1 unless exit requested, then return 0 */
 }
 
+/* CLI callback for 'load' - read configuration file */
+int cli_load(param)
+char *param;
+{
+   char buffer[MAX_LINE+1]; /* storage for input command line */
+
+   if (param)
+      read_config_file(param,buffer,0);
+   else
+      fprintf(stderr,"Error: no configuration file specified\n");
+
+   return(1); /* return 1 unless exit requested, then return 0 */
+}
+
 /* CLI callback for 'show' - print values of configuration variables */
 int cli_show(param) 
 char *param; /* optional: name of output file */
@@ -1210,9 +1191,10 @@ char *buffer; /* line of user input */
 
 /* read config file if present and process it line by line
    - if 'quit' is in file then function returns 0 */
-int read_config_file(filename,buffer)
+int read_config_file(filename,buffer,ignore)
 char *filename; /* file name of config file */
 char *buffer;   /* temp storage for each line read from file */
+int ignore;     /* ignore file not found */
 {
    int result=1; /* default exit value - proceed with UI */
    FILE *fp;
@@ -1228,6 +1210,10 @@ char *buffer;   /* temp storage for each line read from file */
 
       fclose(fp);
       }
+   else
+      if (!ignore)
+         fprintf(stderr,"Error: cannot read configuration file '%s'\n",
+            filename); 
 
    return(result);
 }
@@ -1239,8 +1225,8 @@ char *argv[];
 {
    char buffer[MAX_LINE+1]; /* storage for input command line */
 
-   printf("PostMark v1.5 : 3/27/01\n");
-   if (read_config_file((argc==2)?argv[1]:".pmrc",buffer))
+   printf("PostMark %s\n",PM_VERSION);
+   if (read_config_file((argc==2)?argv[1]:".pmrc",buffer,1))
       while (cli_read_line(buffer,MAX_LINE) && cli_parse_line(buffer))
          ;
 }
