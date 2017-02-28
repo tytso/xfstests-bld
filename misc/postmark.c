@@ -48,6 +48,10 @@ Versions:
       Also changed MB definition to 1024KB, tweaked show command
 
 1.51 - Added command to load config file from CLI
+
+1.52 - Fixed error in time base for terse report.  (Thanks to Collin Park)
+
+1.53 - Fixed error in report of deleted files (Thanks to Alf Wachsmann)
 */
 
 #include <stdio.h>
@@ -544,8 +548,8 @@ int deleted; /* files deleted back-to-back */
    fprintf(fp,"\t%d read (%d per second)\n",files_read,files_read/t_elapsed);
    fprintf(fp,"\t%d appended (%d per second)\n",files_appended,
       files_appended/t_elapsed);
-   fprintf(fp,"\t%d deleted (%d per second)\n",files_created,
-      files_created/elapsed);
+   fprintf(fp,"\t%d deleted (%d per second)\n",files_deleted,
+      files_deleted/elapsed);
    
    interval=diff_time(end_time,t_end_time);
    fprintf(fp,"\t\tDeletion alone: %d files (%d per second)\n",deleted,
@@ -566,21 +570,19 @@ time_t end_time,start_time,t_end_time,t_start_time; /* timers from run */
 int deleted; /* files deleted back-to-back */
 {
    time_t elapsed,t_elapsed;
-   int interval;
 
    elapsed=diff_time(end_time,start_time);
    t_elapsed=diff_time(t_end_time,t_start_time);
-   interval=diff_time(t_start_time,start_time);
 
    fprintf(fp,"%d %d %.2f ", elapsed, t_elapsed, 
       (float)transactions/t_elapsed);
    fprintf(fp, "%.2f %.2f %.2f ", (float)files_created/elapsed, 
-      (float)simultaneous/interval,
+      (float)simultaneous/diff_time(t_start_time,start_time),
       (float)(files_created-simultaneous)/t_elapsed);
    fprintf(fp, "%.2f %.2f ", (float)files_read/t_elapsed,
       (float)files_appended/t_elapsed);
-   fprintf(fp, "%.2f %.2f %.2f ", (float)files_created/elapsed,
-      (float)deleted/interval,
+   fprintf(fp, "%.2f %.2f %.2f ", (float)files_deleted/elapsed,
+      (float)deleted/diff_time(end_time,t_end_time),
       (float)(files_deleted-deleted)/t_elapsed);
    fprintf(fp, "%.2f %.2f\n", (float)bytes_read/elapsed,
       (float)bytes_written/elapsed);
