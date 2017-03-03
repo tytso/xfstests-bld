@@ -16,18 +16,17 @@ SUBDIRS =	acl \
 		xfsprogs-dev \
 		xfstests-dev
 
-all: xfsprogs-dev xfstests-dev fio quota \
-	gce-xfstests.sh kvm-xfstests.sh
+SCRIPTS =	android-xfstests.sh \
+		gce-xfstests.sh \
+		kvm-xfstests.sh
+
+all: xfsprogs-dev xfstests-dev fio quota $(SCRIPTS)
 	./build-all
 
 xfsprogs-dev xfstests-dev fio quota:
 	./get-all
 
-gce-xfstests.sh: kvm-xfstests/gce-xfstests.in
-	sed -e "s;@DIR@;$$(pwd);" < $< > $@
-	chmod +x $@
-
-kvm-xfstests.sh: kvm-xfstests/kvm-xfstests.in
+$(SCRIPTS): %.sh: kvm-xfstests/%.in
 	sed -e "s;@DIR@;$$(pwd);" < $< > $@
 	chmod +x $@
 
@@ -38,7 +37,7 @@ clean:
 	done
 	make -C xfsprogs-dev realclean
 	rm -rf bld xfstests
-	rm -f kvm-xfstests/util/zerofree gce-xfstests.sh kvm-xfstests.sh
+	rm -f kvm-xfstests/util/zerofree $(SCRIPTS)
 
 kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
 	cc -static -o $@ $< -lext2fs -lcom_err -lpthread

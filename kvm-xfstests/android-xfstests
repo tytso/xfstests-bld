@@ -1,0 +1,289 @@
+#!/bin/bash
+
+set -e -o pipefail
+
+XFSTESTS_FLAVOR=android
+DIR=.
+if [ -n "$ANDROID_XFSTESTS_DIR" ]; then
+    DIR="$ANDROID_XFSTESTS_DIR"
+fi
+
+. "$DIR/util/get-config"
+
+# Path to chroot tarball; can be overridden with -I
+ROOT_FS="$DIR/test-appliance/armhf_root_fs.tar.gz"
+
+# Where to download the tarball from (at user's request) if we don't have it
+ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/armhf_root_fs.tar.gz"
+
+# Chroot directory on device.
+# Note: this will be wiped clean when deploying a new chroot tarball.
+CHROOT_DIR="/data/xfstests-chroot"
+
+# Results directory.
+RESULTS_DIR="/data/xfstests-results"
+
+. "$DIR/util/parse_cli"
+
+if test -n "$SKIP_LOG" ; then
+    LOGFILE=/tmp/log.$(date +%Y%m%d%H%M)
+else
+    mkdir -p "$DIR/logs"
+    LOGFILE="$DIR/logs/log.$(date +%Y%m%d%H%M)"
+fi
+
+die()
+{
+    echo -e 1>&2 "[ERROR] android-xfstests: $*"
+    exit 1
+}
+
+ask_yesno()
+{
+    local response
+    echo -n -e "$@ (y/n) "
+    read response
+    if [ "$response" != y ]; then
+	exit 1
+    fi
+}
+
+wait_for_device()
+{
+    local unauthorized=false
+    local waiting=false
+    while true; do
+	if adb devices | grep -q 'device$'; then
+	    break
+	fi
+	if adb devices | grep -q 'unauthorized$' && ! $unauthorized; then
+	    echo "adb is not authorized.  Authorize it using the dialog on the device to continue."
+	    unauthorized=true
+	fi
+	if ! $waiting && ! $unauthorized; then
+	    echo "Waiting for device..."
+	    waiting=true
+	fi
+	sleep 0.5
+    done
+
+    # Make sure adbd is running as root and that SELinux is in permissive mode.
+    if ! adb root > /dev/null ; then
+	die "Unable to restart adbd as root on the device.  Maybe your device is not rooted?"
+    fi
+    adb shell "setenforce 0"
+}
+
+chroot_prepare()
+{
+    cat <<EOF | adb shell
+! mountpoint $CHROOT_DIR/sys > /dev/null && mount sysfs -t sysfs $CHROOT_DIR/sys
+! mountpoint $CHROOT_DIR/proc > /dev/null && mount proc -t proc $CHROOT_DIR/proc
+! mountpoint $CHROOT_DIR/dev > /dev/null && mount --bind /dev $CHROOT_DIR/dev
+
+# 'mountpoint' doesn't work with directory bind mounts; use /proc/mounts instead
+if ! cut -d' ' -f2 /proc/mounts 2>/dev/null | grep -q '^$CHROOT_DIR/results$'; then
+    mkdir -p $RESULTS_DIR
+    mount --bind $RESULTS_DIR $CHROOT_DIR/results
+fi
+EOF
+}
+
+chroot_wipe()
+{
+    cat <<EOF | adb shell
+umount $CHROOT_DIR/sys &> /dev/null
+umount $CHROOT_DIR/proc &> /dev/null
+umount $CHROOT_DIR/dev &> /dev/null
+umount $CHROOT_DIR/results &> /dev/null
+rm -rf $CHROOT_DIR
+mkdir $CHROOT_DIR
+EOF
+}
+
+CHROOT_CMD="HOME=/root TMPDIR=/tmp chroot $CHROOT_DIR"
+
+chroot_run()
+{
+    adb shell "$CHROOT_CMD /bin/bash -c \"$*\""
+}
+
+chroot_interactive_shell()
+{
+    echo "Run '$CHROOT_CMD /bin/bash' to enter the chroot."
+    adb shell
+
+    # TODO: figure out how to enter the chroot automatically and still have an
+    # interactive shell
+    #stty raw -echo
+    #( echo "$CHROOT_CMD /bin/bash -i" && cat) | adb shell
+    #stty sane
+}
+
+setup_chroot()
+{
+    if ! [ -f "$ROOT_FS" ]; then
+	echo "The xfstests chroot tarball does not exist:"
+	echo "        $ROOT_FS"
+	ask_yesno "Would you like to download the latest public tarball to that location?"
+	wget -O "$ROOT_FS" "$ROOT_FS_URL"
+	echo "Finished downloading chroot tarball."
+    fi
+    local old_md5sum="$(adb shell '[ -e '$CHROOT_DIR'/chroot_md5sum ] &&
+					cat '$CHROOT_DIR'/chroot_md5sum')"
+    local new_md5sum="$(md5sum "$ROOT_FS" | cut -d' ' -f1)"
+    if [ "$old_md5sum" = "$new_md5sum" ]; then
+	chroot_prepare
+	return 0
+    fi
+
+    echo "Deploying chroot tarball to device (path=$ROOT_FS, md5sum=$new_md5sum)..."
+    stop_existing_tests
+    chroot_wipe
+
+    # If the chroot tarball is in .tar.xz format, then decompress it host-side,
+    # since Android devices don't usually include the xz program.
+    local srcfile="$ROOT_FS"
+    local decompress="cat"
+    if file "$ROOT_FS" | grep -q '\<XZ compressed\>'; then
+	xz -d -c "$ROOT_FS" > "$tmpfile"
+	srcfile="$tmpfile"
+    elif file "$ROOT_FS" | grep -q '\<gzip compressed\>'; then
+	decompress="gzip -d -c"
+    fi
+
+    local destfile=$CHROOT_DIR/"$(basename "$ROOT_FS")"
+    adb push "$srcfile" "$destfile"
+    cat <<EOF | adb shell
+$decompress "$destfile" | tar -C $CHROOT_DIR -x
+mv $CHROOT_DIR/root/test-config $CHROOT_DIR/root/test-config.orig
+echo $new_md5sum > $CHROOT_DIR/chroot_md5sum
+EOF
+    adb push "$DIR/test-appliance/android-test-config" "$CHROOT_DIR/root/test-config"
+    chroot_prepare
+}
+
+try_shrink_userdata()
+{
+    cat <<EOF
+
+It seems you haven't run android-xfstests on this device yet, so
+there isn't any space for the xfstests partitions.  Would you like
+to make space for them by reformatting the userdata filesystem with
+a smaller size?  WARNING: THIS WILL DELETE ALL USER DATA!
+
+EOF
+    ask_yesno "    Erase and reformat userdata with smaller size?"
+    adb reboot bootloader
+    fastboot format::0x100000000 userdata # 4 GiB
+    fastboot continue
+    wait_for_device
+}
+
+setup_partitions()
+{
+    adb push $DIR/test-appliance/android-setup-partitions \
+	    $CHROOT_DIR/setup-partitions > /dev/null
+    adb shell "rm -f $CHROOT_DIR/setup-partitions-result"
+    chroot_run /setup-partitions
+    echo "unknown" > "$tmpfile"
+    adb pull $CHROOT_DIR/setup-partitions-result "$tmpfile" &> /dev/null || true
+    local result="$(<"$tmpfile")"
+    case "$result" in
+    ready)
+	;;
+    shrink_userdata)
+	if [ "$1" = second_try ]; then
+	    die "An unexpected problem occurred when shrinking userdata."
+	fi
+	try_shrink_userdata
+	setup_chroot
+	setup_partitions second_try
+	;;
+    insufficient_space)
+	die "This device doesn't have enough space on its internal storage to run android-xfstests."
+	;;
+    *)
+	die "An unexpected problem occurred while setting up the xfstests partitions."
+	;;
+    esac
+}
+
+# If xfstests is already running, ask the user if they want to terminate it
+stop_existing_tests()
+{
+    local existing=$(adb shell 'pgrep runtests\.sh')
+    if [ -z "$existing" ]; then
+	return 0
+    fi
+    ask_yesno "xfstests is already running!  Terminate it?"
+    adb shell "pkill -f \"bash \./check\""
+    local start=$(date +%s)
+    while (( $(date +%s) <= start + 10 )); do
+	local existing=$(adb shell 'pgrep runtests\.sh')
+	if [ -z "$existing" ]; then
+	    return 0
+	fi
+	sleep 1
+    done
+    die "Failed to stop existing xfstests instance."
+}
+
+tmpfile="$(mktemp)"
+trap "rm -f \"$tmpfile\"" EXIT
+
+if ! type -P adb > /dev/null;  then
+    die "adb is not installed"
+fi
+
+if ! type -P fastboot > /dev/null ; then
+    die "fastboot is not installed"
+fi
+
+wait_for_device
+setup_chroot
+
+case "$ARG" in
+    cmd=shell*|cmd=maint*)
+	chroot_interactive_shell
+	exit 0
+	;;
+esac
+
+stop_existing_tests
+setup_partitions first_try
+
+cat > "$tmpfile" <<EOF
+#!/bin/bash
+
+cd /root
+. test-config
+
+export FSTESTAPI="$(echo $API | sed -e 's/\./ /g')"
+export FSTESTCFG="$(echo $FSTESTCFG | sed -e 's/,/ /g')"
+export FSTESTSET="$(echo $FSTESTSET | sed -e 's/,/ /g')"
+export FSTESTOPT="$(echo $FSTESTOPT | sed -e 's/,/ /g')"
+export FSTESTTYP="$PRIMARY_FSTYPE"
+export MNTOPTS="$MNTOPTS"
+export FSTESTEXC="$(echo $FSTESTEXC | sed -e 's/,/ /g')"
+
+umount \$PRI_TST_MNT &> /dev/null
+umount \$SM_TST_MNT &> /dev/null
+umount \$SM_SCR_MNT &> /dev/null
+umount \$LG_TST_MNT &> /dev/null
+umount \$LG_SCR_MNT &> /dev/null
+
+./runtests.sh
+EOF
+adb push "$tmpfile" $CHROOT_DIR/run-xfstests > /dev/null
+adb shell "chmod +x $CHROOT_DIR/run-xfstests"
+
+chroot_run /run-xfstests |& tee $LOGFILE
+
+$DIR/get-results $LOGFILE
+
+if test -n "$SKIP_LOG" ; then
+    rm $LOGFILE
+else
+    echo "logfile in $LOGFILE"
+fi

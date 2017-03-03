@@ -1,0 +1,221 @@
+#!/bin/bash
+#
+# This script runs inside the Debian chroot on Android and sets up the xfstests
+# partitions.  We create the xfstests partitions in the area that is part of the
+# userdata partition on-disk but becomes unused by the userdata filesystem after
+# it is reformatted with a smaller size.  We number the xfstests partitions
+# starting at 100 (arbitrary), so they'll show up as /dev/block/sda100,
+# /dev/block/sda101, etc.  We also create symlinks like
+# /dev/block/xfstests/PRI_TST_DEV => /dev/block/sda100.
+#
+# We set up the partitions transiently, by changing the kernel's view of the
+# partitions.  The on-disk partition table is untouched.  Therefore, the
+# partitions will revert to normal after a reboot, and android-xfstests will
+# have to set them up again.  This has two main advantages: (1) it makes it
+# harder to mess things up and easier to revert the device to its original
+# state, and (2) it works even on devices that don't reserve enough extra
+# entries in their partition tables.  (While GPT partition tables normally have
+# space for 128 partitions, one Android device I tested had 35 partitions with
+# just 36 entries in the GPT, so only one more partition could be created!)
+#
+
+set -e -u -o pipefail
+RESULT_FILE=/setup-partitions-result
+rm -f $RESULT_FILE
+
+# Partitions to create: their names, their sizes in GiB, and whether they are
+# required or not.  If a partition is not required, then we create it only if
+# there is enough space.
+PARTITION_NAMES=(PRI_TST_DEV SM_TST_DEV SM_SCR_DEV LG_TST_DEV LG_SCR_DEV)
+PARTITION_SIZES=(5 5 5 20 20)
+PARTITION_REQUIRED=(true true true false false)
+
+BYTES_PER_GIB=$(( 1 << 30 ))
+START_PARTITION_NUMBER=100
+USERDATA_SHRUNKEN_SIZE=$(( 4 * BYTES_PER_GIB ))
+
+# device node for userdata partition, e.g. /dev/block/sda35
+USERDATA_DEV=$(readlink /dev/block/bootdevice/by-name/userdata)
+
+# Device node for disk containing userdata partition, e.g. /dev/block/sda.
+# This is the Android device's internal storage.
+DISK_DEV=${USERDATA_DEV%%[0-9]*}
+
+finished()
+{
+    echo "$*" > $RESULT_FILE
+    exit 0
+}
+
+die()
+{
+    echo 1>&2 "[ERROR] android-setup-partitions: $*"
+    exit 1
+}
+
+# Pretty-print a byte count
+pprint_bytes()
+{
+    local bytes=$1
+    echo "$(( bytes / BYTES_PER_GIB )) GiB ($bytes bytes)"
+}
+
+# Get the number of the given partition
+get_partition_number()
+{
+    local dev=$1
+    echo $dev | egrep -o '[0-9]+$'
+}
+
+# Get the size in bytes of the given partition, as stored in the partition table
+get_partition_disk_size()
+{
+    local dev=$1
+    local sectors=$(partx --output SECTORS --noheadings $dev)
+    echo $(( sectors * 512 ))
+}
+
+# Get the size in bytes of the given partition, as viewed by the kernel
+get_partition_size()
+{
+    local dev=$1
+    local sectors=$(< /sys/class/block/$(basename $dev)/size)
+    echo $(( sectors * 512 ))
+}
+
+# Get the start offset in bytes of the given partition, as viewed by the kernel.
+# (If the partition is also in the partition table, the start offset should be
+# the same, at least based on what this script does.)
+get_partition_start()
+{
+    local dev=$1
+    local start_sector=$(< /sys/class/block/$(basename $dev)/start)
+    echo $(( start_sector * 512 ))
+}
+
+# Check whether all the needed partitions are present and are large enough
+all_partitions_present()
+{
+    local i
+    for i in ${!PARTITION_NAMES[@]}; do
+	local link=/dev/block/xfstests/${PARTITION_NAMES[$i]}
+	if [ ! -L $link ]; then
+	    return 1
+	fi
+	local dev=$(readlink $link)
+	local wanted_size=$(( ${PARTITION_SIZES[$i]} * BYTES_PER_GIB ))
+	local actual_size=$(get_partition_size $dev)
+	if [ -z "$actual_size" ] || (( actual_size < wanted_size )); then
+	    return 1
+	fi
+    done
+    return 0
+}
+
+# Shrink the userdata partition if it's not fully used by the filesystem on it
+shrink_userdata_partition()
+{
+    local fs_size=$(dumpe2fs -h $USERDATA_DEV 2>/dev/null | \
+	    awk '/^Block count:/{blockcount=$3}
+		 /^Block size:/{blocksize=$3}
+		  END { print blockcount * blocksize }')
+    local part_size=$(get_partition_size $USERDATA_DEV)
+
+    if (( fs_size <= 0 )); then
+	die "unable to determine size of userdata filesystem"
+    fi
+    if (( fs_size % 512 != 0 )); then
+	die "Weird: the userdata filesystem takes up $fs_size bytes," \"
+	    "which is not a whole number of 512-byte sectors!"
+    fi
+    if (( part_size < fs_size )); then
+	die "Weird: the userdata partition is only $part_size bytes," \
+	    "but the filesystem on it is $fs_size bytes!"
+    fi
+    if (( part_size == fs_size )); then
+	return 0
+    fi
+    echo "Shrinking userdata partition..."
+    echo "    Old size: $(pprint_bytes $part_size)"
+    echo "    New size: $(pprint_bytes $fs_size)"
+    resizepart $DISK_DEV $(get_partition_number $USERDATA_DEV) \
+		$(( fs_size / 512 ))
+}
+
+# Delete the existing xfstests partitions, if any.
+delete_xfstests_partitions()
+{
+    if [ -d /dev/block/xfstests ] && \
+      (( $(ls /dev/block/xfstests | wc -l) != 0 )); then
+	local link
+	for link in /dev/block/xfstests/*; do
+	    local dev=$(readlink $link)
+	    umount $dev &> /dev/null || true
+	    local partno=$(get_partition_number $dev)
+	    delpart $DISK_DEV $partno
+	    rm $link
+	done
+    fi
+}
+
+create_xfstests_partitions()
+{
+    local userdata_disk_size=$(get_partition_disk_size $USERDATA_DEV)
+    local userdata_used_size=$(get_partition_size $USERDATA_DEV)
+    local start=$(get_partition_start $USERDATA_DEV)
+    local end=$(( start + userdata_disk_size ))
+    local i
+    local alignment=$(( 1 << 20 )) # 1 MiB alignment, for good measure
+
+    if (( userdata_used_size > userdata_disk_size )); then
+	die "Weird: the userdata partition is using $userdata_used_size" \
+	    "bytes, which is more than its on-disk size of" \
+	    "$userdata_disk_size bytes!"
+    fi
+
+    start=$(( start + userdata_used_size ))
+
+    local total_size_required=0
+    for i in ${!PARTITION_NAMES[@]}; do
+	if ${PARTITION_REQUIRED[$i]}; then
+	    total_size_required=$(( total_size_required +
+				    BYTES_PER_GIB * ${PARTITION_SIZES[$i]} ))
+	fi
+    done
+
+    mkdir -p /dev/block/xfstests
+    for i in ${!PARTITION_NAMES[@]}; do
+	start=$(( start + (alignment - start % alignment) % alignment ))
+	local name=${PARTITION_NAMES[$i]}
+	local size=$(( BYTES_PER_GIB * ${PARTITION_SIZES[$i]} ))
+	local remaining=$(( end - start ))
+	local partno=$(( START_PARTITION_NUMBER + i ))
+	if (( size > remaining )); then
+	    if ! ${PARTITION_REQUIRED[$i]}; then
+		echo "Not enough space to create the $name partition."
+		continue
+	    fi
+	    # Not enough space!  Check whether we should shrink userdata or not.
+	    if (( userdata_used_size > USERDATA_SHRUNKEN_SIZE &&
+		  USERDATA_SHRUNKEN_SIZE + total_size_required <=
+		    userdata_disk_size )); then
+		finished "shrink_userdata"
+	    else
+		finished "insufficient_space"
+	    fi
+	fi
+	echo "$name is ${DISK_DEV}${partno}: $(pprint_bytes $size) at offset $start"
+	addpart $DISK_DEV $partno $(( start / 512)) $(( size / 512 ))
+	ln -s ${DISK_DEV}${partno} /dev/block/xfstests/$name
+	start=$(( start + size ))
+    done
+}
+
+if ! all_partitions_present ; then
+    # Free up as much space as we can, then create the partitions.
+    shrink_userdata_partition
+    delete_xfstests_partitions
+    create_xfstests_partitions
+fi
+
+finished "ready"

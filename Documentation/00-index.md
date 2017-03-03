@@ -6,7 +6,7 @@ eventually use gce-xfstests.  Also please see the top-level
 [README](../README.md) file for this project.
 
 * [android-xfstests](android-xfstests.md)
-  * Instructions for running xfstests on an Android device
+  * Instructions for using android-xfstests
 * [building-rootfs](building-rootfs.md)
   * Documentation for the gen-image script
 * [building-xfstests](building-xfstests.md)

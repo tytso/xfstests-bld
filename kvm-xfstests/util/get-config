@@ -1,25 +1,24 @@
 #
-# Read the config files used for kvm-xfstests
+# Read the config files used for kvm-xfstests, gce-xfstests, etc.
 #
 # Shell scripts should use this file as follows:
 #
-#DIR=.
-#if test -n "$KVM_XFSTESTS_DIR"
-#then
-#    DIR="$KVM_XFSTESTS_DIR"
-#fi
+# XFSTESTS_FLAVOR=kvm # (or gce, etc.)
+# DIR=.
+# if test -n "$KVM_XFSTESTS_DIR" # (or $GCE_XFSTESTS_DIR, etc.)
+# then
+#     DIR="$KVM_XFSTESTS_DIR"
+# fi
 #
 # . "$DIR/util/get-config"
 
 . $DIR/config
 
-if test -n "$GCE_XFSTESTS" -a -f "$CONFIG_DIR/gce-xfstests" ; then
-   . $CONFIG_DIR/gce-xfstests
-elif test -f "$CONFIG_DIR/kvm-xfstests"; then
-   . $CONFIG_DIR/kvm-xfstests
-fi
+# Source the user-provided config if present (e.g. ~/.config/kvm-xfstests)
+[ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ] && \
+	. "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests"
 
-if test -n "$GCE_XFSTESTS" -a -z "$GCE_ACCOUNT" -a \
+if test "$XFSTESTS_FLAVOR" = "gce" -a -z "$GCE_ACCOUNT" -a \
    -n "$(ls $DIR/config-* 2> /dev/null)"
 then
    # We aren't just using GCE_ACCOUNT=$(...) to work around a performance

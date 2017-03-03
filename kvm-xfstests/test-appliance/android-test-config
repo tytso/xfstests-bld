@@ -1,0 +1,13 @@
+export PRI_TST_DEV=$(readlink /dev/block/xfstests/PRI_TST_DEV)
+export SM_SCR_DEV=$(readlink /dev/block/xfstests/SM_SCR_DEV)
+export SM_TST_DEV=$(readlink /dev/block/xfstests/SM_TST_DEV)
+export LG_SCR_DEV=$(readlink /dev/block/xfstests/LG_SCR_DEV)
+export LG_TST_DEV=$(readlink /dev/block/xfstests/LG_TST_DEV)
+
+export PRI_TST_MNT=/vdb
+export SM_SCR_MNT=/vdc
+export SM_TST_MNT=/vdd
+export LG_SCR_MNT=/vde
+export LG_TST_MNT=/vdf
+
+PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

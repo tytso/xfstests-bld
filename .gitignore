@@ -11,6 +11,7 @@ config.log
 config.status
 config.custom
 MAKELOG
+/android-xfstests.sh
 /kvm-xfstests/config-*
 /kvm-xfstests.sh
 /gce-xfstests.sh

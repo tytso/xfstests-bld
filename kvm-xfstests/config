@@ -1,14 +1,30 @@
 #
-# Customize these or put new values in ~/.config/kvm-xfstests or config.custom
+# Customize these, or put new values in:
+#
+#		~/.config/kvm-xfstests
+#	or
+#		~/.config/gce-xfstests
+#	or
+#		~/.config/android-xfstests
+#
+# ... to affect specific commands only;
+#
+# or in config.custom to affect all commands.
+#
+
+###############################################################################
+# Common configuration
+#
+PRIMARY_FSTYPE="ext4" # all commands
+NR_CPU=2 # kvm-xfstests and gce-xfstests
+MEM=2048 # kvm-xfstests and gce-xfstests
+
+###############################################################################
+# KVM configuration
 #
 #QEMU=/usr/local/bin/qemu-system-x86_64
 QEMU=/usr/bin/kvm
 KERNEL=$HOME/linux
-NR_CPU=2
-MEM=2048
-CONFIG_DIR=$HOME/.config
-
-PRIMARY_FSTYPE="ext4"
 ROOT_FS=$DIR/test-appliance/root_fs.img
 ROOT_DEV=/dev/vda
 VDB=$DIR/disks/vdb
@@ -40,10 +56,10 @@ MONITOR="-monitor telnet:localhost:7498,server,nowait"
 CONSOLE=" -serial mon:stdio"
 #CONSOLE=" -chardev stdio,id=console,signal=off -serial chardev:console"
 
+###############################################################################
 # GCE configuration
 #
 # GS_BUCKET=gs_bucket.thunk.org
 # GCE_PROJECT=tytso-xfstests-project
 # GCE_ZONE=us-central1-c
 # GCE_KERNEL=/u1/ext4-64/arch/x86/boot/bzImage
-

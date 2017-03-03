@@ -1,5 +1,6 @@
 #!/bin/bash
 
+XFSTESTS_FLAVOR=kvm
 DIR=.
 if test -n "$KVM_XFSTESTS_DIR"
 then

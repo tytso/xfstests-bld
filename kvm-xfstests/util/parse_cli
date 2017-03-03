@@ -5,6 +5,23 @@ SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
 API="1.3"
 
+# Is the invoked interface (kvm-xfstests, gce-xfstests, etc.) in the given list?
+flavor_in ()
+{
+    local flavor
+    for flavor ; do
+	if test "$XFSTESTS_FLAVOR" = "$flavor" ; then
+	    return 0
+	fi
+    done
+    return 1
+}
+
+supported_flavors ()
+{
+    flavor_in "$@" || print_help
+}
+
 print_help ()
 {
     PROG=$(basename "$0")
@@ -19,23 +36,35 @@ print_help ()
     echo "	-C count	- Run the specified tests multiple times"
     echo "	-I image	- Use this test appliance image"
     echo "	-m mountopts	- Append mount options to fs config"
-    echo "	-n nr_cpus	- Specify the number of cpu's"
-    if test "$GCE_XFSTESTS" != "yes" ; then
+    if flavor_in kvm gce ; then
+	echo "	-n nr_cpus	- Specify the number of cpu's"
+    fi
+    if flavor_in kvm ; then
 	echo "	-numa num	- Ask KVM to create <num> NUMA nodes"
 	echo "	-N		- Enable networking (requires root)"
     fi
-    echo "	-o opts		- Extra kernel command line options"
-    echo "	-r ram		- Specify memory to be used in megabytes"
+    if flavor_in kvm gce ; then
+	echo "	-o opts		- Extra kernel command line options"
+    fi
+    if flavor_in kvm gce ; then
+	echo "	-r ram		- Specify memory to be used in megabytes"
+    fi
     echo "	-x group	- Exclude group of tests from running"
     echo "	-X test		- Exclude test from running"
-    echo "	--kernel file	- Boot the specified kernel"
-    if test "$GCE_XFSTESTS" != "yes" ; then
+    if flavor_in kvm gce ; then
+	echo "	--kernel file	- Boot the specified kernel"
+    fi
+    if flavor_in kvm ; then
 	echo "	--initrd initrd	- Boot with the specified initrd"
-    else
+    elif flavor_in gce ; then
 	echo "	--pmem-device	- Set up persistent memory devices for DAX"
     fi
-    echo "	--no-log	- Don't save the log file for this run"
-    echo "	--no-action	- Print the command to start the VM"
+    if flavor_in kvm android ; then
+	echo "	--no-log	- Don't save the log file for this run"
+    fi
+    if flavor_in kvm gce ; then
+	echo "	--no-action	- Print the command to start the VM"
+    fi
     echo ""
     echo "Common file system configurations are:"
     echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
@@ -43,7 +72,7 @@ print_help ()
     echo ""
     echo "xfstest names have the form: ext4/NNN generic/NNN shared/NNN"
     echo ""
-    if test "$GCE_XFSTESTS" = "yes" ; then
+    if flavor_in gce ; then
 	echo "Common gce-xfstests commands:"
         echo "	ls		- List running xfstests instances"
         echo "	abort		- Abort a xfstests instance"
@@ -138,6 +167,7 @@ while [ "$1" != "" ]; do
 	    MNTOPTS="$1"
 	    ;;
 	-r) shift
+	    supported_flavors kvm gce
 	    case "$1" in
 		*[mM])
 		    MEM=$(echo "$1" | sed -e 's/[mM]$//')
@@ -166,13 +196,16 @@ while [ "$1" != "" ]; do
 	    ROOT_FS="$1"
 	    ;;
 	-n) shift
+	    supported_flavors kvm gce
 	    NR_CPU="$1"
 	    EXPLICIT_CPU=yes
 	    ;;
 	-o) shift
+	    supported_flavors kvm gce
 	    EXTRA_ARG=$(echo "$1" | sed -e 's/ /:/g')
 	    ;;
 	-v)
+	    supported_flavors kvm gce
 	    if test "$V" = "1" ; then
 		QUIET=""
 		V=2
@@ -182,11 +215,8 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	-N)
-	    if test "$GCE_XFSTESTS" != "yes" ; then
-		DO_NET=yes
-	    else
-		print_help
-	    fi
+	    supported_flavors kvm
+	    DO_NET=yes
 	    ;;
 	-X) shift
 	    if test -n "$FSTESTEXC" ; then
@@ -196,19 +226,17 @@ while [ "$1" != "" ]; do
 	    fi
 	    ;;
 	--hooks)
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		shift
-		GCE_HOOKS="$1"
-	    else
-		print_help
-	    fi
+	    supported_flavors gce
+	    shift
+	    GCE_HOOKS="$1"
 	    ;;
 	--update-xfstests-tar)
+	    supported_flavors kvm gce
 	    UPDATE_XFSTESTS_TAR=yes
 	    UPDATE_XFSTESTS=yes
 	    ;;
 	--update-xfstests)
+	    supported_flavors kvm gce
 	    if ! test -f "$DIR/../xfstests.tar.gz"
 	    then
 		echo "The xfstests.tar.gz file has not been built!"
@@ -217,13 +245,11 @@ while [ "$1" != "" ]; do
 	    UPDATE_XFSTESTS=yes
 	    ;;
 	--update-files)
+	    supported_flavors kvm gce
 	    UPDATE_FILES=yes
 	    ;;
 	--numa) shift
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		print_help
-	    fi
+	    supported_flavors kvm
 	    NUMA_NUM="$1"
 	    case "$NUMA_NUM" in
 		''|*[!0-9]*)
@@ -232,6 +258,7 @@ while [ "$1" != "" ]; do
 	    esac
 	    ;;
 	--no-action)
+	    supported_flavors kvm gce
 	    NO_ACTION="echo -e Would execute:\n\t"
 	    SKIP_LOG=yes
 	    ;;
@@ -248,83 +275,51 @@ while [ "$1" != "" ]; do
 	    NO_ZERO=yes
 	    ;;
 	--no-log)
-	    if test "$GCE_XFSTESTS" != "yes" ; then
-		SKIP_LOG=yes
-	    else
-		print_help
-	    fi
+	    supported_flavors kvm android
+	    SKIP_LOG=yes
 	    ;;
 	--log)
-	    if test "$GCE_XFSTESTS" != "yes" ; then
-		SKIP_LOG=no
-	    else
-		print_help
-	    fi
+	    supported_flavors kvm android
+	    SKIP_LOG=no
 	    ;;
 	--kernel) shift
-		  KERNEL="$1"
-		  if test -d "$KERNEL" ; then
-		      KERNEL="$KERNEL/arch/x86/boot/bzImage"
-		  fi
-		  OVERRIDE_KERNEL="$KERNEL"
-		  ;;
+	    supported_flavors kvm gce
+	    KERNEL="$1"
+	    if test -d "$KERNEL" ; then
+		KERNEL="$KERNEL/arch/x86/boot/bzImage"
+	    fi
+	    OVERRIDE_KERNEL="$KERNEL"
+	    ;;
 	--initrd) shift
-		  if test "$GCE_XFSTESTS" = "yes"
-		  then
-		      print_help
-		  fi
-		  INITRD="$1"
-		  if test ! -f "$INITRD" ; then
-		      print_help
-		  fi
-		  ;;
-	--local-ssd)
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		DO_LOCAL_SSD=yes
-	    else
+	    supported_flavors kvm
+	    INITRD="$1"
+	    if test ! -f "$INITRD" ; then
 		print_help
 	    fi
+	    ;;
+	--local-ssd)
+	    supported_flavors gce
+	    DO_LOCAL_SSD=yes
 	    ;;
 	--pmem-device)
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		PMEM_DEVICE=yes
-	    else
-		print_help
-	    fi
+	    supported_flavors gce
+	    PMEM_DEVICE=yes
 	    ;;
 	--machtype)
-	    if test "$GCE_XFSTESTS" = "yes"
-	    then
-		shift
-		GCE_MACHTYPE="$1"
-	    else
-		print_help
-	    fi
+	    supported_flavors gce
+	    GCE_MACHTYPE="$1"
 	    ;;
 	--image-project)
-	    if test "$GCE_XFSTESTS" = "yes" ; then
-		shift
-		GCE_IMAGE_PROJECT="$1"
-	    else
-		print_help
-	    fi
+	    supported_flavors gce
+	    GCE_IMAGE_PROJECT="$1"
 	    ;;
 	--instance-name)
-	    if test "$GCE_XFSTESTS" = "yes" ; then
-		shift
-		INSTANCE_NAME="$1"
-	    else
-		print_help
-	    fi
+	    supported_flavors gce
+	    INSTANCE_NAME="$1"
 	    ;;
 	--no-virtio-rng)
-	    if test "$GCE_XFSTESTS" = "yes" ; then
-		print_help
-	    else
-		NO_VIRTIO_RNG=yes
-	    fi
+	    supported_flavors kvm
+	    NO_VIRTIO_RNG=yes
 	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
@@ -345,7 +340,7 @@ while [ "$1" != "" ]; do
 	    ARG="cmd=maint"
 	    ;;
 	maint)
-	    if test "$GCE_XFSTESTS" != "yes" ; then
+	    if ! flavor_in gce ; then
 		ARG="cmd=maint"
 		EPH="-root_ephemeral=no"
 		SNAPSHOT=""
