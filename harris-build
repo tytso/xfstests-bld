@@ -34,7 +34,7 @@ then
 		   autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
 		   qemu-utils gettext e2fslibs-dev git debootstrap \
 		   fakechroot libdbus-1-3 autopoint pkg-config symlinks \
-		   rsync ccache
+		   rsync ccache ca-certificates
 fi
 
 if test -z "$SKIP_BUILD"
