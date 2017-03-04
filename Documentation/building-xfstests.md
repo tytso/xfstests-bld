@@ -38,7 +38,7 @@ needed.  They can be installed using the command:
         % sudo apt-get install build-essential autoconf autoconf2.64 \
                 automake libgdbm-dev libtool-bin qemu-utils gettext \
                 e2fslibs-dev git debootstrap fakechroot libdbus-1-3 \
-                autopoint pkg-config symlinks
+                autopoint pkg-config symlinks ca-certificates
 
 ## Building the xfstests tarball
 
@@ -115,7 +115,7 @@ pathname to your build chroot directory):
         (jessie-32)root@closure:/u1# apt-get install build-essential \
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap fakechroot \
-                libdbus-1-3 autopoint pkg-config symlinks
+                libdbus-1-3 autopoint pkg-config symlinks ca-certificates
         (jessie-32)root@closure:/u1# exit
 
 4. Copy config to config.custom, and then change the lines which
@@ -170,7 +170,8 @@ was using harris.debian.org)
         dd-schroot-cmd -c tytso-jessie apt-get install build-essential \
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync
+                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
+		ca-certificates
         schroot -r -c tytso-jessie
 Alternatively, make sure the build system is installed with Debian
 Stable (e.g., Jessie), and install the following packages:
@@ -178,7 +179,8 @@ Stable (e.g., Jessie), and install the following packages:
         % apt-get install build-essential build-essential \
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync
+                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
+		ca-certificates
 
 3.  Build the xfstests.tar.gz file (which contains the actual xfstests binaries built for armhf)
 
