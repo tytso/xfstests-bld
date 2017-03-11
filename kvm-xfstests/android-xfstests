@@ -103,6 +103,14 @@ if ! cut -d' ' -f2 /proc/mounts 2>/dev/null | grep -q '^$CHROOT_DIR/results$'; t
     mkdir -p $RESULTS_DIR
     mount --bind $RESULTS_DIR $CHROOT_DIR/results
 fi
+
+# Android puts loopback device nodes in /dev/block/ instead of /dev/.
+# But losetup can only find them in /dev/, so create them there too.
+for i in \`seq 0 7\`; do
+	if [ ! -e /dev/loop\$i ]; then
+		mknod /dev/loop\$i b 7 \$i
+	fi
+done
 EOF
 }
 
