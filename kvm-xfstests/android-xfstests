@@ -90,6 +90,14 @@ chroot_prepare()
 ! mountpoint $CHROOT_DIR/proc > /dev/null && mount proc -t proc $CHROOT_DIR/proc
 ! mountpoint $CHROOT_DIR/dev > /dev/null && mount --bind /dev $CHROOT_DIR/dev
 
+# Allow xfstests to detect that SELinux is in use.
+! mountpoint $CHROOT_DIR/sys/fs/selinux > /dev/null && \
+		mount selinuxfs -t selinuxfs $CHROOT_DIR/sys/fs/selinux
+touch $CHROOT_DIR/etc/selinux/config
+if [ ! -e $CHROOT_DIR/usr/sbin/selinuxenabled ]; then
+	ln $CHROOT_DIR/bin/true $CHROOT_DIR/usr/sbin/selinuxenabled
+fi
+
 # 'mountpoint' doesn't work with directory bind mounts; use /proc/mounts instead
 if ! cut -d' ' -f2 /proc/mounts 2>/dev/null | grep -q '^$CHROOT_DIR/results$'; then
     mkdir -p $RESULTS_DIR
@@ -101,6 +109,7 @@ EOF
 chroot_wipe()
 {
     cat <<EOF | adb shell
+umount $CHROOT_DIR/sys/fs/selinux &> /dev/null
 umount $CHROOT_DIR/sys &> /dev/null
 umount $CHROOT_DIR/proc &> /dev/null
 umount $CHROOT_DIR/dev &> /dev/null
