@@ -171,7 +171,7 @@ was using harris.debian.org)
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
                 fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
-		ca-certificates
+                ca-certificates
         schroot -r -c tytso-jessie
 Alternatively, make sure the build system is installed with Debian
 Stable (e.g., Jessie), and install the following packages:
@@ -180,7 +180,7 @@ Stable (e.g., Jessie), and install the following packages:
                 autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
                 qemu-utils gettext e2fslibs-dev git debootstrap \
                 fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
-		ca-certificates
+                ca-certificates
 
 3.  Build the xfstests.tar.gz file (which contains the actual xfstests binaries built for armhf)
 
