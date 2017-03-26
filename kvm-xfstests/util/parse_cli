@@ -225,9 +225,8 @@ while [ "$1" != "" ]; do
 		FSTESTEXC="$1"
 	    fi
 	    ;;
-	--hooks)
+	--hooks) shift
 	    supported_flavors gce
-	    shift
 	    GCE_HOOKS="$1"
 	    ;;
 	--update-xfstests-tar)
@@ -305,15 +304,15 @@ while [ "$1" != "" ]; do
 	    supported_flavors gce
 	    PMEM_DEVICE=yes
 	    ;;
-	--machtype)
+	--machtype) shift
 	    supported_flavors gce
 	    GCE_MACHTYPE="$1"
 	    ;;
-	--image-project)
+	--image-project) shift
 	    supported_flavors gce
 	    GCE_IMAGE_PROJECT="$1"
 	    ;;
-	--instance-name)
+	--instance-name) shift
 	    supported_flavors gce
 	    INSTANCE_NAME="$1"
 	    ;;
