@@ -6,8 +6,28 @@ else
 	. config
 fi
 
+while [ "$1" != "" ]; do
+    case $1 in
+	--out-tar)
+	    OUT_TAR=yes
+	    ;;
+	--no-out-tar)
+	    OUT_TAR=
+	    ;;
+	*)
+	    echo "usage: do-all [--out-tar]"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
 $BUILD_ENV make clean
 $BUILD_ENV make
 $BUILD_ENV make tarball
 cd kvm-xfstests/test-appliance
-$SUDO_ENV ./gen-image
+if test "$OUT_TAR" = "yes" ; then
+    $BUILD_ENV ./gen-image --out-tar
+else
+    $SUDO_ENV ./gen-image
+fi
