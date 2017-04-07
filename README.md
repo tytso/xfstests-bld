@@ -9,7 +9,7 @@ It has since evolved to have four primary functions:
 * [Building xfstests](Documentation/building-xfstests.md) to create a tar.gz file
 * Running xfstests in a virtual machine using qemu/kvm ([kvm-xfstests](Documentation/kvm-xfstests.md))
 * Running xfstests using Google Compute Engine ([gce-xfstests](Documentation/gce-xfstests.md))
-* Running xfstests on an Android device in a chroot ([android-xfstests](Documentation/android-xfstests.md)
+* Running xfstests on an Android device in a chroot ([android-xfstests](Documentation/android-xfstests.md))
 
 More details about how to use xfstests-bld to carry out these three
 functions can be found in the [Documentation
