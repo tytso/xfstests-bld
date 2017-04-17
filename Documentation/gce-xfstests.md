@@ -345,8 +345,10 @@ variable is defined:
         GCE_IMAGE_PROJECT="$GCE_PROJECT"
 
 Normally, the most recently created image in the xfstests image family
-will be used by default.  You can however override this by using the
--I option to specify a specific image file.  (For example:
-"gce-xfstests -I xfstests-201608130052 smoke".)  You can also use the
---image-project command line option to override the GCE_IMAGE_PROJECT
-setting in your configuration file.
+will be used by default.  You can however override this and use a
+specific image by setting `ROOT_FS` in your `~/.config/gce-xfstests`
+configuration file, or by using the -I option to gce-xfstests.  (For
+example: `ROOT_FS=xfstests-201608130052`, or "gce-xfstests -I
+xfstests-201608130052 smoke".)  You can also use the --image-project
+command line option to override the GCE_IMAGE_PROJECT setting in your
+configuration file.
