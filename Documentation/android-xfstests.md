@@ -120,7 +120,9 @@ that yourself.
 Terminating android-xfstests with Ctrl-C doesn't stop the test process
 on the device.
 
-'android-xfstests shell' gives you a shell, but not in the chroot.
+'android-xfstests shell' gives you a shell in the chroot, but it's not
+a snapshot like it is for kvm-xfstests; that is, any changes you make
+in the shell session are persistent.
 
 Android devices usually run an older version of the Linux kernel.  At
 the same time, xfstests is constantly being updated to add new tests.

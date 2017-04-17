@@ -95,7 +95,11 @@ mkdir $CHROOT_DIR
 EOF
 }
 
-CHROOT_CMD="HOME=/root TMPDIR=/tmp chroot $CHROOT_DIR"
+# When entering a login shell, we need to override $PATH to allow commands in
+# /etc/profile to run, as they fail with the Android $PATH.  The $PATH will,
+# however, get overridden again when /root/.bashrc is sourced.  (It's fine to do
+# this for noninteractive shell commands too.)
+CHROOT_CMD="HOME=/root TMPDIR=/tmp PATH=\$PATH:/usr/sbin:/usr/bin:/sbin:/bin chroot $CHROOT_DIR"
 
 chroot_run()
 {
@@ -104,14 +108,10 @@ chroot_run()
 
 chroot_interactive_shell()
 {
-    echo "Run '$CHROOT_CMD /bin/bash' to enter the chroot."
-    adb shell
-
-    # TODO: figure out how to enter the chroot automatically and still have an
-    # interactive shell
-    #stty raw -echo
-    #( echo "$CHROOT_CMD /bin/bash -i" && cat) | adb shell
-    #stty sane
+    # The -t option ("force PTY allocation") makes the shell interactive even
+    # though we're passing 'adb shell' a command to run.  This allows us to
+    # start a shell in the chroot.
+    adb shell -t "$CHROOT_CMD /bin/sh -c \"cd ~; /bin/bash --login\""
 }
 
 setup_chroot()
@@ -206,11 +206,15 @@ setup_partitions()
     esac
 }
 
+xfstests_running()
+{
+    [ -n "$(adb shell 'pgrep runtests\.sh')" ]
+}
+
 # If xfstests is already running, ask the user if they want to terminate it
 stop_existing_tests()
 {
-    local existing=$(adb shell 'pgrep runtests\.sh')
-    if [ -z "$existing" ]; then
+    if ! xfstests_running; then
 	return 0
     fi
     ask_yesno "xfstests is already running!  Terminate it?"
@@ -239,6 +243,9 @@ fi
 
 wait_for_device
 setup_chroot
+if ! xfstests_running; then
+    setup_partitions first_try
+fi
 
 case "$ARG" in
     cmd=shell*|cmd=maint*)
@@ -248,7 +255,6 @@ case "$ARG" in
 esac
 
 stop_existing_tests
-setup_partitions first_try
 
 cat > "$tmpfile" <<EOF
 #!/bin/bash

@@ -2,13 +2,12 @@
 
 . /root/test-config
 
-if [ $VDB != "/dev/vdb" ];
-then
-	ln -s $VDB /dev/vdb
-	ln -s $VDC /dev/vdc
-	ln -s $VDD /dev/vdd
-	ln -s $VDE /dev/vde
-	ln -s $VDF /dev/vdf
+if [ ! -e /dev/vdb ]; then
+    ln -s $PRI_TST_DEV /dev/vdb
+    ln -s $SM_SCR_DEV /dev/vdc
+    ln -s $SM_TST_DEV /dev/vdd
+    [ -n "$LG_SCR_DEV" ] && ln -s $LG_SCR_DEV /dev/vde
+    [ -n "$LG_TST_DEV" ] && ln -s $LG_TST_DEV /dev/vdf
 fi
 
 mkdir -p /vdb /vdc /vdd /vde /vdf
