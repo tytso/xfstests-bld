@@ -1,0 +1,15 @@
+#
+# Default configuration for gce-xfstests
+#
+# Variables set here may be overridden in ~/.config/gce-xfstests
+#
+
+#
+# GS_BUCKET=gs_bucket.thunk.org
+# GCE_PROJECT=tytso-xfstests-project
+# GCE_ZONE=us-central1-c
+# GCE_KERNEL=/u1/ext4-64/arch/x86/boot/bzImage
+
+# List of firewall rules to create.  By default the gce-xfstests web interface
+# is made available to everyone over the public Internet.
+GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server")

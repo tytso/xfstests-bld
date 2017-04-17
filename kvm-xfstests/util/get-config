@@ -12,12 +12,16 @@
 #
 # . "$DIR/util/get-config"
 
-. $DIR/config
+# Source the default configs
+. $DIR/config.common
+. $DIR/config.${XFSTESTS_FLAVOR}
 
-# Source the user-provided config if present (e.g. ~/.config/kvm-xfstests)
+# Source custom configs in ~/.config/ if present
+[ -f "$HOME/.config/xfstests-common" ] && . "$HOME/.config/xfstests-common"
 [ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ] && \
 	. "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests"
 
+# For gce-xfstests, source the config for the active account if present
 if test "$XFSTESTS_FLAVOR" = "gce" -a -z "$GCE_ACCOUNT" -a \
    -n "$(ls $DIR/config-* 2> /dev/null)"
 then
@@ -32,11 +36,19 @@ then
 fi
 
 if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
-   . "$DIR/config-$GCE_ACCOUNT"
+    . "$DIR/config-$GCE_ACCOUNT"
 elif test -f $DIR/config.custom ; then
-   . $DIR/config.custom
+# Else, source kvm-xfstests/config.custom if present (deprecated)
+    echo -e 1>&2 "Warning: use of kvm-xfstests/config.custom is deprecated." \
+	    "Move your settings\n         into ~/.config/kvm-xfstests," \
+	    "~/.config/gce-xfstests,\n         ~/.config/android-xfstests," \
+	    "and/or ~/.config/xfstests-common"
+    . $DIR/config.custom
 fi
 
+# Source $KVM_CONFIG if present (deprecated)
 if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
-   . $KVM_CONFIG
+    echo -e 1>&2 "Warning: use of \$KVM_CONFIG is deprecated." \
+	    "Move your settings into\n         ~/.config/kvm-xfstests"
+    . $KVM_CONFIG
 fi

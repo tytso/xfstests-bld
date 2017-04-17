@@ -22,10 +22,10 @@
     kernel-configs directory; pick one whose version number is close
     to the kernel version you wish to build.
 
-4.  In the fstests/kvm-xfstests directory, take a look at the "config"
-    file and either edit that file in place, or (this is preferred)
-    put override values in ~/.config/kvm-xfstests or config.custom.
-    The most common values you will likely need to override is the
+4.  In the fstests/kvm-xfstests/ directory, take a look at the
+    "config.kvm" file and either edit that file in place, or (this is
+    preferred) put override values in ~/.config/kvm-xfstests.  The
+    most common values you will likely need to override are the
     location of the compiled kernel and the preferred timezone if you
     wish the log files to display times in your local timezone.
 

@@ -39,11 +39,10 @@ Please see the relevant documentation files for more details.
 ## Setup and configuration
 
 The configuration file for kvm-xfstests is found in the kvm-xfstests
-directory and is named config.  You can edit this file directly, but
-the better thing to do is to place override values in
-~/.config/kvm-xfstests or in kvm-xfstests/config.custom.  Please look
-at the kvm-xfstests/config file to see the shell variables you can
-set.
+directory and is named config.kvm.  You can edit this file directly,
+but the better thing to do is to place override values in
+~/.config/kvm-xfstests.  Please look at the kvm-xfstests/config.kvm
+file to see the shell variables you can set.
 
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
