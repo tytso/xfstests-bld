@@ -119,9 +119,14 @@ if test -n "$GCE_REPORT_EMAIL" ; then
     fi
 fi
 
-if test -z "$(gcloud compute firewall-rules list allow-http | sed -e 1d)"
-then
-    gcloud compute --project "$GCE_PROJECT" firewall-rules create \
-	   allow-http --allow tcp:80 --target-tags http-server >& /dev/null &
-fi
+for rule in "${GCE_FIREWALL_RULES[@]}"; do
+    rule_name=$(echo $rule | cut -d' ' -f1)
+    if test -z "$(gcloud compute firewall-rules list $rule_name | sed -e 1d)"
+    then
+	echo "Creating $rule_name firewall rule..."
+	gcloud compute --project "$GCE_PROJECT" firewall-rules create $rule
+    fi
+done
+unset rule rule_name
+
 exit 0

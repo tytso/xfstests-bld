@@ -157,6 +157,18 @@ configuration parameters in order to have reports e-mailed to you:
     control over the domain used by GCE_REPORT_EMAIL, you may need to
     choose a different sender address.
 
+Other optional parameters include:
+
+* GCE_FIREWALL_RULES
+  * List of firewall rules to add to the GCP project if not already
+    present.  By default a rule "allow-http" is created which makes
+    the gce-xfstests web interface accessible to anyone over the
+    Internet.  It may be useful to override this if you want to
+    implement more restrictive firewall rules or disable access to the
+    web interface entirely.  Note that existing firewall rules
+    associated with the GCP project will not be removed, and by
+    default there is a default-allow-ssh rule which allows SSH access.
+
 An example ~/.config/gce-xfstests might look like this:
 
         GS_BUCKET=tytso-xfstests
