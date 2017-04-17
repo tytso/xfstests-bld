@@ -10,12 +10,6 @@ fi
 
 . "$DIR/util/get-config"
 
-# Path to chroot tarball; can be overridden with -I
-ROOT_FS="$DIR/test-appliance/armhf_root_fs.tar.gz"
-
-# Where to download the tarball from (at user's request) if we don't have it
-ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/armhf_root_fs.tar.gz"
-
 # Chroot directory on device.
 # Note: this will be wiped clean when deploying a new chroot tarball.
 CHROOT_DIR="/data/xfstests-chroot"
@@ -125,6 +119,9 @@ setup_chroot()
     if ! [ -f "$ROOT_FS" ]; then
 	echo "The xfstests chroot tarball does not exist:"
 	echo "        $ROOT_FS"
+	if [ -z "$ROOT_FS_URL" ]; then
+	    exit 1
+	fi
 	ask_yesno "Would you like to download the latest public tarball to that location?"
 	wget -O "$ROOT_FS" "$ROOT_FS_URL"
 	echo "Finished downloading chroot tarball."
