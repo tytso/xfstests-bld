@@ -1,17 +1,27 @@
 #!/bin/bash
 
 XFSTESTS_FLAVOR=gce
-DIR=.
-if test -n "$GCE_XFSTESTS_DIR"
+t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+eval DIR="\$$t"
+if test -z "$DIR"
 then
-    DIR="$GCE_XFSTESTS_DIR"
+    t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+    if test -d "$t"
+    then
+	DIR="$t"
+    fi
+fi
+if test -z "$DIR"
+then
+    DIR=$(pwd)
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
 fi
 
 . "$DIR/util/get-config"
-
-if test -r "$DIR/test-appliance/config.custom" ; then
-   . "$DIR/test-appliance/config.custom"
-fi
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
@@ -301,16 +311,34 @@ case "$1" in
 	;;
     create-image)
 	shift
+	if test ! -x "$DIR/test-appliance/gce-create-image"
+	then
+	    echo "Image creation not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-create-image" "$@"
 	exit $?
 	;;
     export-image)
 	shift
+	if test ! -x "$DIR/test-appliance/gce-export-image"
+	then
+	    echo "Image export not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-export-image" "$@"
 	exit $?
 	;;
     import-image)
 	shift
+	if test ! -x "$DIR/test-appliance/gce-import-image"
+	then
+	    echo "Image import not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;

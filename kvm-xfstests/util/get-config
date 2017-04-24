@@ -4,10 +4,24 @@
 # Shell scripts should use this file as follows:
 #
 # XFSTESTS_FLAVOR=kvm # (or gce, etc.)
-# DIR=.
-# if test -n "$KVM_XFSTESTS_DIR" # (or $GCE_XFSTESTS_DIR, etc.)
+# t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+# eval DIR="\$$t"
+# if test -z "$DIR"
 # then
-#     DIR="$KVM_XFSTESTS_DIR"
+#     t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+#     if test -d "$t"
+#     then
+# 	DIR="$t"
+#     fi
+# fi
+# if test -z "$DIR"
+# then
+#     DIR=$(pwd)
+# fi
+# if test ! -f "$DIR/util/get-config"
+# then
+#     echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+#     exit 1
 # fi
 #
 # . "$DIR/util/get-config"
