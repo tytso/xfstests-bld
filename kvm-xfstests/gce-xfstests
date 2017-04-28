@@ -213,6 +213,15 @@ case "$1" in
 	gcloud compute --project "$GCE_PROJECT" disks delete "$@"
 	exit 0
 	;;
+    ls-images)
+	gcloud compute --project "$GCE_PROJECT" images list --no-standard-images
+	exit 0
+	;;
+    rm-images)
+	shift
+	gcloud compute --project "$GCE_PROJECT" images delete "$@"
+	exit 0
+	;;
     ls-results|ls-gcs)
 	if test "$1" = "ls-gcs"
 	then
