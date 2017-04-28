@@ -4,6 +4,9 @@ API_MAJOR=1
 API_MINOR=3
 . /root/test-config
 
+RESULTS=/results
+RUNSTATS="$RUNSTATS"
+
 function gce_run_hooks()
 {
     if test -n "$RUN_ON_GCE"
@@ -31,7 +34,7 @@ function get_fs_config()
 
 if test -z "$FSTESTAPI" ; then
     echo "Missing TEST API!"
-    umount /results
+    umount "$RESULTS"
     poweroff -f > /dev/null 2>&1
 fi
 
@@ -42,7 +45,7 @@ if test "$1" -ne "$API_MAJOR" ; then
     echo "API version of kvm-xfstests is $1.$2"
     echo "Major version number must be $API_MAJOR"
     echo " "
-    umount /results
+    umount "$RESULTS"
     poweroff -f > /dev/null 2>&1
 fi
 
@@ -139,10 +142,10 @@ fi
 CPUS=$(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
 MEM=$(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
 
-cp /dev/null /results/run-stats
+cp /dev/null "$RUNSTATS"
 if test -f /var/www/cmdline
 then
-    echo "CMDLINE: $(cat /var/www/cmdline)" >> /results/run-stats
+    echo "CMDLINE: $(cat /var/www/cmdline)" >> "$RUNSTATS"
 fi
 if test -n "$RUN_ON_GCE"
 then
@@ -152,17 +155,17 @@ then
 		${instance} | \
 		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \
 		    -e 's;global/images/;;')
-    echo "FSTESTIMG: $image" >> /results/run-stats
+    echo "FSTESTIMG: $image" >> "$RUNSTATS"
 fi
-sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> /results/run-stats
-echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> /results/run-stats
-echo FSTESTCFG: \"$FSTESTCFG\" >> /results/run-stats
-echo FSTESTSET: \"$FSTESTSET\" >> /results/run-stats
-echo FSTESTEXC: \"$FSTESTEXC\" >> /results/run-stats
-echo FSTESTOPT: \"$FSTESTOPT\" >> /results/run-stats
-echo MNTOPTS:   \"$MNTOPTS\" >> /results/run-stats
-echo CPUS:      \"$CPUS\" >> /results/run-stats
-echo MEM:       \"$MEM\" >> /results/run-stats
+sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> "$RUNSTATS"
+echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> "$RUNSTATS"
+echo FSTESTCFG: \"$FSTESTCFG\" >> "$RUNSTATS"
+echo FSTESTSET: \"$FSTESTSET\" >> "$RUNSTATS"
+echo FSTESTEXC: \"$FSTESTEXC\" >> "$RUNSTATS"
+echo FSTESTOPT: \"$FSTESTOPT\" >> "$RUNSTATS"
+echo MNTOPTS:   \"$MNTOPTS\" >> "$RUNSTATS"
+echo CPUS:      \"$CPUS\" >> "$RUNSTATS"
+echo MEM:       \"$MEM\" >> "$RUNSTATS"
 if test -n "$RUN_ON_GCE"
 then
     DMI_MEM=$(sudo dmidecode -t memory 2> /dev/null | \
@@ -170,28 +173,28 @@ then
 		     sed -e 's/.*: //')
     if test $? -eq 0
     then
-	echo "MEM: $DMI_MEM (Max capacity)" >> /results/run-stats
+	echo "MEM: $DMI_MEM (Max capacity)" >> "$RUNSTATS"
     fi
     PARAM_MEM=$(gce_attribute mem)
     if test -n "$PARAM_MEM"
     then
-	echo "MEM: $PARAM_MEM (restricted by cmdline)" >> /results/run-stats
+	echo "MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
     fi
     GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-    echo GCE ID:    \"$GCE_ID\" >> /results/run-stats
-    echo DATECODE: $DATECODE >> /results/run-stats
+    echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
+    echo DATECODE: $DATECODE >> "$RUNSTATS"
 fi
 
-cat /results/run-stats
+cat "$RUNSTATS"
 
-for i in $(find /results -name results-\* -type d)
+for i in $(find "$RESULTS" -name results-\* -type d)
 do
     find $i/* -type d -print | xargs rm -rf 2> /dev/null
     find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
 done
 
-[ -e /proc/slabinfo ] && cp /proc/slabinfo /results/slabinfo.before
-cp /proc/meminfo /results/meminfo.before
+[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
+cp /proc/meminfo "$RESULTS/meminfo.before"
 
 free -m
 while test -n "$FSTESTCFG"
@@ -299,10 +302,10 @@ do
 	fi
 	echo $i > /run/fstest-config
 	setup_mount_opts
-	export RESULT_BASE="/results/$FS/results-$i"
-	if test ! -d "$RESULT_BASE" -a -d "/results/results-$i" ; then
-	    mkdir -p "/results/$FS"
-	    mv "/results/results-$i" "$RESULT_BASE"
+	export RESULT_BASE="$RESULTS/$FS/results-$i"
+	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$i" ; then
+	    mkdir -p "$RESULTS/$FS"
+	    mv "$RESULTS/results-$i" "$RESULT_BASE"
 	fi
 	mkdir -p "$RESULT_BASE"
 	echo FS: $FS > "$RESULT_BASE/config"
@@ -432,5 +435,5 @@ END	{ if (NR > 0) {
 	logger "END TEST $i: $TESTNAME "
 done
 
-[ -e /proc/slabinfo ] && cp /proc/slabinfo /results/slabinfo.after
-cp /proc/meminfo /results/meminfo.after
+[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.after"
+cp /proc/meminfo "$RESULTS/meminfo.after"
