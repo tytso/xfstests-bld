@@ -121,7 +121,7 @@ fi
 
 for rule in "${GCE_FIREWALL_RULES[@]}"; do
     rule_name=$(echo $rule | cut -d' ' -f1)
-    if test -z "$(gcloud compute firewall-rules list $rule_name | sed -e 1d)"
+    if test -z "$(gcloud --project "$GCE_PROJECT" compute firewall-rules list $rule_name | sed -e 1d)"
     then
 	echo "Creating $rule_name firewall rule..."
 	gcloud compute --project "$GCE_PROJECT" firewall-rules create $rule

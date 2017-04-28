@@ -12,7 +12,8 @@
 
 # List of firewall rules to create.  By default the gce-xfstests web interface
 # is made available to everyone over the public Internet.
-GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server")
+GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server" \
+		    "allow-https --allow tcp:443 --target-tags https-server")
 
 # Use different defaults for GCE because the background ruby monitoring
 # program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
