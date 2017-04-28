@@ -33,8 +33,9 @@ fi
 
 orig_account=$(gcloud auth list --filter status=ACTIVE --format="value(account)")
 
-if ! gcloud config configurations activate gce-xfstests >& /dev/null ; then
-    gcloud config configurations create --activate gce-xfstests
+: ${GCE_CONFIGURATION:=gce-xfstests}
+if ! gcloud config configurations activate "${GCE_CONFIGURATION}" >& /dev/null ; then
+    gcloud config configurations create --activate "${GCE_CONFIGURATION}"
 fi
 account=$(gcloud auth list --filter status=ACTIVE --format="value(account)")
 
