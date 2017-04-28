@@ -5,7 +5,7 @@ API_MINOR=3
 . /root/test-config
 
 RESULTS=/results
-RUNSTATS="$RUNSTATS"
+RUNSTATS="$RESULTS/run-stats"
 
 function gce_run_hooks()
 {
