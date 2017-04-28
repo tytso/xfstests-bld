@@ -659,6 +659,10 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
 
 case "$ARG" in
     cmd=maint*)
+	if test -n "$NO_SSH"
+	then
+	    exit 0
+	fi
 	if test -z "$NO_ACTION"
 	then
 	    sleep 1

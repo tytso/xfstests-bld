@@ -335,6 +335,11 @@ while [ "$1" != "" ]; do
 	full)
 	    FSTESTSET="$FSTESTSET,-g,auto"
 	    ;;
+	launch)
+	    supported_flavors gce
+	    ARG="cmd=maint"
+	    NO_SSH=yes
+	    ;;
 	shell)
 	    ARG="cmd=maint"
 	    ;;
