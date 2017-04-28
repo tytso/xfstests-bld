@@ -8,6 +8,8 @@ then
 fi
 . "$DIR/util/get-config"
 
+cd "$DIR/test-appliance"
+
 if test -r config.custom ; then
    . ./config.custom
 fi
@@ -18,8 +20,6 @@ then
 	echo "your config file"
 	exit 1
 fi
-
-cd "$DIR/test-appliance"
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
