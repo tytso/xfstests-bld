@@ -156,6 +156,7 @@ then
 		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \
 		    -e 's;global/images/;;')
     echo "FSTESTIMG: $image" >> "$RUNSTATS"
+    echo "FSTESTPRJ: $(get_metadata_value_with_retries project-id)" >> "$RUNSTATS"
 fi
 sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> "$RUNSTATS"
 echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> "$RUNSTATS"
