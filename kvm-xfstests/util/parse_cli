@@ -320,6 +320,14 @@ while [ "$1" != "" ]; do
 	    supported_flavors kvm
 	    NO_VIRTIO_RNG=yes
 	    ;;
+	--preemptible|--preempt)
+	    supported_flavors gce
+	    PREEMPTIBLE=yes
+	    ;;
+	--no-preemptible|--no-preempt)
+	    supported_flavors gce
+	    PREMPTIBLE=
+	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \

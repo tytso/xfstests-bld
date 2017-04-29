@@ -377,6 +377,13 @@ COMPUTE_RW=https://www.googleapis.com/auth/compute
 
 SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
 
+if test -n "$PREEMPTIBLE"
+then
+    PREEMPTIBLE="--preemptible"
+else
+    PREEMPTIBLE="--maintenance-policy MIGRATE"
+fi
+
 DATECODE=$(date +%Y%m%d%H%M)
 INSTANCE="xfstests-$DATECODE"
 
@@ -659,7 +666,7 @@ echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
-       $SSD_ARG --maintenance-policy "MIGRATE" \
+       $SSD_ARG $PREEMPTIBLE \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server,https-server \
