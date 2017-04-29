@@ -46,8 +46,8 @@ function setup_mount_opts()
             local size='\x00\x00\x00\x40'
         fi
         local key="${mode}${raw}${size}"
-        keyctl new_session
-        echo -n -e "${key}" | keyctl padd logon ext4:4242424242424242 @s
+        keyctl new_session >& /dev/null
+        echo -n -e "${key}" | keyctl padd logon ext4:4242424242424242 @s >& /dev/null
     fi
 }
 
