@@ -86,7 +86,7 @@ then
     if test -n "$RUN_ON_GCE"
     then
 	/usr/local/lib/gce-setup
-	/root/runtests.sh >& /results/runtests.log
+	/root/runtests.sh >> /results/runtests.log 2>&1
 
 	/usr/local/lib/gce-logger tests complete
 	/bin/rm -f /run/gce-finalize-wait

@@ -194,6 +194,8 @@ do
     find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
 done
 
+touch "$RESULTS/fstest-completed"
+
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
 cp /proc/meminfo "$RESULTS/meminfo.before"
 
@@ -301,7 +303,13 @@ do
 	    XFS_IO_AVOID="$ALL_XFS_IO_AVOID $XFS_IO_AVOID"
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
-	echo $i > /run/fstest-config
+	echo $FS/$i > /run/fstest-config
+	if grep -q "^$FS/$i\$" "$RESULTS/fstest-completed"
+	then
+	    echo "$FS/$i: already run"
+	    /usr/local/lib/gce-logger already run
+	    continue
+	fi
 	setup_mount_opts
 	export RESULT_BASE="$RESULTS/$FS/results-$i"
 	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$i" ; then
@@ -432,6 +440,7 @@ END	{ if (NR > 0) {
 	gce_run_hooks fs-config-end $i
 	umount "$TEST_DIR" >& /dev/null
 	umount "$SCRATCH_MNT" >& /dev/null
+	cat /run/fstest-config >> "$RESULTS/fstest-completed"
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
