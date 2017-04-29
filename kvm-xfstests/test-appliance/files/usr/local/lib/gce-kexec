@@ -90,6 +90,7 @@ fi
 
 if test -z "$kexec"
 then
+    /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
     cat >> /run/test-env <<EOF
 # Appended by gce-kexec
 FSTESTCFG="${fstestcfg//,/ }"

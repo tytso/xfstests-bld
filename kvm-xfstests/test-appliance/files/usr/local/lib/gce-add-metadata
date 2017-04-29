@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if test ! -f /run/xattr.lock
+then
+    touch f/run/xattr.lock
+fi
+
+flock /run/xattr.lock gcloud compute instances -q add-metadata $(hostname) \
+      --metadata "$@" >& /dev/null
