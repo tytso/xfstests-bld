@@ -14,8 +14,7 @@ LDFLAGS = @LDFLAGS@
 PROGS= fname_benchmark postmark resize syncfs
 SCRIPTS= encrypt-fname-benchmark \
 	encrypt-smoketest \
-	encrypt-test-revalidate \
-	setup-fstab
+	encrypt-test-revalidate
 
 all: $(PROGS)
 
