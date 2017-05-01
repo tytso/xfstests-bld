@@ -304,7 +304,8 @@ do
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
 	echo $FS/$i > /run/fstest-config
-	if grep -q "^$FS/$i\$" "$RESULTS/fstest-completed"
+	if test -n "$RUN_ON_GCE" && \
+		grep -q "^$FS/$i\$" "$RESULTS/fstest-completed"
 	then
 	    echo "$FS/$i: already run"
 	    /usr/local/lib/gce-logger already run
@@ -440,7 +441,9 @@ END	{ if (NR > 0) {
 	gce_run_hooks fs-config-end $i
 	umount "$TEST_DIR" >& /dev/null
 	umount "$SCRATCH_MNT" >& /dev/null
-	cat /run/fstest-config >> "$RESULTS/fstest-completed"
+	if test -n "$RUN_ON_GCE" ; then
+	    cat /run/fstest-config >> "$RESULTS/fstest-completed"
+	fi
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
