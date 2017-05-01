@@ -92,6 +92,7 @@ then
 	/bin/rm -f /run/gce-finalize-wait
     else
 	/root/runtests.sh
+	umount /results
 	poweroff -f > /dev/null 2>&1
     fi
 else
