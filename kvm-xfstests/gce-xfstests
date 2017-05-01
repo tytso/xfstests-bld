@@ -312,13 +312,18 @@ case "$1" in
 	exit 0
 	;;
     serial)
+	case "$GCE_SERIAL_PORT_DEFAULT" in
+	    [1234])
+		PORT="--port $GCE_SERIAL_PORT_DEFAULT"
+		;;
+	esac
 	if test "$2" == "--port"
 	then
 	    shift
 	    PORT="--port $2"
 	    shift
 	fi
-	exec gcloud beta compute --project "$GCE_PROJECT" -q \
+	exec gcloud compute --project "$GCE_PROJECT" -q \
 	     connect-to-serial-port --zone "$GCE_ZONE" $PORT "$2"
 	;;
     create-image)
