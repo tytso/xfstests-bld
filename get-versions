@@ -1,0 +1,48 @@
+#!/bin/bash
+
+TMPDIR=tmp-$$
+
+mkdir $TMPDIR
+
+if test -d stress-ng
+then
+    cd stress-ng
+    ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/stress-ng.ver
+    cd ..
+fi
+
+cd xfsprogs-dev
+ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfsprogs.ver
+cd ..
+
+cd fio
+ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/fio.ver
+cd ..
+
+cd xfstests-dev
+ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfstests.ver
+cd ..
+
+cd quota
+ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/quota.ver
+cd ..
+
+if test -f e2fsprogs.ver
+then
+    cp e2fsprogs.ver $TMPDIR
+fi
+
+cat $TMPDIR/*.ver
+rm -rf $TMPDIR
+exit 0
+    
+
+
+
+
+
+
+
+
+
+
