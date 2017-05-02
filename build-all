@@ -237,7 +237,7 @@ if test -z "$SKIP_XFSTESTS" ; then
     build_start "xfstests"
     (cd xfstests-dev; \
      ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
-     autoheader ; autoconf ; \
+     autoreconf -i ; \
      CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" \
      CPPFLAGS="-I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
