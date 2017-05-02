@@ -17,8 +17,10 @@ then
     exit 0
 fi
 
-REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)|(^Shutdown reason)"
+REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(^_check_)|(inconsistent)|(^Shutdown reason)"
 REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
+
+SYSLOG_RE_FAILURE="kernel: .*(WARNING)|(BUG): "
 
 reason=$(gce_attribute shutdown_reason)
 
@@ -37,6 +39,10 @@ then
     fi
     egrep "$REGEXP" < /results/runtests.log > /results/summary
     egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+    printf "\n" >> /results/failures
+    sed -n -f /usr/local/lib/get-check-failures.sed < /results/runtests.log >> /results/failures
+    printf "\n" >> /results/failures
+    egrep "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
 
     REPORT_EMAIL=$(gce_attribute report_email)
     run_hooks send-email
