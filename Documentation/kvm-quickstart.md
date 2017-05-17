@@ -18,9 +18,10 @@
     will run the kernel directly from the build tree. This means that
     there is no need to install any modules or create an initrd, which
     significantly speeds up the edit, compile, test, debug development
-    cycle.  There are sample 32-bit and 64-bit kernels in the
+    cycle.  There are sample 32-bit and 64-bit configs in the
     kernel-configs directory; pick one whose version number is close
-    to the kernel version you wish to build.
+    to the kernel version you wish to build, then copy it to .config
+    in your kernel build tree and run 'make olddefconfig'.
 
 4.  In the fstests/kvm-xfstests/ directory, take a look at the
     "config.kvm" file and either edit that file in place, or (this is

@@ -47,12 +47,15 @@ file to see the shell variables you can set.
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
 will boot to run the test appliance.  This is, in general, in the
-primary build tree that you use for kernel development.  Please use as
-the base for the .config file one of the kernel configurations from
-the kernel-config directory.  It is important that the kernel have all
-of the paravirtual device driver support needed for qemu included in
-the base kernel, since any modules will be ignored, and the test
-appliance does not use an initial ramdisk.
+primary build tree that you use for kernel development.
+
+The kernel for kvm-xfstests must not use modules, and it must include
+the paravirtual device drivers needed for qemu.  To build a correctly
+configured kernel, base your configuration on one of the files in the
+kernel-configs directory.  That is, copy the config for the desired
+architecture and kernel version (or the closest available version) to
+.config in your kernel build tree, then run 'make olddefconfig' ('make
+oldnoconfig' for pre-3.7 kernels).
 
 By default, the scratch disks used by test-appliance will be set up
 automatically, and are stored in the kvm-xfstests directory with the
