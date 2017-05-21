@@ -40,6 +40,12 @@ then
     . /usr/local/lib/gce-funcs
     /usr/local/lib/gce-kexec
     . /run/test-env
+    # for interactive mounting using the fstab entries
+    ln -s "$PRI_TST_DEV" /dev/vdb
+    ln -s "$SM_SCR_DEV" /dev/vdc
+    ln -s "$SM_TST_DEV" /dev/vdd
+    ln -s "$LG_SCR_DEV" /dev/vde
+    ln -s "$LG_TST_DEV" /dev/vdf
 elif test -b /dev/vdh
 then
     mkdir /tmp/upload
