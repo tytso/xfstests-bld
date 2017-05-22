@@ -11,6 +11,13 @@ else
 fi
 }
 
+date >> /var/log/kvm-xfstests-boot.log
+exec 1<&-
+exec 2<&-
+exec 1>> /var/log/kvm-xfstests-boot.log
+exec 2>&1
+set -vx
+
 . /root/test-config
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')

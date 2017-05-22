@@ -34,6 +34,7 @@ BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
 IMAGE_FAMILY=debian-8
 IMAGE_PROJECT=debian-cloud
+BACKPORTS=/jessie-backports
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
@@ -45,6 +46,11 @@ fi
 while [ "$1" != "" ];
 do
     case $1 in
+	--stretch)
+	    IMAGE_FAMILY=debian-9
+	    IMAGE_PROJECT=debian-cloud-testing
+	    BACKPORTS=
+	    ;;
 	-I) shift
 	    ROOT_FS="$1"
 	    BLD_INST="xfstests-bld-$1"
@@ -68,8 +74,9 @@ td=$(mktemp -d /tmp/gce-create.XXXXXXXX)
 cp $TARBALL $td/xfstests.tar.gz
 sed -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GS_TAR@;$GS_TAR;" \
-    -e "s/@BLD_INST@/$BLD_INST/" < gce-xfstests-bld.sh \
-				 > $td/gce-xfstests-bld.sh
+    -e "s/@BLD_INST@/$BLD_INST/" \
+    -e "s;@BACKPORTS@;$BACKPORTS;" \
+    < gce-xfstests-bld.sh > $td/gce-xfstests-bld.sh
 
 # Update the git-versions file
 if test -d ../../xfstests

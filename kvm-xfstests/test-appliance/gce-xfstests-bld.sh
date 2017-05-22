@@ -1,13 +1,22 @@
 #!/bin/bash
 
+# Close stdout and stderr
+exec 1<&-
+exec 2<&-
+exec 1<>/image-build.log
+exec 2>&1
+set -vx
+
 BUCKET=@BUCKET@
 GS_TAR=@GS_TAR@
 BLD_INST=@BLD_INST@
+BACKPORTS="@BACKPORTS@"
+
 PACKAGES="bash-completion \
 	bc \
 	bsdmainutils \
 	bsd-mailx \
-	btrfs-progs/jessie-backports \
+	"btrfs-progs$BACKPORTS" \
 	bzip2 \
 	cpio \
 	dc \
@@ -15,19 +24,18 @@ PACKAGES="bash-completion \
 	dbus \
 	dmsetup \
 	dump \
-	e2fsprogs/jessie-backports \
+	"e2fsprogs$BACKPORTS" \
 	e3 \
 	ed \
-	f2fs-tools/jessie-backports \
+	"f2fs-tools$BACKPORTS" \
 	file \
 	gawk \
 	kexec-tools \
 	keyutils \
 	less \
-	libcomerr2/jessie-backports \
+	"libcomerr2$BACKPORTS" \
 	libsasl2-modules \
-	libss2/jessie-backports \
-	libssl1.0.0 \
+	"libss2$BACKPORTS" \
 	libgdbm3 \
 	liblzo2-2 \
 	lighttpd \
@@ -149,11 +157,9 @@ rm -rf $GCE_STATE_DIR
 # Set label
 /sbin/tune2fs -L xfstests-root /dev/sda1
 
-journalctl > /image-build.log
-sync
-
 find /var/cache/man /var/cache/apt /var/lib/apt/lists -type f -print | xargs rm
 rm -f /etc/ssh/ssh_host_key* /etc/ssh/ssh_host_*_key*
+sync
 fstrim /
 gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
 	--keep-disks boot
