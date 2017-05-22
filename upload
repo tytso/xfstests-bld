@@ -3,9 +3,16 @@
 README=README
 DIR_32=build-32/kvm-xfstests/test-appliance
 DIR_64=build-64/kvm-xfstests/test-appliance
+DIR_ARMHF=build-armhf/kvm-xfstests/test-appliance
 
 #DEST=/pub/linux/kernel/people/tytso/kvm-xfstests/testing
 DEST=/pub/linux/kernel/people/tytso/kvm-xfstests
+
+ls -sl $DIR_32/root_fs.img $DIR_64/root_fs.img $DIR_ARMHF/root_fs.tar.gz
+
+printf "\nPausing to verify..."
+sleep 1
+printf "\n"
 
 /bin/rm -f $README.sig
 gpg2 --sign --detach $README
@@ -18,19 +25,15 @@ gpg2 --sign --detach $DIR_32/root_fs.img.i386
 cp $DIR_64/root_fs.img $DIR_64/root_fs.img.x86_64
 gpg2 --sign --detach $DIR_64/root_fs.img.x86_64
 
-if test -f armhf_root_fs.tar.gz
-then
-    gunzip < armhf_root_fs.tar.gz > /tmp/armhf_root_fs.tar
-    gpg2 --sign --detach /tmp/armhf_root_fs.tar
-    mv /tmp/armhf_root_fs.tar.sig .
-    rm /tmp/armhf_root_fs.tar
-fi
+/bin/rm -f $DIR_ARMHF/root_fs.armhf.tar.gz.sig $DIR_ARMHF/root_fs.armhf.tar.gz
+cp $DIR_ARMHF/root_fs.tar.gz $DIR_ARMHF/root_fs.armhf.tar.gz
+gunzip < $DIR_ARMHF/root_fs.armhf.tar.gz > /tmp/armhf_root_fs.tar
+gpg2 --sign --detach /tmp/armhf_root_fs.tar
+mv /tmp/armhf_root_fs.tar.sig $DIR_ARMHF/root_fs.armhf.tar.sig
+
+gpg2 --sign --detach $DIR_ARMHF/root_fs.armhf.tar.gz
 
 kup put $README $README.sig  $DEST/README
 kup put $DIR_32/root_fs.img.i386 $DIR_32/root_fs.img.i386.sig   $DEST/root_fs.img.i386
 kup put $DIR_64/root_fs.img.x86_64 $DIR_64/root_fs.img.x86_64.sig   $DEST/root_fs.img.x86_64
-
-if test -f armhf_root_fs.tar.gz
-then
-    kup put armhf_root_fs.tar.gz armhf_root_fs.tar.sig $DEST/armhf_root_fs.tar.gz
-fi
+kup put $DIR_ARMHF/root_fs.armhf.tar.gz $DIR_ARMHF/root_fs.armhf.tar.sig   $DEST/armhf_root_fs.tar.gz

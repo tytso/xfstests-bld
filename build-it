@@ -1,12 +1,27 @@
-#!/bin/sh
-date
-(cd build-32 ; ./do-all)
-date
-(cd build-64 ; ./do-all)
+#!/bin/bash
 
-if ! diff build-32/xfstests/git-versions  build-64/xfstests/git-versions
-then
+ARCHS=(build-64 build-32 build-armhf)
+
+for i in "${ARCHS[@]}" ; do
+    (cd $i ; ./get-versions | grep -v ^stress-ng) > git-versions-$i
+    if ! diff git-versions-"${ARCHS[0]}" git-versions-$i
+    then
 	echo "WARNING: differences in versions detected"
 	exit 1
-fi
+    fi
+done
+
+date
+for i in "${ARCHS[@]}" ; do
+    echo "Building for $i"
+    (cd $i ; ./do-all)
+    date
+    grep -v ^stress-ng $i/xfstests/git-versions > git-versions-$i
+    if ! diff git-versions-"${ARCHS[0]}" git-versions-$i
+    then
+	echo "WARNING: differences in versions detected"
+	exit 1
+    fi
+done
+
 date
