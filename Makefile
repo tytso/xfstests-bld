@@ -2,29 +2,30 @@
 # A simple makefile for xfstests-bld
 #
 
+REPOS =		fio \
+		quota \
+		stress-ng \
+		xfsprogs-dev \
+		xfstests-dev
+
 SUBDIRS =	acl \
 		android-compat \
 		attr \
 		dbench \
 		e2fsprogs-libs \
-		fio \
-		quota \
 		libaio \
 		misc \
 		popt \
-		stress-ng \
-		xfsprogs-dev \
-		xfstests-dev
+		$(REPOS)
 
 SCRIPTS =	android-xfstests.sh \
 		gce-xfstests.sh \
 		kvm-xfstests.sh
 
-all: xfsprogs-dev xfstests-dev fio quota $(SCRIPTS)
-	./build-all
 
-xfsprogs-dev xfstests-dev fio quota:
+all: $(SCRIPTS)
 	./get-all
+	./build-all
 
 $(SCRIPTS): %.sh: kvm-xfstests/%.in
 	sed -e "s;@DIR@;$$(pwd);" < $< > $@
@@ -43,7 +44,9 @@ kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
 	cc -static -o $@ $< -lext2fs -lcom_err -lpthread
 
 realclean: clean
-	rm -rf xfsprogs-dev xfstests-dev fio quota *.ver
+	rm -rf $(REPOS) *.ver
 
 tarball:
 	./gen-tarball
+
+.PHONY: all clean realclean tarball
