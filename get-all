@@ -81,6 +81,15 @@ setup_repo()
 	fi
     fi
 
+    if [ -z "$repo_url" ] && ! $required; then
+	cat 1>&2 <<EOF
+ERROR: $repo_url_variable has been removed from the config file,
+but the $repo_name directory still exists.  Remove it if you don't
+want it to be built.
+EOF
+	exit 1
+    fi
+
     # If a specific commit was specified, check it out.
     if [ -n "$commit" ]; then
 	( cd "$repo_name";
