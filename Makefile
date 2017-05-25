@@ -36,7 +36,7 @@ clean:
 	do \
 		if test -f $$i/Makefile ; then make -C $$i clean ; fi ; \
 	done
-	make -C xfsprogs-dev realclean
+	if test -d xfsprogs-dev; then make -C xfsprogs-dev realclean; fi
 	rm -rf bld xfstests
 	rm -f kvm-xfstests/util/zerofree $(SCRIPTS)
 
