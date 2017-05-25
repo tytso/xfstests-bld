@@ -14,21 +14,23 @@ The xfstests-bld package depends on a number of external git trees:
 * fio
 * quota
 
-The location of these files are specified in the top-level config
-file, but you can copy the config file to config.custom and then make
-changes if desired.
+The first time you run "make", the build system will clone these
+repositories by running ./get-all.  Their remote URLs are set in the
+top-level "config" file.  If you wish to make changes, copy "config"
+to "config.custom" and make changes there.
 
-The first time you run "make", the scripts will automatically fetch
-these git trees from the locations specified in the top-level config
-file.  You can also manually run the "get-all" script which will
-actually do the dirty deed.
+The config file can also specify the commit to use for each
+repository.  If a commit is specified, the build system will check it
+out after cloning the repository.  The commit will also be checked out
+each time a new build is done, in case the config file was changed to
+specify a different commit.  Note that this will override any local
+changes.  If, on the other hand, no commit is specified, then the
+repository will simply start out at the latest "master", and you will
+be free to make local changes or update it with "git pull" as desired.
 
-There may be updates in some or any of these git trees for these
-subcomponents.  You can use "git pull" or "git fetch" as necessary to
-update them.  (Please take care before updating the fio repository;
-some updates to the fio tree have caused test regressions in the past,
-so it may be preferable to let things be as far as the fio repo is
-concerned.)
+(Please take care before updating the fio repository; some updates to
+the fio tree have caused test regressions in the past, so it may be
+preferable to let things be as far as the fio repo is concerned.)
 
 ## Installing the necessary packages to build xfstests
 

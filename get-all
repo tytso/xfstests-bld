@@ -6,6 +6,55 @@ else
 	. config
 fi
 
+have_commit()
+{
+    git rev-parse --verify --quiet "$1^{commit}" >/dev/null
+}
+
+checkout_commit()
+{
+    local repo_name="$1"
+    local repo_url="$2"
+    local commit_variable="$3"
+    local commit="${!3}"
+    local old_url
+
+    # Make sure there are no uncommitted changes.
+    if ! git diff-index --quiet HEAD --; then
+	cat 1>&2 <<EOF
+ERROR: $repo_name has uncommitted changes.
+
+If you want to build from the (dirty) working tree of $repo_name,
+remove $commit_variable from config.custom.
+EOF
+	exit 1
+    fi
+
+    # If we don't have the needed commit, try fetching from the remote.
+    if ! have_commit "$commit"; then
+	old_url="$(git remote get-url origin)"
+	if [ "$old_url" != "$repo_url" ]; then
+	    echo "$repo_name URL changed to $repo_url (previously was $old_url)"
+	    git remote set-url origin "$repo_url"
+	fi
+	if ! git fetch origin; then
+	    echo 1>&2 "ERROR: unable to fetch from $repo_url"
+	    exit 1
+	fi
+	if ! have_commit "$commit"; then
+	    echo 1>&2 "ERROR: commit $commit does not exist in $repo_url"
+	    exit 1
+	fi
+    fi
+
+    # Check out the commit.
+    if [ "$(git rev-parse HEAD)" != "$(git rev-parse "$commit^{commit}")" ]
+    then
+	echo "Checking out $repo_name $commit (previously was $(git describe --always HEAD))"
+    fi
+    git checkout --quiet "$commit"
+}
+
 setup_repo()
 {
     local repo_name="$1"
@@ -30,14 +79,13 @@ setup_repo()
 	    echo 1>&2 "Failed to clone $repo_name from $repo_url"
 	    exit 1
 	fi
+    fi
 
-	# If a specific commit was specified, check it out.
-	if [ -n "$commit" ]; then
-	    ( cd "$repo_name";
-	      git branch xfstests-bld "$commit";
-	      git checkout xfstests-bld;
-	    )
-	fi
+    # If a specific commit was specified, check it out.
+    if [ -n "$commit" ]; then
+	( cd "$repo_name";
+	  checkout_commit "$repo_name" "$repo_url" "$commit_variable";
+	)
     fi
 }
 
