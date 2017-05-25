@@ -32,6 +32,10 @@ be free to make local changes or update it with "git pull" as desired.
 the fio tree have caused test regressions in the past, so it may be
 preferable to let things be as far as the fio repo is concerned.)
 
+The build also supports some optional repositories which are only
+included when their URLs are uncommented in the config file; see the
+config file for a full list.
+
 ## Installing the necessary packages to build xfstests
 
 In order to build xfstests, a number of prerequisite packages are

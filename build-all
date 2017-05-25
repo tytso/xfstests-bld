@@ -24,6 +24,7 @@ case "$CROSS_COMPILE" in
 	SKIP_QUOTA=yes
 	SKIP_FIO=yes
 	SKIP_DBENCH=yes
+	SKIP_KEYUTILS=yes
 	;;
 esac
 
@@ -43,13 +44,13 @@ function set_skip_all () {
     SKIP_XFSTESTS=yes
     SKIP_QUOTA=yes
     SKIP_KVM_UTILS=yes
+    SKIP_KEYUTILS=yes
     SKIP_STRESS_NG=yes
 }
 
-if test ! -d stress-ng
-then
-    SKIP_STRESS_NG=yes
-fi
+# Optional components
+[ -d keyutils ] || SKIP_KEYUTILS=yes
+[ -d stress-ng ] || SKIP_STRESS_NG=yes
 
 
 while [ "$1" != "" ]; do
@@ -87,6 +88,10 @@ while [ "$1" != "" ]; do
 	--fio-only)
 	    set_skip_all
 	    unset SKIP_FIO
+	    ;;
+	--keyutils-only)
+	    set_skip_all
+	    unset SKIP_KEYUTILS
 	    ;;
 	--quota-only)
 	    set_skip_all
@@ -180,6 +185,21 @@ if test -z "$SKIP_AIO" ; then
     (cd libaio; ./configure $cross --disable-nls;
      make $J prefix=$DESTDIR install)
     rm $DESTDIR/lib/libaio.so*
+fi
+
+if test -z "$SKIP_KEYUTILS" ; then
+    build_start "keyutils"
+    (cd keyutils ;
+     ver=$(git describe --always --dirty); echo "keyutils	$ver ($(git log -1 --pretty=%cD))" > ../keyutils.ver ;
+
+     # For now we only care about keyctl, not libkeyutils.  Therefore, specify
+     # NO_SOLIB=1 so that libkeyutils is only built as a static library.  Then
+     # keyctl will be statically linked to it, and we won't have to install
+     # libkeyutils.so.
+     make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl ;
+
+     install -D -m 0755 keyctl $DESTDIR/bin/keyctl ;
+    )
 fi
 
 if test -z "$SKIP_STRESS_NG" ; then

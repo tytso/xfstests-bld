@@ -62,6 +62,7 @@ MAKELOG
 /e2fsprogs-libs/lib/blkid/blkid.h
 /e2fsprogs-libs/lib/uuid/uuid.h
 /fio/
+/keyutils/
 /popt/.deps/
 /popt/Doxyfile
 /popt/Makefile

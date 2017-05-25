@@ -7,6 +7,11 @@ XFSPROGS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 FIO_GIT=git://git.kernel.dk/fio.git
 QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 
+# Optional repositories, uncomment only if needed
+#
+# KEYUTILS_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
+# STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
+
 FIO_COMMIT=fio-2.19
 QUOTA_COMMIT=e0b6335
 XFSPROGS_COMMIT=v4.11.0-rc1
