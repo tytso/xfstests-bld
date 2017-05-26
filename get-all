@@ -54,7 +54,9 @@ EOF
     then
 	echo "Checking out $repo_name $commit (previously was $(git describe --always HEAD))"
     fi
-    git checkout --quiet "$commit"
+    if [ -z "$NO_ACTION" ]; then
+	git checkout --quiet "$commit"
+    fi
 }
 
 setup_repo()
@@ -77,9 +79,17 @@ setup_repo()
 	fi
 
 	echo
-	if ! git clone "$repo_url" "$repo_name"; then
-	    echo 1>&2 "Failed to clone $repo_name from $repo_url"
-	    exit 1
+	if [ -n "$NO_ACTION" ]; then
+	    echo "Clone $repo_url into $repo_name"
+	    if [ -n "$commit" ]; then
+		echo "Checkout commit $commit into $repo_name"
+		return
+	    fi
+	else
+	    if ! git clone "$repo_url" "$repo_name"; then
+		echo 1>&2 "Failed to clone $repo_name from $repo_url"
+		exit 1
+	    fi
 	fi
     fi
 
@@ -99,6 +109,20 @@ EOF
 	)
     fi
 }
+
+while [ "$1" != "" ]; do
+    case $1 in
+	-n|--no-action)
+	    NO_ACTION=echo
+	    ;;
+	*)
+	    echo "usage: get-all [--no-action]"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
 
 # required repositories
 setup_repo fio			FIO_GIT		FIO_COMMIT		true
