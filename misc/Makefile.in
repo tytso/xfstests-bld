@@ -12,8 +12,7 @@ CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 
 PROGS= fname_benchmark postmark resize syncfs
-SCRIPTS= encrypt-fname-benchmark \
-	encrypt-smoketest
+SCRIPTS= encrypt-fname-benchmark
 
 all: $(PROGS)
 
