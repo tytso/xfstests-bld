@@ -58,9 +58,8 @@ then
     echo -e "Please make sure the following configuration variables are set in"
     echo -e "~/.config/gce-xfstests or one of the other config files:"
     echo -e "\tGS_BUCKET, GCE_PROJECT, GCE_ZONE, GCE_KERNEL\n"
-    echo -e "Optionally you can also set the follow variables to enable"
-    echo -e "test reports to be sent via e-mail:"
-    echo -e "\tGCE_SG_USER, GCE_SG_PASS, GCE_REPORT_EMAIL"
+    echo -e "There are also more optional variables that can be set."
+    echo -e "Check Documentation/gce-xfstests.md for all options."
     exit 1
 fi
 

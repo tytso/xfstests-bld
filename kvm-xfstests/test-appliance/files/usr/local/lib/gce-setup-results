@@ -39,7 +39,7 @@ then
 fi
 
 uname -r > /results/kernel_version
-echo "$DATECODE" > /results/datecode
+echo "$TESTRUNID" > /results/testrunid
 
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)

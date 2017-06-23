@@ -23,19 +23,19 @@ else
     echo $GCE_ID > $GCE_STATE_DIR/gce_id
 fi
 
-if test -f $GCE_STATE_DIR/datecode
+if test -f $GCE_STATE_DIR/testrunid
 then
-    DATECODE=$(cat $GCE_STATE_DIR/datecode)
+    TESTRUNID=$(cat $GCE_STATE_DIR/testrunid)
 else
     case "$HOSTNAME" in
-	xfstests-20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
-	    DATECODE=$(echo $HOSTNAME | sed -e 's/xfstests-//')
+	xfstests-*)
+	    TESTRUNID=$(echo $HOSTNAME | sed -e 's/xfstests-//')
 	    ;;
 	*)
-	    DATECODE=$(date +%Y%m%d%H%M)
+	    TESTRUNID=$(date +%Y%m%d%H%M%S)
 	    ;;
     esac
-    echo $DATECODE > $GCE_STATE_DIR/datecode
+    echo $TESTRUNID > $GCE_STATE_DIR/testrunid
 fi
 
 if test -z "$MDS_PREFIX"
