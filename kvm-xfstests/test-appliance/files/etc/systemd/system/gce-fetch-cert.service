@@ -1,0 +1,16 @@
+[Unit]
+Description=GCE self-signed cert fetch from GCS
+After=local-fs.target network-online.target network.target
+After=rsyslog.service google-network-setup.service google-accounts-daemon.service
+Wants=local-fs.target network-online.target network.target
+Wants=google-network-setup.service google-accounts-daemon.service
+Before=lighttpd.service
+
+[Service]
+# Must make this oneshot, so that lighttpd.service runs exclusively after this is completed.
+Type=oneshot
+ExecStart=/usr/local/lib/gce-fetch-cert
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target

@@ -293,7 +293,8 @@ case "$1" in
 	;;
     setup)
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/util/gce-do-setup"
+	shift
+	"$DIR/util/gce-do-setup" "$@"
 	exit $?
 	;;
     ssh)

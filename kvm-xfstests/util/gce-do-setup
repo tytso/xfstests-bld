@@ -12,6 +12,39 @@ fi
 
 . "$DIR/util/get-config"
 
+function gce_gen_cert() {
+    # Making an SSL cert for a project, storing it in GCS bucket.
+
+    if [ -z $REGEN_CERT ] && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
+    then
+        return 0
+    fi
+
+    if [ -z $REGEN_CERT ] && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-key.pem
+    then
+        return 0
+    fi
+
+    # generate self-signed cert.
+
+    openssl req -x509 -newkey rsa:4096 -keyout /tmp/key.pem -nodes \
+      -out /tmp/cert.pem -days 365 -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
+
+    gsutil cp /tmp/key.pem gs://$GS_BUCKET/gce-xfstests-key.pem
+
+    # this cert can be used with curl --cacert, to send LTM commands.
+    gsutil cp /tmp/cert.pem gs://$GS_BUCKET/gce-xfstests-cert.pem
+
+    cat /tmp/key.pem /tmp/cert.pem > /tmp/server.pem
+
+    # this is the file to be used on all booted test appliances.
+    gsutil cp /tmp/server.pem gs://$GS_BUCKET/gce-xfstests-server.pem
+
+    rm /tmp/key.pem /tmp/cert.pem /tmp/server.pem
+}
+
 if ! type gcloud >& /dev/null ; then
    echo "You apparently do not have the Google Cloud SDK installed"
    echo "Please visit https://cloud.google.com/sdk/docs/quickstart-linux"
@@ -129,5 +162,13 @@ for rule in "${GCE_FIREWALL_RULES[@]}"; do
     fi
 done
 unset rule rule_name
+
+if [ "$1" == "--regenerate-ssl-cert" ]
+then
+  echo "Regenerating certificate."
+  REGEN_CERT="yes"
+fi
+
+gce_gen_cert
 
 exit 0
