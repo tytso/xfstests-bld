@@ -6,6 +6,7 @@ REPOS =		fio \
 		keyutils \
 		quota \
 		stress-ng \
+		util-linux \
 		xfsprogs-dev \
 		xfstests-dev
 

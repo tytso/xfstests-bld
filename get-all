@@ -133,6 +133,7 @@ setup_repo xfstests-dev		XFSTESTS_GIT	XFSTESTS_COMMIT		true
 # optional repositories
 setup_repo keyutils		KEYUTILS_GIT	KEYUTILS_COMMIT		false
 setup_repo stress-ng		STRESS_NG_GIT	STRESS_NG_COMMIT	false
+setup_repo util-linux		UTIL_LINUX_GIT	UTIL_LINUX_COMMIT	false
 
 # Make sure acl doesn't try regenerate these files because of the
 # vagrancies of the timestamps when they were checked out

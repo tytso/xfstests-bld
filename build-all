@@ -45,11 +45,13 @@ function set_skip_all () {
     SKIP_KVM_UTILS=yes
     SKIP_KEYUTILS=yes
     SKIP_STRESS_NG=yes
+    SKIP_UTIL_LINUX=yes
 }
 
 # Optional components
 [ -d keyutils ] || SKIP_KEYUTILS=yes
 [ -d stress-ng ] || SKIP_STRESS_NG=yes
+[ -d util-linux ] || SKIP_UTIL_LINUX=yes
 
 
 while [ "$1" != "" ]; do
@@ -99,6 +101,10 @@ while [ "$1" != "" ]; do
 	--stress-ng-only)
 	    set_skip_all
 	    unset SKIP_STRESS_NG
+	    ;;
+	--util-linux-only)
+	    set_skip_all
+	    unset SKIP_UTIL_LINUX
 	    ;;
 	--xfsprogs-only)
 	    set_skip_all
@@ -203,6 +209,30 @@ if test -z "$SKIP_KEYUTILS" ; then
      make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl ;
 
      install -D -m 0755 keyctl $DESTDIR/bin/keyctl ;
+    )
+fi
+
+if test -z "$SKIP_UTIL_LINUX" ; then
+    build_start "util-linux"
+    (cd util-linux ;
+     ver=$(git describe --always --dirty); echo "util-linux	$ver ($(git log -1 --pretty=%cD))" > ../util-linux.ver ;
+     ./autogen.sh;
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR \
+	--disable-bash-completion \
+	--disable-nls \
+	--disable-shared \
+	--disable-wall \
+	--disable-write \
+	--without-ncurses \
+	--without-python \
+	--without-tinfo;
+     make $J install;
+
+     # Installing mkfs causes problems because xfstests assumes that mkfs.ext4
+     # is in the same directory as mkfs.  So rely on the system mkfs instead.
+     rm $DESTDIR/sbin/mkfs*;
     )
 fi
 

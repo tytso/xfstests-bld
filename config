@@ -11,6 +11,7 @@ QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 #
 # KEYUTILS_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
 # STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
+# UTIL_LINUX_GIT=git://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
 
 FIO_COMMIT=fio-2.19
 QUOTA_COMMIT=e0b6335
