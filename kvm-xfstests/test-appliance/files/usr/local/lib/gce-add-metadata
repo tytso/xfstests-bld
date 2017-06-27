@@ -1,9 +1,10 @@
 #!/bin/bash
 
+. /usr/local/lib/gce-funcs
 if test ! -f /run/xattr.lock
 then
     touch /run/xattr.lock
 fi
 
-flock /run/xattr.lock gcloud compute instances -q add-metadata $(hostname) \
-      --metadata "$@" >& /dev/null
+flock /run/xattr.lock gcloud compute instances -q add-metadata \
+      --zone $ZONE $(hostname) --metadata "$@" >& /dev/null
