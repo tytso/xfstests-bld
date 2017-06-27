@@ -24,7 +24,6 @@ case "$CROSS_COMPILE" in
 	SKIP_QUOTA=yes
 	SKIP_FIO=yes
 	SKIP_DBENCH=yes
-	SKIP_KEYUTILS=yes
 	;;
 esac
 
@@ -191,6 +190,11 @@ if test -z "$SKIP_KEYUTILS" ; then
     build_start "keyutils"
     (cd keyutils ;
      ver=$(git describe --always --dirty); echo "keyutils	$ver ($(git log -1 --pretty=%cD))" > ../keyutils.ver ;
+
+     if [ -n "$CROSS_COMPILE" ]; then
+	export CC="$CROSS_COMPILE-gcc"
+	export AR="$CROSS_COMPILE-ar"
+     fi
 
      # For now we only care about keyctl, not libkeyutils.  Therefore, specify
      # NO_SOLIB=1 so that libkeyutils is only built as a static library.  Then
