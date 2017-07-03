@@ -2,7 +2,7 @@
 
 if test ! -f /run/xattr.lock
 then
-    touch f/run/xattr.lock
+    touch /run/xattr.lock
 fi
 
 flock /run/xattr.lock gcloud compute instances -q remove-metadata $(hostname) \
