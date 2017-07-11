@@ -90,7 +90,7 @@ do_get_results()
     fi
     if test -n "$do_unpack"
     then
-	DIRNAME=/tmp/$(basename "$URI" | sed -e 's/\(results.[0-9]*\).*/\1/' -e s'/\./-/')
+	DIRNAME=/tmp/$(basename "$URI" | sed -e 's/\(results.[0-9A-Za-z-]*\).*/\1/' -e s'/\./-/')
 	/bin/rm -rf "$DIRNAME" 2> /dev/null
 	mkdir -p "$DIRNAME"
 	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
@@ -136,7 +136,7 @@ case "$1" in
 	    kver=$(jq < "$inst_info" \
 		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
 			sed -e 's/^"//' -e 's/"$//' \
-			    -e 's/^Linux xfstests-[0-9]* //' -e 's/ .*//')
+			    -e 's/^Linux xfstests-[0-9A-Za-z-]* //' -e 's/ .*//')
 	    gce_status=$(jq < "$inst_info" .status | \
 			    sed -e 's/^"//' -e 's/"$//')
 	    status=$(jq < "$inst_info" \
