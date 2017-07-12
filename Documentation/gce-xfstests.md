@@ -168,6 +168,14 @@ Other optional parameters include:
     web interface entirely.  Note that existing firewall rules
     associated with the GCP project will not be removed, and by
     default there is a default-allow-ssh rule which allows SSH access.
+* GCE_USER
+  * Optional identifier for all test instance names. By default, if
+    this is unset, test instances will be named
+    "xfstests-USER-DATECODE". (USER will be the evaluation of $USER)
+    This option can be set to the empty string,
+    i.e. GCE_USER= or GCE_USER="" to disable having "$USER-" in
+    instance names, and simply have them named "xfstests-DATECODE"
+
 
 An example ~/.config/gce-xfstests might look like this:
 

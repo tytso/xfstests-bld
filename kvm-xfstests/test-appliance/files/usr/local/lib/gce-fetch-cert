@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# This script fetches the self-signed SSL cert from the user's configured
+# GS_BUCKET before lighttpd is allowed to start.
+. /usr/local/lib/gce-funcs
+gsutil cp gs://$GS_BUCKET/gce-xfstests-server.pem /etc/lighttpd/server.pem
+/usr/local/lib/gce-logger "gce-fetch-cert completed, gsutil returned $?"
+chmod 0400 /etc/lighttpd/server.pem
+
+exit 0

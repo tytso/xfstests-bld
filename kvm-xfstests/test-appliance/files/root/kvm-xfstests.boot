@@ -109,8 +109,6 @@ else
 	    # If we kexec'ed into a test kernel, we probably want to
 	    # run tests, so set up the scratch volumes
 	    /usr/local/lib/gce-setup
-	    gcloud compute -q instances set-disk-auto-delete ${instance} \
-		   --auto-delete --disk "$instance-results" --zone "$ZONE" &
 	    /usr/local/lib/gce-logger setup complete
 	else
 	    /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &

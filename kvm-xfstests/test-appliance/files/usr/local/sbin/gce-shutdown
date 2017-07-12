@@ -51,7 +51,7 @@ then
     fi
     if test -n "$REPORT_EMAIL"
     then
-	subj="xfstests results $DATECODE - $(uname -r)"
+	subj="xfstests results $TESTRUNID - $(uname -r)"
 	if test -n "$SENDGRID_API_KEY" ; then
 	    sg_from=$(gce_attribute report_sender)
 	    if test -z "$sg_from"
@@ -66,10 +66,8 @@ then
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \
-	   gs://$GS_BUCKET/results.$DATECODE.$(uname -r).tar.xz
+	   gs://$GS_BUCKET/results.$TESTRUNID.$(uname -r).tar.xz
 fi
-gcloud compute -q instances set-disk-auto-delete ${instance} \
-       --auto-delete --disk "$instance-results" --zone "$ZONE"
 run_hooks shutdown
 /usr/local/lib/gce-logger shutting down
 if test -f /run/powerbtn
@@ -77,5 +75,5 @@ then
     /sbin/shutdown -h -P now "Power button pressed"
 else
     touch /run/self-shutdown-requested
-    gcloud compute -q instances delete $(hostname) --zone $ZONE
+    gcloud compute -q instances delete $(hostname) --zone $ZONE --delete-disks=boot
 fi

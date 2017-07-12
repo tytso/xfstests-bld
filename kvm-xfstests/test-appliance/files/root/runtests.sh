@@ -183,7 +183,7 @@ then
     fi
     GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
     echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
-    echo DATECODE: $DATECODE >> "$RUNSTATS"
+    echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
 fi
 
 cat "$RUNSTATS"

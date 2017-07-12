@@ -2,31 +2,7 @@
 
 . /usr/local/lib/gce-funcs
 
-RESULTS_DSK=$instance-results
-RESULTS_DEV=/dev/disk/by-id/google-results
-
-if ! test -e $RESULTS_DEV
-then
-    gcloud compute -q disks create "$RESULTS_DSK" \
-	   --size "${RESULTS_SIZE:-10}" \
-	   --zone "$ZONE" --type "${RESULTS_TYPE:-pd-standard}"
-    gcloud compute -q instances attach-disk ${instance} \
-	   --disk "$RESULTS_DSK" \
-	   --device-name results --zone "$ZONE"
-fi
-
-if ! test -e $RESULTS_DEV
-then
-    logger -s "Couldn't create or create the results disk!"
-    exit 1
-fi
-
-if ! test -e /dev/disk/by-label/results
-then
-    mke2fs -t ext4 -L results $RESULTS_DEV
-fi
-
-mount -t ext4 $RESULTS_DEV /results
+mkdir -p /results
 touch /results/runtests.log
 cp /var/www/cmdline /results
 if test -d /root/hooks
@@ -39,7 +15,7 @@ then
 fi
 
 uname -r > /results/kernel_version
-echo "$DATECODE" > /results/datecode
+echo "$TESTRUNID" > /results/testrunid
 
 gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
 (cd /results; tar xfz /tmp/check-time.tar.gz)

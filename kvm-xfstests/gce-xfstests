@@ -53,12 +53,12 @@ do_get_results_uri()
 	results*)
 	    URI="gs://$GS_BUCKET/$1"
 	    ;;
-	[0-9]*)
+	*)
 	    URI=$(gsutil ls "gs://$GS_BUCKET/results.$1.*.tar.xz" \
 			 2>/dev/null)
 	    if test -z "$URI"
 	    then
-		echo "No results found with datecode: $1"
+		echo "No results found with test run identifier: $1"
 		exit 1
 	    fi
 	    ;;
@@ -293,7 +293,8 @@ case "$1" in
 	;;
     setup)
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/util/gce-do-setup"
+	shift
+	"$DIR/util/gce-do-setup" "$@"
 	exit $?
 	;;
     ssh)
@@ -391,8 +392,15 @@ else
     PREEMPTIBLE="--maintenance-policy MIGRATE"
 fi
 
-DATECODE=$(date +%Y%m%d%H%M)
-INSTANCE="xfstests-$DATECODE"
+TESTRUNID=$(date +%Y%m%d%H%M%S)
+# if GCE_USER is non-empty or unset
+if [ -n "${GCE_USER-unset}" ]; then
+  # prepend GCE_USER, or the current $USER if GCE_USER is unset
+  TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
+  # this avoids prepending the - if GCE_USER is set to empty string.
+fi
+
+INSTANCE="xfstests-$TESTRUNID"
 
 case "$ARG" in
     cmd=maint*)
@@ -427,7 +435,7 @@ case "$OVERRIDE_KERNEL" in
 	;;
     *)
 	GCE_KERNEL=$OVERRIDE_KERNEL
-	GS_KERNEL=gs://$GS_BUCKET/bzImage-$DATECODE-onetime
+	GS_KERNEL=gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime
 	;;
 esac
 
@@ -673,6 +681,7 @@ echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "default" \
+       --no-boot-disk-auto-delete \
        $SSD_ARG $PREEMPTIBLE \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \

@@ -75,11 +75,6 @@ gsutil cp gs://$BUCKET/create-image/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
 
-openssl req -x509 -newkey rsa:4096 -keyout /tmp/key.pem -nodes \
-	-out /tmp/cert.pem -days 365 -subj '/CN=gce-xfstests'
-cat /tmp/key.pem /tmp/cert.pem > /etc/lighttpd/server.pem
-rm /tmp/key.pem /tmp/cert.pem
-
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
 do
@@ -131,6 +126,7 @@ sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
 	/etc/systemd/system/telnet-getty@.service
 
 systemctl enable kvm-xfstests.service
+systemctl enable gce-fetch-cert.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
 systemctl enable telnet-getty@ttyS1.service

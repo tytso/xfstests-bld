@@ -32,12 +32,6 @@ fi
     
 gcloud config set compute/zone $ZONE
 
-if test -f /dev/disk/by-label/results
-then
-    e2fsck -fy /dev/disk/by-label/results
-    mount /results
-fi
-
 if ! test -d /root/hooks
 then
     mkdir -p /root/hooks
