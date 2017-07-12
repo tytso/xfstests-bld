@@ -42,6 +42,7 @@ esac
 
 wait
 
+cp /var/log/syslog /results/setup-syslog
 cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
 systemctl restart rsyslog.service
 dmesg >& /results/dmesg

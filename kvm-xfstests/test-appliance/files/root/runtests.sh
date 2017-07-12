@@ -3,6 +3,7 @@
 API_MAJOR=1
 API_MINOR=3
 . /root/test-config
+. /root/runtests_utils
 
 RESULTS=/results
 RUNSTATS="$RESULTS/run-stats"
@@ -13,23 +14,6 @@ function gce_run_hooks()
     then
 	run_hooks "$@"
     fi
-}
-
-function get_fs_config()
-{
-    local fs="$1"
-
-    if test "$fs" == "$FS_CONFIGURED" ; then
-	return
-    fi
-    FS_DIR="/root/fs/$fs"
-    if test ! -d $FS_DIR ; then
-	echo "File system $fs not supported"
-	return 1
-    fi
-    . "$FS_DIR/config"
-    FS_CONFIGURED="$fs"
-    return 0
 }
 
 if test -z "$FSTESTAPI" ; then
@@ -202,49 +186,9 @@ cp /proc/meminfo "$RESULTS/meminfo.before"
 free -m
 while test -n "$FSTESTCFG"
 do
-	i="${FSTESTCFG%% *}"
-	case "$FSTESTCFG" in
-	    *\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
-	    *)    FSTESTCFG=""
-	esac
-	case "$i" in
-	    */*)
-		FS="${i%%/*}"
-		i="${i#*/}"
-		;;
-	    *)
-		if test -d "/root/fs/$i"
-		then
-		    FS="$i"
-		    i=default
-		else
-		    FS="$FSTESTTYP"
-		fi
-		;;
-	esac
-	if test ! -d "/root/fs/$FS" ; then
-	    echo "Unknown file system type $FS"
-	    continue
-	fi
-	# Reset variables from the previous (potentially aborted) config
-	unset SIZE REQUIRE_FEATURE
-	unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
-	unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
-	reset_vars
-	get_fs_config "$FS"
-	i=$(test_name_alias $i)
-	if test -f "/root/fs/$FS/cfg/$i.list"; then
-	    FSTESTCFG="$(cat /root/fs/$FS/cfg/$i.list | sed -e '/#/d' \
-			-e '/^$/d' -e s:^:$FS/:) $FSTESTCFG"
-	    FSTESTCFG="$(echo $FSTESTCFG)"
-	    continue
-	fi
-	if test -f "/root/fs/$FS/cfg/$i"; then
-		. "/root/fs/$FS/cfg/$i"
-	else
-		echo "Unknown configuration $FS/$i!"
-		continue
-	fi
+	if ! get_one_fs_config "/root/fs"; then
+          continue
+        fi
 	if test -z "$TEST_DEV" ; then
 	    if test -z "$SIZE" ; then
 		echo "No TEST_DEV and no SIZE"
@@ -255,7 +199,7 @@ do
 		export TEST_DIR=$LG_TST_MNT
 	    else
 		if test "$FSTESTTYP" = "$FS" -a \
-		   "$DEFAULT_MKFS_OPTS" = "$(get_mkfs_opts)"
+		   "$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"
 		then
 		    export TEST_DEV=$PRI_TST_DEV
 		    export TEST_DIR=$PRI_TST_MNT
