@@ -88,7 +88,45 @@ then
 fi
 
 tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
-	-cf - . | gzip -9n > $td/files.tar.gz
+	-cf $td/files.tar .
+
+# copy the necessary files of kvm-xfstests to run gce-xfstests commands.
+# set up additional directory structure inside of tmp2/
+mkdir -p $td/tmp2/root/xfstests_bld/kvm-xfstests/util # for gce-xfstests dependencies
+mkdir -p $td/tmp2/root/xfstests_bld/kvm-xfstests/test-appliance # for a symlink
+mkdir -p $td/tmp2/usr/local/sbin # for the gce-xfstests bash executable
+
+# copy as much of kvm-xfstests as is necessary to run gce-xfstests scripts
+# to launch VMs, except for configs.
+# Configs will be fetched on LTM launch, and will piggyback on the
+# config file stored in the gce_xfstests bucket.
+cp ../../kvm-xfstests/util/get-config $td/tmp2/root/xfstests_bld/kvm-xfstests/util/
+cp ../../kvm-xfstests/util/parse_cli $td/tmp2/root/xfstests_bld/kvm-xfstests/util/
+cp ../../kvm-xfstests/gce-xfstests $td/tmp2/root/xfstests_bld/kvm-xfstests/
+cp ../../kvm-xfstests/get-results $td/tmp2/root/xfstests_bld/kvm-xfstests/
+
+# create a symlink so that util/parse_cli works properly.
+# under test-appliance/, the link "files" should refer back to the root, "/".
+# This way, test-appliance/files/root/fs/* will find the correct config files.
+ln -s / $td/tmp2/root/xfstests_bld/kvm-xfstests/test-appliance/files
+
+# essentially, we run a "make gce-xfstests.sh" here, except with a hardcoded
+# DIR replacement path because we know where we're putting kvm-xfstests and
+# the rest of xfstests_bld in the test appliance.
+sed -e "s;@DIR@;/root/xfstests_bld;" < ../gce-xfstests.in > \
+    $td/tmp2/usr/local/sbin/gce-xfstests
+chmod +x $td/tmp2/usr/local/sbin/gce-xfstests
+
+# tar the root/xfstests_bld for gce-xfstests, the symlink and
+# usr/local/sbin/gce-xfstests, and append it all to the tarfile.
+tar -C $td/tmp2 --owner=root --group=root --mode=go+u-w \
+	-rf $td/files.tar .
+
+rm -rf $td/tmp2
+
+gzip -c -9 -n $td/files.tar > $td/files.tar.gz
+
+rm -f $td/files.tar
 
 gsutil rsync -c $td gs://$GS_BUCKET/create-image
 

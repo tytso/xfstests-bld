@@ -75,6 +75,11 @@ gsutil cp gs://$BUCKET/create-image/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
 
+# this is to install some python packages into the image for
+# the LTM web server.
+easy_install pip
+pip install -r /root/gce-ltm/requirements.txt
+
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
 do
