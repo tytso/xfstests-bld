@@ -638,31 +638,6 @@ fi
 
 ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
 
-# Don't print the sendgrid password
-if test -n "$NO_ACTION" -a -n "$GCE_SG_PASS"
-then
-    GCE_SG_PASS=XXXXXXXX
-fi
-if test -n "$NO_ACTION" -a -n "$GCE_SG_API"
-then
-    GCE_SG_API=XXXXXXXX
-fi
-
-if test -n "$GCE_SG_USER" -a -n "$GCE_SG_PASS"
-then
-    ARG="$ARG sg_user=$GCE_SG_USER sg_pass=$GCE_SG_PASS"
-fi
-
-if test -n "$GCE_SG_API"
-then
-    ARG="$ARG sg_api=$GCE_SG_API"
-fi
-
-if test -n "$GCE_REPORT_SENDER"
-then
-    ARG="$ARG report_sender=$GCE_REPORT_SENDER"
-fi
-
 if test -n "$GCE_REPORT_EMAIL"
 then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"

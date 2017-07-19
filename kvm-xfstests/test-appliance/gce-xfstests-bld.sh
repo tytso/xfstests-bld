@@ -126,7 +126,7 @@ sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
 	/etc/systemd/system/telnet-getty@.service
 
 systemctl enable kvm-xfstests.service
-systemctl enable gce-fetch-cert.service
+systemctl enable gce-fetch-gs-files.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
 systemctl enable telnet-getty@ttyS1.service

@@ -53,12 +53,11 @@ then
     then
 	subj="xfstests results $TESTRUNID - $(uname -r)"
 	if test -n "$SENDGRID_API_KEY" ; then
-	    sg_from=$(gce_attribute report_sender)
-	    if test -z "$sg_from"
+	    if test -z "$GCE_REPORT_SENDER"
 	    then
-		sg_from="$USER@$HOSTNAME"
+		GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	    fi
-	    /usr/local/sbin/send-mail.py --sender "$sg_from" \
+	    /usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
 		 -s "$subj" "$REPORT_EMAIL" < /results/failures
 	else
 	    mail -s "$subj" "$REPORT_EMAIL" < /results/failures
