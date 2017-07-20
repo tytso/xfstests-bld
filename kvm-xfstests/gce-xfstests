@@ -262,6 +262,12 @@ case "$1" in
 	do
 	    do_get_results_uri "$i"
 	    gsutil rm "$URI"
+	    if test -n "$GCE_UPLOAD_SUMMARY"
+	    then
+		URI=$(echo $URI | sed -e "s;results;summary;" | \
+		    sed -e "s;.tar.xz;.txt;")
+		gsutil rm "$URI" 2> /dev/null
+	    fi
 	done
 	exit 0
 	;;

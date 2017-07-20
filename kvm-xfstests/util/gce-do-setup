@@ -161,6 +161,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p SENDGRID_API_KEY
     declare -p GCE_SG_USER
     declare -p GCE_SG_PASS
+    declare -p GCE_UPLOAD_SUMMARY
 } 2>/dev/null > $tmpf
 
 gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config

@@ -38,6 +38,12 @@ then
 	     >> /results/runtests.log
     fi
     egrep "$REGEXP" < /results/runtests.log > /results/summary
+
+    if test -n "$GCE_UPLOAD_SUMMARY"
+    then
+      gsutil cp /results/summary "gs://$GS_BUCKET/summary.$TESTRUNID.$(uname -r).txt"
+    fi
+
     egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
     printf "\n" >> /results/failures
     sed -n -f /usr/local/lib/get-check-failures.sed < /results/runtests.log >> /results/failures
