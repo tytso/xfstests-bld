@@ -109,6 +109,7 @@ do_get_results()
     fi
 }
 
+unset TESTRUNID
 case "$1" in
     ls|ls-instances)
 	if test "$2" = "--gce"
@@ -398,12 +399,14 @@ else
     PREEMPTIBLE="--maintenance-policy MIGRATE"
 fi
 
-TESTRUNID=$(date +%Y%m%d%H%M%S)
-# if GCE_USER is non-empty or unset
-if [ -n "${GCE_USER-unset}" ]; then
-  # prepend GCE_USER, or the current $USER if GCE_USER is unset
-  TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
-  # this avoids prepending the - if GCE_USER is set to empty string.
+if [ -z ${TESTRUNID:+x} ]; then
+    TESTRUNID=$(date +%Y%m%d%H%M%S)
+    # if GCE_USER is non-empty or unset
+    # this avoids prepending the - if GCE_USER is set to empty string.
+    if [ -n "${GCE_USER-unset}" ]; then
+	# prepend GCE_USER, or the current $USER if GCE_USER is unset
+	TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
+    fi
 fi
 
 INSTANCE="xfstests-$TESTRUNID"

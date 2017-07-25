@@ -328,6 +328,27 @@ while [ "$1" != "" ]; do
 	    supported_flavors gce
 	    PREMPTIBLE=
 	    ;;
+	--gce-zone) shift
+	    supported_flavors gce
+	    GCE_ZONE="$1"
+	    if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
+		echo -e "Invalid GCE zone: $GCE_ZONE"
+		echo -e "To see a list of valid zones, run"
+		echo -e "\tgcloud compute zones list\n"
+		exit 1
+	    fi
+	    ;;
+	--gs-bucket) shift
+	    supported_flavors gce
+	    GS_BUCKET="$1"
+	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+	    fi
+	    ;;
+	--testrunid) shift
+	    supported_flavors gce
+	    TESTRUNID="$1"
+	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \
