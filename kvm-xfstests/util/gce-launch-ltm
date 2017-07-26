@@ -66,6 +66,9 @@ then
 fi
 
 echo "Launching LTM server..."
+touch $DIR/.ltm_instance
+LAUNCH_LTM_EXIT_STATUS=1
+trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance; fi' EXIT
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
     instances create "$INSTANCE" --zone "$GCE_ZONE" \
@@ -84,5 +87,33 @@ then
     exit 1
 fi
 
+if [ ! -f $DIR/.gce_xfstests_cert.pem ]
+then
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert.pem
+fi
+
+echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" >> $DIR/.ltm_instance
+echo "GCE_LTM_NAME=$INSTANCE" >> $DIR/.ltm_instance
+echo -n "GCE_LTM_EXT_IP=" >> $DIR/.ltm_instance
+echo -n "Waiting for VM to boot to grab external IP..."
+
+cnt=0
+until gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE >& /dev/null
+do
+    (( cnt += 1 ))
+    if (( cnt >= 5 )); then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
+done
+echo " Done!"
+
+gcloud compute instances describe $INSTANCE \
+    | grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.ltm_instance
+
+. $DIR/.ltm_instance
+
 echo "LTM launched"
+LAUNCH_LTM_EXIT_STATUS=0
 exit 0

@@ -676,8 +676,13 @@ then
     SSD_ARG="--local-ssd interface=SCSI"
 fi
 
-echo "Launching $INSTANCE using $GCE_MACHTYPE..."
-# echo "Using ARG: $ARG"
+if test -n "$RUN_ON_LTM"; then
+    . "$DIR/util/gce-ltm-funcs"
+    send_to_ltm $ORIG_CMDLINE_B64
+else
+    echo "Launching $INSTANCE using $GCE_MACHTYPE..."
+    # echo "Using ARG: $ARG"
+fi
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \

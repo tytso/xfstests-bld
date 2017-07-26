@@ -2,3 +2,5 @@ disks
 logs
 baseline.*
 *~
+.ltm_instance
+.gce_xfstests_cert.pem

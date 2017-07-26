@@ -32,6 +32,18 @@ logging.basicConfig(
 
 app = flask.Flask(__name__, static_url_path='/static')
 
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+  return flask.Response('Login required. Use the password in your GS bucket',
+                        401,
+                        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+
+@app.errorhandler(400)
+def bad_request_error(error):
+  return flask.Response('Bad request', 400, {})
+
 # The secret key is used by Flask as a server-side secret to prevent tampering
 # of session cookies (for authentication). Flask requires that the secret be
 # set if sessions are used.
@@ -55,6 +67,46 @@ app.secret_key = secret_key
 def index():
   logging.info('Request received at /, returning index.html')
   return app.send_static_file('index.html')
+
+
+@app.route('/gce-xfstests', methods=['POST'])
+def gce_xfstests():
+  """Endpoint for launching a gce-xfstests test run.
+
+  This endpoint requires that the session is already logged in. If it isn't,
+  Flask will automatically respond with a 403 forbidden.
+
+  The endpoint expects json data in the request contents, with at least the key
+  'orig_cmdline'. The value should be a base64 encoding of the original command
+  line arguments that were passed to gce-xfstests. The endpoint constructs a
+  TestRunManager object given this data, gets test run info, and returns it as
+  it launches a test run.
+
+  Returns:
+    json object with {'status': True|False} depending on whether the test run
+    was successfully started. False may indicate a bug in the server, or a
+    lack of available quota. When True, the 'info' key will also be available,
+    containing basic information about the test run, and the shards that will
+    be created for this test run.
+
+    If the json data is not present, or if the 'orig_cmdline' key is not
+    present, this will return a 400 error.
+  """
+  logging.info('Request received at /gce-xfstests')
+  json_data = flask.request.json
+
+  if not json_data:
+    logging.warning('No json received')
+    flask.abort(400)
+
+  logging.info('Received json_data %s', json_data)
+  try:
+    cmd_in_base64 = json_data['orig_cmdline']
+  except KeyError:
+    flask.abort(400)
+
+  return flask.jsonify({'status': True,
+                        'orig_cmdline': cmd_in_base64})
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0')
