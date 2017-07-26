@@ -51,9 +51,7 @@ print_help ()
     fi
     echo "	-x group	- Exclude group of tests from running"
     echo "	-X test		- Exclude test from running"
-    if flavor_in kvm gce ; then
-	echo "	--kernel file	- Boot the specified kernel"
-    fi
+    echo "	--kernel file	- Boot the specified kernel"
     if flavor_in kvm ; then
 	echo "	--initrd initrd	- Boot with the specified initrd"
     elif flavor_in gce ; then
@@ -282,7 +280,6 @@ while [ "$1" != "" ]; do
 	    SKIP_LOG=no
 	    ;;
 	--kernel) shift
-	    supported_flavors kvm gce
 	    KERNEL="$1"
 	    if test -d "$KERNEL" ; then
 		KERNEL="$KERNEL/arch/x86/boot/bzImage"
