@@ -1,0 +1,88 @@
+#!/bin/bash
+# vars used:
+# util/get-config: GS_BUCKET, GCE_ZONE, GCE_PROJECT
+
+XFSTESTS_FLAVOR=gce
+t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+eval DIR="\$$t"
+if test -z "$DIR"
+then
+    t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+    if test -d "$t"
+    then
+	DIR="$t"
+    fi
+fi
+if test -z "$DIR"
+then
+    DIR=$(pwd)
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
+fi
+
+. "$DIR/util/get-config"
+
+INSTANCE="xfstests-ltm"
+
+NO_ACTION=""
+if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
+    $INSTANCE >& /dev/null
+then
+    if [ -f $DIR/.ltm_instance ]
+    then
+	echo "The LTM instance already exists!"
+	echo "Launch new tests on the ltm with gce-xfstests --ltm <more>"
+	exit 1
+    else
+	echo "The LTM instance already exists, but .ltm_instance is not present."
+	echo "Re-creating .ltm_instance..."
+	NO_ACTION=": "
+    fi
+fi
+
+GCE_LTM_MACHTYPE="n1-standard-1"
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
+
+PREEMPTIBLE="--maintenance-policy MIGRATE"
+ROOT_FS="xfstests"
+IMAGE_FLAG="--image-family"
+
+ARG="gs_bucket=$GS_BUCKET serial-port-enable=true"
+ARG="$ARG gce_xfs_ltm=YES"
+
+if ! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
+then
+    echo "You do not have a generated SSL certificate in your GCS bucket."
+    echo "It is not possible to communicate with the LTM."
+    echo "Please run gce-xfstests setup and then restart the LTM."
+    exit 1
+fi
+
+echo "Launching LTM server..."
+
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" \
+    instances create "$INSTANCE" --zone "$GCE_ZONE" \
+    --machine-type "$GCE_LTM_MACHTYPE" --network "default" \
+    --boot-disk-size 50GB \
+    $PREEMPTIBLE \
+    --scopes "$SCOPES" \
+    --metadata "^ ^$ARG" \
+    --tags http-server,https-server \
+    --image-project "${GCE_IMAGE_PROJECT}" \
+    "$IMAGE_FLAG" "$ROOT_FS"
+
+if [ $? != 0 ]
+then
+    echo "Could not start LTM server."
+    exit 1
+fi
+
+echo "LTM launched"
+exit 0

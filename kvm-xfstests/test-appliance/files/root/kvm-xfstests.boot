@@ -3,6 +3,8 @@
 # This script is executed at the end of each multiuser runlevel
 # to kick off the test appliance commands
 
+# This script will also boot the test appliance in GCE into LTM mode.
+
 parse() {
 if grep -q " $1=" /proc/cmdline; then
    cat /proc/cmdline | sed -e "s/.* $1=//" | sed -e 's/ .*//'
@@ -38,6 +40,13 @@ EOF
 if test -e /usr/local/lib/gce-kexec
 then
     . /usr/local/lib/gce-funcs
+
+    if gce_attribute gce_xfs_ltm
+    then
+	/usr/local/lib/gce-ltm
+	exit $?
+    fi
+
     /usr/local/lib/gce-kexec
     . /run/test-env
     # for interactive mounting using the fstab entries

@@ -367,6 +367,21 @@ case "$1" in
 	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;
+    launch-ltm)
+	shift
+	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
+	then
+	    echo "The gce-xfstests LTM requires that you build the gce-xfstests image"
+	    echo "and put it in your own project."
+	    echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
+	    echo "in your ~/.config/gce-xfstests file.\n"
+	    echo "See the instructions on building an image:"
+	    echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
+	    exit 1
+	fi
+	"$DIR/util/gce-launch-ltm"
+	exit $?
+	;;
 esac
 
 ORIG_CMDLINE="$*"
@@ -652,7 +667,9 @@ then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"
 fi
 
-ARG="$ARG orig_cmdline=$(echo " $ORIG_CMDLINE" | sed -e 's/^ //' | base64 -w 0)"
+ORIG_CMDLINE_B64=$(echo " $ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
+
+ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"
 
 if test -n "$DO_LOCAL_SSD"
 then
