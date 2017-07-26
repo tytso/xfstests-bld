@@ -41,6 +41,18 @@ function gce_gen_cert() {
     rm /tmp/key.pem /tmp/cert.pem /tmp/server.pem
 }
 
+function gce_gen_ltm_pass() {
+    if gsutil -q stat gs://$GS_BUCKET/ltm-pass &>/dev/null
+    then
+	return 0
+    fi
+    if ! type -P pwgen > /dev/null; then
+	echo 1>&2 "Please install pwgen, or upload a password to ltm-pass"
+	exit 1
+    fi
+    pwgen -n -s 15 1 | gsutil cp - gs://$GS_BUCKET/ltm-pass
+}
+
 if ! type gcloud >& /dev/null ; then
    echo "You apparently do not have the Google Cloud SDK installed"
    echo "Please visit https://cloud.google.com/sdk/docs/quickstart-linux"
@@ -187,5 +199,6 @@ then
 fi
 
 gce_gen_cert
+gce_gen_ltm_pass
 
 exit 0

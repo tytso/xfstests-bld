@@ -42,6 +42,17 @@ then
 	NO_ACTION=": "
     fi
 fi
+if ! gsutil -q stat "gs://$GS_BUCKET/ltm-pass" &> /dev/null
+then
+    echo "There is no password in your GS bucket $GS_BUCKET"
+    echo "for the LTM to authenticate requests with."
+    echo "You can generate a password by running gce-xfstests setup, or by"
+    echo "uploading a password of your choice (a string) to your bucket at"
+    echo "gs://$GS_BUCKET/ltm-pass"
+    echo "The password will automatically be used by the --ltm command line"
+    echo "option."
+    exit 1
+fi
 
 GCE_LTM_MACHTYPE="n1-standard-1"
 
@@ -92,28 +103,34 @@ then
     gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert.pem
 fi
 
-echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" >> $DIR/.ltm_instance
+echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.ltm_instance
 echo "GCE_LTM_NAME=$INSTANCE" >> $DIR/.ltm_instance
 echo -n "GCE_LTM_EXT_IP=" >> $DIR/.ltm_instance
 echo -n "Waiting for VM to boot to grab external IP..."
 
-cnt=0
-until gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE >& /dev/null
-do
-    (( cnt += 1 ))
-    if (( cnt >= 5 )); then
-	echo -n "."
-	cnt=0
-    fi
-    sleep 1
-done
+function wait_for_command() {
+    local my_cmd=$1
+    local cnt=0
+    until $my_cmd &> /dev/null
+    do
+	(( cnt += 1 ))
+	if (( cnt >= 5 )); then
+	    echo -n "."
+	    cnt=0
+	fi
+	sleep 1
+    done
+}
+wait_for_command "gcloud compute instances describe \
+    --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE"
 echo " Done!"
 
 gcloud compute instances describe $INSTANCE \
     | grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.ltm_instance
 
-. $DIR/.ltm_instance
-
-echo "LTM launched"
+echo -n "Fetching password..."
+wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
+echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance
+gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance
 LAUNCH_LTM_EXIT_STATUS=0
-exit 0
+echo "Done!"

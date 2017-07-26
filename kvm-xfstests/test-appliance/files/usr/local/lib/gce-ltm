@@ -41,5 +41,5 @@ then
     chown www-data: -R /var/log/lgtm
     cp /root/gce-ltm/ltm-lighttpd.conf /etc/lighttpd/lighttpd.conf
     systemctl restart lighttpd.service
+    # Restart to allow conf changes to take effect.
 fi
-# Restart to allow conf changes to take effect.

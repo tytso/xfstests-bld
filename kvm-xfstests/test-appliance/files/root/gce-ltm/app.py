@@ -22,7 +22,9 @@ import binascii
 import logging
 import os
 import flask
+import flask_login
 from ltm import LTM
+from ltm_login import User
 
 logging.basicConfig(
     filename=LTM.server_log_file,
@@ -30,6 +32,7 @@ logging.basicConfig(
     '%(filename)s:%(lineno)s-%(funcName)s()] %(message)s',
     datefmt='%Y-%m-%d %H:%m:%S', level=logging.DEBUG)
 
+login_manager = flask_login.LoginManager()
 app = flask.Flask(__name__, static_url_path='/static')
 
 
@@ -63,13 +66,75 @@ else:
 app.secret_key = secret_key
 
 
+@login_manager.user_loader
+def load_user(user_id):
+  return User.get(user_id)
+
+login_manager.init_app(app)
+
+
 @app.route('/')
 def index():
   logging.info('Request received at /, returning index.html')
   return app.send_static_file('index.html')
 
 
+@app.route('/login', methods=['POST'])
+def login():
+  """Endpoint for logging in a user session.
+
+  This endpoint expects json data in the request with the key 'password'
+  containing the password of the given user. If the password hash matches the
+  single user's password hash, the session of this endpoint will be
+  authenticated.
+
+  Returns:
+    json object {'result': True} on successful login.
+    If the request does not contain json data, or if the 'password'
+    key is not present, this will instead return a 400 error.
+    If the password is incorrect, this will return a 401 error.
+  """
+  logging.info('Request received at /login')
+  json_data = flask.request.json
+
+  if not json_data or 'password' not in json_data:
+    # maybe redirect to /
+    logging.info('Login failed due to insufficient request content')
+    flask.abort(400)
+
+  password = json_data['password']
+  user = User.create_user()
+  validated = user.validate_password(password)
+
+  if validated:
+    flask_login.login_user(user)
+    logging.info('Login successful')
+  else:
+    logging.info('Login failed')
+    flask.abort(401)
+  return flask.jsonify({'result': True})
+
+User.create_user()
+
+
+@app.route('/status')
+def status():
+  if flask_login.current_user.is_authenticated:
+    return flask.jsonify({'status': True})
+  else:
+    return flask.jsonify({'status': False})
+
+
+@app.route('/logout')
+@flask_login.login_required
+def logout():
+  logging.info('Request received at /logout')
+  flask_login.logout_user()
+  return flask.jsonify({'result': True})
+
+
 @app.route('/gce-xfstests', methods=['POST'])
+@flask_login.login_required
 def gce_xfstests():
   """Endpoint for launching a gce-xfstests test run.
 

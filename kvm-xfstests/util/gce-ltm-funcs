@@ -1,27 +1,50 @@
+. $DIR/.ltm_instance
 
+# The hostname has to match the common name field of the certificate, as set
+# in util/gce-do-setup when running openssl to create a self-signed cert.
+# curl will fail otherwise, stating that the common names do not match.
+LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+
+function ltm_post_json() {
+    curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@"
+}
+
+function ltm_post_failed() {
+    if gcloud compute instances describe "xfstests-ltm" &> /dev/null; then
+	echo "The ltm instance seems to be running. Try deleting the"
+	echo "$DIR/.ltm_instance file and re-running launch-ltm to recreate"
+	echo "the file. If the issue persists, try relaunching the LTM"
+	echo "If configuration changes have been made, it may be necessary"
+	echo "to delete and re-launch the LTM."
+    else
+	echo "The ltm doesn't seem to be running. Try launching the ltm"
+	echo "instance with launch-ltm. This will recreate the"
+	echo ".ltm_instance file."
+    fi
+
+
+}
 function send_to_ltm() {
-    . $DIR/.ltm_instance
     local cmd_to_send=$1
 
-    # Validate certificate
-    curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	-d "{\"orig_cmdline\": \"$cmd_to_send\"}" \
-	--resolve "a.$GCE_PROJECT.gce-xfstests:443:$GCE_LTM_EXT_IP" \
-	-X POST "https://a.$GCE_PROJECT.gce-xfstests/gce-xfstests"
+    # just create a new login session and store it in the cookie
+    ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
+        "https://$LTM_HOSTNAME/login"
+
+    if [ ! $? = 0 ]; then
+	echo "Login failed."
+	ltm_post_failed
+	return 1
+    fi
+
+    ltm_post_json -b $DIR/.ltm_cookie -d "{\"orig_cmdline\": \"$cmd_to_send\"}" \
+	"https://$LTM_HOSTNAME/gce-xfstests"
 
     if [ $? != 0 ]; then
 	echo "Request failed."
-	if gcloud compute instances describe "xfstests-ltm" &> /dev/null; then
-	    echo "The ltm instance seems to be running. Try deleting the"
-	    echo "$DIR/.ltm_instance file and re-running launch-ltm to recreate"
-	    echo "the file. If the issue persists, try relaunching the LTM"
-	else
-	   echo "The ltm doesn't seem to be running. Try launching the ltm"
-	   echo "instance with launch-ltm. This will recreate the"
-	   echo ".ltm_instance file."
-	fi
+	ltm_post_failed
 	return 1
     fi
 
 }
-
