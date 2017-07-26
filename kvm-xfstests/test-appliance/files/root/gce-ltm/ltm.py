@@ -12,4 +12,5 @@ class LTM(object):
     if not os.path.exists(os.path.dirname(log_file_path)):
       os.makedirs(os.path.dirname(log_file_path))
 
+LTM.create_log_dir(LTM.test_log_dir)
 # end class LTM

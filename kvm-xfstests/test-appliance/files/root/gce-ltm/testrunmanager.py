@@ -67,7 +67,11 @@ class TestRunManager(object):
     self.shards = []
 
     self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path)
-    self.shards = self.sharder.get_shards()
+    region_shard = True
+    if opts and 'no_region_shard' in opts:
+      region_shard = False
+    # Other shard opts could be passed here.
+    self.shards = self.sharder.get_shards(region_shard=region_shard)
 
   def run(self):
     logging.info('Entered run()')

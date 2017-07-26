@@ -136,14 +136,27 @@ class LTMParser(object):
     if '--ltm' in self.extra_cmds:
       self.removedopts.append('--ltm')
     self.extra_cmds[:] = [x for x in self.extra_cmds if x != '--ltm']
-    try:
-      inst_ind = self.extra_cmds.index('--instance-name')
-      self.removedopts.append(self.extra_cmds[inst_ind])
-      del self.extra_cmds[inst_ind]
-      self.removedopts.append(self.extra_cmds[inst_ind])
-      del self.extra_cmds[inst_ind]
-    except (ValueError, IndexError):
-      pass
+    def remove_opt_with_arg(opt_name):
+      try:
+        inst_ind = self.extra_cmds.index(opt_name)
+        self.removedopts.append(self.extra_cmds[inst_ind])
+        del self.extra_cmds[inst_ind]
+        self.removedopts.append(self.extra_cmds[inst_ind])
+        del self.extra_cmds[inst_ind]
+      except (ValueError, IndexError):
+        pass
+    remove_opt_with_arg('--instance-name')
+    remove_opt_with_arg('--gs-bucket')
+    remove_opt_with_arg('--gce-zone')
+    remove_opt_with_arg('--image-project')
+    remove_opt_with_arg('--testrunid')
+    remove_opt_with_arg('--hooks')
+    remove_opt_with_arg('--update-xfstests-tar')
+    remove_opt_with_arg('--update-xfstests')
+    remove_opt_with_arg('--update-files')
+    remove_opt_with_arg('-n')  # number of cpus
+    remove_opt_with_arg('-r')  # ram
+    remove_opt_with_arg('--machtype')
 
   def process_configs(self):
     """Parses the config options specified on the command line.
