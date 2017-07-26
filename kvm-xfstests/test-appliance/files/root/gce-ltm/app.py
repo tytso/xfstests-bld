@@ -21,10 +21,12 @@ All of the logging done in the server process is sent to the file
 import binascii
 import logging
 import os
+import traceback
 import flask
 import flask_login
 from ltm import LTM
 from ltm_login import User
+from testrunmanager import TestRunManager
 
 logging.basicConfig(
     filename=LTM.server_log_file,
@@ -170,8 +172,25 @@ def gce_xfstests():
   except KeyError:
     flask.abort(400)
 
+  try:
+    opts = json_data['options']
+  except KeyError:
+    opts = None
+
+  try:
+    test_run = TestRunManager(cmd_in_base64, opts)
+    run_info = test_run.get_info()
+    test_run.run()
+  except:
+    logging.error('Did not successfully run test:')
+    logging.error(traceback.format_exc())
+    return flask.jsonify({'status': False})
+
+  if not run_info or run_info.keys() == 0:
+    return flask.jsonify({'status': False})
+
   return flask.jsonify({'status': True,
-                        'orig_cmdline': cmd_in_base64})
+                        'info': run_info})
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0')
