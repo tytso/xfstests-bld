@@ -31,15 +31,20 @@ Under normal circumstances, run() will spawn a subprocess, which when
 exited should have uploaded an aggregated results file to the GCS bucket,
 and should have cleaned up all of the shard's results and summary files.
 """
+import base64
 from datetime import datetime
 import fcntl
 import logging
 from multiprocessing import Process
 import os
 import random
+import shutil
+from subprocess import call
 from time import sleep
+import gce_funcs
 from ltm import LTM
 from sharder import Sharder
+from google.cloud import storage
 
 
 class TestRunManager(object):
@@ -61,6 +66,11 @@ class TestRunManager(object):
     self.orig_cmd_b64 = cmd_in_base64
     self.log_dir_path = LTM.test_log_dir + '%s/' % test_run_id
     self.log_file_path = self.log_dir_path + 'run.log'
+    self.agg_results_dir = '%s/results-%s-%s/' % (
+        self.log_dir_path, LTM.ltm_username, self.id)
+    self.agg_results_filename = '%sresults.%s-%s' % (
+        self.log_dir_path, LTM.ltm_username, self.id)
+    self.kernel_version = 'unknown_kernel_version'
 
     LTM.create_log_dir(self.log_dir_path)
     logging.info('Created new TestRun with id %s', self.id)
@@ -162,14 +172,181 @@ class TestRunManager(object):
     return
 
   def __aggregate_results(self):
+    """Moves all of the shard results into the aggregate results dir.
+
+    For each shard, this function looks for the shard's advertised results
+    directory. If it isn't present, then look for the shard's serial port
+    dump. If neither are present, simply skip the shard and log a warning.
+
+    In addition, this function also concatenates certain top-level results
+    files from each shard, e.g. runtests.log. This wlil be output into a
+    file at the top level (where one would normally find a runtests.log for
+    a non-LTM run).
+    """
     logging.info('Aggregating sharded results')
+    LTM.create_log_dir(self.agg_results_dir)
+
+    for shard in self.shards:
+      logging.info('Moving %s into aggregate test results folder',
+                   shard.unpacked_results_dir)
+      shard.finished_with_serial = False
+      if os.path.exists(shard.unpacked_results_dir):
+        shutil.move(shard.unpacked_results_dir, self.agg_results_dir +
+                    shard.id)
+      elif os.path.exists(shard.unpacked_results_serial):
+        shutil.move(shard.unpacked_results_serial, self.agg_results_dir +
+                    shard.id + '.serial')
+        shard.finished_with_serial = True
+      else:
+        logging.warning('Could not find %s or %s, shard may not have completed '
+                        'correctly', shard.unpacked_results_dir,
+                        shard.unpacked_results_serial)
+        continue
+
+    # concatenate files from subdirectories into a top-level
+    # aggregate file at self.agg_results_dir + filename
+    # Files to concat: runtests.log, cmdline, summary, failures, run-stats
+    # testrunid
+
+    for c in ['runtests.log', 'cmdline', 'summary', 'failures', 'run-stats',
+              'testrunid', 'kernel_version']:
+      self.__concatenate_shard_files(c)
+
+    # read the first kernel_version we find (if we find any)
+    for shard in self.shards:
+      try:
+        with open(self.agg_results_dir + '%s/%s'
+                  % (shard.id, 'kernel_version'),
+                  'r') as f:
+          self.kernel_version = f.read().strip()
+        break
+      except IOError:
+        continue
     return
+
+  def __concatenate_shard_files(self, filename):
+    """Concatenate all shard files of a given filename.
+
+    This function takes in a filename argument, and looks through each shard's
+    entry in the aggregate results directories for the filename.
+
+    This function writes a new file of "filname" at the top level of the
+    aggregate results directory, whose contents are those of each shard,
+    concatenated.
+
+    Args:
+      filename: The name of the file to create, and the name to look for in
+                each shard.
+    """
+    logging.debug('Concatenating shard file %s', filename)
+    fa = open('%s%s' % (self.agg_results_dir, filename), 'w')
+
+    fa.write('LTM aggregate file for %s\n' % filename)
+    fa.write('Test run ID %s\n' % self.id)
+    fa.write('Aggregate results from %d shards\n' % len(self.shards))
+
+    for shard in self.shards:
+      fa.write('\n============SHARD %s============\n' % shard.id)
+      fa.write('============CONFIG: %s\n\n' % shard.test_fs_cfg)
+      if shard.finished_with_serial:
+        fa.write('Shard %s did not finish properly. '
+                 'Serial data is present in the results dir.\n')
+      else:
+        try:
+          with open(self.agg_results_dir + '%s/%s'
+                    % (shard.id, filename),
+                    'r') as f:
+            fa.write(f.read())
+        except IOError:
+          logging.warning('Could not open/read file %s for shard %s',
+                          filename, shard.id)
+          fa.write('Could not open/read file %s for shard %s\n'
+                   % (filename, shard.id))
+      fa.write('\n==========END SHARD %s==========\n' % shard.id)
+    fa.close()
 
   def __create_ltm_info(self):
-    return
+    """Creates an ltm-info file and a ltm_logs directory in the results dir.
+
+    This function creates an easily-readable info file at the top level of the
+    results dir called "ltm-info", with information about each shard. This
+    also aggregates the TestRun and Shard's logging (from the LTM) into the
+    ltm_logs file.
+    """
+    # Additional file to create:
+    # self.agg_results_dir/ltm-info
+    # (original cmd, and what was run on each shard)
+    logging.info('Start')
+    fa = open(self.agg_results_dir + 'ltm-info', 'w')
+    results_ltm_log_dir = self.agg_results_dir + 'ltm_logs/'
+    LTM.create_log_dir(results_ltm_log_dir)
+
+    fa.write('LTM test run ID %s\n' % self.id)
+    fa.write('Original command: %s\n'
+             % base64.decodestring(self.orig_cmd_b64))
+    fa.write('Aggregate results from %d shards\n' % len(self.shards))
+    fa.write('SHARD INFO:\n\n')
+    for shard in self.shards:
+      fa.write('SHARD %s\n' % shard.id)
+      fa.write('instance name: %s\n' % shard.instance_name)
+      fa.write('split config: %s\n' % shard.test_fs_cfg)
+      fa.write('gce command executed: %s\n\n' % str(shard.gce_xfstests_cmd))
+
+      shutil.copy2(shard.log_file_path, results_ltm_log_dir)
+      shutil.copy2(shard.cmdlog_file_path, results_ltm_log_dir)
+    shutil.copy2(self.log_file_path, results_ltm_log_dir)
+    fa.close()
 
   def __pack_results_file(self):
-    return
+    """tars and xz's the aggregate results directory, uploading to GS bucket.
+
+    Calls tar and xz to pack the results directory the same way that a test
+    appliance would. After uploading the results and summary file, the local
+    copy of the directory will be deleted to preserve space.
+    """
+    logging.info('Start')
+    logging.info('calling tar')
+    call(['tar', '-C', self.agg_results_dir, '-cf',
+          '%s.tar' % (self.agg_results_filename), '.'])
+
+    logging.info('tarfile %s.tar', self.agg_results_filename)
+    tarfile = open('%s.tar' % (self.agg_results_filename), 'r')
+
+    logging.info('finalfile %s.tar.xz', self.agg_results_filename)
+    finalfile = open('%s.tar.xz' % (self.agg_results_filename), 'w')
+
+    logging.info('calling xz from tarfile to finalfile')
+    call(['xz', '-6e'], stdin=tarfile, stdout=finalfile)
+
+    finalfile.close()
+    tarfile.close()
+    storage_client = storage.Client()
+    bucket_name = gce_funcs.get_gs_bucket().strip()
+    bucket = storage_client.lookup_bucket(bucket_name)
+    logging.info('Uploading repacked results .tar.xz file')
+
+    with open('%s.tar.xz' % (self.agg_results_filename), 'r') as f:
+      bucket.blob(self.__gce_results_filename(self.kernel_version)
+                 ).upload_from_file(f)
+
+    # Upload the summary file as well.
+    with open(self.agg_results_dir + 'summary', 'r') as f:
+      bucket.blob(self.__gce_summary_filename(self.kernel_version)
+                 ).upload_from_file(f)
+
+    logging.info('Deleting local .tar and .tar.xz files')
+    os.remove('%s.tar' % self.agg_results_filename)
+    os.remove('%s.tar.xz' % self.agg_results_filename)
+    logging.info('Deleting local aggregate results directory')
+    shutil.rmtree(self.agg_results_dir)
+
+  def __gce_results_filename(self, kernel_version):
+    return 'results.%s-%s.%s.tar.xz' % (
+        LTM.ltm_username, self.id, kernel_version)
+
+  def __gce_summary_filename(self, kernel_version):
+    return 'summary.%s-%s.%s.txt' % (
+        LTM.ltm_username, self.id, kernel_version)
 
 ### end class TestRunManager
 
