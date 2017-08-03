@@ -24,8 +24,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
-$BUILD_ENV make clean
-$BUILD_ENV make
+$BUILD_ENV make all-clean-first
 $BUILD_ENV make tarball
 cd kvm-xfstests/test-appliance
 if test "$OUT_TAR" = "yes" ; then

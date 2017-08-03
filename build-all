@@ -53,6 +53,7 @@ function set_skip_all () {
 [ -d stress-ng ] || SKIP_STRESS_NG=yes
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
 
+MAKE_CLEAN=":"
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -118,6 +119,9 @@ while [ "$1" != "" ]; do
 	    set_skip_all
 	    unset SKIP_KVM_UTILS
 	    ;;
+	--clean-first)
+	    MAKE_CLEAN="make clean"
+	    ;;
 	*)
 	    echo "Unknown option: $1"
 	    exit 1
@@ -135,7 +139,8 @@ mkdir -p $DESTDIR
 
 if test -n "$DO_ANDROID" ; then
     build_start "Android compatibility library"
-    (cd android-compat; ./configure $cross ;  make $J prefix=$DESTDIR install)
+    (cd android-compat; ./configure $cross ;  $MAKE_CLEAN ; \
+     make $J prefix=$DESTDIR install)
     android_compat="-landroid_compat"
     LCF="-fpie -include android_compat.h"
     LLF="-pie"
@@ -148,7 +153,7 @@ if test -z "$SKIP_E2FSLIBS" ; then
     (cd e2fsprogs-libs; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
-     ./configure $cross --prefix=/ --disable-nls; make $J; \
+     ./configure $cross --prefix=/ --disable-nls; $MAKE_CLEAN ; make $J; \
      make DESTDIR=$DESTDIR $J install)
 fi
 
@@ -157,7 +162,7 @@ if test -z "$SKIP_ATTR" ; then
     (cd attr; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
-     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" ; \
      make $J install-dev ; make $J install)
 fi
@@ -168,7 +173,7 @@ if test -z "$SKIP_ACL" ; then
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
-     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" \
 	  LIBTOOL="/usr/bin/libtool --tag=CC" ; \
      make $J install)
@@ -180,14 +185,14 @@ if test -z "$SKIP_POPT" ; then
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-     ./configure $cross --prefix=$DESTDIR --disable-nls; \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
      make $J install)
 fi
 
 if test -z "$SKIP_AIO" ; then
     build_start "AIO library"
-    (cd libaio; ./configure $cross --disable-nls;
+    (cd libaio; ./configure $cross --disable-nls; $MAKE_CLEAN ;
      make $J prefix=$DESTDIR install)
     rm $DESTDIR/lib/libaio.so*
 fi
@@ -206,6 +211,7 @@ if test -z "$SKIP_KEYUTILS" ; then
      # NO_SOLIB=1 so that libkeyutils is only built as a static library.  Then
      # keyctl will be statically linked to it, and we won't have to install
      # libkeyutils.so.
+     $MAKE_CLEAN ;
      make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl ;
 
      install -D -m 0755 keyctl $DESTDIR/bin/keyctl ;
@@ -228,7 +234,7 @@ if test -z "$SKIP_UTIL_LINUX" ; then
 	--without-ncurses \
 	--without-python \
 	--without-tinfo;
-     make $J install;
+     $MAKE_CLEAN ; make $J install;
 
      # Installing mkfs causes problems because xfstests assumes that mkfs.ext4
      # is in the same directory as mkfs.  So rely on the system mkfs instead.
@@ -243,7 +249,7 @@ if test -z "$SKIP_STRESS_NG" ; then
     (cd stress-ng; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     make $J ; make DESTDIR=$DESTDIR $J install ; \
+     $MAKE_CLEAN ; make $J ; make DESTDIR=$DESTDIR $J install ; \
      ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../stress-ng.ver ; \
     )
 fi
@@ -259,22 +265,24 @@ if test -z "$SKIP_DBENCH" ; then
      LDFLAGS="$EXEC_LDFLAGS" \
      LIBS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --datadir=/root/xfstests/lib; \
-     make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
+     $MAKE_CLEAN ; make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
 fi
 
 if test -z "$SKIP_XFSPROGS" ; then
     build_start "xfsprogs"
-    (cd xfsprogs-dev; make $J realclean ; make $J configure ; \
+    (cd xfsprogs-dev; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LIBS=-lpthread ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext" ; \
+     make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
-     CFLAGS="$LCF -I$DESTDIR/include" \
-     CPPFLAGS="-I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-     LIBS=-lpthread \
-     ./configure $cross --prefix=/ --disable-lib64 --disable-gettext ; \
+     ./configure $LOCAL_CONFIGURE_OPTIONS ; \
      make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
-     DIST_ROOT=$DESTDIR make $J install; \
-     DIST_ROOT=$DESTDIR make $J install-dev)
+     DIST_ROOT=$DESTDIR make prefix=/ $J install; \
+     DIST_ROOT=$DESTDIR make prefix=/ $J install-dev)
 fi
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
@@ -284,7 +292,7 @@ if test -z "$SKIP_FIO"; then
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+     ./configure $crossfio --extra-cflags="$CFLAGS"; $MAKE_CLEAN ; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
 if test -z "$SKIP_XFSTESTS" ; then
@@ -292,11 +300,12 @@ if test -z "$SKIP_XFSTESTS" ; then
     (cd xfstests-dev; \
      ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
      autoreconf --include=m4 ; \
-     libtoolize -i ; \
-     CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" \
-     CPPFLAGS="-I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
-     LIBS=-lpthread \
+     export CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LIBS=-lpthread ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
+     libtoolize -i ; $MAKE_CLEAN ; \
      ./configure $cross ; \
      make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" \
 	  LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
@@ -324,10 +333,10 @@ EOF
      export CPPFLAGS="-I$DESTDIR/include" ; \
      autoreconf -fvi ; \
      ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
-     make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
+     $MAKE_CLEAN ; make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
     (cd misc ; LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ./configure $cross ; \
-     make $J ; make install DESTDIR=$DESTDIR)
+     $MAKE_CLEAN ; make $J ; make install DESTDIR=$DESTDIR)
 fi
