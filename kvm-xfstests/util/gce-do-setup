@@ -15,13 +15,9 @@ fi
 function gce_gen_cert() {
     # Making an SSL cert for a project, storing it in GCS bucket.
 
-    if [ -z $REGEN_CERT ] && \
-      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
-    then
-        return 0
-    fi
-
-    if [ -z $REGEN_CERT ] && \
+    if [ -z "$REGEN_CERT" ] && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-server.pem && \
       gsutil -q stat gs://$GS_BUCKET/gce-xfstests-key.pem
     then
         return 0
