@@ -36,171 +36,114 @@ The build also supports some optional repositories which are only
 included when their URLs are uncommented in the config file; see the
 config file for a full list.
 
-## Installing the necessary packages to build xfstests
+## Choosing a build type
 
-In order to build xfstests, a number of prerequisite packages are
-needed.  They can be installed using the command:
+xfstests-bld can be used to build xfstests and its dependencies for
+one of the official "test appliances"
+([kvm-xfstests](kvm-xfstests.md), [gce-xfstests](gce-xfstests.md),
+[android-xfstests](android-xfstests.md), etc.), then optionally build
+the test appliance itself.  This normally requires using a Debian
+build chroot.  Alternatively, xfstests-bld can be used to build
+xfstests and its dependencies for a different environment, such as for
+the native system, without using a build chroot.
 
-        % sudo apt-get install build-essential autoconf autoconf2.64 \
+### Preparing a build chroot
+
+To build xfstests and its dependencies for one of the official test
+appliances, it is strongly recommended to use a Debian build chroot.
+Using a build chroot ensures that an appropriate compiler toolchain is
+used and that the binaries are linked to the appropriate shared
+libraries.  In addition, using QEMU user-mode emulation it is possible
+to create a chroot for a foreign architecture, making it easy to do
+cross-architecture builds.
+
+To set up a Debian build chroot, run the `setup-buildchroot` script.
+`setup-buildchroot` will invoke `debootstrap` to bootstrap a minimal
+Debian Jessie system into a directory (by default a subdirectory of
+`/chroots/`), then set it up for use with `schroot` and install into
+it all the Debian packages needed for the build.  `setup-buildchroot`
+must be run as root, since it needs root permission to run
+`debootstrap` and update `/etc/schroot/schroot.conf`.
+
+`setup-buildchroot` supports setting up a chroot using any
+architecture supported by Debian.  For kvm-xfstests appliances, you'll
+need either an i386 or amd64 chroot:
+
+    $ sudo ./setup-buildchroot --arch=i386
+    $ sudo ./setup-buildchroot --arch=amd64
+
+For gce-xfstests test appliances, you'll need an amd64 chroot:
+
+    $ sudo ./setup-buildchroot --arch=amd64
+
+For android-xfstests test appliances, you'll need an armhf or arm64
+chroot:
+
+    $ sudo ./setup-buildchroot --arch=armhf
+    $ sudo ./setup-buildchroot --arch=arm64
+
+Normally ARM will be a foreign architecture, so `setup-buildchroot`
+will walk you through installing the needed QEMU binary and
+binfmt_misc support to get QEMU user-mode emulation working.
+Afterwards, it will behave just like a native chroot.
+
+Once you're created a chroot, you should be able to use the `schroot`
+program to enter it, e.g.:
+
+    $ schroot -c jessie-amd64         # enter chroot as regular user
+    $ schroot -c jessie-amd64 -u root # enter chroot as root
+
+The `-c` option must specify the name of the chroot as listed in
+`/etc/schroot/schroot.conf`.  By default `setup-buildchroot` names the
+chroots after the Debian release and architecture.
+
+### Without a build chroot
+
+If you want to use xfstests-bld without a dedicated build chroot, a
+number of prerequisite packages are needed.  They can be installed
+using the following command:
+
+    $ sudo apt-get install build-essential autoconf autoconf2.64 \
                 automake libgdbm-dev libtool-bin qemu-utils gettext \
                 e2fslibs-dev git debootstrap fakechroot libdbus-1-3 \
                 autopoint pkg-config symlinks ca-certificates bison
 
+It is also possible to use a cross compiler rather than the native
+compiler.  To do this, set the shell variables `CROSS_COMPILE` and
+optionally `TOOLCHAIN_DIR` in your `config.custom` file as follows:
+
+* `CROSS_COMPILE` should be set to the target triplet.  For example,
+  on a Debian stretch system, you can install the
+  `gcc-arm-linux-gnueabihf` package and then set
+  `CROSS_COMPILE=arm-linux-gnueabihf` to cross compile for the Debian
+  armhf platform.
+
+* `TOOLCHAIN_DIR` can be set to the directory containing the
+  cross-compiler toolchain, if it is not already on your `$PATH`.  It
+  should specify the directory one level above the `bin` directory
+  containing the compiler executable file.
+
 ## Building the xfstests tarball
 
-1.  Run "make clean"
+You may skip explicitly building the xfstests tarball if you are using
+the `do-all` convenience script to build a test appliance, as
+described in [building-rootfs](building-rootfs.md).  Otherwise, you
+can build the tarball as follows:
 
-2.  Run "make".  This will run autoconf (if necessary) in the various
-subcomponents, run "make" or the equivalent to build all of the
-subcomponents, and then finally run "make install" to install the
-build artifacts into the bld directory.  The actual work is done via
-the "build-all" script.
+    $BUILD_ENV make clean
+    $BUILD_ENV make
+    $BUILD_ENV make tarball
 
-3.  Run "make tarball".  This will copy the files actually needed to
-run xfstests into the xfstests scratch directory, and then create the
-xfstests.tar.gz file.  The actual work is done by the "gen-tarball"
-script.
+... where `BUILD_ENV` should be set to `"schroot -c $CHROOT_NAME --"`
+for a chroot build environment (where `$CHROOT_NAME` should be
+replaced with the name of the chroot as listed in
+`/etc/schroot/schroot.conf`) or an empty string otherwise.
 
-## Build environments for xfstests
+Briefly, these `make` targets do the following tasks:
 
-There are three important aspects of the environment in which the
-xfstests binaries are built.
-
-* The build utilities: autoconf, automake, libtool, etc.
-* The compiler toolchain: gcc, binutils, ranlib, strip, etc.
-* The (shared) libraries used for linking the executables
-
-In practice, the largest impact will be the compiler toolchain; and on
-the x86 platform, whether 32-bit or 64-bit binaries are generated.
-
-The subsections listed below are optional, in that if you are only
-interested in building 64-bit x86 binaries to be run on a 64-bit x86
-kernel, you can probably use your desktop Linux environment to build
-the xfstests.tar.gz file.  However, there reasons why you may want to
-use a more sophisticated way of building xfstests.
-
-For example, by default xfstests-bld will link the binaries statically
-to avoid problems between the build environment and the runtime
-environment.  However, statically linked binaries are significantly
-larger.  Using a chroot environment to guarantee that the runtime and
-build environments are in sync results in substantial space savings
-(almost an order of magnitude) since it becomes safe to use
-dynamically linked executables.
-
-
-### Building in a chroot environment
-
-These instructions assumes you are using Debian; they should probably
-work for Ubuntu as well.
-
-If you want to build a 64-bit test image, just remove the --arch=i386
-in step #3, and use a schroot name of "jessie-64" instead of
-"jessie-32".
-
-1. Install the necessary packages to build host OS
-
-        % sudo apt-get install schroot debootstrap
-
-2.  Add the following to /etc/schroot/schroot.conf, replacing "tytso"
-with your username, and /u1/jessie-32 with path where you plan to
-put your build chroot
-
-        [jessie-32]
-        description=Debian Jessie 32-bit
-        type=directory
-        directory=/u1/jessie-32
-        users=tytso,root
-        root-users=tytso
-
-3. Create the build chroot (again, replace /u1/jessie-root with the
-pathname to your build chroot directory):
-
-        % cd /u1
-        % sudo debootstrap --arch=i386 jessie /u1/jessie-32
-        % schroot -c jessie-32 -u root
-        (jessie-32)root@closure:/u1# apt-get install build-essential \
-                autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
-                qemu-utils gettext e2fslibs-dev git debootstrap fakechroot \
-                libdbus-1-3 autopoint pkg-config symlinks ca-certificates \
-                bison
-        (jessie-32)root@closure:/u1# exit
-
-4. Copy config to config.custom, and then change the lines which
-define SUDO_ENV and BUILD_ENV to:
-
-        SUDO_ENV="schroot -c jessie-32 -u root --"
-        BUILD_ENV="schroot -c jessie-32 --"
-
-5. Kick off the build!
-
-        ./do-all
-
-
-### Using an alternate compiler toolchain
-
-A common reason for using an alternate compiler toolchain is to allow
-you to cross-compile xfstests for a different target architecture.
-This is done by setting the CROSS_COMPILE and TOOLCHAIN_DIR shell
-variables in the top-level config file, or (this is preferable) in the
-config.custom file.
-
-To use an alternate toolchain, the shell variable CROSS_COMPILE
-should be set to the target architecture.  For example, on a Debian
-stretch system, you can install the gcc-arm-linux-gnueabihf to build package
-and then set CROSS_COMPILE to "arm-linux-gnueabihf" to cross compile
-for the Debian armhf platform.
-
-The TOOLCHAIN_DIR shell variable can be used to specify the location
-for the alternate compiler toolchain if it is not your path.  For
-example, let's assume you've installed the Android Native Development
-Kit (NDK) and used the make-standalone-toolchain.sh to install a
-toolchain in /u1/arm64-toolchain.  (See the [Android NDK
-documentation](https://developer.android.com/ndk/guides/standalone_toolchain.html)
-for more information.)  To use the standalone toolchain designed for
-Android, configure TOOLCHAIN_DIR to /u1/arm64-toolchain and
-CROSS_COMPILE to aarch64-linux-android.
-
-### Instructions for building an armhf root_fs.tar.gz file
-
-The armhf_root_fs.tar.gz file is used for testing file systems on
-Android devices, and was generated as follows:
-
-1.  Copy the xfstests-bld git tree to a debian build host running the
-armhf platform.
-
-2.  Set up a Debian Stable (Jessie) build environment and enter it.  For
-example, if you are doing this on a Debian build server, assuming you
-are a Debian developer with access to the Debian build architecture (I
-was using harris.debian.org)
-
-        schroot -b -c jessie -n tytso-jessie
-        dd-schroot-cmd -c tytso-jessie apt-get install build-essential \
-                autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
-                qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
-                ca-certificates bison
-        schroot -r -c tytso-jessie
-Alternatively, make sure the build system is installed with Debian
-Stable (e.g., Jessie), and install the following packages:
-
-        % apt-get install build-essential build-essential \
-                autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
-                qemu-utils gettext e2fslibs-dev git debootstrap \
-                fakechroot libdbus-1-3 autopoint pkg-config symlinks rsync \
-                ca-certificates bison
-
-3.  Build the xfstests.tar.gz file (which contains the actual xfstests binaries built for armhf)
-
-        cd xfstests-bld
-        make
-        make tarball
-
-4.   Create the root_fs.tar.gz chroot environment
-
-        cd kvm-xfstests/test-appliance
-        ./gen-image --out-tar
-
-5.  If you are on a Debian build server, clean up after yourself.
-
-        schroot -e -c tytso-jessie
-        rm -rf /home/tytso/xfstests-bld
+* `make clean` cleans the various components.
+* `make` (or equivalently `make all`) builds the various subcomponents
+  and installs them into the `bld` directory.
+* `make tarball` copies the files actually needed to run xfstests into
+  the `xfstests` scratch directory, then creates `xfstests.tar.gz` by
+  running the `gen-tarball` script.

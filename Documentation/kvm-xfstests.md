@@ -30,11 +30,8 @@ addition, if you use the 64-bit kernel with 32-bit interfaces, it
 tests the 32-bit compat ioctl code paths, which otherwise may not get
 sufficient testing.
 
-If you want to build your own test appliance VM, you will first need
-to [build the xfstests.tar.gz tarball](building-xfstests.md) which
-contains the file system tests and its dependencies, and then use the
-gen-image script to [build the root_fs image](building-rootfs.md).
-Please see the relevant documentation files for more details.
+If you want to build your own test appliance VM, see
+[building-rootfs.md](building-rootfs.md).
 
 ## Setup and configuration
 

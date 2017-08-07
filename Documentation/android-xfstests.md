@@ -35,9 +35,9 @@ devices.  If you encounter a problem, please submit a fix!
   xfstests-bld scripts.  Either fetch the prebuilt
   armhf_root_fs.tar.gz from
   [kernel.org](http://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests),
-  or build one yourself on a Debian ARM build server as described in
-  [building-xfstests](building-xfstests.md).  Then, either put the
-  chroot tarball in the default location of
+  or build one yourself as described in
+  [building-rootfs](building-rootfs.md).  Then, either put the chroot
+  tarball in the default location of
   kvm-xfstests/test-appliance/armhf_root_fs.tar.gz, or specify it with
   ROOT_FS in your ~/.config/android-xfstests or the -I option to
   android-xfstests.
