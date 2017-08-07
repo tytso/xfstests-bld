@@ -23,15 +23,15 @@ XFSPROGS_COMMIT=v4.11.0-rc1
 EXEC_LDFLAGS=-static
 EXEC_LLDFLAGS=-all-static
 
-# Use these to build in a debian chroot
-#
-#BUILD_ENV="schroot -c jessie --"
-#SUDO_ENV="schroot -c jessie -u root --"
-
 BUILD_ENV=
 SUDO_ENV=sudo
+# Uncomment these to make the do-all script use the specified
+# Debian chroot by default
+#
+#BUILD_ENV="schroot -c jessie-amd64 --"
+#SUDO_ENV="schroot -c jessie-amd64 -u root --"
 
-# Uncomment this to make the do-all script build the
-# chroot tarball by default
+# Uncomment this to make the do-all script build a
+# root_fs.tar.gz by default rather than a root_fs.img
 #
 # OUT_TAR=yes
