@@ -20,8 +20,11 @@ XFSPROGS_COMMIT=v4.11.0-rc1
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
 
-EXEC_LDFLAGS=-static
-EXEC_LLDFLAGS=-all-static
+EXEC_LDFLAGS=
+EXEC_LLDFLAGS=
+# Uncomment these to statically link the binaries to the system libraries
+#EXEC_LDFLAGS=-static
+#EXEC_LLDFLAGS=-all-static
 
 BUILD_ENV=
 SUDO_ENV=sudo
