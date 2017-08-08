@@ -346,9 +346,9 @@ class TestRunManager(object):
 
   def __gce_results_filename(self, kernel_version, summary=False):
     if summary:
-      return 'summary.%s-%s.%s.txt' % (
+      return 'results/summary.%s-%s.%s.txt' % (
           LTM.ltm_username, self.id, kernel_version)
-    return 'results.%s-%s.%s.tar.xz' % (
+    return 'results/results.%s-%s.%s.tar.xz' % (
         LTM.ltm_username, self.id, kernel_version)
 
 ### end class TestRunManager

@@ -243,9 +243,9 @@ class Shard(object):
 
     os.remove(self.serial_output_file_path)
     logging.info('Removing shard %s results files from gcs', self.id)
-    for b in self.bucket.list_blobs(prefix='results.%s' % self.results_name):
+    for b in self.bucket.list_blobs(prefix='results/results.%s' % self.results_name):
       b.delete()
-    for b in self.bucket.list_blobs(prefix='summary.%s' % self.results_name):
+    for b in self.bucket.list_blobs(prefix='results/summary.%s' % self.results_name):
       b.delete()
 
     logging.info('Finished')
@@ -276,7 +276,7 @@ class Shard(object):
       logging.info('Checking if results.%s exists, try %d',
                    self.results_name, tries)
       # list_blobs returns an iterable.
-      for b in self.bucket.list_blobs(prefix='results.%s' % self.results_name):
+      for b in self.bucket.list_blobs(prefix='results/results.%s' % self.results_name):
         logging.info('Found blob with name %s', b.name)
         return 'gs://%s/%s' % (self.gs_bucket, b.name)
     return None

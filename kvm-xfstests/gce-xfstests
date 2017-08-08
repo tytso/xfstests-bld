@@ -51,10 +51,10 @@ do_get_results_uri()
 	    URI="$1"
 	    ;;
 	results*)
-	    URI="gs://$GS_BUCKET/$1"
+	    URI="gs://$GS_BUCKET/results/$1"
 	    ;;
 	*)
-	    URI=$(gsutil ls "gs://$GS_BUCKET/results.$1.*.tar.xz" \
+	    URI=$(gsutil ls "gs://$GS_BUCKET/results/results.$1.*.tar.xz" \
 			 2>/dev/null)
 	    if test -z "$URI"
 	    then
@@ -251,7 +251,7 @@ case "$1" in
 	    then
 		arg="gs://$GS_BUCKET"
 	    else
-		arg="gs://$GS_BUCKET/results.*"
+		arg="gs://$GS_BUCKET/**results/*"
 	    fi
 	fi
 	gsutil ls $opt "$arg"
@@ -265,8 +265,8 @@ case "$1" in
 	    gsutil rm "$URI"
 	    if test -n "$GCE_UPLOAD_SUMMARY"
 	    then
-		URI=$(echo $URI | sed -e "s;results;summary;" | \
-		    sed -e "s;.tar.xz;.txt;")
+		URI=$(echo $URI | sed -e "s;results\.;summary.;" | \
+		    sed -e "s;\.tar\.xz;.txt;")
 		gsutil rm "$URI" 2> /dev/null
 	    fi
 	done
@@ -463,7 +463,7 @@ case "$OVERRIDE_KERNEL" in
 	;;
 esac
 
-if test -z "$NO_ACTION" -a -n "$GCE_KERNEL"
+if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || [ -n "$RUN_ON_LTM" ]
 then
     if ! test -f "$GCE_KERNEL"
     then
