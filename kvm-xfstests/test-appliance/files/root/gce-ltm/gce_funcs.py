@@ -115,3 +115,11 @@ def get_upload_summary():
   config = get_config()
   # needs to be a non-zero string.
   return 'GCE_UPLOAD_SUMMARY' in config and config['GCE_UPLOAD_SUMMARY']
+
+
+def get_bucket_subdir():
+  config = get_config()
+  if 'BUCKET_SUBDIR' in config:
+    return config['BUCKET_SUBDIR']
+  else:
+    return ''

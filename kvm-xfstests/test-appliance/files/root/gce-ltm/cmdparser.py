@@ -146,6 +146,7 @@ class LTMParser(object):
       except (ValueError, IndexError):
         pass
     remove_opt_with_arg('--instance-name')
+    remove_opt_with_arg('--bucket-subdir')
     remove_opt_with_arg('--gs-bucket')
     remove_opt_with_arg('--gce-zone')
     remove_opt_with_arg('--image-project')

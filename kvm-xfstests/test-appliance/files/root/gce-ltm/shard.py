@@ -31,7 +31,8 @@ class Shard(object):
   """Shard class."""
 
   def __init__(self, test_fs_cfg, extra_cmds_b64, shard_id, test_run_id,
-               log_dir_path, gce_zone=None, gs_bucket=None, gce_project=None):
+               log_dir_path, gce_zone=None, gs_bucket=None, gce_project=None,
+               bucket_subdir=None):
     if (not isinstance(extra_cmds_b64, basestring) or
         not isinstance(shard_id, basestring) or
         not isinstance(test_run_id, basestring)):
@@ -52,6 +53,10 @@ class Shard(object):
       self.gs_bucket = gs_bucket
     else:
       self.gs_bucket = gce_funcs.get_gs_bucket().strip()
+    if bucket_subdir:
+      self.bucket_subdir = bucket_subdir
+    else:
+      self.bucket_subdir = gce_funcs.get_bucket_subdir().strip()
     if gce_project:
       self.gce_project = gce_project
     else:
@@ -64,6 +69,8 @@ class Shard(object):
       gce_xfstests_cmd.extend(['--gce-zone', gce_zone])
     if gs_bucket:
       gce_xfstests_cmd.extend(['--gs-bucket', gs_bucket])
+    if bucket_subdir:
+      gce_xfstests_cmd.extend(['--bucket-subdir', bucket_subdir])
     gce_xfstests_cmd.extend(['--image-project', self.gce_project])
     gce_xfstests_cmd.extend(self.config_cmd_arr)
     gce_xfstests_cmd.extend(self.extra_cmd_arr)
@@ -243,9 +250,14 @@ class Shard(object):
 
     os.remove(self.serial_output_file_path)
     logging.info('Removing shard %s results files from gcs', self.id)
-    for b in self.bucket.list_blobs(prefix='results/results.%s' % self.results_name):
+    bucket_subdir = 'results'
+    if self.bucket_subdir:
+      bucket_subdir = self.bucket_subdir
+    for b in self.bucket.list_blobs(prefix='%s/results.%s' %
+                                    (bucket_subdir, self.results_name)):
       b.delete()
-    for b in self.bucket.list_blobs(prefix='results/summary.%s' % self.results_name):
+    for b in self.bucket.list_blobs(prefix='%s/summary.%s' %
+                                    (bucket_subdir, self.results_name)):
       b.delete()
 
     logging.info('Finished')
@@ -276,7 +288,11 @@ class Shard(object):
       logging.info('Checking if results.%s exists, try %d',
                    self.results_name, tries)
       # list_blobs returns an iterable.
-      for b in self.bucket.list_blobs(prefix='results/results.%s' % self.results_name):
+      bucket_subdir = 'results'
+      if self.bucket_subdir:
+        bucket_subdir = self.bucket_subdir
+      for b in self.bucket.list_blobs(prefix='%s/results.%s' %
+                                      (bucket_subdir, self.results_name)):
         logging.info('Found blob with name %s', b.name)
         return 'gs://%s/%s' % (self.gs_bucket, b.name)
     return None

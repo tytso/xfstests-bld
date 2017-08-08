@@ -78,12 +78,15 @@ class TestRunManager(object):
 
     region_shard = True
     self.gs_bucket = gce_funcs.get_gs_bucket().strip()
+    self.bucket_subdir = gce_funcs.get_bucket_subdir().strip()
     if opts and 'no_region_shard' in opts:
       region_shard = False
+    if opts and 'bucket_subdir' in opts:
+      self.bucket_subdir = opts['bucket_subdir'].strip()
     # Other shard opts could be passed here.
 
     self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path,
-                           self.gs_bucket)
+                           self.gs_bucket, self.bucket_subdir)
     self.shards = self.sharder.get_shards(region_shard=region_shard)
 
   def run(self):
@@ -205,7 +208,6 @@ class TestRunManager(object):
                         'correctly', shard.unpacked_results_dir,
                         shard.unpacked_results_serial)
         continue
-
     # concatenate files from subdirectories into a top-level
     # aggregate file at self.agg_results_dir + filename
     # Files to concat: runtests.log, cmdline, summary, failures, run-stats
@@ -345,11 +347,14 @@ class TestRunManager(object):
     shutil.rmtree(self.agg_results_dir)
 
   def __gce_results_filename(self, kernel_version, summary=False):
+    bucket_subdir = 'results'
+    if self.bucket_subdir:
+      bucket_subdir = self.bucket_subdir
     if summary:
-      return 'results/summary.%s-%s.%s.txt' % (
-          LTM.ltm_username, self.id, kernel_version)
-    return 'results/results.%s-%s.%s.tar.xz' % (
-        LTM.ltm_username, self.id, kernel_version)
+      return '%s/summary.%s-%s.%s.txt' % (
+          bucket_subdir, LTM.ltm_username, self.id, kernel_version)
+    return '%s/results.%s-%s.%s.tar.xz' % (
+        bucket_subdir, LTM.ltm_username, self.id, kernel_version)
 
 ### end class TestRunManager
 

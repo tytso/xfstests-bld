@@ -51,11 +51,12 @@ class Sharder(object):
   """Sharder class to query GCE quotas and create shards."""
 
   def __init__(self, cmd_b64, test_run_id, shard_log_dir_path,
-               gs_bucket):
+               gs_bucket, bucket_subdir):
     self.gce_proj_id = gce_funcs.get_proj_id()
     self.gce_zone = gce_funcs.get_gce_zone()
     self.gce_region = self.gce_zone[:-2]
     self.gs_bucket = gs_bucket
+    self.bucket_subdir = bucket_subdir
     self.test_run_id = test_run_id
     self.shard_log_dir_path = shard_log_dir_path
     self.orig_cmd_b64 = cmd_b64
@@ -149,7 +150,7 @@ class Sharder(object):
       shard = Shard(test_config, self.extra_cmds_b64, shard_id,
                     self.test_run_id, self.shard_log_dir_path,
                     gce_zone=zones_to_use[i], gce_project=self.gce_proj_id,
-                    gs_bucket=self.gs_bucket)
+                    gs_bucket=self.gs_bucket, bucket_subdir=self.bucket_subdir)
       all_shards.append(shard)
     return all_shards
 
@@ -190,7 +191,8 @@ class Sharder(object):
 
       shard = Shard(test_config, self.extra_cmds_b64, shard_id,
                     self.test_run_id, self.shard_log_dir_path,
-                    gce_project=self.gce_proj_id)
+                    gce_project=self.gce_proj_id,
+                    bucket_subdir=self.bucket_subdir, gs_bucket=self.gs_bucket)
 
       all_shards.append(shard)
     return all_shards

@@ -44,23 +44,45 @@ get_remote_hash()
 			 | awk '{print $3}')
 }
 
+verify_single_uri()
+{
+    if test -z "$URI"
+    then
+	echo "No results found with identifier: $1"
+	exit 1
+    elif [[ "$URI" =~ [[:space:]] ]]; then
+	echo "Results identifier $1 is ambiguous."
+	echo "Please clarify from the following matches:"
+	echo "$URI"
+	exit 1
+    fi
+}
+
 do_get_results_uri()
 {
     case "$1" in
 	gs://*)
 	    URI="$1"
 	    ;;
+	*/*)
+	    # SUBDIR is everything before slash
+	    SUBDIR=$(echo $1 | sed -e "s;/.*;;")
+	    # RESULTS_NAME is everything after slash
+	    RESULTS_NAME=$(echo $1 | sed -e "s;.*/;;")
+	    URI=$(gsutil ls "gs://$GS_BUCKET/${SUBDIR:-results}/$RESULTS_NAME" \
+			 2>/dev/null)
+	    verify_single_uri $1
+	    ;;
 	results*)
-	    URI="gs://$GS_BUCKET/results/$1"
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**$1" 2>/dev/null)
+	    verify_single_uri $1
 	    ;;
 	*)
-	    URI=$(gsutil ls "gs://$GS_BUCKET/results/results.$1.*.tar.xz" \
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**results.$1.*.tar.xz" \
 			 2>/dev/null)
-	    if test -z "$URI"
-	    then
-		echo "No results found with test run identifier: $1"
-		exit 1
-	    fi
+	    verify_single_uri $1
 	    ;;
     esac
 }
@@ -231,6 +253,11 @@ case "$1" in
 	    do_all=yes
 	fi
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    case $i in
@@ -251,7 +278,7 @@ case "$1" in
 	    then
 		arg="gs://$GS_BUCKET"
 	    else
-		arg="gs://$GS_BUCKET/**results/*"
+		arg="gs://$GS_BUCKET/**results*"
 	    fi
 	fi
 	gsutil ls $opt "$arg"
@@ -259,6 +286,11 @@ case "$1" in
 	;;
     rm-results|rm-gcs)
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    do_get_results_uri "$i"
@@ -274,6 +306,11 @@ case "$1" in
 	;;
     get-results)
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    case $i in
@@ -443,7 +480,8 @@ case "$OVERRIDE_KERNEL" in
 	GCE_KERNEL=""
 	;;
     //*)
-	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | sed -e "s;//;gs://$GS_BUCKET/;")
+	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | \
+	    sed -e "s;//;gs://$GS_BUCKET/;")
 	GCE_KERNEL=""
 	;;
     none)
@@ -661,6 +699,10 @@ then
 fi
 
 ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
+
+if test -n "$BUCKET_SUBDIR"; then
+    ARG="$ARG bucket_subdir=$BUCKET_SUBDIR"
+fi
 
 if test -n "$GCE_REPORT_EMAIL"
 then

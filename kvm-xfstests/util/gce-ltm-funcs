@@ -42,6 +42,9 @@ function send_to_ltm() {
     if [ -n "$NO_REGION_SHARD" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":\"yes\""
     fi
+    if [ -n "$BUCKET_SUBDIR" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bucket_subdir\":\"$BUCKET_SUBDIR\""
+    fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
     fi

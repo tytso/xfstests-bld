@@ -114,6 +114,19 @@ else
     echo $GS_BUCKET > $GCE_STATE_DIR/gs_bucket
 fi
 
+if test -f $GCE_STATE_DIR/bucket_subdir
+then
+    BUCKET_SUBDIR=$(cat $GCE_STATE_DIR/bucket_subdir)
+else
+    OVERRIDE_SUBDIR=$(gce_attribute bucket_subdir)
+    # if the gce attribute exists, we use it to override the bucket_subdir value
+    # in the config file. otherwise we keep the value in the config file.
+    if test $?=0; then
+	BUCKET_SUBDIR=$OVERRIDE_SUBDIR
+    fi
+    echo $BUCKET_SUBDIR > $GCE_STATE_DIR/bucket_subdir
+fi
+
 function run_hooks() {
     local hook=$1
     shift

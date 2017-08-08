@@ -180,6 +180,10 @@ Other optional parameters include:
     a summary.*.txt file in addition to the regular results tarball.
     This summary file will be a copy of the summary file normally
     found at the root directory of the results tarball.
+* BUCKET_SUBDIR
+  * Optional parameter to specify the subdirectory to be used to
+    upload results instead of the default results/ directory.
+    e.g. BUCKET_SUBDIR="4.13-rc5" or BUCKET_SUBDIR="my_subdir"
 
 
 An example ~/.config/gce-xfstests might look like this:

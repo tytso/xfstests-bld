@@ -92,6 +92,7 @@ print_help ()
 	echo "			  The dax config is not supported by the LTM"
 	echo "	--no-region-shard"
 	echo "			- Don't shard test VMs into other GCE zones"
+	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
     exit 1
 }
@@ -354,6 +355,10 @@ while [ "$1" != "" ]; do
 	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
 		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
 	    fi
+	    ;;
+	--bucket-subdir) shift
+	    supported_flavors gce
+	    BUCKET_SUBDIR="$1"
 	    ;;
 	--testrunid) shift
 	    supported_flavors gce

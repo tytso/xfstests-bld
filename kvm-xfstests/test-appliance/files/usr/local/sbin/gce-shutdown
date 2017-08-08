@@ -25,7 +25,7 @@ SYSLOG_RE_FAILURE="kernel: .*(WARNING)|(BUG): "
 reason=$(gce_attribute shutdown_reason)
 
 if test "$reason" != "abort" -a -f /results/runtests.log -a \
-   $(stat -c %s /results/runtests.log) -gt 0
+    $(stat -c %s /results/runtests.log) -gt 0
 then
     systemctl stop kvm-xfstests
     if test -n "$reason"
@@ -42,7 +42,7 @@ then
     if test -n "$GCE_UPLOAD_SUMMARY"
     then
 	gsutil cp /results/summary \
-	    "gs://$GS_BUCKET/results/summary.$TESTRUNID.$(uname -r).txt"
+	    "gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/summary.$TESTRUNID.$(uname -r).txt"
     fi
 
     egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
@@ -72,7 +72,7 @@ then
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \
-	   gs://$GS_BUCKET/results/results.$TESTRUNID.$(uname -r).tar.xz
+	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
 fi
 run_hooks shutdown
 /usr/local/lib/gce-logger shutting down
