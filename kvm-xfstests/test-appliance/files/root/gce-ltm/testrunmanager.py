@@ -76,11 +76,14 @@ class TestRunManager(object):
     logging.info('Created new TestRun with id %s', self.id)
     self.shards = []
 
-    self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path)
     region_shard = True
+    self.gs_bucket = gce_funcs.get_gs_bucket().strip()
     if opts and 'no_region_shard' in opts:
       region_shard = False
     # Other shard opts could be passed here.
+
+    self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path,
+                           self.gs_bucket)
     self.shards = self.sharder.get_shards(region_shard=region_shard)
 
   def run(self):
@@ -321,8 +324,7 @@ class TestRunManager(object):
     finalfile.close()
     tarfile.close()
     storage_client = storage.Client()
-    bucket_name = gce_funcs.get_gs_bucket().strip()
-    bucket = storage_client.lookup_bucket(bucket_name)
+    bucket = storage_client.lookup_bucket(self.gs_bucket)
     logging.info('Uploading repacked results .tar.xz file')
 
     with open('%s.tar.xz' % (self.agg_results_filename), 'r') as f:
@@ -330,9 +332,11 @@ class TestRunManager(object):
                  ).upload_from_file(f)
 
     # Upload the summary file as well.
-    with open(self.agg_results_dir + 'summary', 'r') as f:
-      bucket.blob(self.__gce_summary_filename(self.kernel_version)
-                 ).upload_from_file(f)
+    if gce_funcs.get_upload_summary():
+      with open(self.agg_results_dir + 'summary', 'r') as f:
+        bucket.blob(self.__gce_results_filename(self.kernel_version,
+                                                summary=True)
+                   ).upload_from_file(f)
 
     logging.info('Deleting local .tar and .tar.xz files')
     os.remove('%s.tar' % self.agg_results_filename)
@@ -340,12 +344,11 @@ class TestRunManager(object):
     logging.info('Deleting local aggregate results directory')
     shutil.rmtree(self.agg_results_dir)
 
-  def __gce_results_filename(self, kernel_version):
+  def __gce_results_filename(self, kernel_version, summary=False):
+    if summary:
+      return 'summary.%s-%s.%s.txt' % (
+          LTM.ltm_username, self.id, kernel_version)
     return 'results.%s-%s.%s.tar.xz' % (
-        LTM.ltm_username, self.id, kernel_version)
-
-  def __gce_summary_filename(self, kernel_version):
-    return 'summary.%s-%s.%s.txt' % (
         LTM.ltm_username, self.id, kernel_version)
 
 ### end class TestRunManager

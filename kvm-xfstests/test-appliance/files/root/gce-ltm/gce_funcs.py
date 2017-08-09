@@ -11,6 +11,7 @@ import requests
 GCE_STATE_DIR = '/var/lib/gce-xfstests/'
 GCE_META_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/'
 GCE_PROJ_URL = 'http://metadata.google.internal/computeMetadata/v1/project/'
+GCE_CONFIG_FILE = '/root/xfstests_bld/kvm-xfstests/config.gce'
 
 GC_META_HEADERS = {'Metadata-Flavor': 'Google'}
 
@@ -42,8 +43,11 @@ def get_metadata_value(file_name, metadata_name, project=False):
       req_url = GCE_PROJ_URL
     r = requests.get(req_url + metadata_name,
                      headers=GC_META_HEADERS)
-    metadata_value = r.text.strip()
-    write_metadata_value_local(file_name, metadata_value)
+    if r.status_code >= 400:
+      metadata_value = ''
+    else:
+      metadata_value = r.text.strip()
+      write_metadata_value_local(file_name, metadata_value)
   return metadata_value
 
 
@@ -78,3 +82,36 @@ def get_proj_id():
   proj_name = get_metadata_value('gce_proj_name',
                                  'project-id', project=True).strip()
   return proj_name
+
+
+def get_config():
+  """Get the gce_xfstests config as a dictionary.
+
+  Parses the bash 'declare -p' syntax in the config file, getting variables
+  without having to source the file or check the environment variables.
+
+  Returns:
+    config: a dictionary containing all parsed environment variables.
+  """
+  # Config file looks like
+  # declare -- VARNAME="VALUE"
+  config = {}
+  try:
+    with open(GCE_CONFIG_FILE, 'r') as f:
+      for line in f:
+        try:
+          k, v = line.split('=')
+          k = k.split(' ')[-1]  # get rid of "declare -- k"
+          v = v[1:-1]  # get rid of the extraneous quotes.
+          config[k] = v
+        except (ValueError, IndexError):
+          pass
+  except IOError:
+    pass  # if the file isn't there, we just return an empty config.
+  return config
+
+
+def get_upload_summary():
+  config = get_config()
+  # needs to be a non-zero string.
+  return 'GCE_UPLOAD_SUMMARY' in config and config['GCE_UPLOAD_SUMMARY']

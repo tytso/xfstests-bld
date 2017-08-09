@@ -360,6 +360,10 @@ while [ "$1" != "" ]; do
 	    NO_ACTION=": "
 	    RUN_ON_LTM="yes"
 	    ;;
+	--no-region-shard)
+	    supported_flavors gce
+	    NO_REGION_SHARD="yes"
+	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \

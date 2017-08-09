@@ -103,7 +103,7 @@ function gce_attribute() {
 GCE_CONFIG_FILE="/usr/local/lib/gce_xfstests.config"
 if test -f "$GCE_CONFIG_FILE"
 then
-  . "$GCE_CONFIG_FILE"
+    . "$GCE_CONFIG_FILE"
 fi
 
 if test -f $GCE_STATE_DIR/gs_bucket

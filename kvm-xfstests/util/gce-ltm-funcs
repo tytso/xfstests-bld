@@ -4,7 +4,6 @@
 # in util/gce-do-setup when running openssl to create a self-signed cert.
 # curl will fail otherwise, stating that the common names do not match.
 LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
-
 function ltm_post_json() {
     curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
 	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@"
@@ -27,6 +26,7 @@ function ltm_post_failed() {
 }
 function send_to_ltm() {
     local cmd_to_send=$1
+    shift
 
     # just create a new login session and store it in the cookie
     ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
@@ -38,7 +38,17 @@ function send_to_ltm() {
 	return 1
     fi
 
-    ltm_post_json -b $DIR/.ltm_cookie -d "{\"orig_cmdline\": \"$cmd_to_send\"}" \
+    LTM_OPTS=""
+    if [ -n "$NO_REGION_SHARD" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":\"yes\""
+    fi
+    if [ -n "$LTM_OPTS" ]; then
+	LTM_OPTS="\"options\": {$LTM_OPTS}"
+    fi
+    # Create OPTS.
+
+    ltm_post_json -b $DIR/.ltm_cookie -d \
+	"{\"orig_cmdline\": \"$cmd_to_send\"${LTM_OPTS:+, $LTM_OPTS}}" \
 	"https://$LTM_HOSTNAME/gce-xfstests"
 
     if [ $? != 0 ]; then
