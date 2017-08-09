@@ -175,6 +175,11 @@ Other optional parameters include:
     This option can be set to the empty string,
     i.e. GCE_USER= or GCE_USER="" to disable having "$USER-" in
     instance names, and simply have them named "xfstests-DATECODE"
+* GCE_UPLOAD_SUMMARY
+  * If set to a non-empty string value, test appliances will upload
+    a summary.*.txt file in addition to the regular results tarball.
+    This summary file will be a copy of the summary file normally
+    found at the root directory of the results tarball.
 
 
 An example ~/.config/gce-xfstests might look like this:
