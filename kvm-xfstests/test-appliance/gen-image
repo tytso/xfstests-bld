@@ -66,6 +66,10 @@ while [ "$1" != "" ]; do
   shift
 done
 
+if test -z "$SOURCE_DATE_EPOCH" ; then
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+fi
+
 if test -n "$DO_LOG" ; then
     if test -z "$GEN_IMAGE_LOG" ; then
 	export GEN_IMAGE_LOG="$DO_LOG"
@@ -312,11 +316,13 @@ if test -n "$OUT_TAR"; then
     rmdir $ROOTDIR/debs
     rmdir $ROOTDIR/imgdir
     case "$OUT_TAR" in
-	*.gz)	ZFLAG="-z" ;;
-	*)	ZFLAG="" ;
+	*.gz)	ZCMD="gzip -9n" ;;
+	*)	ZCMD="cat" ;
     esac
     fix_symlinks
-    tar -C $ROOTDIR -c $ZFLAG -f "$OUT_TAR" .
+    (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
+	 tar -c --null --no-recursion -T - --numeric-owner \
+	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
     cleanup_rootdir
     exit 0
 fi

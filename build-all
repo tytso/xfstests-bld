@@ -148,6 +148,12 @@ else
     LCF="-g -O2"
 fi
 
+# To make the build more reproducible...
+export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+export BUILD_PATH_PREFIX_MAP="xfstests-bld=$(pwd)"
+# GCC doesn't yet understand BUILD_PATH_PREFIX_MAP
+LCF="$LCF -fdebug-prefix-map=$(pwd)=xfstests-bld -gno-record-gcc-switches"
+
 if test -z "$SKIP_E2FSLIBS" ; then
     build_start "e2fslibs"
     (cd e2fsprogs-libs; \
