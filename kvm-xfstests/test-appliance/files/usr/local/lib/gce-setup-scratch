@@ -33,6 +33,13 @@ then
 	logger -i "VDE: $VDE_SIZE VDF: $VDF_SIZE"
 	logger -i "Total disk size: $SCRATCH_SIZE"
     fi
+    if test -n "$GCE_MIN_SCR_SIZE" -a -n "$SCRATCH_SIZE" && \
+	[[ $GCE_MIN_SCR_SIZE =~ [0-9]* ]] && \
+	(( GCE_MIN_SCR_SIZE < 250 )) && \
+	(( GCE_MIN_SCR_SIZE > SCRATCH_SIZE )); then
+	SCRATCH_SIZE=$GCE_MIN_SCR_SIZE
+    fi
+
     gcloud compute -q disks create "$SCRATCH_DSK" \
 	--size "${SCRATCH_SIZE:-100}" \
 	--zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"

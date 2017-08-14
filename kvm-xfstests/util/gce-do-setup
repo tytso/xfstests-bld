@@ -112,6 +112,14 @@ if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
     bad_config=yes
 fi
 
+if test -n "$GCE_MIN_SCR_SIZE" && \
+    ( [[ ! "$GCE_MIN_SCR_SIZE" =~ ^[0-9]*$ ]] || \
+    (( GCE_MIN_SCR_SIZE > 250 )) ); then
+    echo -e "Invalid minimum scratch size: $GCE_MIN_SCR_SIZE\n"
+    echo -e "Must be a number between 0 and 250 inclusive"
+    bad_config=yes
+fi
+
 if test -n "$GCE_IMAGE_PROJECT" ; then
     project="$GCE_IMAGE_PROJECT"
 else
@@ -179,6 +187,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p GS_BUCKET
     declare -p ROOT_FS
     declare -p BUCKET_SUBDIR
+    declare -p GCE_MIN_SCR_SIZE
 } 2>/dev/null > $tmpf
 
 gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config

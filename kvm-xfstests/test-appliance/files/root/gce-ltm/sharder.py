@@ -173,13 +173,13 @@ class Sharder(object):
     """
     logging.info('Sharding into own region %s', self.gce_region)
     all_shards = []
-    [_, cpu_limit_shards, ip_limit_shards] = self.__get_region_info(
-        self.gce_region)
+    all_limits = self.__get_region_info(
+        self.gce_region)[1:]
 
-    if max_shards <= 0:
-      max_shards = cpu_limit_shards
+    if max_shards > 0:
+      all_limits.append(max_shards)
 
-    max_shards = min([max_shards, cpu_limit_shards, ip_limit_shards])
+    max_shards = min(all_limits)
     logging.info('Max shards set to %d', max_shards)
     if max_shards == 0:
       # we have no quota left... we have to error out at this point.
@@ -261,12 +261,21 @@ class Sharder(object):
         available_cpus = int(q['limit'] - q['usage'])
       if q['metric'] == 'IN_USE_ADDRESSES':
         available_ips = int(q['limit'] - q['usage'])
+      if q['metric'] == 'SSD_TOTAL_GB':
+        available_ssd = int(q['limit'] - q['usage'])
 
     cpu_limit_shards = available_cpus//2
     ip_limit_shards = available_ips
-    logging.debug('region %s, cpu_limit %d, ip_limit %d',
-                  region, cpu_limit_shards, ip_limit_shards)
-    return [zone, cpu_limit_shards, ip_limit_shards]
+    min_ssd = gce_funcs.get_min_scratch_size()
+    if min_ssd > 50:
+      ssd_limit_shards = available_ssd//min_ssd
+    else:
+      ssd_limit_shards = available_ssd//50
+
+    logging.debug('region %s, cpu_limit %d, ip_limit %d, ssd_limit %d',
+                  region, cpu_limit_shards, ip_limit_shards,
+                  ssd_limit_shards)
+    return [zone, cpu_limit_shards, ip_limit_shards, ssd_limit_shards]
 
   def __get_all_region_quotas(self):
     """Gets quotas for every region in the GCE project.

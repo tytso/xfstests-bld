@@ -184,6 +184,14 @@ Other optional parameters include:
   * Optional parameter to specify the subdirectory to be used to
     upload results instead of the default results/ directory.
     e.g. BUCKET_SUBDIR="4.13-rc5" or BUCKET_SUBDIR="my_subdir"
+* GCE_MIN_SCR_SIZE
+  * Optional value to use as a minimum scratch disk size. Must be a
+    number between 0 and 250. If specified, the scratch disk created
+    by any test appliances will have this value as a minimum size
+    in GB. This is useful for particularly IO-bound tests (e.g.
+    generic/027), which will run faster with a larger disk size.
+    This is because GCE assigns IOPS per GB, so a larger scratch disk
+    will have more IOPS available to it.
 
 
 An example ~/.config/gce-xfstests might look like this:

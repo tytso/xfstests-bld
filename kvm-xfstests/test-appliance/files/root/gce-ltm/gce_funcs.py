@@ -123,3 +123,13 @@ def get_bucket_subdir():
     return config['BUCKET_SUBDIR']
   else:
     return ''
+
+
+def get_min_scratch_size():
+  config = get_config()
+  try:
+    if 'GCE_MIN_SCR_SIZE' in config:
+      return int(config['GCE_MIN_SCR_SIZE'])
+  except ValueError:
+    pass
+  return 0
