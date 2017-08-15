@@ -61,6 +61,7 @@ class Shard(object):
       self.gce_project = gce_project
     else:
       self.gce_project = gce_funcs.get_proj_id().strip()
+    self.keep_dead_vm = gce_funcs.get_keep_dead_vm()
     self.instance_name = 'xfstests-%s-%s-%s' % (
         LTM.ltm_username, self.test_run_id, self.id)
 
@@ -154,6 +155,34 @@ class Shard(object):
       sf.write(unicode(serial_data['contents']))
     return int(serial_data['next'])
 
+  def _shutdown_test_vm_timeout(self, metadata):
+    """Initiates shutdown of test appliance after timeout.
+
+    This sets the metadata of the VM to have a shutdown_reason of test timeout,
+    and initializes the shutdown by calling instances delete on the GCE api.
+
+    If the KEEP_DEAD_VM option is present, this function should not be called.
+
+    Args:
+      metadata: the metadata of the instance
+    """
+    self.vm_timed_out = True
+    for i in metadata['items']:
+      # if the reason is already present, the VM is shutting down.
+      # No need to call delete again.
+      if i['key'] == 'shutdown_reason':
+        return
+    metadata['items'].append({
+        'key': 'shutdown_reason',
+        'value': 'ltm detected test timeout'
+    })
+    self.compute.instances().setMetadata(
+        project=self.gce_project, zone=self.gce_zone,
+        instance=self.instance_name, body=metadata).execute()
+    self.compute.instances().delete(
+        project=self.gce_project, zone=self.gce_zone,
+        instance=self.instance_name).execute()
+
   def __monitor(self):
     """Main monitor loop of shard process.
 
@@ -167,14 +196,18 @@ class Shard(object):
     assumed to have wedged, and this will return false.
 
     Returns:
-      boolean value: True if the test VM gracefully died. False if the test
-                     VM is presumed to have wedged.
+      boolean value: True if the test VM finished. False if the test VM is
+                     presumed to have wedged, and results will not be available
+                     Even if the test VM finished, results might not be
+                     available (i.e. if it timed out and wasn't able to even run
+                     a shutdown script due to a kernel crash)
     """
     logging.info('Entered monitor.')
     logging.info('Waiting for test VM to complete...')
 
     # uncomment to get rid of noisy logging.
     # logging.getLogger('googleapiclient.discovery').setLevel(logging.WARNING)
+    self.vm_timed_out = False
     self.compute = googleapiclient.discovery.build('compute', 'v1')
     wait_time, time_of_last_status, last_serial_port = 0, 0, 0
     last_status = ''
@@ -204,7 +237,11 @@ class Shard(object):
           logging.info('Wait time: %d. time of last status: %d',
                        wait_time, time_of_last_status)
           logging.info('Last seen status was: %s', last_status)
-          return False
+          if self.keep_dead_vm:
+            return False
+          else:
+            metadata = instance_info['metadata']
+            self._shutdown_test_vm_timeout(metadata)
       except googleapiclient.errors.HttpError as e:
         logging.info('Got error %s', e)
         if 'not found' in str(e) and '404' in str(e):
@@ -252,7 +289,11 @@ class Shard(object):
     else:
       shutil.move(self.tmp_results_dir, self.unpacked_results_dir)
 
-    if os.path.isfile(self.serial_output_file_path):
+    if os.path.isfile(self.serial_output_file_path) and not self.vm_timed_out:
+      # If the vm timed out, we should still keep the serial output, despite
+      # having a results file. This may be helpful for diagnosis (e.g. if the VM
+      # was actually still alive and well, but tests stopped progressing for
+      # whatever reason)
       os.remove(self.serial_output_file_path)
     logging.info('Removing shard %s results files from gcs', self.id)
     bucket_subdir = 'results'

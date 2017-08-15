@@ -133,3 +133,11 @@ def get_min_scratch_size():
   except ValueError:
     pass
   return 0
+
+
+def get_keep_dead_vm():
+  config = get_config()
+  if 'GCE_LTM_KEEP_DEAD_VM' in config:
+    return config['GCE_LTM_KEEP_DEAD_VM']
+  else:
+    return ''

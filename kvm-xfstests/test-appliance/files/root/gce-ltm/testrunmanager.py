@@ -215,17 +215,20 @@ class TestRunManager(object):
     for shard in self.shards:
       logging.info('Moving %s into aggregate test results folder',
                    shard.unpacked_results_dir)
+      found_outputs = False
       shard.finished_with_serial = False
       if os.path.exists(shard.unpacked_results_dir):
         shutil.move(shard.unpacked_results_dir, self.agg_results_dir +
                     shard.id)
         no_results_available = False
-      elif os.path.exists(shard.unpacked_results_serial):
+        found_outputs = True
+      if os.path.exists(shard.unpacked_results_serial):
         shutil.move(shard.unpacked_results_serial, self.agg_results_dir +
                     shard.id + '.serial')
         shard.finished_with_serial = True
         no_results_available = False
-      else:
+        found_outputs = True
+      if not found_outputs:
         logging.warning('Could not find results for shard at %s or %s, shard '
                         'may not have completed correctly',
                         shard.unpacked_results_dir,
@@ -279,16 +282,16 @@ class TestRunManager(object):
     for shard in self.shards:
       fa.write('\n============SHARD %s============\n' % shard.id)
       fa.write('============CONFIG: %s\n\n' % shard.test_fs_cfg)
-      if shard.finished_with_serial:
-        fa.write('Shard %s did not finish properly. '
-                 'Serial data is present in the results dir.\n')
-      else:
-        try:
-          with open(self.agg_results_dir + '%s/%s'
-                    % (shard.id, filename),
-                    'r') as f:
-            fa.write(f.read())
-        except IOError:
+      try:
+        with open(self.agg_results_dir + '%s/%s'
+                  % (shard.id, filename),
+                  'r') as f:
+          fa.write(f.read())
+      except IOError:
+        if shard.finished_with_serial:
+          fa.write('Shard %s did not finish properly. '
+                   'Serial data is present but not results.\n')
+        else:
           logging.warning('Could not open/read file %s for shard %s',
                           filename, shard.id)
           fa.write('Could not open/read file %s for shard %s\n'

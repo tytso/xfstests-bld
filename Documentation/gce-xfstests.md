@@ -192,6 +192,10 @@ Other optional parameters include:
     generic/027), which will run faster with a larger disk size.
     This is because GCE assigns IOPS per GB, so a larger scratch disk
     will have more IOPS available to it.
+* GCE_LTM_KEEP_DEAD_VM
+  * Optional string. If specified as a non-empty string, the LTM
+    instance will preserve VMs that are presumed to have wedged/timed
+    out rather than deleting the VM.
 
 
 An example ~/.config/gce-xfstests might look like this:
