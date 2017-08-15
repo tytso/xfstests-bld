@@ -113,9 +113,13 @@ class Shard(object):
         format='[%(levelname)s:%(asctime)s %(filename)s:%(lineno)s-'
                '%(funcName)s()] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
-    self.__start()
-    successful = self.__monitor()
-    self.__finish(successful)
+    started = self.__start()
+    if not started:
+      logging.error('Shard %s failed to start', self.id)
+      logging.error('Command was %s', str(self.gce_xfstests_cmd))
+    else:
+      successful = self.__monitor()
+      self.__finish(successful)
     logging.info('Exiting monitor process for shard %s', self.id)
     exit()
 
@@ -127,7 +131,7 @@ class Shard(object):
     returned = call(self.gce_xfstests_cmd, stdout=f, stderr=f)
     f.close()
     logging.info('Command returned %s', returned)
-    return
+    return returned == 0
 
   def _update_serial_data(self, last_serial_port):
     """Update locally stored serial output with data since last serial port.
@@ -248,7 +252,8 @@ class Shard(object):
     else:
       shutil.move(self.tmp_results_dir, self.unpacked_results_dir)
 
-    os.remove(self.serial_output_file_path)
+    if os.path.isfile(self.serial_output_file_path):
+      os.remove(self.serial_output_file_path)
     logging.info('Removing shard %s results files from gcs', self.id)
     bucket_subdir = 'results'
     if self.bucket_subdir:
@@ -264,9 +269,14 @@ class Shard(object):
     return
 
   def _error_finish(self):
-    logging.info('Dumping serial port output to results')
-    shutil.move(self.serial_output_file_path, self.unpacked_results_serial)
-    # copy serial output to temp directory
+    logging.info('Finishing with errors. Regular results will not be '
+                 'available for this shard.')
+    try:
+      # copy serial output to temp directory
+      shutil.move(self.serial_output_file_path, self.unpacked_results_serial)
+      logging.info('Dumped serial port output to results')
+    except IOError:
+      logging.warning('No results or serial port output available!')
     return
 
   def _get_results_url(self):

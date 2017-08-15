@@ -168,9 +168,23 @@ class TestRunManager(object):
     return
 
   def __finish(self):
+    """Completion method of the testrunmanager, run after shards complete.
+
+    This method will attempt to aggregate the results of every shard by moving
+    either the shard's results directory or its serial dump into an aggregate
+    folder. If none of the shards created any results or serial dumps, it will
+    exit early.
+
+    After aggregating the results, this will write an additional info file
+    about the testrun, re-tar the aggregate directory, and re-upload this
+    tarball to the GS bucket (and potential subdir)
+    """
     logging.info('Entered finish()')
 
-    self.__aggregate_results()
+    any_results = self.__aggregate_results()
+    if not any_results:
+      logging.error('Finishing without uploading anything.')
+      return
     self.__create_ltm_info()
     self.__pack_results_file()
 
@@ -188,10 +202,16 @@ class TestRunManager(object):
     files from each shard, e.g. runtests.log. This wlil be output into a
     file at the top level (where one would normally find a runtests.log for
     a non-LTM run).
+
+    Returns:
+      A boolean. If the boolean is false, none of the shards correctly
+      created results or a serial dump. Otherwise at least one of the
+      shards completed meaningfully.
     """
     logging.info('Aggregating sharded results')
     LTM.create_log_dir(self.agg_results_dir)
 
+    no_results_available = True
     for shard in self.shards:
       logging.info('Moving %s into aggregate test results folder',
                    shard.unpacked_results_dir)
@@ -199,19 +219,25 @@ class TestRunManager(object):
       if os.path.exists(shard.unpacked_results_dir):
         shutil.move(shard.unpacked_results_dir, self.agg_results_dir +
                     shard.id)
+        no_results_available = False
       elif os.path.exists(shard.unpacked_results_serial):
         shutil.move(shard.unpacked_results_serial, self.agg_results_dir +
                     shard.id + '.serial')
         shard.finished_with_serial = True
+        no_results_available = False
       else:
-        logging.warning('Could not find %s or %s, shard may not have completed '
-                        'correctly', shard.unpacked_results_dir,
+        logging.warning('Could not find results for shard at %s or %s, shard '
+                        'may not have completed correctly',
+                        shard.unpacked_results_dir,
                         shard.unpacked_results_serial)
         continue
+    if no_results_available:
+      logging.error('No results are available for any of the shards.')
+      logging.error('All shard processes exited without creating any results '
+                    'or serial dumps.')
+      return False
     # concatenate files from subdirectories into a top-level
     # aggregate file at self.agg_results_dir + filename
-    # Files to concat: runtests.log, cmdline, summary, failures, run-stats
-    # testrunid
 
     for c in ['runtests.log', 'cmdline', 'summary', 'failures', 'run-stats',
               'testrunid', 'kernel_version']:
@@ -227,7 +253,7 @@ class TestRunManager(object):
         break
       except IOError:
         continue
-    return
+    return True
 
   def __concatenate_shard_files(self, filename):
     """Concatenate all shard files of a given filename.
@@ -297,8 +323,14 @@ class TestRunManager(object):
       fa.write('split config: %s\n' % shard.test_fs_cfg)
       fa.write('gce command executed: %s\n\n' % str(shard.gce_xfstests_cmd))
 
-      shutil.copy2(shard.log_file_path, results_ltm_log_dir)
-      shutil.copy2(shard.cmdlog_file_path, results_ltm_log_dir)
+      try:
+        shutil.copy2(shard.log_file_path, results_ltm_log_dir)
+      except IOError:
+        logging.warning('Could not find log for shard %s', shard.id)
+      try:
+        shutil.copy2(shard.cmdlog_file_path, results_ltm_log_dir)
+      except IOError:
+        logging.warning('Could not find cmdlog for shard %s', shard.id)
     shutil.copy2(self.log_file_path, results_ltm_log_dir)
     fa.close()
 
