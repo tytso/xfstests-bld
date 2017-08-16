@@ -323,19 +323,16 @@ class Shard(object):
   def _get_results_url(self):
     """Get the GS results URI.
 
-    This function waits for up to 5 minutes for the results tarball to appear
-    in the GS bucket, polling for it every 10 seconds.
+    This function waits for up to 20 seconds for the results tarball to appear
+    in the GS bucket, polling for it every 5 seconds.
 
     Returns:
       The GS results uri for this shard, or None if the tarball could not be
-      found for 5 minutes.
+      found for 20 minutes.
 
     """
     tries = 0
-    while tries < 30:
-      for _ in range(10):
-        sleep(1.0)
-      tries += 1
+    while tries < 5:
       logging.info('Checking if results.%s exists, try %d',
                    self.results_name, tries)
       # list_blobs returns an iterable.
@@ -346,6 +343,8 @@ class Shard(object):
                                       (bucket_subdir, self.results_name)):
         logging.info('Found blob with name %s', b.name)
         return 'gs://%s/%s' % (self.gs_bucket, b.name)
+      sleep(5.0)
+      tries += 1
     return None
 
 ### end class Shard
