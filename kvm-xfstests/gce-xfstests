@@ -1,6 +1,7 @@
 #!/bin/bash
 
 XFSTESTS_FLAVOR=gce
+RUN_ON_LTM=
 t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
 eval DIR="\$$t"
 if test -z "$DIR"
@@ -418,6 +419,16 @@ case "$1" in
 	fi
 	"$DIR/util/gce-launch-ltm"
 	exit $?
+	;;
+    ltm)
+	shift
+	if [ ! -f "$DIR/.ltm_instance" ]; then
+	    echo "The .ltm_instance file is not present! Please launch the LTM before"
+	    echo "using this option."
+	    exit 1
+	fi
+	NO_ACTION=": "
+	RUN_ON_LTM="yes"
 	;;
 esac
 

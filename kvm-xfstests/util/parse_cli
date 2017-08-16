@@ -4,7 +4,6 @@ FSTESTCFG=""
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
 API="1.3"
-RUN_ON_LTM=
 
 # Is the invoked interface (kvm-xfstests, gce-xfstests, etc.) in the given list?
 flavor_in ()
@@ -87,7 +86,7 @@ print_help ()
 	echo "			  requires that you build a gce-xfstests image"
 	echo "			  yourself, and set GCE_IMAGE_PROJECT to your own project."
 	echo "			  See documentation for details."
-	echo "	--ltm		- Send the command to the LTM."
+	echo "	ltm		- Send the command to the LTM."
 	echo "			  Note: NR_CPU and MEM must be their default values."
 	echo "			  The dax config is not supported by the LTM"
 	echo "	--no-region-shard"
@@ -354,6 +353,7 @@ while [ "$1" != "" ]; do
 	    GS_BUCKET="$1"
 	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
 		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+		exit 1
 	    fi
 	    ;;
 	--bucket-subdir) shift
@@ -364,18 +364,14 @@ while [ "$1" != "" ]; do
 	    supported_flavors gce
 	    TESTRUNID="$1"
 	    ;;
-	--ltm)
-	    supported_flavors gce
-	    if [ ! -f "$DIR/.ltm_instance" ]; then
-		echo "The .ltm_instance file is not present! Please launch the LTM before"
-		echo "using this option."
-		exit 1
-	    fi
-	    NO_ACTION=": "
-	    RUN_ON_LTM="yes"
-	    ;;
 	--no-region-shard)
 	    supported_flavors gce
+	    if test -z "$RUN_ON_LTM"; then
+		echo -e "The --no-region-shard option does not do anything if\n"
+		echo -e "not run on the ltm!\n"
+		echo -e "Use \"gce-xfstests ltm\" to send a command to the ltm\n"
+		exit 1
+	    fi
 	    NO_REGION_SHARD="yes"
 	    ;;
 	smoke)

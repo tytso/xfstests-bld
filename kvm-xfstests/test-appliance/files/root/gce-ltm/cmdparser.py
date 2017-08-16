@@ -15,7 +15,7 @@ for a given filesystem.
 
 - "extra_cmds" will be a list of command line arguments that were passed in that
 weren't related to configurations (test sets, test set excludes, etc).
-Arguments that don't make sense on the LTM (e.g. --ltm, --instance-name) will
+Arguments that don't make sense on the LTM (e.g. ltm, --instance-name) will
 be removed before construction is complete.
 
 The configurations specified are part of xfstests_bld, and are packaged as
@@ -111,7 +111,7 @@ class LTMParser(object):
     self.orig_cmd_b64 = cmd_in_b64
 
     # After init, self.extra_cmds will be all unprocessed cmdline options.
-    # (without 'smoke', 'quick', 'full', '-c', '--ltm')
+    # (without 'smoke', 'quick', 'full', '-c', 'ltm')
     self.extra_cmds = base64.decodestring(cmd_in_b64).strip().split(' ')
     self.orig_cmds = list(self.extra_cmds)
     self.fsconfigs = {}
@@ -133,9 +133,12 @@ class LTMParser(object):
     LTM, or will clash with options that the LTM wants to explicitly specify.
     This procedure sanitizes the extra commands list for those.
     """
-    if '--ltm' in self.extra_cmds:
-      self.removedopts.append('--ltm')
-    self.extra_cmds[:] = [x for x in self.extra_cmds if x != '--ltm']
+    # Remove options without arguments (just append all matching elements
+    # to removedopts, and then remove from the extra_cmds list)
+    no_arg_opts = {'ltm', '--no-region-shard'}
+    self.removedopts.extend([x for x in self.extra_cmds if x in no_arg_opts])
+    self.extra_cmds[:] = [x for x in self.extra_cmds if x not in no_arg_opts]
+
     def remove_opt_with_arg(opt_name):
       try:
         inst_ind = self.extra_cmds.index(opt_name)

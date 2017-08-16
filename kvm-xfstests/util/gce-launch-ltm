@@ -34,7 +34,7 @@ then
     if [ -f $DIR/.ltm_instance ]
     then
 	echo "The LTM instance already exists!"
-	echo "Launch new tests on the ltm with gce-xfstests --ltm <more>"
+	echo "Launch new tests on the ltm with gce-xfstests ltm <more>"
 	exit 1
     else
 	echo "The LTM instance already exists, but .ltm_instance is not present."
@@ -49,7 +49,7 @@ then
     echo "You can generate a password by running gce-xfstests setup, or by"
     echo "uploading a password of your choice (a string) to your bucket at"
     echo "gs://$GS_BUCKET/ltm-pass"
-    echo "The password will automatically be used by the --ltm command line"
+    echo "The password will automatically be used by the ltm command line"
     echo "option."
     exit 1
 fi

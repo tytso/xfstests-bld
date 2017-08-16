@@ -2,7 +2,7 @@
 
 The only arguments to it are the originally executed command line in base64,
 and options.
-This original command will contain the "--ltm" flag itself as well as other
+This original command can contain the "ltm" flag itself as well as other
 options that aren't used on the LTM (the command parser will remove those for
 running on the ltm).
 
