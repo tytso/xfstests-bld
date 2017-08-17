@@ -240,22 +240,17 @@ class LTMParser(object):
   def expand_aliases(self):
     """Expands some explicit aliases of gce-xfstests test options.
 
-    This function expands the short-hand forms of "smoke", "full", and "quick"
+    This function expands the short-hand forms of certain aliases
     into the explicit -c/-g options.
+
+    The main reason for this is so that process_configs can find the '-c 4k'
+    hidden inside of the 'smoke' option. Doing this to 'full' and 'quick'
+    is unnecessary, as they only expand into '-g' options which can be left
+    to the gce-xfstests command itself.
     """
     if 'smoke' in self.extra_cmds:
       self.expandedopts.append('smoke')
       self.extra_cmds[:] = [x for x in self.extra_cmds if x != 'smoke']
       self.extra_cmds[0:0] = ['-c', '4k', '-g', 'quick']
-
-    if 'full' in self.extra_cmds:
-      self.expandedopts.append('full')
-      self.extra_cmds[:] = [x for x in self.extra_cmds if x != 'full']
-      self.extra_cmds[0:0] = ['-g', 'auto']
-
-    if 'quick' in self.extra_cmds:
-      self.expandedopts.append('quick')
-      self.extra_cmds[:] = [x for x in self.extra_cmds if x != 'quick']
-      self.extra_cmds[0:0] = ['-g', 'quick']
 
 ### end class LTMParser
