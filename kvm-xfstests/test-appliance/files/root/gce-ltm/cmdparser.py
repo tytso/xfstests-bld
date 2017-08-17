@@ -161,6 +161,7 @@ class LTMParser(object):
     remove_opt_with_arg('-n')  # number of cpus
     remove_opt_with_arg('-r')  # ram
     remove_opt_with_arg('--machtype')
+    remove_opt_with_arg('--kernel')
 
   def process_configs(self):
     """Parses the config options specified on the command line.

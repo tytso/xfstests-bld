@@ -83,10 +83,14 @@ class TestRunManager(object):
       region_shard = False
     if opts and 'bucket_subdir' in opts:
       self.bucket_subdir = opts['bucket_subdir'].strip()
+    if opts and 'gs_kernel' in opts:
+      self.gs_kernel = opts['gs_kernel'].strip()
+    else:
+      self.gs_kernel = None
     # Other shard opts could be passed here.
 
     self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path,
-                           self.gs_bucket, self.bucket_subdir)
+                           self.gs_bucket, self.bucket_subdir, self.gs_kernel)
     self.shards = self.sharder.get_shards(region_shard=region_shard)
 
   def run(self):
@@ -182,12 +186,13 @@ class TestRunManager(object):
     logging.info('Entered finish()')
 
     any_results = self.__aggregate_results()
-    if not any_results:
+    if any_results:
+      self.__create_ltm_info()
+      self.__pack_results_file()
+    else:
       logging.error('Finishing without uploading anything.')
-      return
-    self.__create_ltm_info()
-    self.__pack_results_file()
 
+    self.__cleanup()
     logging.info('finished.')
     return
 
@@ -390,6 +395,31 @@ class TestRunManager(object):
           bucket_subdir, LTM.ltm_username, self.id, kernel_version)
     return '%s/results.%s-%s.%s.tar.xz' % (
         bucket_subdir, LTM.ltm_username, self.id, kernel_version)
+
+  def __cleanup(self):
+    """Cleanup to be done after all shards are finished.
+
+    This function cleans up the GS bucket by deleting the kernel image if it
+    was specified to be a onerun. This is akin to the regular gce-xfstests
+    test appliance deleting a "bzImage-*-onetime" image, except for the LTM
+    exclusively.
+
+    Other cleanup to be done after all shards are exited can be done here too
+    """
+    logging.info('Entered cleanup')
+    # gs_kernel looks like
+    # gs://$GS_BUCKET/<optional subdir/>bzImage-<blah>-onerun
+    if self.gs_kernel and self.gs_kernel.endswith('-onerun'):
+      logging.info('deleting onerun kernel image %s', self.gs_kernel)
+      blob_name = self.gs_kernel.split(self.gs_bucket)[1][1:]
+      logging.info('blob name is %s', blob_name)
+      storage_client = storage.Client()
+      bucket = storage_client.lookup_bucket(self.gs_bucket)
+      bucket.blob(blob_name).delete()
+      logging.info('deleted blob %s, full path %s', blob_name, self.gs_kernel)
+    logging.info('finished cleanup')
+    return
+
 
 ### end class TestRunManager
 

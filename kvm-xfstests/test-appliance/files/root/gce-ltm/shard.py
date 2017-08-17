@@ -32,7 +32,7 @@ class Shard(object):
 
   def __init__(self, test_fs_cfg, extra_cmds_b64, shard_id, test_run_id,
                log_dir_path, gce_zone=None, gs_bucket=None, gce_project=None,
-               bucket_subdir=None):
+               bucket_subdir=None, gs_kernel=None):
     if (not isinstance(extra_cmds_b64, basestring) or
         not isinstance(shard_id, basestring) or
         not isinstance(test_run_id, basestring)):
@@ -72,6 +72,8 @@ class Shard(object):
       gce_xfstests_cmd.extend(['--gs-bucket', gs_bucket])
     if bucket_subdir:
       gce_xfstests_cmd.extend(['--bucket-subdir', bucket_subdir])
+    if gs_kernel:
+      gce_xfstests_cmd.extend(['--kernel', gs_kernel])
     gce_xfstests_cmd.extend(['--image-project', self.gce_project])
     gce_xfstests_cmd.extend(self.config_cmd_arr)
     gce_xfstests_cmd.extend(self.extra_cmd_arr)

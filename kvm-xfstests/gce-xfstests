@@ -429,6 +429,7 @@ case "$1" in
 	fi
 	NO_ACTION=": "
 	RUN_ON_LTM="yes"
+	GCE_USER="ltm"
 	;;
 esac
 
@@ -508,7 +509,14 @@ case "$OVERRIDE_KERNEL" in
 	;;
     *)
 	GCE_KERNEL=$OVERRIDE_KERNEL
-	GS_KERNEL=gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime
+	if test -n "$RUN_ON_LTM"; then
+	    # every shard will have to download the image. changing the
+	    # -onetime tag is necessary to not cause the first shard to attempt
+	    # to delete the image.
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onerun"
+	else
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime"
+	fi
 	;;
 esac
 
