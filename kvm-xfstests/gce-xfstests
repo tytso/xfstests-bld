@@ -520,7 +520,8 @@ case "$OVERRIDE_KERNEL" in
 	;;
 esac
 
-if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || [ -n "$RUN_ON_LTM" ]
+if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || \
+   [ -n "$RUN_ON_LTM" -a -n "$GCE_KERNEL" ]
 then
     if ! test -f "$GCE_KERNEL"
     then
