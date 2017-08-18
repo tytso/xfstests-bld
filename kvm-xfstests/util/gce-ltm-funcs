@@ -48,6 +48,9 @@ function send_to_ltm() {
     if [ -n "$GS_KERNEL" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"gs_kernel\":\"$GS_KERNEL\""
     fi
+    if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
+    fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
     fi

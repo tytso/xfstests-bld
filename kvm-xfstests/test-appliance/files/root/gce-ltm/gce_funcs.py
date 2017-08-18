@@ -84,6 +84,15 @@ def get_proj_id():
   return proj_name
 
 
+class GCEConfig(object):
+  upload_summary = 'GCE_UPLOAD_SUMMARY'
+  bucket_subdir = 'BUCKET_SUBDIR'
+  min_scratch_size = 'GCE_MIN_SCR_SIZE'
+  keep_dead_vm = 'GCE_LTM_KEEP_DEAD_VM'
+  sendgrid_api_key = 'SENDGRID_API_KEY'
+  report_sender = 'GCE_REPORT_SENDER'
+
+
 def get_config():
   """Get the gce_xfstests config as a dictionary.
 
@@ -114,13 +123,13 @@ def get_config():
 def get_upload_summary():
   config = get_config()
   # needs to be a non-zero string.
-  return 'GCE_UPLOAD_SUMMARY' in config and config['GCE_UPLOAD_SUMMARY']
+  return GCEConfig.upload_summary in config and config[GCEConfig.upload_summary]
 
 
 def get_bucket_subdir():
   config = get_config()
-  if 'BUCKET_SUBDIR' in config:
-    return config['BUCKET_SUBDIR']
+  if GCEConfig.bucket_subdir in config:
+    return config[GCEConfig.bucket_subdir]
   else:
     return ''
 
@@ -128,8 +137,8 @@ def get_bucket_subdir():
 def get_min_scratch_size():
   config = get_config()
   try:
-    if 'GCE_MIN_SCR_SIZE' in config:
-      return int(config['GCE_MIN_SCR_SIZE'])
+    if GCEConfig.min_scratch_size in config:
+      return int(config[GCEConfig.min_scratch_size])
   except ValueError:
     pass
   return 0
@@ -137,7 +146,23 @@ def get_min_scratch_size():
 
 def get_keep_dead_vm():
   config = get_config()
-  if 'GCE_LTM_KEEP_DEAD_VM' in config:
-    return config['GCE_LTM_KEEP_DEAD_VM']
+  if GCEConfig.keep_dead_vm in config:
+    return config[GCEConfig.keep_dead_vm]
+  else:
+    return ''
+
+
+def get_sendgrid_api_key():
+  config = get_config()
+  if GCEConfig.sendgrid_api_key in config:
+    return config[GCEConfig.sendgrid_api_key]
+  else:
+    return ''
+
+
+def get_email_report_sender():
+  config = get_config()
+  if GCEConfig.report_sender in config:
+    return config[GCEConfig.report_sender]
   else:
     return ''

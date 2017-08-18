@@ -65,6 +65,9 @@ print_help ()
     if flavor_in kvm gce ; then
 	echo "	--no-action	- Print the command to start the VM"
     fi
+    if flavor_in gce ; then
+	echo "	--email email	- Specify the email address to send a report to"
+    fi
     echo ""
     echo "Common file system configurations are:"
     echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
@@ -363,6 +366,10 @@ while [ "$1" != "" ]; do
 	--testrunid) shift
 	    supported_flavors gce
 	    TESTRUNID="$1"
+	    ;;
+	--email) shift
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL="$1"
 	    ;;
 	--no-region-shard)
 	    supported_flavors gce

@@ -41,8 +41,10 @@ import random
 import shutil
 from subprocess import call
 from time import sleep
+from urllib2 import HTTPError
 import gce_funcs
 from ltm import LTM
+import sendgrid
 from sharder import Sharder
 from google.cloud import storage
 
@@ -79,14 +81,16 @@ class TestRunManager(object):
     region_shard = True
     self.gs_bucket = gce_funcs.get_gs_bucket().strip()
     self.bucket_subdir = gce_funcs.get_bucket_subdir().strip()
+    self.gs_kernel = None
+    self.report_receiver = None
     if opts and 'no_region_shard' in opts:
       region_shard = False
     if opts and 'bucket_subdir' in opts:
       self.bucket_subdir = opts['bucket_subdir'].strip()
     if opts and 'gs_kernel' in opts:
       self.gs_kernel = opts['gs_kernel'].strip()
-    else:
-      self.gs_kernel = None
+    if opts and 'report_email' in opts:
+      self.report_receiver = opts['report_email'].strip()
     # Other shard opts could be passed here.
 
     self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path,
@@ -189,6 +193,7 @@ class TestRunManager(object):
     if any_results:
       self.__create_ltm_info()
       self.__pack_results_file()
+      self._email_report()
     else:
       logging.error('Finishing without uploading anything.')
 
@@ -315,7 +320,7 @@ class TestRunManager(object):
     # Additional file to create:
     # self.agg_results_dir/ltm-info
     # (original cmd, and what was run on each shard)
-    logging.info('Start')
+    logging.info('Entered create_ltm_info')
     fa = open(self.agg_results_dir + 'ltm-info', 'w')
     results_ltm_log_dir = self.agg_results_dir + 'ltm_logs/'
     LTM.create_log_dir(results_ltm_log_dir)
@@ -341,6 +346,7 @@ class TestRunManager(object):
         logging.warning('Could not find cmdlog for shard %s', shard.id)
     shutil.copy2(self.log_file_path, results_ltm_log_dir)
     fa.close()
+    logging.info('Finished creating ltm-info')
 
   def __pack_results_file(self):
     """tars and xz's the aggregate results directory, uploading to GS bucket.
@@ -380,12 +386,6 @@ class TestRunManager(object):
                                                 summary=True)
                    ).upload_from_file(f)
 
-    logging.info('Deleting local .tar and .tar.xz files')
-    os.remove('%s.tar' % self.agg_results_filename)
-    os.remove('%s.tar.xz' % self.agg_results_filename)
-    logging.info('Deleting local aggregate results directory')
-    shutil.rmtree(self.agg_results_dir)
-
   def __gce_results_filename(self, kernel_version, summary=False):
     bucket_subdir = 'results'
     if self.bucket_subdir:
@@ -407,6 +407,15 @@ class TestRunManager(object):
     Other cleanup to be done after all shards are exited can be done here too
     """
     logging.info('Entered cleanup')
+    logging.info('Deleting local .tar and .tar.xz files, if they exist')
+    if os.path.isfile('%s.tar' % self.agg_results_filename):
+      os.remove('%s.tar' % self.agg_results_filename)
+      logging.debug('Deleted %s.tar', self.agg_results_filename)
+    if os.path.isfile('%s.tar.xz' % self.agg_results_filename):
+      os.remove('%s.tar.xz' % self.agg_results_filename)
+      logging.debug('Deleted %s.tar.xz', self.agg_results_filename)
+    logging.info('Deleting local aggregate results directory')
+    shutil.rmtree(self.agg_results_dir)
     # gs_kernel looks like
     # gs://$GS_BUCKET/<optional subdir/>bzImage-<blah>-onerun
     if self.gs_kernel and self.gs_kernel.endswith('-onerun'):
@@ -420,6 +429,70 @@ class TestRunManager(object):
     logging.info('finished cleanup')
     return
 
+  def _email_report(self):
+    """Emails the testrun report to the report receiver.
+
+    If no report receiver email is specified, or if the api key is not found,
+    this function will just return.
+    """
+    logging.info('Entered email report')
+    if not self.report_receiver:
+      logging.info('No destination for report to be sent to')
+      return
+    sendgrid_api_key = gce_funcs.get_sendgrid_api_key()
+    if not sendgrid_api_key:
+      logging.warning('No sendgrid api key found. Can\'t send email.')
+      return
+    logging.debug('Got sendgrid api key')
+    email_subject = 'xfstests results %s-%s %s' % (
+        LTM.ltm_username, self.id, self.kernel_version)
+    report_sender = (gce_funcs.get_email_report_sender()
+                     or self.report_receiver)
+    source_email = sendgrid.helpers.mail.Email(report_sender)
+    dest_email = sendgrid.helpers.mail.Email(self.report_receiver)
+    logging.debug('email_subject %s, report_sender %s, report_receiver %s',
+                  email_subject, report_sender, self.report_receiver)
+    try:
+      logging.info('Reading failures file as report contents')
+      with open('%s%s' % (self.agg_results_dir, 'failures'), 'r') as ff:
+        report_content = sendgrid.helpers.mail.Content('text/plain', ff.read())
+    except IOError:
+      logging.warning('Unable to read failures file for report contents')
+      report_content = sendgrid.helpers.mail.Content(
+          'text/plain',
+          'Could not read contents of failures file')
+    sg = sendgrid.SendGridAPIClient(apikey=sendgrid_api_key)
+    full_email = sendgrid.helpers.mail.Mail(source_email, email_subject,
+                                            dest_email, report_content)
+
+    try:
+      response = sg.client.mail.send.post(request_body=full_email.get())
+    except HTTPError as err:
+      # Probably a bad API key. Possible other causes could include sendgrid's
+      # API being unavailable, or any other errors that come from the
+      # api.sendgrid.com/mail/send endpoint.
+      # Docs:
+      # https://sendgrid.com/docs/API_Reference/Web_API_v3/Mail/index.html
+      # https://sendgrid.com/docs/API_Reference/Web_API_v3/Mail/errors.html
+      # Common probable occurrences:
+      # 401 unauthorized, 403 forbidden, 413 payload too large, 429 too many
+      # requests, 500 server unavailable, 503 v3 api unavailable.
+      # also, 200 OK and 202 ACCEPTED
+      response = err
+
+    if response.status_code/100 != 2:
+      logging.error('Mail send failed, http error code %s',
+                    str(err.status_code))
+      logging.error('Headers:')
+      logging.error(str(err.headers))
+      logging.error('Body:')
+      logging.error(str(err.body))
+      logging.error('Reason:')
+      logging.error(str(err.reason))
+      return
+
+    logging.info('Sent report to %s', self.report_receiver)
+    return
 
 ### end class TestRunManager
 

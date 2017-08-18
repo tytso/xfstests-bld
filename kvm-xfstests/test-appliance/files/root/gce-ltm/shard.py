@@ -75,6 +75,7 @@ class Shard(object):
     if gs_kernel:
       gce_xfstests_cmd.extend(['--kernel', gs_kernel])
     gce_xfstests_cmd.extend(['--image-project', self.gce_project])
+    gce_xfstests_cmd.extend(['--email', ''])  # Shards shouldn't send emails.
     gce_xfstests_cmd.extend(self.config_cmd_arr)
     gce_xfstests_cmd.extend(self.extra_cmd_arr)
     self.gce_xfstests_cmd = gce_xfstests_cmd
