@@ -102,7 +102,7 @@ def get_config():
         try:
           k, v = line.split('=')
           k = k.split(' ')[-1]  # get rid of "declare -- k"
-          v = v[1:-1]  # get rid of the extraneous quotes.
+          v = v.strip('\"\n')  # get rid of the extraneous quotes.
           config[k] = v
         except (ValueError, IndexError):
           pass
