@@ -76,6 +76,13 @@ then
     exit 1
 fi
 
+if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+then
+    echo "You must run gce-xfstests setup to upload a .config file"
+    echo "to your GCS bucket."
+    exit 1
+fi
+
 echo "Launching LTM server..."
 touch $DIR/.ltm_instance
 LAUNCH_LTM_EXIT_STATUS=1

@@ -473,6 +473,13 @@ if [ -z ${TESTRUNID:+x} ]; then
     fi
 fi
 
+if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+then
+    echo "You must run gce-xfstests setup to upload a .config file"
+    echo "to your GCS bucket."
+    exit 1
+fi
+
 INSTANCE="xfstests-$TESTRUNID"
 
 case "$ARG" in
