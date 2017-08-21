@@ -40,6 +40,7 @@ import os
 import random
 import shutil
 from subprocess import call
+import sys
 from time import sleep
 from urllib2 import HTTPError
 import gce_funcs
@@ -68,7 +69,7 @@ class TestRunManager(object):
     self.orig_cmd_b64 = cmd_in_base64
     self.log_dir_path = LTM.test_log_dir + '%s/' % test_run_id
     self.log_file_path = self.log_dir_path + 'run.log'
-    self.agg_results_dir = '%s/results-%s-%s/' % (
+    self.agg_results_dir = '%sresults-%s-%s/' % (
         self.log_dir_path, LTM.ltm_username, self.id)
     self.agg_results_filename = '%sresults.%s-%s' % (
         self.log_dir_path, LTM.ltm_username, self.id)
@@ -125,18 +126,21 @@ class TestRunManager(object):
            'zone': shard.gce_zone})
     return info
 
-  def __run(self):
-    """Main method for a testrun.
-    """
-    logging.info('Child process spawned for testrun %s', self.id)
-    logging.info('Switch logging to testrun file %s', self.log_file_path)
-    logging.getLogger().handlers = []  # clear log handlers for new process
+  def _setup_logging(self):
+    logging.info('Move logging to testrun file %s', self.log_file_path)
+    logging.getLogger().handlers = []  # clear log handlers
     logging.basicConfig(
         filename=self.log_file_path,
         format='[%(levelname)s:%(asctime)s %(filename)s:%(lineno)s-'
                '%(funcName)s()] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
+    sys.stderr = sys.stdout = open(self.log_file_path, 'a')
 
+  def __run(self):
+    """Main method for a testrun.
+    """
+    logging.info('Child process spawned for testrun %s', self.id)
+    self._setup_logging()
     self.__start()
     self.__wait_for_shards()
     self.__finish()
@@ -191,9 +195,9 @@ class TestRunManager(object):
 
     any_results = self.__aggregate_results()
     if any_results:
+      self._email_report()
       self.__create_ltm_info()
       self.__pack_results_file()
-      self._email_report()
     else:
       logging.error('Finishing without uploading anything.')
 
@@ -337,15 +341,25 @@ class TestRunManager(object):
       fa.write('gce command executed: %s\n\n' % str(shard.gce_xfstests_cmd))
 
       try:
-        shutil.copy2(shard.log_file_path, results_ltm_log_dir)
+        shutil.move(shard.log_file_path, results_ltm_log_dir)
       except IOError:
-        logging.warning('Could not find log for shard %s', shard.id)
+        logging.warning('Could not move log for shard %s', shard.id)
+        logging.warning('log file path was %s', shard.log_file_path)
       try:
-        shutil.copy2(shard.cmdlog_file_path, results_ltm_log_dir)
+        shutil.move(shard.cmdlog_file_path, results_ltm_log_dir)
       except IOError:
-        logging.warning('Could not find cmdlog for shard %s', shard.id)
-    shutil.copy2(self.log_file_path, results_ltm_log_dir)
+        logging.warning('Could not move cmdlog for shard %s', shard.id)
+        logging.warning('cmdlog file path was %s', shard.cmdlog_file_path)
     fa.close()
+    # All logging after this point will be written to the logfile in
+    # results_ltm_log_dir
+    shutil.move(self.log_file_path, results_ltm_log_dir)
+    self._setup_logging()  # move the logs back to the right place
+    # This is necessary so that diagnostics can be done in the event that
+    # the LTM server fails after having created the LTM info file.
+    # Otherwise the root logger's open file descriptors will still point
+    # to the file after it has been moved, which gets removed in the
+    # __cleanup function.
     logging.info('Finished creating ltm-info')
 
   def __pack_results_file(self):

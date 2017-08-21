@@ -19,6 +19,7 @@ from multiprocessing import Process
 import os
 import shutil
 from subprocess import call
+import sys
 from time import sleep
 import gce_funcs
 import googleapiclient.discovery
@@ -101,6 +102,16 @@ class Shard(object):
     self.process.start()
     return
 
+  def _setup_logging(self):
+    logging.info('Move logging to shard file %s', self.log_file_path)
+    logging.getLogger().handlers = []  # clear handlers for new process
+    logging.basicConfig(
+        filename=self.log_file_path,
+        format='[%(levelname)s:%(asctime)s %(filename)s:%(lineno)s-'
+               '%(funcName)s()] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
+    sys.stderr = sys.stdout = open(self.log_file_path, 'a+')
+
   def __run(self):
     """Main function for a shard.
 
@@ -110,13 +121,7 @@ class Shard(object):
     This function should not be called directly.
     """
     logging.info('Child process spawned for shard %s', self.id)
-    logging.info('Switch logging to shard file')
-    logging.getLogger().handlers = []  # clear handlers for new process
-    logging.basicConfig(
-        filename=self.log_file_path,
-        format='[%(levelname)s:%(asctime)s %(filename)s:%(lineno)s-'
-               '%(funcName)s()] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
+    self._setup_logging()
     started = self.__start()
     if not started:
       logging.error('Shard %s failed to start', self.id)
