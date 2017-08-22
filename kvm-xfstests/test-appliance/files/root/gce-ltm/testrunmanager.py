@@ -236,8 +236,8 @@ class TestRunManager(object):
                     shard.id)
         no_results_available = False
         found_outputs = True
-      if os.path.exists(shard.unpacked_results_serial):
-        shutil.move(shard.unpacked_results_serial, self.agg_results_dir +
+      if os.path.exists(shard.serial_output_file_path):
+        shutil.move(shard.serial_output_file_path, self.agg_results_dir +
                     shard.id + '.serial')
         shard.finished_with_serial = True
         no_results_available = False
@@ -246,7 +246,7 @@ class TestRunManager(object):
         logging.warning('Could not find results for shard at %s or %s, shard '
                         'may not have completed correctly',
                         shard.unpacked_results_dir,
-                        shard.unpacked_results_serial)
+                        shard.serial_output_file_path)
         continue
     if no_results_available:
       logging.error('No results are available for any of the shards.')

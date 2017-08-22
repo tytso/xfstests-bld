@@ -91,7 +91,6 @@ class Shard(object):
         LTM.ltm_username, self.test_run_id, self.id)
     self.unpacked_results_dir = '%s/results-%s-%s-%s' % (
         log_dir_path, LTM.ltm_username, self.test_run_id, self.id)
-    self.unpacked_results_serial = self.unpacked_results_dir+'.serial'
 
     logging.debug('Created Shard instance %s', shard_id)
   # end __init__
@@ -320,11 +319,9 @@ class Shard(object):
   def _error_finish(self):
     logging.info('Finishing with errors. Regular results will not be '
                  'available for this shard.')
-    try:
-      # copy serial output to temp directory
-      shutil.move(self.serial_output_file_path, self.unpacked_results_serial)
-      logging.info('Dumped serial port output to results')
-    except IOError:
+    if os.path.isfile(self.serial_output_file_path):
+      logging.info('Serial port output will be in results')
+    else:
       logging.warning('No results or serial port output available!')
     return
 
