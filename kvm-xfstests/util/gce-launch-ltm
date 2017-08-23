@@ -54,7 +54,7 @@ then
     exit 1
 fi
 
-GCE_LTM_MACHTYPE="n1-standard-1"
+GCE_LTM_MACHTYPE="g1-small"
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 LOG_WR=https://www.googleapis.com/auth/logging.write
