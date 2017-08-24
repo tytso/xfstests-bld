@@ -67,6 +67,7 @@ print_help ()
     fi
     if flavor_in gce ; then
 	echo "	--email email	- Specify the email address to send a report to"
+	echo "	--no-email	- Do not send an email"
     fi
     echo ""
     echo "Common file system configurations are:"
@@ -370,6 +371,10 @@ while [ "$1" != "" ]; do
 	--email) shift
 	    supported_flavors gce
 	    GCE_REPORT_EMAIL="$1"
+	    ;;
+	--no-email)
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL=""
 	    ;;
 	--no-region-shard)
 	    supported_flavors gce

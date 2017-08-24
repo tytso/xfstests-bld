@@ -135,7 +135,7 @@ class LTMParser(object):
     """
     # Remove options without arguments (just append all matching elements
     # to removedopts, and then remove from the extra_cmds list)
-    no_arg_opts = {'ltm', '--no-region-shard'}
+    no_arg_opts = {'ltm', '--no-region-shard', '--no-email'}
     self.removedopts.extend([x for x in self.extra_cmds if x in no_arg_opts])
     self.extra_cmds[:] = [x for x in self.extra_cmds if x not in no_arg_opts]
 
