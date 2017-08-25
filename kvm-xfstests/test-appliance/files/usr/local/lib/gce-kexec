@@ -9,27 +9,20 @@
 
 if ! test -f /etc/postfix/sasl_passwd
 then
-    sg_user=$(gce_attribute sg_user)
-    sg_pass=$(gce_attribute sg_pass)
-    if test -n "$sg_user" -a -n "$sg_pass"
+    if test -n "$GCE_SG_USER" -a -n "$GCE_SG_PASS"
     then
-	echo "[smtp.sendgrid.net]:2525 $sg_user:$sg_pass" \
+	echo "[smtp.sendgrid.net]:2525 $GCE_SG_USER:$GCE_SG_PASS" \
 	     > /etc/postfix/sasl_passwd
 	postmap /etc/postfix/sasl_passwd
 	postfix reload
-	gcloud compute instances -q remove-metadata ${instance} \
-	       --keys sg_pass --zone "$ZONE"
     fi
 fi
 
-sg_api=$(gce_attribute sg_api)
-if test -n "$sg_api"
+if test -n "$SENDGRID_API_KEY"
 then
-    echo "export SENDGRID_API_KEY=$sg_api" > /usr/local/lib/sg_key
-    gcloud compute instances -q remove-metadata ${instance} \
-	   --keys sg_api --zone "$ZONE"
+    echo "export SENDGRID_API_KEY=$SENDGRID_API_KEY" > /usr/local/lib/sg_key
 fi
-    
+
 gcloud config set compute/zone $ZONE
 
 if ! test -d /root/hooks

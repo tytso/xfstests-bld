@@ -100,12 +100,31 @@ function gce_attribute() {
 	get_metadata_value_with_retries attributes/$1
 }
 
+GCE_CONFIG_FILE="/usr/local/lib/gce_xfstests.config"
+if test -f "$GCE_CONFIG_FILE"
+then
+    . "$GCE_CONFIG_FILE"
+fi
+
 if test -f $GCE_STATE_DIR/gs_bucket
 then
     GS_BUCKET=$(cat $GCE_STATE_DIR/gs_bucket)
 else
     GS_BUCKET=$(gce_attribute gs_bucket)
     echo $GS_BUCKET > $GCE_STATE_DIR/gs_bucket
+fi
+
+if test -f $GCE_STATE_DIR/bucket_subdir
+then
+    BUCKET_SUBDIR=$(cat $GCE_STATE_DIR/bucket_subdir)
+else
+    OVERRIDE_SUBDIR=$(gce_attribute bucket_subdir)
+    # if the gce attribute exists, we use it to override the bucket_subdir value
+    # in the config file. otherwise we keep the value in the config file.
+    if test $?=0; then
+	BUCKET_SUBDIR=$OVERRIDE_SUBDIR
+    fi
+    echo $BUCKET_SUBDIR > $GCE_STATE_DIR/bucket_subdir
 fi
 
 function run_hooks() {

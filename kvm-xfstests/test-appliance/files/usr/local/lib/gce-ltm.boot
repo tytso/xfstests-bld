@@ -1,0 +1,43 @@
+#!/bin/bash
+# This script conditionally boots the test appliance into the light test
+# manager.
+
+. /usr/local/lib/gce-funcs
+
+gcloud config set compute/zone $ZONE
+
+/usr/local/lib/gce-logger starting ltm server
+
+# login shells dont need test env on the LTM (shouldn't be running tests
+# in the LTM vm)
+echo > ~/test-env
+
+# here we know that we don't want to kexec, we want to boot into the webserver.
+# kill the timer that would cause shutdown
+systemctl stop gce-finalize.timer
+systemctl disable gce-finalize.timer
+
+logger -i "Disabled gce-finalize timer"
+
+touch /root/xfstests_bld/kvm-xfstests/config.common
+# get gce-xfstests config file from GCS bucket.
+cp "$GCE_CONFIG_FILE" /root/xfstests_bld/kvm-xfstests/config.gce
+
+# adjust the configuration of the web server of the test appliance and
+# relaunch lighttpd with the new configuration.
+# essentially create a webserver right here.
+
+if test ! -d "/var/log/lgtm"
+then
+    # we only want to do this if the server isn't set up already.
+    # (e.g. if the ltm server instance was stopped and restarted, this should
+    # not get executed)
+    rm -r /var/www/*
+    mkdir -p /var/log/lgtm
+    chown www-data:www-data -R /var/log/lgtm
+    cp /usr/local/lib/gce-ltm/ltm-lighttpd.conf /etc/lighttpd/lighttpd.conf
+    # Webserver static files should go in static
+    mv /usr/local/lib/gce-ltm/static /var/www/
+    systemctl restart lighttpd.service
+    # Restart to allow conf changes to take effect.
+fi

@@ -1,42 +1,83 @@
 #!/bin/bash
 
 . /usr/local/lib/gce-funcs
+. /root/test-config
+. /root/runtests_utils
+
+logger -i "Entered setup scratch"
 
 SCRATCH_DSK=$instance-scratch
-SCRATCH_DEV=/dev/disk/by-id/google-scratch
+CREATED_SCRATCH_DEV=/dev/disk/by-id/google-scratch
 
 # Use local SSD if available
 if test -e /dev/disk/by-id/google-local-ssd-0
 then
-    SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
+    CREATED_SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
 fi
 
-if ! test -e $SCRATCH_DEV
+
+if ! test -e $CREATED_SCRATCH_DEV
 then
+    logger -i "compute partition sizes"
+    # pass pri_tst size as 0, so TOTAL_SIZE doesn't include it.
+    if compute_partition_sizes "/root/fs" 0 5 5 20 20; then
+	# VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
+	VDC_SIZE="${REQUIRED_PARTITION_SIZE["SM_SCR"]:-0}""g"
+	VDD_SIZE="${REQUIRED_PARTITION_SIZE["SM_TST"]:-0}""g"
+	VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
+	VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
+	SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
+	((SCRATCH_SIZE+=6)) # Add 5 for PRI_TST and 1gb overhead.
+	logger -i "Computed partition sizes successfully:"
+	logger -i "VDC: $VDC_SIZE VDD: $VDD_SIZE"
+	logger -i "VDE: $VDE_SIZE VDF: $VDF_SIZE"
+	logger -i "Total disk size: $SCRATCH_SIZE"
+    fi
+    if test -n "$GCE_MIN_SCR_SIZE" -a -n "$SCRATCH_SIZE" && \
+	[[ $GCE_MIN_SCR_SIZE =~ [0-9]* ]] && \
+	(( GCE_MIN_SCR_SIZE < 250 )) && \
+	(( GCE_MIN_SCR_SIZE > SCRATCH_SIZE )); then
+	SCRATCH_SIZE=$GCE_MIN_SCR_SIZE
+    fi
+
     gcloud compute -q disks create "$SCRATCH_DSK" \
-	   --size "${SCRATCH_SIZE:-100}" \
-	   --zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"
+	--size "${SCRATCH_SIZE:-100}" \
+	--zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"
     gcloud compute -q instances attach-disk ${instance} \
-	   --disk "$SCRATCH_DSK" \
-	   --device-name scratch --zone "$ZONE"
+	--disk "$SCRATCH_DSK" \
+	--device-name scratch --zone "$ZONE"
     gcloud compute -q instances set-disk-auto-delete ${instance} \
-	   --auto-delete --disk "$SCRATCH_DSK" --zone "$ZONE" &
+	--auto-delete --disk "$SCRATCH_DSK" --zone "$ZONE" &
 fi
 
-if ! test -e $SCRATCH_DEV
+if ! test -e $CREATED_SCRATCH_DEV
 then
-    logger -s "Couldn't create or create the scratch disk!"
+    logger -s "Couldn't create or find the scratch disk!"
     exit 1
 fi
 
 if ! vgs xt >& /dev/null
 then
-    pvcreate $SCRATCH_DEV
-    vgcreate xt $SCRATCH_DEV
+    pvcreate $CREATED_SCRATCH_DEV
+    vgcreate xt $CREATED_SCRATCH_DEV
     lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
-    lvcreate -L "${VDC_SIZE:-5g}"  -n vdc xt
-    lvcreate -L "${VDD_SIZE:-5g}"  -n vdd xt
-    lvcreate -L "${VDE_SIZE:-20g}" -n vde xt
-    lvcreate -L "${VDF_SIZE:-20g}" -n vdf xt
+
+    if [ "$VDC_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDC_SIZE:-5g}"  -n vdc xt
+    fi
+    if [ "$VDD_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDD_SIZE:-5g}"  -n vdd xt
+    fi
+    if [ "$VDE_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDE_SIZE:-20g}"  -n vde xt
+    fi
+    if [ "$VDF_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDF_SIZE:-20g}"  -n vdf xt
+    fi
+
     mke2fs -t ext4 -q /dev/mapper/xt-vdb
 fi

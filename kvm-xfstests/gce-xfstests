@@ -1,6 +1,7 @@
 #!/bin/bash
 
 XFSTESTS_FLAVOR=gce
+RUN_ON_LTM=
 t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
 eval DIR="\$$t"
 if test -z "$DIR"
@@ -44,23 +45,45 @@ get_remote_hash()
 			 | awk '{print $3}')
 }
 
+verify_single_uri()
+{
+    if test -z "$URI"
+    then
+	echo "No results found with identifier: $1"
+	exit 1
+    elif [[ "$URI" =~ [[:space:]] ]]; then
+	echo "Results identifier $1 is ambiguous."
+	echo "Please clarify from the following matches:"
+	echo "$URI"
+	exit 1
+    fi
+}
+
 do_get_results_uri()
 {
     case "$1" in
 	gs://*)
 	    URI="$1"
 	    ;;
+	*/*)
+	    # SUBDIR is everything before slash
+	    SUBDIR=$(echo $1 | sed -e "s;/.*;;")
+	    # RESULTS_NAME is everything after slash
+	    RESULTS_NAME=$(echo $1 | sed -e "s;.*/;;")
+	    URI=$(gsutil ls "gs://$GS_BUCKET/${SUBDIR:-results}/$RESULTS_NAME" \
+			 2>/dev/null)
+	    verify_single_uri $1
+	    ;;
 	results*)
-	    URI="gs://$GS_BUCKET/$1"
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**$1" 2>/dev/null)
+	    verify_single_uri $1
 	    ;;
 	*)
-	    URI=$(gsutil ls "gs://$GS_BUCKET/results.$1.*.tar.xz" \
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**results.$1.*.tar.xz" \
 			 2>/dev/null)
-	    if test -z "$URI"
-	    then
-		echo "No results found with test run identifier: $1"
-		exit 1
-	    fi
+	    verify_single_uri $1
 	    ;;
     esac
 }
@@ -109,6 +132,7 @@ do_get_results()
     fi
 }
 
+unset TESTRUNID
 case "$1" in
     ls|ls-instances)
 	if test "$2" = "--gce"
@@ -230,6 +254,11 @@ case "$1" in
 	    do_all=yes
 	fi
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    case $i in
@@ -250,7 +279,7 @@ case "$1" in
 	    then
 		arg="gs://$GS_BUCKET"
 	    else
-		arg="gs://$GS_BUCKET/results.*"
+		arg="gs://$GS_BUCKET/**results*"
 	    fi
 	fi
 	gsutil ls $opt "$arg"
@@ -258,15 +287,31 @@ case "$1" in
 	;;
     rm-results|rm-gcs)
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    do_get_results_uri "$i"
 	    gsutil rm "$URI"
+	    if test -n "$GCE_UPLOAD_SUMMARY"
+	    then
+		URI=$(echo $URI | sed -e "s;results\.;summary.;" | \
+		    sed -e "s;\.tar\.xz;.txt;")
+		gsutil rm "$URI" 2> /dev/null
+	    fi
 	done
 	exit 0
 	;;
     get-results)
 	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
 	for i in "$@"
 	do
 	    case $i in
@@ -360,6 +405,32 @@ case "$1" in
 	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;
+    launch-ltm)
+	shift
+	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
+	then
+	    echo "The gce-xfstests LTM requires that you build the gce-xfstests image"
+	    echo "and put it in your own project."
+	    echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
+	    echo "in your ~/.config/gce-xfstests file.\n"
+	    echo "See the instructions on building an image:"
+	    echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
+	    exit 1
+	fi
+	"$DIR/util/gce-launch-ltm"
+	exit $?
+	;;
+    ltm)
+	shift
+	if [ ! -f "$DIR/.ltm_instance" ]; then
+	    echo "The .ltm_instance file is not present! Please launch the LTM before"
+	    echo "using this option."
+	    exit 1
+	fi
+	NO_ACTION=": "
+	RUN_ON_LTM="yes"
+	GCE_USER="ltm"
+	;;
 esac
 
 ORIG_CMDLINE="$*"
@@ -392,12 +463,21 @@ else
     PREEMPTIBLE="--maintenance-policy MIGRATE"
 fi
 
-TESTRUNID=$(date +%Y%m%d%H%M%S)
-# if GCE_USER is non-empty or unset
-if [ -n "${GCE_USER-unset}" ]; then
-  # prepend GCE_USER, or the current $USER if GCE_USER is unset
-  TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
-  # this avoids prepending the - if GCE_USER is set to empty string.
+if [ -z ${TESTRUNID:+x} ]; then
+    TESTRUNID=$(date +%Y%m%d%H%M%S)
+    # if GCE_USER is non-empty or unset
+    # this avoids prepending the - if GCE_USER is set to empty string.
+    if [ -n "${GCE_USER-unset}" ]; then
+	# prepend GCE_USER, or the current $USER if GCE_USER is unset
+	TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
+    fi
+fi
+
+if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+then
+    echo "You must run gce-xfstests setup to upload a .config file"
+    echo "to your GCS bucket."
+    exit 1
 fi
 
 INSTANCE="xfstests-$TESTRUNID"
@@ -419,7 +499,8 @@ case "$OVERRIDE_KERNEL" in
 	GCE_KERNEL=""
 	;;
     //*)
-	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | sed -e "s;//;gs://$GS_BUCKET/;")
+	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | \
+	    sed -e "s;//;gs://$GS_BUCKET/;")
 	GCE_KERNEL=""
 	;;
     none)
@@ -435,11 +516,19 @@ case "$OVERRIDE_KERNEL" in
 	;;
     *)
 	GCE_KERNEL=$OVERRIDE_KERNEL
-	GS_KERNEL=gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime
+	if test -n "$RUN_ON_LTM"; then
+	    # every shard will have to download the image. changing the
+	    # -onetime tag is necessary to not cause the first shard to attempt
+	    # to delete the image.
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onerun"
+	else
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime"
+	fi
 	;;
 esac
 
-if test -z "$NO_ACTION" -a -n "$GCE_KERNEL"
+if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || \
+   [ -n "$RUN_ON_LTM" -a -n "$GCE_KERNEL" ]
 then
     if ! test -f "$GCE_KERNEL"
     then
@@ -638,29 +727,8 @@ fi
 
 ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
 
-# Don't print the sendgrid password
-if test -n "$NO_ACTION" -a -n "$GCE_SG_PASS"
-then
-    GCE_SG_PASS=XXXXXXXX
-fi
-if test -n "$NO_ACTION" -a -n "$GCE_SG_API"
-then
-    GCE_SG_API=XXXXXXXX
-fi
-
-if test -n "$GCE_SG_USER" -a -n "$GCE_SG_PASS"
-then
-    ARG="$ARG sg_user=$GCE_SG_USER sg_pass=$GCE_SG_PASS"
-fi
-
-if test -n "$GCE_SG_API"
-then
-    ARG="$ARG sg_api=$GCE_SG_API"
-fi
-
-if test -n "$GCE_REPORT_SENDER"
-then
-    ARG="$ARG report_sender=$GCE_REPORT_SENDER"
+if test -n "$BUCKET_SUBDIR"; then
+    ARG="$ARG bucket_subdir=$BUCKET_SUBDIR"
 fi
 
 if test -n "$GCE_REPORT_EMAIL"
@@ -668,15 +736,22 @@ then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"
 fi
 
-ARG="$ARG orig_cmdline=$(echo " $ORIG_CMDLINE" | sed -e 's/^ //' | base64 -w 0)"
+ORIG_CMDLINE_B64=$(echo " $ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
+
+ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"
 
 if test -n "$DO_LOCAL_SSD"
 then
     SSD_ARG="--local-ssd interface=SCSI"
 fi
 
-echo "Launching $INSTANCE using $GCE_MACHTYPE..."
-# echo "Using ARG: $ARG"
+if test -n "$RUN_ON_LTM"; then
+    . "$DIR/util/gce-ltm-funcs"
+    send_to_ltm $ORIG_CMDLINE_B64
+else
+    echo "Launching $INSTANCE using $GCE_MACHTYPE..."
+    # echo "Using ARG: $ARG"
+fi
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \

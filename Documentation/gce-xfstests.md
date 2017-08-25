@@ -175,6 +175,27 @@ Other optional parameters include:
     This option can be set to the empty string,
     i.e. GCE_USER= or GCE_USER="" to disable having "$USER-" in
     instance names, and simply have them named "xfstests-DATECODE"
+* GCE_UPLOAD_SUMMARY
+  * If set to a non-empty string value, test appliances will upload
+    a summary.*.txt file in addition to the regular results tarball.
+    This summary file will be a copy of the summary file normally
+    found at the root directory of the results tarball.
+* BUCKET_SUBDIR
+  * Optional parameter to specify the subdirectory to be used to
+    upload results instead of the default results/ directory.
+    e.g. BUCKET_SUBDIR="4.13-rc5" or BUCKET_SUBDIR="my_subdir"
+* GCE_MIN_SCR_SIZE
+  * Optional value to use as a minimum scratch disk size. Must be a
+    number between 0 and 250. If specified, the scratch disk created
+    by any test appliances will have this value as a minimum size
+    in GB. This is useful for particularly IO-bound tests (e.g.
+    generic/027), which will run faster with a larger disk size.
+    This is because GCE assigns IOPS per GB, so a larger scratch disk
+    will have more IOPS available to it.
+* GCE_LTM_KEEP_DEAD_VM
+  * Optional string. If specified as a non-empty string, the LTM
+    instance will preserve VMs that are presumed to have wedged/timed
+    out rather than deleting the VM.
 
 
 An example ~/.config/gce-xfstests might look like this:

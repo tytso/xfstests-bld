@@ -75,6 +75,11 @@ gsutil cp gs://$BUCKET/create-image/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/files.tar.gz
 
+# this is to install some python packages into the image for
+# the LTM web server.
+easy_install pip
+pip install -r /usr/local/lib/gce-ltm/requirements.txt
+
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
 do
@@ -86,6 +91,8 @@ do
     ln /var/www/cgi-bin/print_proc "/var/www/cgi-bin/$i"
 done
 rm -rf /var/www/html
+chown www-data:www-data -R /usr/local/lib/gce-ltm
+chown www-data:www-data -R /var/www
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
@@ -126,7 +133,7 @@ sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
 	/etc/systemd/system/telnet-getty@.service
 
 systemctl enable kvm-xfstests.service
-systemctl enable gce-fetch-cert.service
+systemctl enable gce-fetch-gs-files.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
 systemctl enable telnet-getty@ttyS1.service
@@ -138,6 +145,8 @@ then
     dpkg -i --ignore-depends=e2fsprogs /run/*.deb
     rm -f /run/*.deb
 fi
+chmod +rx /usr/local/lib/gce-ltm/gce-xfs-ltm.fcgi
+chmod +rx /usr/local/lib/gce-ltm/app.py
 
 gcloud components -q update
 

@@ -63,6 +63,10 @@ print_help ()
     if flavor_in kvm gce ; then
 	echo "	--no-action	- Print the command to start the VM"
     fi
+    if flavor_in gce ; then
+	echo "	--email email	- Specify the email address to send a report to"
+	echo "	--no-email	- Do not send an email"
+    fi
     echo ""
     echo "Common file system configurations are:"
     echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
@@ -72,14 +76,24 @@ print_help ()
     echo ""
     if flavor_in gce ; then
 	echo "Common gce-xfstests commands:"
-        echo "	ls		- List running xfstests instances"
-        echo "	abort		- Abort a xfstests instance"
-        echo "	ls-results	- List saved test results"
-        echo "	get-results	- Get and display a specified test result"
-        echo "	setup		- Set up gce-xfstests (only needs to be run once)"
-        echo "	ssh		- Login to a running test instance"
-        echo "	console		- Get the console messages from a test instance"
-        echo "	serial		- Attach to the serial port of a test instance"
+	echo "	ls		- List running xfstests instances"
+	echo "	abort		- Abort a xfstests instance"
+	echo "	ls-results	- List saved test results"
+	echo "	get-results	- Get and display a specified test result"
+	echo "	setup		- Set up gce-xfstests (only needs to be run once)"
+	echo "	ssh		- Login to a running test instance"
+	echo "	console		- Get the console messages from a test instance"
+	echo "	serial		- Attach to the serial port of a test instance"
+	echo "	launch-ltm	- Launch an LTM instance. Running the LTM"
+	echo "			  requires that you build a gce-xfstests image"
+	echo "			  yourself, and set GCE_IMAGE_PROJECT to your own project."
+	echo "			  See documentation for details."
+	echo "	ltm		- Send the command to the LTM."
+	echo "			  Note: NR_CPU and MEM must be their default values."
+	echo "			  The dax config is not supported by the LTM"
+	echo "	--no-region-shard"
+	echo "			- Don't shard test VMs into other GCE zones"
+	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
     exit 1
 }
@@ -324,6 +338,50 @@ while [ "$1" != "" ]; do
 	--no-preemptible|--no-preempt)
 	    supported_flavors gce
 	    PREMPTIBLE=
+	    ;;
+	--gce-zone) shift
+	    supported_flavors gce
+	    GCE_ZONE="$1"
+	    if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
+		echo -e "Invalid GCE zone: $GCE_ZONE"
+		echo -e "To see a list of valid zones, run"
+		echo -e "\tgcloud compute zones list\n"
+		exit 1
+	    fi
+	    ;;
+	--gs-bucket) shift
+	    supported_flavors gce
+	    GS_BUCKET="$1"
+	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+		exit 1
+	    fi
+	    ;;
+	--bucket-subdir) shift
+	    supported_flavors gce
+	    BUCKET_SUBDIR="$1"
+	    ;;
+	--testrunid) shift
+	    supported_flavors gce
+	    TESTRUNID="$1"
+	    ;;
+	--email) shift
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL="$1"
+	    ;;
+	--no-email)
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL=""
+	    ;;
+	--no-region-shard)
+	    supported_flavors gce
+	    if test -z "$RUN_ON_LTM"; then
+		echo -e "The --no-region-shard option does not do anything if\n"
+		echo -e "not run on the ltm!\n"
+		echo -e "Use \"gce-xfstests ltm\" to send a command to the ltm\n"
+		exit 1
+	    fi
+	    NO_REGION_SHARD="yes"
 	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then

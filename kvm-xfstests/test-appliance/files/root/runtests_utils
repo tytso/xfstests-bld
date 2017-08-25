@@ -1,0 +1,246 @@
+function get_fs_config()
+{
+    local fs="$1"
+    local cfg_dir="${2:-/root/fs}"
+
+    if test "$fs" == "$FS_CONFIGURED" ; then
+	return 0
+    fi
+    FS_DIR="$cfg_dir/$fs"
+    if test ! -d $FS_DIR ; then
+	echo "File system $fs not supported"
+	echo "Could not find directory $cfg_dir/$fs"
+	return 1
+    fi
+    . "$FS_DIR/config"
+    FS_CONFIGURED="$fs"
+    return 0
+}
+
+function clear_fs_config()
+{
+    unset SIZE REQUIRE_FEATURE
+    unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
+    unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
+    type reset_vars &> /dev/null && reset_vars
+}
+
+# Sources the config file of a single config from the variable FSTESTCFG,
+# setting the necessary environment variables and defining some common
+# function names like reset_vars.
+# If the actual config files (test-appliance/files/root/fs) aren't at /root/fs
+# for any case, the first argument can be used to change where the function
+# looks.
+# The config file for the next entry in FSTESTCFG will be sourced.
+# variables modified include SIZE REQUIRE_FEATURE
+# FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
+# TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
+# The variables explicitly set by the func are FS, i, FSTESTCFG
+
+# If return value is 1, no config was successfully sourced, and
+# this function should be called again if FSTESTCFG is not empty
+# If return value is 2, cfg_dir couldn't be found.
+function get_one_fs_config() {
+    if test -z "$FSTESTCFG"; then
+	return 2
+    fi
+    local cfg_dir="${1:-/root/fs}"
+    if test ! -d "$cfg_dir"; then
+	return 2
+    fi
+    i="${FSTESTCFG%% *}"
+    case "$FSTESTCFG" in
+	*\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
+	*)    FSTESTCFG=""
+    esac
+    case "$i" in
+	*/*)
+	    FS="${i%%/*}"
+	    i="${i#*/}"
+	    ;;
+	*)
+	    if test -d "$cfg_dir/$i"; then
+		FS="$i"
+		i=default
+	    else
+		FS="$FSTESTTYP"
+	    fi
+	    ;;
+    esac
+    if test ! -d "$cfg_dir/$FS" ; then
+	echo "Unknown file system type $FS"
+	return 1
+    fi
+    clear_fs_config
+    get_fs_config "$FS" "$cfg_dir"
+    i=$(test_name_alias $i)
+    if test -f "$cfg_dir/$FS/cfg/$i.list"; then
+	FSTESTCFG="$(cat $cfg_dir/$FS/cfg/$i.list | sed -e '/#/d' \
+		    -e '/^$/d' -e s:^:$FS/:) $FSTESTCFG"
+	FSTESTCFG="$(echo $FSTESTCFG)"
+	return 1
+    fi
+    if test -f "$cfg_dir/$FS/cfg/$i"; then
+	. "$cfg_dir/$FS/cfg/$i"
+    else
+	echo "Unknown configuration $FS/$i"
+	return 1
+    fi
+    if test -z "$TEST_DEV" ; then
+	if test -z "$SIZE" ; then
+	    echo "No TEST_DEV and no SIZE"
+	    return 1
+	fi
+    fi
+    return 0
+}
+
+
+# Arg 1 - location of test-appliance/files/root/fs/*.
+#         This defaults to "/root/fs" if the arg is empty
+#         ("/root/fs" is valid in the chroot of the test appliance)
+# Arg 2 - size of pri_tst (vdb), defaults to 5
+# Arg 3 - size of sm_scr (vdc), defaults to 5
+# Arg 4 - size of sm_tst (vdd), defaults to 5
+# Arg 5 - size of lg_tst (vde), defaults to 20
+# Arg 6 - size of lg_scr (vdf), defaults to 20
+# REQUIRED_PARTITION_SIZE - associative array with keys:
+#     "PRI_TST", "SM_SCR", "SM_TST", "LG_TST", "LG_SCR"
+#     "TOTAL_SIZE" - sum of above 5 values.
+#     If any of the 5 keys is unset/null, that device is not required for this
+#     set of configs.
+function compute_partition_sizes()
+{
+    unset REQUIRED_PARTITION_SIZE
+    declare -g -A REQUIRED_PARTITION_SIZE
+    if test -z "$FSTESTCFG" -o -z "$FSTESTSET"; then
+	return 1
+    fi
+    local cfg_dir="${1:-/root/fs}"
+    if test ! -d "$cfg_dir"; then
+	return 1
+    fi
+    # store var before processing, restore it at end.
+    local orig_fstest_cfg="$FSTESTCFG"
+
+    # These values are in GB and determine the partition sizes.
+    # The final scratch disk size is computed by adding the partitions to be
+    # used to scratch_size.
+    local scratch_size=0
+    local pri_tst_in_use_size="${2:-5}"
+    local sm_scr_in_use_size="${3:-5}"
+    local sm_tst_in_use_size="${4:-5}"
+    local lg_tst_in_use_size="${5:-20}"
+    local lg_scr_in_use_size="${6:-20}"
+
+    local pri_tst=false # PRI_TST_DEV PRI_TST_MNT
+    local sm_scr=false # SM_SCR_DEV SM_SCR_MNT
+    local sm_tst=false # SM_TST_DEV SM_TST_MNT
+    local lg_tst=false # LG_TST_DEV LG_TST_MNT
+    local lg_scr=false # LG_SCR_DEV LG_SCR_MNT
+
+    while test -n "$FSTESTCFG"
+    do
+	if ! get_one_fs_config $cfg_dir; then
+	    continue
+	fi
+	# Find the right TST_DEV
+	if test -z "$TEST_DEV" ; then
+	    if test "$SIZE" = "large" ; then
+		lg_tst=true
+	    else
+		if test "$FSTESTTYP" = "$FS" -a \
+		    "$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"; then
+		    pri_tst=true
+		else
+		    sm_tst=true
+		fi
+	    fi
+	else
+	    # The reason we test whether "TEST_DEV" has any substring
+	    # equal to X_TST_DEV or X_TST_MNT is because some configs
+	    # export TEST_DEV explicitly to a device (huge_4k and huge_1k do
+	    # this), and some export it to a subdirectory in (LG|SM)_TST_MNT
+	    # (overlayfs does this)
+	    # Normally since TEST_DEV is set to a non-zero string, we expect
+	    # to not have to set up the scratch disk partitions, (as is the
+	    # case with ext4/dax) but this is currently not the case with
+	    # those certain configs (huge_4k exports as PRI_TST_DEV which just
+	    # happens to work fine without this check)
+	    if [[ ( -n "${PRI_TST_DEV:+x}" && \
+		"$TEST_DEV" == *"$PRI_TST_DEV"* ) || \
+		( -n "${PRI_TST_MNT:+x}" && \
+		"$TEST_DEV" == *"$PRI_TST_MNT"* ) ]] ; then
+		pri_tst=true
+	    fi
+	    if [[ ( -n "${SM_TST_DEV:+x}" && \
+		"$TEST_DEV" == *"$SM_TST_DEV"* ) || \
+		( -n "${SM_TST_MNT:+x}" && \
+		"$TEST_DEV" == *"$SM_TST_MNT"* ) ]] ; then
+		sm_tst=true
+	    fi
+	    if [[ ( -n "${LG_TST_DEV:+x}" && \
+		"$TEST_DEV" == *"$LG_TST_DEV"* ) || \
+		( -n "${LG_TST_MNT:+x}" && \
+		"$TEST_DEV" == *"$LG_TST_MNT"* ) ]] ; then
+		lg_tst=true
+	    fi
+	fi
+
+	# Find the right SCR_DEV
+	if test -z "$SCRATCH_DEV" ; then
+	    if test "$SIZE" = "large" ; then
+		lg_scr=true
+	    else
+		sm_scr=true
+	    fi
+	else
+	    # Same reason as above here. overlay exports SCRATCH_DEV as subdirs
+	    # in $LG_SCR_MNT.
+	    if [[ ( -n "${SM_SCR_DEV:+x}" && \
+		"$SCRATCH_DEV" == *"$SM_SCR_DEV"* ) || \
+		( -n "${SM_SCR_MNT:+x}" && \
+		"$SCRATCH_DEV" == *"$SM_SCR_MNT"* ) ]] ; then
+		sm_scr=true
+	    fi
+	    if [[ ( -n "${LG_SCR_DEV:+x}" && \
+		"$SCRATCH_DEV" == *"$LG_SCR_DEV"* ) || \
+		( -n "${LG_SCR_MNT:+x}" && \
+		"$SCRATCH_DEV" == *"$LG_SCR_MNT"* ) ]] ; then
+		lg_scr=true
+	    fi
+	fi
+    done
+
+    if $pri_tst; then
+	((scratch_size+=$pri_tst_in_use_size))
+	REQUIRED_PARTITION_SIZE["PRI_TST"]="$pri_tst_in_use_size"
+    fi
+    if $sm_scr; then
+	((scratch_size+=$sm_scr_in_use_size))
+	REQUIRED_PARTITION_SIZE["SM_SCR"]="$sm_scr_in_use_size"
+    fi
+    if $sm_tst; then
+	((scratch_size+=$sm_tst_in_use_size))
+	REQUIRED_PARTITION_SIZE["SM_TST"]="$sm_tst_in_use_size"
+    fi
+    if $lg_tst; then
+	((scratch_size+=$lg_tst_in_use_size))
+	REQUIRED_PARTITION_SIZE["LG_TST"]="$lg_tst_in_use_size"
+    fi
+    if $lg_scr; then
+	((scratch_size+=$lg_scr_in_use_size))
+	REQUIRED_PARTITION_SIZE["LG_SCR"]="$lg_scr_in_use_size"
+    fi
+    clear_fs_config
+
+    # echo "Computed scratch size $scratch_size"
+    # echo "Required: pri_tst ($pri_tst_in_use_Size): $pri_tst"
+    # echo "sm_scr ($sm_scr_in_use_size): $sm_scr"
+    # echo "sm_tst ($sm_tst_in_use_size): $sm_tst"
+    # echo "lg_tst ($lg_tst_in_use_size): $lg_tst"
+    # echo "lg_scr ($lg_scr_in_use_size): $lg_scr"
+    REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]=$scratch_size
+    FSTESTCFG="$orig_fstest_cfg"
+    return 0
+}

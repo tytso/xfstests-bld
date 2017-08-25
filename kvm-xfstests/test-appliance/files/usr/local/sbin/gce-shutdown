@@ -25,7 +25,7 @@ SYSLOG_RE_FAILURE="kernel: .*(WARNING)|(BUG): "
 reason=$(gce_attribute shutdown_reason)
 
 if test "$reason" != "abort" -a -f /results/runtests.log -a \
-   $(stat -c %s /results/runtests.log) -gt 0
+    $(stat -c %s /results/runtests.log) -gt 0
 then
     systemctl stop kvm-xfstests
     if test -n "$reason"
@@ -38,6 +38,13 @@ then
 	     >> /results/runtests.log
     fi
     egrep "$REGEXP" < /results/runtests.log > /results/summary
+
+    if test -n "$GCE_UPLOAD_SUMMARY"
+    then
+	gsutil cp /results/summary \
+	    "gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/summary.$TESTRUNID.$(uname -r).txt"
+    fi
+
     egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
     printf "\n" >> /results/failures
     sed -n -f /usr/local/lib/get-check-failures.sed < /results/runtests.log >> /results/failures
@@ -53,12 +60,11 @@ then
     then
 	subj="xfstests results $TESTRUNID - $(uname -r)"
 	if test -n "$SENDGRID_API_KEY" ; then
-	    sg_from=$(gce_attribute report_sender)
-	    if test -z "$sg_from"
+	    if test -z "$GCE_REPORT_SENDER"
 	    then
-		sg_from="$USER@$HOSTNAME"
+		GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	    fi
-	    /usr/local/sbin/send-mail.py --sender "$sg_from" \
+	    /usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
 		 -s "$subj" "$REPORT_EMAIL" < /results/failures
 	else
 	    mail -s "$subj" "$REPORT_EMAIL" < /results/failures
@@ -66,7 +72,7 @@ then
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \
-	   gs://$GS_BUCKET/results.$TESTRUNID.$(uname -r).tar.xz
+	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
 fi
 run_hooks shutdown
 /usr/local/lib/gce-logger shutting down

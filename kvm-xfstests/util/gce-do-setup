@@ -15,13 +15,9 @@ fi
 function gce_gen_cert() {
     # Making an SSL cert for a project, storing it in GCS bucket.
 
-    if [ -z $REGEN_CERT ] && \
-      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
-    then
-        return 0
-    fi
-
-    if [ -z $REGEN_CERT ] && \
+    if [ -z "$REGEN_CERT" ] && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem && \
+      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-server.pem && \
       gsutil -q stat gs://$GS_BUCKET/gce-xfstests-key.pem
     then
         return 0
@@ -43,6 +39,18 @@ function gce_gen_cert() {
     gsutil cp /tmp/server.pem gs://$GS_BUCKET/gce-xfstests-server.pem
 
     rm /tmp/key.pem /tmp/cert.pem /tmp/server.pem
+}
+
+function gce_gen_ltm_pass() {
+    if gsutil -q stat gs://$GS_BUCKET/ltm-pass &>/dev/null
+    then
+	return 0
+    fi
+    if ! type -P pwgen > /dev/null; then
+	echo 1>&2 "Please install pwgen, or upload a password to ltm-pass"
+	exit 1
+    fi
+    pwgen -n -s 15 1 | gsutil cp - gs://$GS_BUCKET/ltm-pass
 }
 
 if ! type gcloud >& /dev/null ; then
@@ -104,6 +112,14 @@ if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
     bad_config=yes
 fi
 
+if test -n "$GCE_MIN_SCR_SIZE" && \
+    ( [[ ! "$GCE_MIN_SCR_SIZE" =~ ^[0-9]*$ ]] || \
+    (( GCE_MIN_SCR_SIZE > 250 )) ); then
+    echo -e "Invalid minimum scratch size: $GCE_MIN_SCR_SIZE\n"
+    echo -e "Must be a number between 0 and 250 inclusive"
+    bad_config=yes
+fi
+
 if test -n "$GCE_IMAGE_PROJECT" ; then
     project="$GCE_IMAGE_PROJECT"
 else
@@ -125,6 +141,9 @@ fi
 if test -n "$bad_config"; then
     exit 1
 fi
+
+tmpf=$(mktemp /tmp/gce_xfstests.config.XXXXXXXX)
+trap "rm -f $tmpf" EXIT
 
 if test -n "$GCE_REPORT_EMAIL" ; then
     if test -z "$GCE_SG_API" ; then
@@ -152,6 +171,28 @@ if test -n "$GCE_REPORT_EMAIL" ; then
     fi
 fi
 
+SENDGRID_API_KEY="$GCE_SG_API"
+{
+    declare -p GCE_REPORT_SENDER
+    declare -p SENDGRID_API_KEY
+    declare -p GCE_SG_USER
+    declare -p GCE_SG_PASS
+    declare -p GCE_UPLOAD_SUMMARY
+    declare -p PRIMARY_FSTYPE
+    declare -p GCE_PROJECT
+    declare -p GCE_IMAGE_PROJECT
+    declare -p GCE_ZONE
+    declare -p NR_CPU
+    declare -p MEM
+    declare -p GS_BUCKET
+    declare -p ROOT_FS
+    declare -p BUCKET_SUBDIR
+    declare -p GCE_MIN_SCR_SIZE
+    declare -p GCE_LTM_KEEP_DEAD_VM
+} 2>/dev/null > $tmpf
+
+gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config
+
 for rule in "${GCE_FIREWALL_RULES[@]}"; do
     rule_name=$(echo $rule | cut -d' ' -f1)
     if test -z "$(gcloud --project "$GCE_PROJECT" compute firewall-rules list $rule_name | sed -e 1d)"
@@ -169,5 +210,6 @@ then
 fi
 
 gce_gen_cert
+gce_gen_ltm_pass
 
 exit 0
