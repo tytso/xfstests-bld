@@ -363,14 +363,14 @@ do
 		mv "/tmp/check.time.$i" "$check_time"
 	    fi
 	    touch "$RESULT_BASE/check.time" "$check_time"
-	    cat "$RESULT_BASE/check.time" "$check_time" \
+	    cat "$check_time" "$RESULT_BASE/check.time" \
 		| awk '
 	{ t[$1] = $2 }
 END	{ if (NR > 0) {
 	    for (i in t) print i " " t[i]
 	  }
 	}' \
-		| sort -n > "${check_time}.new"
+		| sort > "${check_time}.new"
 	    mv "${check_time}.new" "$check_time"
 	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
 						     > /tmp/check-time.tar.gz)
