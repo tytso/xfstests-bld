@@ -43,7 +43,7 @@ then
 
     if gce_attribute gce_xfs_ltm
     then
-	/usr/local/lib/gce-ltm
+	/usr/local/lib/gce-ltm.boot
 	exit $?
     fi
 

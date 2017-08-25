@@ -78,7 +78,7 @@ rm /run/files.tar.gz
 # this is to install some python packages into the image for
 # the LTM web server.
 easy_install pip
-pip install -r /root/gce-ltm/requirements.txt
+pip install -r /usr/local/lib/gce-ltm/requirements.txt
 
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
@@ -91,6 +91,8 @@ do
     ln /var/www/cgi-bin/print_proc "/var/www/cgi-bin/$i"
 done
 rm -rf /var/www/html
+chown www-data:www-data -R /usr/local/lib/gce-ltm
+chown www-data:www-data -R /var/www
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
@@ -143,6 +145,8 @@ then
     dpkg -i --ignore-depends=e2fsprogs /run/*.deb
     rm -f /run/*.deb
 fi
+chmod +rx /usr/local/lib/gce-ltm/gce-xfs-ltm.fcgi
+chmod +rx /usr/local/lib/gce-ltm/app.py
 
 gcloud components -q update
 

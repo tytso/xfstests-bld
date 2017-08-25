@@ -27,19 +27,17 @@ cp "$GCE_CONFIG_FILE" /root/xfstests_bld/kvm-xfstests/config.gce
 # relaunch lighttpd with the new configuration.
 # essentially create a webserver right here.
 
-if test ! -f "/var/www/gce-xfs-ltm.fcgi"
+if test ! -d "/var/log/lgtm"
 then
     # we only want to do this if the server isn't set up already.
     # (e.g. if the ltm server instance was stopped and restarted, this should
     # not get executed)
     rm -r /var/www/*
-    cp -r /root/gce-ltm/* /var/www/
-    chmod +rx /var/www/gce-xfs-ltm.fcgi
-    chmod +rx /var/www/app.py
-    chown www-data: -R /var/www
     mkdir -p /var/log/lgtm
-    chown www-data: -R /var/log/lgtm
-    cp /root/gce-ltm/ltm-lighttpd.conf /etc/lighttpd/lighttpd.conf
+    chown www-data:www-data -R /var/log/lgtm
+    cp /usr/local/lib/gce-ltm/ltm-lighttpd.conf /etc/lighttpd/lighttpd.conf
+    # Webserver static files should go in static
+    mv /usr/local/lib/gce-ltm/static /var/www/
     systemctl restart lighttpd.service
     # Restart to allow conf changes to take effect.
 fi

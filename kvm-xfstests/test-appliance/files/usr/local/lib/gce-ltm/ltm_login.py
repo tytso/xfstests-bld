@@ -3,7 +3,7 @@
 This module, on first boot, assumes that a password file, 'ltm-pass', is
 available in the GS bucket for downloading.
 After initialization, a .user.json file will be created in the directory
-of the LTM server (/var/www), which will contain the password hash, the
+of the LTM server, which will contain the password hash, the
 username, and a salt.
 """
 import binascii
@@ -24,7 +24,7 @@ def random_string(size=15, chars=string.ascii_uppercase + string.digits):
 class User(flask_login.UserMixin):
   """User subclass for flask_login.
 
-  The data for the single user is stored at /var/www/.user.json. At
+  The data for the single user is stored with the scripts at ./.user.json. At
   initialization, the file will not exist, so the User will look for a
   ltm-pass file in the root of the GS bucket, and randomly generate a username
   and salt.
@@ -32,7 +32,7 @@ class User(flask_login.UserMixin):
   this file.
   """
 
-  user_data_file_path = '/var/www/.user.json'
+  user_data_file_path = '/usr/local/lib/gce-ltm/.user.json'
 
   def __init__(self):
     f = open(User.user_data_file_path, 'r')

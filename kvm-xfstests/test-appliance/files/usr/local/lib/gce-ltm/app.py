@@ -55,7 +55,7 @@ def bad_request_error(error):
 # The LTM is not concerned with long user sessions and isn't really
 # restarted regularly, so generating the key on initial setup from a regular
 # test appliance is fine.
-secret_key_path = '/var/www/.ltm_secret_key'
+secret_key_path = '/usr/local/lib/gce-ltm/.ltm_secret_key'
 if os.path.isfile(secret_key_path):
   with open(secret_key_path, 'r') as f:
     secret_key = f.read()
