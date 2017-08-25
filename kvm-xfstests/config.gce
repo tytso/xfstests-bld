@@ -26,3 +26,8 @@ MEM=7680
 # If "xfstests" (the default), this is actually treated as an image family, and
 # the latest image from the xfstests family will be used.
 ROOT_FS="xfstests"
+
+# By default use a minimum scratch result of 100G because the disk
+# space saved isn't worth the additional VM time to run certain
+# high-IOPS tests.
+GCE_MIN_SCR_SIZE=100
