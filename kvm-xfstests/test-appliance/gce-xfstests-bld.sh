@@ -146,8 +146,6 @@ fi
 
 gcloud components -q update
 
-# Install logging agent
-curl https://storage.googleapis.com/signals-agents/logging/google-fluentd-install.sh | bash
 ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google")
 ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google")
 logger -s "xfstests GCE appliance build completed (build instance id $ID)"
