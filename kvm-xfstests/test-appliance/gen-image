@@ -66,6 +66,10 @@ while [ "$1" != "" ]; do
   shift
 done
 
+if test -z "$SOURCE_DATE_EPOCH" ; then
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+fi
+
 if test -n "$DO_LOG" ; then
     if test -z "$GEN_IMAGE_LOG" ; then
 	export GEN_IMAGE_LOG="$DO_LOG"
@@ -76,6 +80,10 @@ fi
 
 if test -n "$OUT_TAR" ; then
     if test "$FAKECHROOT" != "true" ; then
+	if test "$EUID" -eq 0 ; then
+	    echo "This script MUST NOT be run as root with --out_tar"
+	    exit 1;
+	fi
 	set -- "${SAVE_ARGS[@]}"
 	exec fakechroot $0 "$@"
     fi
@@ -308,11 +316,13 @@ if test -n "$OUT_TAR"; then
     rmdir $ROOTDIR/debs
     rmdir $ROOTDIR/imgdir
     case "$OUT_TAR" in
-	*.gz)	ZFLAG="-z" ;;
-	*)	ZFLAG="" ;
+	*.gz)	ZCMD="gzip -9n" ;;
+	*)	ZCMD="cat" ;
     esac
     fix_symlinks
-    tar -C $ROOTDIR -c $ZFLAG -f "$OUT_TAR" .
+    (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
+	 tar -c --null --no-recursion -T - --numeric-owner \
+	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
     cleanup_rootdir
     exit 0
 fi

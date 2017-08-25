@@ -1,13 +1,69 @@
-# Building the root_fs.img file
+# Building the test appliance
 
-The root_fs.img file is used as the test appliance VM for
-kvm-xfstests.  It consists of a Debian Jessie root file system, some
-configuration files and test runner scripts, and the xfstests.tar.gz
-unpacked in the /root directory.  It is built using the gen-image
-script found in kvm-xfstests/test-appliance.
+## Overview
 
-The gen-image script must be run as root, as it creates a file system
-and mounts it as part of the root_fs construction process.
+For kvm-xfstests, a `root_fs.img` disk image file is used as the test
+VM's root filesystem, while for android-xfstests the tests are run in
+a chroot directory created by unpacking a file `root_fs.tar.gz`.  Both
+types of `root_fs` contain a Debian Jessie root filesystem, some
+configuration files and test runner scripts, and the `xfstests.tar.gz`
+unpacked in the `/root` directory.
+
+Briefly, building either type of `root_fs` requires setting up a
+Debian build chroot and building the xfstests tarball as described in
+[building-xfstests](building-xfstests.md), then running the
+`gen-image` script.  The `do-all` script can automate this process
+slightly, as described below.
+
+## Using gen-image
+
+After building the xfstests tarball as described in
+[building-xfstests](building-xfstests.md), a `root_fs` may be built
+using the `gen-image` script found in `kvm-xfstests/test-appliance/`.
+By default `gen-image` builds a `root_fs.img`; in this case,
+`gen-image` must be run as root, since it creates a filesystem and
+mounts it as part of the `root_fs` construction process.  To build a
+`root_fs.tar.gz` instead, pass the `--out-tar` option.
+
+Example:
+
+    cd kvm-xfstests/test-appliance
+    sudo ./gen-image
+
+## Using the do-all convenience script
+
+To more easily build a test appliance, you can use the `do-all`
+convenience script.  `do-all` will build the xfstests tarball, then
+invoke `gen-image` to build a `root_fs`.  It allows specifying the
+build chroot to use as well as whether a `root_fs.img` or
+`root_fs.tar.gz` should be created.
+
+For kvm-xfstests, use one of the following commands to create an i386
+or amd64 test appliance, respectively:
+
+    ./do-all --chroot=jessie-i386  --no-out-tar
+    ./do-all --chroot=jessie-amd64 --no-out-tar
+
+For android-xfstests, use one of the following commands to create an
+armhf or arm64 test appliance, respectively:
+
+    ./do-all --chroot=jessie-armhf --out-tar
+    ./do-all --chroot=jessie-arm64 --out-tar
+
+The build chroot(s) can be created using the `setup-buildchroot`
+script as described in [building-xfstests](building-xfstests.md).
+Note that you do not need to be running an ARM system to create the
+ARM test appliances, since the `setup-buildchroot` script supports
+foreign chroots using QEMU user-mode emulation.
+
+You may also set the shell variables `BUILD_ENV`, `SUDO_ENV`, and/or
+`OUT_TAR` in your `config.custom` file to set defaults for `do-all`.
+For example, if you'd like to default to building an amd64
+kvm-xfstests appliance, use:
+
+    BUILD_ENV="schroot -c jessie-amd64 --"
+    SUDO_ENV="schroot -c jessie-amd64 -u root --"
+    OUT_TAR=
 
 ## Adding additional packages
 

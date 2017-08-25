@@ -1,4 +1,4 @@
 SIZE=small
-export EXT_MKFS_OPTIONS="-I 2048 -O ^64bit,mmp,uninit_bg,^extents,large_dir,dir_nlink,quota,huge_file,flex_bg -E lazy_itable_init=0"
+export EXT_MKFS_OPTIONS="-I 2048 -b 4096 -O ^64bit,mmp,uninit_bg,^extents,large_dir,dir_nlink,quota,huge_file,flex_bg -E lazy_itable_init=0"
 export EXT_MOUNT_OPTIONS=""
 TESTNAME="Lustre MDS"

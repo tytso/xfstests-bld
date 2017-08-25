@@ -29,6 +29,11 @@ all: $(SCRIPTS)
 	./get-all
 	./build-all
 
+all-clean-first: $(SCRIPTS)
+	./get-all
+	rm -rf bld xfstests
+	./build-all --clean-first
+
 $(SCRIPTS): %.sh: kvm-xfstests/%.in
 	sed -e "s;@DIR@;$$(pwd);" < $< > $@
 	chmod +x $@

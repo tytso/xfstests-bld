@@ -30,7 +30,15 @@ do
     shift
 done
 
-which pigz &>/dev/null && GZIP=pigz || GZIP=gzip
+if type -P pigz >/dev/null; then
+    GZIP="pigz -9nT"
+else
+    GZIP="gzip -9n"
+fi
+
+if test -z "$SOURCE_DATE_EPOCH" ; then
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+fi
 
 echo "GEN xfstests"
 rm -rf xfstests
@@ -47,6 +55,7 @@ cat *.ver > xfstests/git-versions
 mkdir -p xfstests/bin xfstests/lib
 cp bld/bin/* bld/sbin/* bld/usr/bin/* xfstests/bin
 cp bld/lib/client.txt xfstests/lib
+rm xfstests/bin/compile_et xfstests/bin/mk_cmds
 for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
 do
     ln -s ../$i xfstests/bin
@@ -54,5 +63,6 @@ done
 echo "STRIP xfstests/*"
 find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
 echo "TAR xfstests"
-tar c --owner=root --group=root --mode=go+u-w xfstests | \
-	$GZIP -9 > xfstests.tar.gz
+find xfstests -print0 | LC_ALL=C sort -z | \
+    tar c --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" \
+    --mode=go+u-w --null --no-recursion -T - | $GZIP > xfstests.tar.gz
