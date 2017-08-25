@@ -152,6 +152,26 @@ get_gce_zone()
     echo "$z"
 }
 
+get_gce_zone_disk()
+{
+    local z
+
+    case "$1" in
+	xfstests-ltm-*)
+	    ;;
+	xfstests-*)
+	    echo "$GCE_ZONE"
+	    return
+	    ;;
+    esac
+    z=$(gcloud compute disks list --filter="name = $1" \
+	       --format="value(zone)")
+    if test -z "$z" ; then
+	z="$GCE_ZONE"
+    fi
+    echo "$z"
+}
+
 unset TESTRUNID
 case "$1" in
     ls|ls-instances)
@@ -227,12 +247,14 @@ case "$1" in
 	;;
     ls-disks|ls-disk)
 	gcloud compute --project "$GCE_PROJECT" disks list \
-	       --regexp ^xfstests.*
+	       --filter="name~^xfstests"
 	exit 0
 	;;
     rm-disks|rm-disk)
 	shift
-	gcloud compute --project "$GCE_PROJECT" disks delete "$@"
+	GCE_ZONE=$(get_gce_zone_disk "$1")
+	gcloud compute --project "$GCE_PROJECT" disks delete "$@" \
+	       --zone $GCE_ZONE
 	exit 0
 	;;
     ls-images)
