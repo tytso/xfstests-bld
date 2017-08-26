@@ -21,6 +21,30 @@ then
 	exit 1
 fi
 
+get_labels()
+{
+    while read k v rest
+    do
+	case "$v" in
+	    [0-9]*)
+		v="g$v"
+		;;
+	    *-*)
+		;;
+	    *)
+		v="g$v"
+		;;
+	esac
+	v=$(echo $v | sed -e 's/\./_/g' | tr '[:upper:]' '[:lower:]')
+	if [ -n "$l" ] ; then
+	    l="$l,$k=$v"
+	else
+	    l="$k=$v"
+	fi
+    done
+    echo "$l"
+}
+
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
 LOG_WR=https://www.googleapis.com/auth/logging.write
@@ -85,13 +109,12 @@ sed -e "s/@BUCKET@/$GS_BUCKET/" \
     < gce-xfstests-bld.sh > $td/gce-xfstests-bld.sh
 
 # Update the git-versions file
-if test -d ../../xfstests
-then
-    echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" \
-	 > ../../xfstests-bld.ver
-    mkdir -p files/root/xfstests
-    cat ../../*.ver > files/root/xfstests/git-versions
-fi
+mkdir -p files/root/xfstests
+tar xzOf "$TARBALL" xfstests/git-versions | grep -v ^xfstests-bld | \
+    cat - <(echo "xfstests-bld	$(git describe --always --dirty)" \
+		 "($(git log -1 --pretty=%cD))") | \
+    sort > files/root/xfstests/git-versions
+LABELS=$(get_labels < files/root/xfstests/git-versions )
 
 tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
 	-cf $td/files.tar .
@@ -176,7 +199,7 @@ echo "Creating new image $ROOT_FS-$DATECODE"
 gcloud compute --project "$GCE_PROJECT" -q images create "$ROOT_FS-$DATECODE" \
 	--description "Linux Kernel File System Test Appliance" \
 	--source-disk "$BLD_DISK" --source-disk-zone "$GCE_ZONE" \
-	--family "$ROOT_FS"
+	--family "$ROOT_FS" --labels "$LABELS"
 gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" \
 	--zone "$GCE_ZONE" >& /dev/null &
 gcloud compute --project "$GCE_PROJECT" -q images list --filter="family=$ROOT_FS"
