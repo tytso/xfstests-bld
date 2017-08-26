@@ -59,7 +59,7 @@ cross-architecture builds.
 
 To set up a Debian build chroot, run the `setup-buildchroot` script.
 `setup-buildchroot` will invoke `debootstrap` to bootstrap a minimal
-Debian Jessie system into a directory (by default a subdirectory of
+Debian Stretch system into a directory (by default a subdirectory of
 `/chroots/`), then set it up for use with `schroot` and install into
 it all the Debian packages needed for the build.  `setup-buildchroot`
 must be run as root, since it needs root permission to run
@@ -90,8 +90,8 @@ Afterwards, it will behave just like a native chroot.
 Once you're created a chroot, you should be able to use the `schroot`
 program to enter it, e.g.:
 
-    $ schroot -c jessie-amd64         # enter chroot as regular user
-    $ schroot -c jessie-amd64 -u root # enter chroot as root
+    $ schroot -c stretch-amd64         # enter chroot as regular user
+    $ schroot -c stretch-amd64 -u root # enter chroot as root
 
 The `-c` option must specify the name of the chroot as listed in
 `/etc/schroot/schroot.conf`.  By default `setup-buildchroot` names the

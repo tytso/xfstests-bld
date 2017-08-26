@@ -4,7 +4,7 @@
 
 SAVE_ARGS=("$@")
 
-SUITE=jessie
+SUITE=stretch
 MIRROR=http://mirrors.kernel.org/debian
 DIR=$(pwd)
 ROOTDIR=$DIR/rootdir

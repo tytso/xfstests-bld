@@ -355,8 +355,7 @@ create-image".  This will create a new GCE image with a name such as
 was created (in this case, August 13, 2016 at 22:26).
 
 As with kvm-xfstests, if you want to include any additional Debian
-packages, or you want to override the default Jessie packages with
-newer versions from jessie-backports, place them in the directory
+packages, place them in the directory
 kvm-xfstests/test-appliance/debs.  See the [documentation for building
 kvm-xfstests appliances](building-rootfs.md) for more information.
 Note that gce-xfstests requires packages for the amd64 architecture;

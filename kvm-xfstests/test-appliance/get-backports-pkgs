@@ -14,7 +14,7 @@ fi
 DEBOOTSTRAP_DIR=/usr/share/debootstrap
 SUITE="$1-backports"
 MIRRORS="$MIRROR"
-SCRIPT="$DEBOOTSTRAP_DIR/scripts/jessie"
+SCRIPT="$DEBOOTSTRAP_DIR/scripts/stretch"
 TARGET="$2"
 mkdir -p "$TARGET"
 ARCH=$(/usr/bin/dpkg --print-architecture)

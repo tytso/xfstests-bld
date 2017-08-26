@@ -5,7 +5,7 @@
 For kvm-xfstests, a `root_fs.img` disk image file is used as the test
 VM's root filesystem, while for android-xfstests the tests are run in
 a chroot directory created by unpacking a file `root_fs.tar.gz`.  Both
-types of `root_fs` contain a Debian Jessie root filesystem, some
+types of `root_fs` contain a Debian Stretch root filesystem, some
 configuration files and test runner scripts, and the `xfstests.tar.gz`
 unpacked in the `/root` directory.
 
@@ -41,14 +41,14 @@ build chroot to use as well as whether a `root_fs.img` or
 For kvm-xfstests, use one of the following commands to create an i386
 or amd64 test appliance, respectively:
 
-    ./do-all --chroot=jessie-i386  --no-out-tar
-    ./do-all --chroot=jessie-amd64 --no-out-tar
+    ./do-all --chroot=stretch-i386  --no-out-tar
+    ./do-all --chroot=stretch-amd64 --no-out-tar
 
 For android-xfstests, use one of the following commands to create an
 armhf or arm64 test appliance, respectively:
 
-    ./do-all --chroot=jessie-armhf --out-tar
-    ./do-all --chroot=jessie-arm64 --out-tar
+    ./do-all --chroot=stretch-armhf --out-tar
+    ./do-all --chroot=stretch-arm64 --out-tar
 
 The build chroot(s) can be created using the `setup-buildchroot`
 script as described in [building-xfstests](building-xfstests.md).
@@ -61,8 +61,8 @@ You may also set the shell variables `BUILD_ENV`, `SUDO_ENV`, and/or
 For example, if you'd like to default to building an amd64
 kvm-xfstests appliance, use:
 
-    BUILD_ENV="schroot -c jessie-amd64 --"
-    SUDO_ENV="schroot -c jessie-amd64 -u root --"
+    BUILD_ENV="schroot -c stretch-amd64 --"
+    SUDO_ENV="schroot -c stretch-amd64 -u root --"
     OUT_TAR=
 
 ## Adding additional packages
@@ -75,7 +75,7 @@ The second is to copy the debian packages into the directory
 kvm-xfstests/test-appliance/debs.  This is how the official packages
 on kernel.org have an updated version of e2fsprogs and its support
 packages (e2fslibs, libcomerr2, and libss2).  The latest versions get
-compiled for Debian Jessie, in a hermetic build environment, and
+compiled for Debian Stretch, in a hermetic build environment, and
 placed in the debs directory.  Optionally, the output of the script
 [get-ver](https://git.kernel.org/cgit/fs/ext2/e2fsprogs.git/tree/util/get-ver)
 is placed in the e2fsprogs.ver in the top-level directory of
@@ -87,6 +87,6 @@ the file:
 
 If you don't want to compile your own, very latest version of
 e2fsprogs, there is a newer version of e2fsprogs, compiled for the
-Debian Jessie distribution,
-[available](https://packages.debian.org/jessie-backports/admin/e2fsprogs)
+Debian Stretch distribution,
+[available](https://packages.debian.org/stretch-backports/admin/e2fsprogs)
 in the debian backports of the archive.

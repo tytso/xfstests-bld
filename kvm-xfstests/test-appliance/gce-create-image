@@ -32,9 +32,10 @@ SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 ROOT_FS=xfstests
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
-IMAGE_FAMILY=debian-8
+IMAGE_FAMILY=debian-9
 IMAGE_PROJECT=debian-cloud
-BACKPORTS=/jessie-backports
+#BACKPORTS=/stretch-backports
+BACKPORTS=
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
@@ -46,9 +47,14 @@ fi
 while [ "$1" != "" ];
 do
     case $1 in
+	--jessie)
+	    IMAGE_FAMILY=debian-8
+	    IMAGE_PROJECT=debian-cloud
+	    BACKPORTS=/jessie-backports
+	    ;;
 	--stretch)
 	    IMAGE_FAMILY=debian-9
-	    IMAGE_PROJECT=debian-cloud-testing
+	    IMAGE_PROJECT=debian-cloud
 	    BACKPORTS=
 	    ;;
 	-I) shift

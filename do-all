@@ -24,7 +24,7 @@ Build or update a test appliance.
 
 Options:
     --chroot=CHROOT Use the specified build chroot, where CHROOT is the chroot
-                    name in /etc/schroot/schroot.conf, e.g. "jessie-amd64".
+                    name in /etc/schroot/schroot.conf, e.g. "stretch-amd64".
     --out-tar       Build a root_fs.tar.gz, not a root_fs.img
     --no-out-tar    Build/update a root_fs.img, not a root_fs.tar.gz
     --update        Update only; don't do a clean build.  (Only supported with
