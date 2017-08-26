@@ -530,6 +530,11 @@ EOF
 	mkdir -p "$CHROOT_DIR/run/shm"
 	chmod 1777 "$CHROOT_DIR/run/shm"
     fi
+    if [ -n "$CHROOT_USER" ]; then
+	grep "$CHROOT_USER": /etc/passwd >> "$CHROOT_DIR/etc/passwd"
+	grep "$CHROOT_USER": /etc/group >> "$CHROOT_DIR/etc/group"
+	run_in_chroot "adduser $CHROOT_USER sudo"
+    fi
 }
 
 install_build_dependencies()
