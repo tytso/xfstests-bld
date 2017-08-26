@@ -418,6 +418,17 @@ case "$1" in
 	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;
+    copy-image)
+	shift
+	if test ! -x "$DIR/test-appliance/gce-copy-image"
+	then
+	    echo "Image copy not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	"$DIR/test-appliance/gce-copy-image" "$@"
+	exit $?
+	;;
     launch-ltm)
 	shift
 	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
