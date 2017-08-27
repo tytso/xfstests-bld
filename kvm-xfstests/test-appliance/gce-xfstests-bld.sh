@@ -19,6 +19,7 @@ PACKAGES="bash-completion \
 	"btrfs-progs$BACKPORTS" \
 	bzip2 \
 	cpio \
+	curl \
 	dc \
 	dbench \
 	dbus \
@@ -30,6 +31,7 @@ PACKAGES="bash-completion \
 	"f2fs-tools$BACKPORTS" \
 	file \
 	gawk \
+	jq \
 	kexec-tools \
 	keyutils \
 	less \

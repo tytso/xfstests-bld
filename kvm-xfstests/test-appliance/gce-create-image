@@ -119,25 +119,26 @@ LABELS=$(get_labels < files/root/xfstests/git-versions )
 tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
 	-cf $td/files.tar .
 
-# copy the necessary files of kvm-xfstests to run gce-xfstests commands.
-# set up additional directory structure inside of tmp2/
-mkdir -p $td/tmp2/root/xfstests_bld/kvm-xfstests/util # for gce-xfstests dependencies
-mkdir -p $td/tmp2/root/xfstests_bld/kvm-xfstests/test-appliance # for a symlink
-mkdir -p $td/tmp2/usr/local/sbin # for the gce-xfstests bash executable
-
-# copy as much of kvm-xfstests as is necessary to run gce-xfstests scripts
-# to launch VMs, except for configs.
+# copy the necessary files for gce-xfstests commands, except for configs.
 # Configs will be fetched on LTM launch, and will piggyback on the
 # config file stored in the gce_xfstests bucket.
-cp ../../kvm-xfstests/util/get-config $td/tmp2/root/xfstests_bld/kvm-xfstests/util/
-cp ../../kvm-xfstests/util/parse_cli $td/tmp2/root/xfstests_bld/kvm-xfstests/util/
-cp ../../kvm-xfstests/gce-xfstests $td/tmp2/root/xfstests_bld/kvm-xfstests/
-cp ../../kvm-xfstests/get-results $td/tmp2/root/xfstests_bld/kvm-xfstests/
+
+kvm_xfs_dir="$td/tmp2/root/xfstests_bld/kvm-xfstests"
+mkdir -p $kvm_xfs_dir/util		# for gce-xfstests dependencies
+mkdir -p $kvm_xfs_dir/test-appliance	# for a symlink
+mkdir -p $td/tmp2/usr/local/sbin	# for the gce-xfstests bash executable
+
+cp ../../kvm-xfstests/util/get-config		$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/util/parse_cli		$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/util/gce-launch-ltm	$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/util/gce-ltm-funcs	$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/gce-xfstests		$kvm_xfs_dir/
+cp ../../kvm-xfstests/get-results		$kvm_xfs_dir/
 
 # create a symlink so that util/parse_cli works properly.
 # under test-appliance/, the link "files" should refer back to the root, "/".
 # This way, test-appliance/files/root/fs/* will find the correct config files.
-ln -s / $td/tmp2/root/xfstests_bld/kvm-xfstests/test-appliance/files
+ln -s / $kvm_xfs_dir/test-appliance/files
 
 # essentially, we run a "make gce-xfstests.sh" here, except with a hardcoded
 # DIR replacement path because we know where we're putting kvm-xfstests and

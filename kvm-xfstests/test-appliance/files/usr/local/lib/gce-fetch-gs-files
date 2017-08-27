@@ -13,4 +13,21 @@ fi
 
 chmod 0400 /etc/lighttpd/server.pem
 
+# Set up the necessary configuration files for the gce-xfstests script
+# installed in /root/xfstests_bld/kvm-xfstesets
+DIR=/root/xfstests_bld/kvm-xfstests
+
+if [ "$(hostname)" = "xfstests-ltm" ]
+then
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
+	   > $DIR/.gce_xfstests_cert.pem
+    echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.ltm_instance
+    echo "GCE_LTM_NAME=$(hostname)" >> $DIR/.ltm_instance
+    echo "GCE_LTM_EXT_IP=127.0.0.1" >> $DIR/.ltm_instance
+    echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance
+    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance
+fi
+touch $DIR/config.common
+cp "$GCE_CONFIG_FILE" $DIR/config.gce
+
 exit 0

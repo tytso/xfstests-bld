@@ -19,10 +19,6 @@ systemctl disable gce-finalize.timer
 
 logger -i "Disabled gce-finalize timer"
 
-touch /root/xfstests_bld/kvm-xfstests/config.common
-# get gce-xfstests config file from GCS bucket.
-cp "$GCE_CONFIG_FILE" /root/xfstests_bld/kvm-xfstests/config.gce
-
 # adjust the configuration of the web server of the test appliance and
 # relaunch lighttpd with the new configuration.
 # essentially create a webserver right here.
