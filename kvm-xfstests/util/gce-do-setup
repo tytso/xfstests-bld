@@ -174,9 +174,8 @@ fi
 SENDGRID_API_KEY="$GCE_SG_API"
 {
     declare -p GCE_REPORT_SENDER
+    declare -p GCE_REPORT_EMAIL
     declare -p SENDGRID_API_KEY
-    declare -p GCE_SG_USER
-    declare -p GCE_SG_PASS
     declare -p GCE_UPLOAD_SUMMARY
     declare -p PRIMARY_FSTYPE
     declare -p GCE_PROJECT

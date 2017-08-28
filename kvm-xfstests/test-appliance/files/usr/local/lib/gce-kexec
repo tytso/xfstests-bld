@@ -7,17 +7,6 @@
 
 . /usr/local/lib/gce-funcs
 
-if ! test -f /etc/postfix/sasl_passwd
-then
-    if test -n "$GCE_SG_USER" -a -n "$GCE_SG_PASS"
-    then
-	echo "[smtp.sendgrid.net]:2525 $GCE_SG_USER:$GCE_SG_PASS" \
-	     > /etc/postfix/sasl_passwd
-	postmap /etc/postfix/sasl_passwd
-	postfix reload
-    fi
-fi
-
 if test -n "$SENDGRID_API_KEY"
 then
     echo "export SENDGRID_API_KEY=$SENDGRID_API_KEY" > /usr/local/lib/sg_key

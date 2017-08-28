@@ -45,7 +45,6 @@ PACKAGES="bash-completion \
 	nano \
 	openssl \
 	perl \
-	postfix \
 	procps \
 	psmisc \
 	strace \
@@ -60,9 +59,6 @@ apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
 kexec-tools	kexec-tools/load_kexec	boolean	true
-postfix	postfix/destinations	string	xfstests.internal, localhost
-postfix	postfix/mailname	string	xfstests.internal
-postfix	postfix/main_mailer_type	select	Local only
 EOF
 apt-get install -y $PACKAGES
 apt-get clean
