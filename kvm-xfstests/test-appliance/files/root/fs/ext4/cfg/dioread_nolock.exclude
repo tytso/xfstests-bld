@@ -1,5 +1,3 @@
-ext4/004	# dump/restore doesn't handle inline data
-
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
