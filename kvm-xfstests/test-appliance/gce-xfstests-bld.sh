@@ -134,6 +134,7 @@ systemctl enable kvm-xfstests.service
 systemctl enable gce-fetch-gs-files.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
+systemctl enable gen-ssh-keys.service
 systemctl enable telnet-getty@ttyS1.service
 systemctl enable telnet-getty@ttyS2.service
 systemctl enable telnet-getty@ttyS3.service
