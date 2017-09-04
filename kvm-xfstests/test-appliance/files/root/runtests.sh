@@ -276,9 +276,11 @@ do
 	    if test "$SIZE" = "large" ; then
 		export SCRATCH_DEV=$LG_SCR_DEV
 		export SCRATCH_MNT=$LG_SCR_MNT
+		export LOGWRITES_DEV=$SM_SCR_DEV
 	    else
 		export SCRATCH_DEV=$SM_SCR_DEV
 		export SCRATCH_MNT=$SM_SCR_MNT
+		export LOGWRITES_DEV=$LG_SCR_DEV
 	    fi
 	fi
 	case "$TEST_DEV" in
