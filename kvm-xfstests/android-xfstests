@@ -227,6 +227,7 @@ chroot_prepare()
 ! mountpoint $CHROOT_DIR/sys > /dev/null && mount sysfs -t sysfs $CHROOT_DIR/sys
 ! mountpoint $CHROOT_DIR/proc > /dev/null && mount proc -t proc $CHROOT_DIR/proc
 ! mountpoint $CHROOT_DIR/dev > /dev/null && mount --bind /dev $CHROOT_DIR/dev
+! mountpoint $CHROOT_DIR/dev/pts > /dev/null && mount --bind /dev/pts $CHROOT_DIR/dev/pts
 
 # Allow xfstests to detect that SELinux is in use.
 ! mountpoint $CHROOT_DIR/sys/fs/selinux > /dev/null && \
@@ -258,6 +259,7 @@ chroot_wipe()
 umount $CHROOT_DIR/sys/fs/selinux &> /dev/null
 umount $CHROOT_DIR/sys &> /dev/null
 umount $CHROOT_DIR/proc &> /dev/null
+umount $CHROOT_DIR/dev/pts &> /dev/null
 umount $CHROOT_DIR/dev &> /dev/null
 umount $CHROOT_DIR/results &> /dev/null
 rm -rf $CHROOT_DIR
