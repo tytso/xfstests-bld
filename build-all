@@ -28,7 +28,7 @@ case "$CROSS_COMPILE" in
 esac
 
 function build_start () {
-    echo "------------------------ Starting build of $*"
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting build of $*"
 }
 
 function set_skip_all () {
