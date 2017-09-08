@@ -47,6 +47,7 @@ PACKAGES="bash-completion \
 	perl \
 	procps \
 	psmisc \
+	python-setuptools \
 	strace \
 	time \
 	xz-utils"
