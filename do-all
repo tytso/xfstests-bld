@@ -91,7 +91,6 @@ if $UPDATE; then
     gen_image_args+=" --update"
 else
     $BUILD_ENV make all-clean-first
-    $BUILD_ENV make
 fi
 $BUILD_ENV make tarball
 
