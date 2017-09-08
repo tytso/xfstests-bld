@@ -97,10 +97,7 @@ $BUILD_ENV make tarball
 
 if [ "$OUT_TAR" = "yes" ]; then
     gen_image_args+=" --out-tar"
-    gen_image_env=$BUILD_ENV
-else
-    gen_image_env=$SUDO_ENV
 fi
 
 cd kvm-xfstests/test-appliance
-$gen_image_env ./gen-image $gen_image_args
+$SUDO_ENV ./gen-image $gen_image_args
