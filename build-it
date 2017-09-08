@@ -14,7 +14,7 @@ done
 
 date
 for i in "${ARCHS[@]}" ; do
-    echo "Building for $i"
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting $i"
     (cd $i ; ./do-all)
     date
     egrep -v "^(stress-ng)|(keyutils)" $i/xfstests/git-versions > git-versions-$i
@@ -24,3 +24,5 @@ for i in "${ARCHS[@]}" ; do
 	exit 1
     fi
 done
+
+echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Finished"
