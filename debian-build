@@ -1,6 +1,7 @@
 #!/bin/bash
 
-CHROOT_NAME=tytso-jessie
+CHROOT_NAME=tytso-stretch
+CHROOT=stretch_armhf-dchroot
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -10,10 +11,22 @@ while [ "$1" != "" ]; do
 	    ;;
 	--setup-only)
 	    SKIP_BUILD=yes
+	    SKIP_IMAGE=yes
+	    SKIP_TEARDOWN=yes
+	    ;;
+	--build-only)
+	    SKIP_SETUP=yes
+	    SKIP_IMAGE=yes
+	    SKIP_TEARDOWN=yes
+	    ;;
+	--image-only)
+	    SKIP_SETUP=yes
+	    SKIP_BUILD=yes
 	    SKIP_TEARDOWN=yes
 	    ;;
 	--teardown)
 	    SKIP_SETUP=yes
+	    SKIP_IMAGE=yes
 	    SKIP_BUILD=yes
 	    ;;
 	*)
@@ -28,7 +41,7 @@ done
 if test -z "$SKIP_SETUP"
 then
     date
-    schroot -b -c jessie -n $CHROOT_NAME
+    schroot -b -c $CHROOT -n $CHROOT_NAME
     date
     dd-schroot-cmd -y -c $CHROOT_NAME apt-get install build-essential \
 		   autoconf autoconf2.64 automake libgdbm-dev libtool-bin \
@@ -43,6 +56,13 @@ then
     rsync -avH --delete debs xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance
     cd ~/xfstests-bld/xfstests-bld
     schroot -r -c $CHROOT_NAME -- bash -c "date ; make clean ; date ; make ; date ; make tarball ; date ; cd kvm-xfstests/test-appliance ; ./gen-image --out-tar ; date"
+fi
+
+if test -z "$SKIP_IMAGE"
+then
+    cd ~/xfstests-bld/xfstests-bld/kvm-xfstests/test-appliance
+    schroot -r -c $CHROOT_NAME -- ./gen-image --out-tar
+    date
 fi
 
 if test -z "$SKIP_TEARDOWN"

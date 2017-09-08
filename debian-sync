@@ -1,0 +1,12 @@
+#!/bin/sh
+
+BOX=abel.debian.org
+#BOX=harris.debian.org
+
+ssh $BOX mkdir -p /home/tytso/xfstests-bld/xfstests-bld \
+	/home/tytso/xfstests-bld/base
+scp debian-build $BOX:/home/tytso
+rsync -avH --delete --exclude-from=exclude-files build-armhf/ $BOX:/home/tytso/xfstests-bld/xfstests-bld
+rsync -avH --delete base $BOX:/home/tytso/xfstests-bld
+echo /home/tytso/xfstests-bld/base/objects > /tmp/alternates
+scp /tmp/alternates $BOX:/home/tytso/xfstests-bld/xfstests-bld/.git/objects/info/alternates
