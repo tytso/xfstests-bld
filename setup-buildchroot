@@ -361,21 +361,14 @@ validate_binfmt_misc()
 # the chroot.d directory
 get_schroot_config()
 {
-    local files
-
-    if test ! -f $SCHROOT_CONFFILE
-    then
-	die $SCHROOT_CONFFILE does not exist
-    fi
+    cat $SCHROOT_CONFFILE
 
     if test -d $SCHROOT_CHROOT_D
     then
 	(cd $SCHROOT_CHROOT_D ;
 	 find . -maxdepth 1 -type f |
-	     egrep '^./[a-ZA-Z0-09_-][a-ZA-Z0-09_.-]*$' |
-	     xargs cat $SCHROOT_CONFFILE)
-    else
-	cat $SCHROOT_CONFFILE
+	     egrep '^./[a-ZA-Z0-9_-][a-ZA-Z0-9_.-]*$' |
+	     xargs cat)
     fi
 }
 
