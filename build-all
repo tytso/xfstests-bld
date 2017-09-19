@@ -298,7 +298,7 @@ if test -z "$SKIP_FIO"; then
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     ./configure $crossfio --extra-cflags="$CFLAGS"; $MAKE_CLEAN ; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+     $MAKE_CLEAN ; ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
 if test -z "$SKIP_XFSTESTS" ; then
