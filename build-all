@@ -294,6 +294,7 @@ fi
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
 
 if test -z "$SKIP_FIO"; then
+    build_start "fio"
     (cd fio; \
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
@@ -343,6 +344,7 @@ EOF
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
+    build_start "misc VM utils"
     (cd misc ; LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ./configure $cross ; \
      $MAKE_CLEAN ; make $J ; make install DESTDIR=$DESTDIR)
 fi
