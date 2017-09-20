@@ -5,7 +5,7 @@ fio		fio-2.21 (Thu, 15 Jun 2017 12:25:03 -0600)
 keyutils	v1.5.10 (Wed, 15 Mar 2017 20:57:15 +0000)
 quota		16f31b1 (Tue, 5 Sep 2017 16:53:11 +0200)
 xfsprogs	v4.12.0 (Thu, 20 Jul 2017 10:57:14 -0500)
-xfstests-bld	61e0e6e (Sat, 9 Sep 2017 00:37:25 -0400)
+xfstests-bld	f59d58f (Tue, 19 Sep 2017 00:50:16 -0400)
 xfstests	linux-v3.8-1662-g1336e122 (Tue, 5 Sep 2017 21:35:55 -0400)
 
 Here's a sketch of how to use it:

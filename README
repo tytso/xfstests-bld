@@ -25,7 +25,7 @@ fio		fio-2.21 (Thu, 15 Jun 2017 12:25:03 -0600)
 quota		16f31b1 (Tue, 5 Sep 2017 16:53:11 +0200)
 stress-ng	977ae35 (Wed, 6 Sep 2017 23:45:03 -0400)
 xfsprogs	v4.12.0 (Thu, 20 Jul 2017 10:57:14 -0500)
-xfstests-bld	61e0e6e (Sat, 9 Sep 2017 00:37:25 -0400)
+xfstests-bld	f59d58f (Tue, 19 Sep 2017 00:50:16 -0400)
 xfstests	linux-v3.8-1662-g1336e122 (Tue, 5 Sep 2017 21:35:55 -0400)
 
 The gen-image script found in the kvm-xfstests/test-appliance
