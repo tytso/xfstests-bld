@@ -35,6 +35,7 @@ PACKAGES="bash-completion \
 	kexec-tools \
 	keyutils \
 	less \
+	libcap2-bin \
 	"libcomerr2$BACKPORTS" \
 	libsasl2-modules \
 	"libss2$BACKPORTS" \

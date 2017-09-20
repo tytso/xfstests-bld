@@ -15,6 +15,7 @@ gawk
 joe-jupp
 keyutils
 less
+libcap2-bin
 libgdbm3
 liblzo2-2
 libbsd0
