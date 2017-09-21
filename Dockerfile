@@ -6,7 +6,7 @@
 # building it inside Docker.)
 #
 # VERSION 0.1
-FROM debian
+FROM debian:stretch
 
 # Install dependencies
 RUN apt-get update && \
