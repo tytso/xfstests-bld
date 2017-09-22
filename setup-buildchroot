@@ -32,6 +32,8 @@ SCHROOT_CHROOT_D=/etc/schroot/chroot.d
 SCHROOT_FSTAB=xfstests-bld/fstab
 SCHROOT_FSTAB_FILE=/etc/schroot/$SCHROOT_FSTAB
 
+PROXY=
+
 # Additional packages to install in the build chroot
 BUILD_DEPENDENCIES=(
 autoconf
@@ -202,6 +204,11 @@ select_chroot_name()
 select_chroot_user()
 {
     prompt_for_param "chroot user" CHROOT_USER "${SUDO_USER:-}"
+}
+
+select_proxy()
+{
+    prompt_for_param "proxy" PROXY "${PROXY}"
 }
 
 parse_options()
@@ -534,6 +541,7 @@ install_build_dependencies()
 {
     log "Installing build dependencies: ${BUILD_DEPENDENCIES[*]}"
 schroot -c "$CHROOT_NAME" -u root -- <<EOF
+export http_proxy=${PROXY}
 apt-get update
 apt-get install -y ${BUILD_DEPENDENCIES[@]}
 EOF
@@ -548,6 +556,7 @@ select_debian_mirror
 select_chroot_dir
 select_chroot_name
 select_chroot_user
+select_proxy
 check_for_conflicting_schroot_entry
 if ! is_native_chroot; then
     validate_binfmt_misc
