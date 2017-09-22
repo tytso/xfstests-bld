@@ -15,6 +15,16 @@ Debian build chroot and building the xfstests tarball as described in
 `gen-image` script.  The `do-all` script can automate this process
 slightly, as described below.
 
+## Using a proxy
+
+In order to properly utilize a proxy you need to make sure to add the
+following line (replacing server:port with your actual settings)
+
+    export http_proxy='http://server:port'
+
+to config.custom in both the root directory of your xfstest-bld checkout
+and to kvm-xfstests/test-appliance.
+
 ## Using gen-image
 
 After building the xfstests tarball as described in
