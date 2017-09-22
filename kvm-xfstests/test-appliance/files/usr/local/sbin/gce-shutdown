@@ -56,19 +56,15 @@ then
     if test -f /usr/local/lib/sg_key ; then
 	. /usr/local/lib/sg_key
     fi
-    if test -n "$REPORT_EMAIL"
+    if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
     then
 	subj="xfstests results $TESTRUNID - $(uname -r)"
-	if test -n "$SENDGRID_API_KEY" ; then
-	    if test -z "$GCE_REPORT_SENDER"
-	    then
-		GCE_REPORT_SENDER="$USER@$HOSTNAME"
-	    fi
-	    /usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
-		 -s "$subj" "$REPORT_EMAIL" < /results/failures
-	else
-	    mail -s "$subj" "$REPORT_EMAIL" < /results/failures
+	if test -z "$GCE_REPORT_SENDER"
+	then
+	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	fi
+	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
+		-s "$subj" "$REPORT_EMAIL" < /results/failures
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \

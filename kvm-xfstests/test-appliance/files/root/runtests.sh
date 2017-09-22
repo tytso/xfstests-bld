@@ -139,6 +139,12 @@ fi
 CPUS=$(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
 MEM=$(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
 
+if test -n "$RUN_ONCE" -a -f "$RUNSTATS"
+then
+    mv "$RUNSTATS" "$RUNSTATS.old"
+    RESTARTED=yes
+fi
+
 cp /dev/null "$RUNSTATS"
 if test -f /var/www/cmdline
 then
@@ -183,20 +189,40 @@ then
     echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
 fi
 
-cat "$RUNSTATS"
+if test -z "$RUN_ON_GCE"
+then
+    for i in $(find "$RESULTS" -name results-\* -type d)
+    do
+	find $i/* -type d -print | xargs rm -rf 2> /dev/null
+	find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
+    done
+fi
 
-for i in $(find "$RESULTS" -name results-\* -type d)
-do
-    find $i/* -type d -print | xargs rm -rf 2> /dev/null
-    find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
-done
+if test -z "$RUN_ONCE"
+then
+    for i in $(find "$RESULTS" -name results-\* -type d)
+    do
+	find $i/* -type d -print | xargs rm -rf 2> /dev/null
+	find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
+    done
+fi
+
+if test -z "$RESTARTED"
+then
+    cat "$RUNSTATS"
+    free -m
+else
+    test -f "$RESULTS/slabinfo.before" && \
+	mv "$RESULTS/slabinfo.before" "$RESULTS/slabinfo.before.old"
+    test -f "$RESULTS/meminfo.before" && \
+	mv "$RESULTS/meminfo.before" "$RESULTS/meminfo.before.old"
+fi
 
 touch "$RESULTS/fstest-completed"
 
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
 cp /proc/meminfo "$RESULTS/meminfo.before"
 
-free -m
 while test -n "$FSTESTCFG"
 do
 	if ! get_one_fs_config "/root/fs"; then
@@ -291,16 +317,14 @@ do
 	fi
 	[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULT_BASE/slabinfo.before"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
-	echo -n "BEGIN TEST $i: $TESTNAME " ; date
-	logger "BEGIN TEST $i: $TESTNAME "
 	if test -n "$REQUIRE_FEATURE" -a \
 		! -f "/sys/fs/$FS/features/$REQUIRE_FEATURE" ; then
+	    echo -n "BEGIN TEST $i: $TESTNAME " ; date
+	    logger "BEGIN TEST $i: $TESTNAME "
 	    echo "END TEST: Kernel does not support $REQUIRE_FEATURE"
+	    logger "END TEST: Kernel does not support $REQUIRE_FEATURE"
 	    continue
 	fi
-	echo DEVICE: $TEST_DEV
-	show_mkfs_opts
-	show_mount_opts
 	if test -n "$FSX_AVOID"
 	then
 	    echo FSX_AVOID: $FSX_AVOID
@@ -353,10 +377,47 @@ do
 	if test -f /tmp/exclude-tests ; then
 	    AEX="$AEX -E /tmp/exclude-tests"
 	fi
+	if test ! -f "$RESULT_BASE/tests-to-run" ; then
+	    bash ./check -n $FSTESTSET 2> /dev/null | \
+		sed -e '1,/^$/d' -e '/^$/d' | \
+		sort > "$RESULT_BASE/tests-to-run"
+	    nr_tests=$(wc -l < "$RESULT_BASE/tests-to-run")
+	    if test "$nr_tests" -ne 1
+	    then
+		nr_tests="$nr_tests tests"
+	    else
+		nr_tests="$nr_tests test"
+	    fi
+	    echo -n "BEGIN TEST $i ($nr_tests): $TESTNAME " ; date
+	    logger "BEGIN TEST $i: $TESTNAME "
+	    echo DEVICE: $TEST_DEV
+	    show_mkfs_opts
+	    show_mount_opts
+	fi
 	gce_run_hooks fs-config-begin $i
 	for j in $(seq 1 $RPT_COUNT) ; do
 	    gce_run_hooks pre-xfstests $i $j
-	    bash ./check -T $AEX $TEST_SET_EXCLUDE $FSTESTSET
+	    if test -n "$RUN_ONCE" ; then
+		if test -f "$RESULT_BASE/completed"
+		then
+		    head -n -2 "$RESULT_BASE/completed" > /tmp/completed
+		    mv /tmp/completed "$RESULT_BASE/completed"
+		else
+		    touch "$RESULT_BASE/completed"
+		fi
+		sort "$RESULT_BASE/completed" > /tmp/completed
+		comm -23 "$RESULT_BASE/tests-to-run" /tmp/completed \
+		     > /tmp/tests-to-run
+	    else
+		cp "$RESULT_BASE/tests-to-run" /tmp/tests-to-run
+	    fi
+	    if test -s /tmp/tests-to-run
+	    then
+		bash ./check -T $AEX $TEST_SET_EXCLUDE \
+		     $(cat /tmp/tests-to-run)
+	    else
+		echo "No tests to run"
+	    fi
 	    gce_run_hooks post-xfstests $i $j
 	    umount "$TEST_DEV" >& /dev/null
 	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out

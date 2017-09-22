@@ -1,16 +1,21 @@
 #!/bin/bash
 . /usr/local/lib/gce-funcs
 
-status=$(echo $* | sed -e 's/^run xfstest //')
+if test -z "$HOOK_ARG"	# prevent recursion
+then
+    run_hooks logger "$*"
+fi
+
+status=$(echo "$*" | sed -e 's/^run xfstest //')
+if echo "$*" | grep -q "^run xfstest "
+then
+    echo "$status" >> $RESULT_BASE/completed
+fi
+
 if test -f /run/fstest-config
 then
     cfg="$(cat /run/fstest-config)"
     status="$cfg $status"
-fi
-
-if test -z "$HOOK_ARG"	# prevent recursion
-then
-    run_hooks logger $*
 fi
 
 if test -z "$(find /run/last_logged -mmin -1 -print 2> /dev/null)"
@@ -23,5 +28,4 @@ echo $(date +%s) "$status" > /var/www/statusz
 echo $(date +%H:%M) "$status" > /var/www/status
 echo "$status" > /results/status
 /root/xfstests/bin/syncfs /results/status
-logger $cfg $*
-
+logger $cfg "$*"

@@ -42,10 +42,13 @@ esac
 
 wait
 
-cp /var/log/syslog /results/setup-syslog
-cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
-systemctl restart rsyslog.service
-dmesg >& /results/dmesg
+if test ! -f /results/setup-syslog
+then
+    cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
+    systemctl restart rsyslog.service
+    dmesg >& /results/dmesg
+    cp /var/log/syslog /results/setup-syslog
+fi
 
 for i in /usr/sbin/rsyslogd /usr/sbin/sshd
 do
