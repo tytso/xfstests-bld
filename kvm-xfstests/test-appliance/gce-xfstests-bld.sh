@@ -48,6 +48,7 @@ PACKAGES="bash-completion \
 	perl \
 	procps \
 	psmisc \
+	python-future \
 	python-setuptools \
 	strace \
 	time \

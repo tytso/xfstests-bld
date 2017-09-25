@@ -24,6 +24,8 @@ makedev
 perl
 procps
 psmisc
+python2.7
+python-future
 strace
 systemd
 systemd-sysv

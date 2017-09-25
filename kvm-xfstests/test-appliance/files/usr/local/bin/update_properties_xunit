@@ -1,0 +1,48 @@
+#!/usr/bin/python
+
+import argparse
+import os
+import sys
+from junitparser import JUnitXml, TestSuite
+
+def get_test_suite(filename):
+    try:
+        ts = JUnitXml.fromfile(filename)
+    except IOError as e:
+        sys.exit("Couldn't open %s: %s" % (filename, e[1]))
+
+    if type(ts) != TestSuite:
+        sys.exit('%s is not a xUnit report file' % filename)
+    return ts
+
+def clean_test_suite(ts):
+    l = list(ts.properties())
+    for p in l:
+        ts.remove_property(p)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('output_file', help='output xUnit result file')
+parser.add_argument('input_file', help='input xUnit result file')
+parser.add_argument('run_stats_file', help='run_stats file')
+parser.add_argument('--fsconfig', help='file system config')
+args = parser.parse_args()
+
+ts = get_test_suite(args.input_file)
+
+clean_test_suite(ts)
+
+f = open(args.run_stats_file, "r")
+for l in f:
+    key, value = l.split(': ', 1)
+    value = value.rstrip('\n').strip('"')
+    if key == 'FSTESTCFG' and args.fsconfig:
+        key = 'FSTESTCFGS'
+    ts.add_property(key, value)
+
+if args.fsconfig:
+    ts.add_property('FSTESTCFG', args.fsconfig)
+
+f.close()
+
+ts.write(args.output_file, pretty=True)
+

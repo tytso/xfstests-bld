@@ -16,6 +16,24 @@ function gce_run_hooks()
     fi
 }
 
+function copy_xunit_results()
+{
+    local RESULT="$RESULT_BASE/result.xml"
+    local RESULTS="$RESULT_BASE/results.xml"
+
+    if test -f "$RESULT"
+    then
+	if test -f "$RESULTS"
+	then
+	    merge_xunit "$RESULTS" "$RESULT"
+	else
+	    update_properties_xunit --fsconfig "$FS/$i" "$RESULTS" \
+				    "$RESULT" "$RUNSTATS"
+	fi
+	rm "$RESULT"
+    fi
+}
+
 while [ "$1" != "" ]; do
     case $1 in
 	--run-once)
@@ -301,6 +319,7 @@ do
 	    mv "$RESULTS/results-$i" "$RESULT_BASE"
 	fi
 	mkdir -p "$RESULT_BASE"
+	copy_xunit_results
 	echo FS: $FS > "$RESULT_BASE/config"
 	echo TESTNAME: $TESTNAME >> "$RESULT_BASE/config"
 	echo TEST_DEV: $TEST_DEV >> "$RESULT_BASE/config"
@@ -413,8 +432,9 @@ do
 	    fi
 	    if test -s /tmp/tests-to-run
 	    then
-		bash ./check -T $AEX $TEST_SET_EXCLUDE \
+		bash ./check -R xunit -T $AEX $TEST_SET_EXCLUDE \
 		     $(cat /tmp/tests-to-run)
+		copy_xunit_results
 	    else
 		echo "No tests to run"
 	    fi
