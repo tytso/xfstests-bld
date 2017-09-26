@@ -537,6 +537,12 @@ EOF
     fi
 }
 
+setup_mtab()
+{
+    log "Linking /etc/mtab to ../proc/self/mounts"
+    schroot -c "$CHROOT_NAME" -u root -- ln -sf ../proc/self/mounts /etc/mtab
+}
+
 install_build_dependencies()
 {
     log "Installing build dependencies: ${BUILD_DEPENDENCIES[*]}"
@@ -566,6 +572,7 @@ fi
 create_chroot
 add_schroot_conf_entry
 create_schroot_fstab
+setup_mtab
 install_build_dependencies
 
 log "Build chroot was successfully set up.  To use it to build a test" \
