@@ -14,7 +14,7 @@ fi
 DEBOOTSTRAP_DIR=/usr/share/debootstrap
 SUITE="$1-backports"
 MIRRORS="$MIRROR"
-SCRIPT="$DEBOOTSTRAP_DIR/scripts/stretch"
+SCRIPT="$DEBOOTSTRAP_DIR/scripts/$1"
 TARGET="$2"
 mkdir -p "$TARGET"
 ARCH=$(/usr/bin/dpkg --print-architecture)
@@ -24,7 +24,7 @@ LANG=C
 USE_COMPONENTS=main
 DEF_MIRROR="http://deb.debian.org/debian"
 DEF_HTTPS_MIRROR="https://deb.debian.org/debian"
-all_debs=$(cat backport-packages)
+all_debs=$(cat backport-packages-$1)
 
 ###########################################################################
 
