@@ -86,6 +86,13 @@ fi
 
 gen_image_args=
 
+if test -f "extra-packages" ; then
+    for i in $(cat extra-packages)
+    do
+        gen_image_args+=" -a $i"
+    done
+fi
+
 if $UPDATE; then
     $BUILD_ENV ./update-all
     gen_image_args+=" --update"
