@@ -15,6 +15,16 @@ Debian build chroot and building the xfstests tarball as described in
 `gen-image` script.  The `do-all` script can automate this process
 slightly, as described below.
 
+## Using a proxy
+
+In order to properly utilize a proxy you need to make sure to add the
+following line (replacing server:port with your actual settings)
+
+    export http_proxy='http://server:port'
+
+to config.custom in both the root directory of your xfstest-bld checkout
+and to kvm-xfstests/test-appliance.
+
 ## Using gen-image
 
 After building the xfstests tarball as described in
@@ -69,7 +79,9 @@ kvm-xfstests appliance, use:
 
 There are two ways to add additional packages to the root_fs image.
 The first is to supply the package name(s) on the command line, using
-the -a option.
+the -a option.  If you are using the `do-all` script you can simply add
+package names to the file `extra-packages` and they will be included for
+you.
 
 The second is to copy the debian packages into the directory
 kvm-xfstests/test-appliance/debs.  This is how the official packages

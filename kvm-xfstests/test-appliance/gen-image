@@ -147,8 +147,12 @@ fix_symlinks()
 
 finalize_rootfs()
 {
-   e2fsck -fyD $RAW_ROOT_FS
-   e2fsck -fy -E discard $RAW_ROOT_FS
+   # the stretch version of e2fsck will return 1 if it optimized any
+   # directories, which is the return value for "we changed something but
+   # everything is a-ok".  If we fail just continue if our return value was 1,
+   # otherwise bail.
+   e2fsck -fyD $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
+   e2fsck -fy -E discard $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
    qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 }
 
@@ -265,12 +269,14 @@ if test -n "$QEMU" ; then
     mkdir -p "$ROOTDIR/run/shm"
     chmod 1777 "$ROOTDIR/run/shm"
 fi
-./get-backports-pkgs "$SUITE" "$ROOTDIR"
-if test -f "$ROOTDIR/debootstrap/debpaths" ; then
-    DEBS=$(while read pkg path; do echo $path ; done <"$ROOTDIR/debootstrap/debpaths")
-    run_in_chroot "dpkg --ignore-depends=e2fsprogs -i $DEBS"
+if test -f "backport-packages-$SUITE" ; then
+    ./get-backports-pkgs "$SUITE" "$ROOTDIR"
+    if test -f "$ROOTDIR/debootstrap/debpaths" ; then
+        DEBS=$(while read pkg path; do echo $path ; done <"$ROOTDIR/debootstrap/debpaths")
+        run_in_chroot "dpkg --ignore-depends=e2fsprogs -i $DEBS"
+    fi
+    rm -rf "$ROOTDIR/debootstrap"
 fi
-rm -rf "$ROOTDIR/debootstrap"
 DEBS=$(find debs -name \*.deb)
 if test -n "$DEBS"
 then
