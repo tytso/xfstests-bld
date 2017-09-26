@@ -265,12 +265,14 @@ if test -n "$QEMU" ; then
     mkdir -p "$ROOTDIR/run/shm"
     chmod 1777 "$ROOTDIR/run/shm"
 fi
-./get-backports-pkgs "$SUITE" "$ROOTDIR"
-if test -f "$ROOTDIR/debootstrap/debpaths" ; then
-    DEBS=$(while read pkg path; do echo $path ; done <"$ROOTDIR/debootstrap/debpaths")
-    run_in_chroot "dpkg --ignore-depends=e2fsprogs -i $DEBS"
+if test -f "backport-packages-$SUITE" ; then
+    ./get-backports-pkgs "$SUITE" "$ROOTDIR"
+    if test -f "$ROOTDIR/debootstrap/debpaths" ; then
+        DEBS=$(while read pkg path; do echo $path ; done <"$ROOTDIR/debootstrap/debpaths")
+        run_in_chroot "dpkg --ignore-depends=e2fsprogs -i $DEBS"
+    fi
+    rm -rf "$ROOTDIR/debootstrap"
 fi
-rm -rf "$ROOTDIR/debootstrap"
 DEBS=$(find debs -name \*.deb)
 if test -n "$DEBS"
 then
