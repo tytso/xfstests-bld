@@ -92,10 +92,10 @@ function format_filesystem()
 function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
-	if test -n "OVERLAY_MOUNT_OPTIONS" ; then
-            OVERLAY_MOUNT_OPTIONS="$OVERLAY_MOUNT_OPTIONS,$MNTOPTS"
+	if test -n "$OVERLAY_MOUNT_OPTIONS" ; then
+            export OVERLAY_MOUNT_OPTIONS="$OVERLAY_MOUNT_OPTIONS,$MNTOPTS"
 	else
-	    OVERLAY_MOUNT_OPTIONS="-o $MNTOPTS"
+	    export OVERLAY_MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
 }

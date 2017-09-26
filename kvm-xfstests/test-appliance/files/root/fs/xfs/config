@@ -30,9 +30,9 @@ function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
 	if test -n "$XFS_MOUNT_OPTIONS" ; then
-            XFS_MOUNT_OPTIONS="$XFS_MOUNT_OPTIONS,$MNTOPTS"
+            export XFS_MOUNT_OPTIONS="$XFS_MOUNT_OPTIONS,$MNTOPTS"
 	else
-	    XFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	    export XFS_MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
 }
