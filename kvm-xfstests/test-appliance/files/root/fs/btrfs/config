@@ -30,9 +30,9 @@ function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
 	if test -n "$MOUNT_OPTIONS" ; then
-            MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
+            export MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
 	else
-	    MOUNT_OPTIONS="-o $MNTOPTS"
+	    export MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
 }

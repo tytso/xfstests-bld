@@ -18,9 +18,9 @@ function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
 	if test -n "$TMPFS_MOUNT_OPTIONS" ; then
-            TMPFS_MOUNT_OPTIONS="$TMPFS_MOUNT_OPTIONS,$MNTOPTS"
+            export TMPFS_MOUNT_OPTIONS="$TMPFS_MOUNT_OPTIONS,$MNTOPTS"
 	else
-	    TMPFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	    export TMPFS_MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
 }

@@ -13,6 +13,5 @@ export TEST_DEV=$LG_TST_DEV
 export TEST_DIR=$LG_TST_MNT
 export SCRATCH_DEV=$LG_SCR_DEV
 export SCRATCH_MNT=$LG_SCR_MNT
-export EXT_MOUNT_OPTIONS=""
 TESTNAME="overlayfs large"
 mkdir -p /test/tmp /test/scratch

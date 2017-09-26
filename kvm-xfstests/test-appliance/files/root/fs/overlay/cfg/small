@@ -13,6 +13,5 @@ export TEST_DEV=$SM_TST_DEV
 export TEST_DIR=$SM_TST_MNT
 export SCRATCH_DEV=$SM_SCR_DEV
 export SCRATCH_MNT=$SM_SCR_MNT
-export EXT_MOUNT_OPTIONS=""
 TESTNAME="overlayfs small"
 mkdir -p /test/tmp /test/scratch

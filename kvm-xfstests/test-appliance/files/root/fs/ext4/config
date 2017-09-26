@@ -30,12 +30,12 @@ function setup_mount_opts()
 {
     export MKFS_OPTIONS="$EXT_MKFS_OPTIONS"
     if test -n "$EXT_MOUNT_OPTIONS" ; then
-	EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
+	export EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
     else
-	EXT_MOUNT_OPTIONS="-o block_validity"
+	export EXT_MOUNT_OPTIONS="-o block_validity"
     fi
     if test -n "$MNTOPTS" ; then
-	EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+	export EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
     fi
     if echo "$EXT_MOUNT_OPTIONS" | grep -q test_dummy_encryption; then
         local mode='\x00\x00\x00\x00'

@@ -28,9 +28,9 @@ function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
 	if test -n "$F2FS_MOUNT_OPTIONS" ; then
-	    F2FS_MOUNT_OPTIONS="$F2FS_MOUNT_OPTIONS,$MNTOPTS"
+	    export F2FS_MOUNT_OPTIONS="$F2FS_MOUNT_OPTIONS,$MNTOPTS"
 	else
-	    F2FS_MOUNT_OPTIONS="-o $MNTOPTS"
+	    export F2FS_MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
 }
