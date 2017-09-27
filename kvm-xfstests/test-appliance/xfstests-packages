@@ -1,6 +1,7 @@
 bash-completion
 bc
 bsdmainutils
+btrfs-progs
 bzip2
 cpio
 dc
