@@ -18,6 +18,7 @@ VDD=$DIR/disks/vdd
 VDE=$DIR/disks/vde
 VDF=$DIR/disks/vdf
 VDG=$DIR/disks/vdg
+CACHE=none
 
 IFUP=$DIR/util/qemu-ifup
 IFDOWN=$DIR/util/qemu-ifdown
@@ -40,3 +41,10 @@ MONITOR="-monitor telnet:localhost:7498,server,nowait"
 # interception entirely.
 CONSOLE=" -serial mon:stdio"
 #CONSOLE=" -chardev stdio,id=console,signal=off -serial chardev:console"
+
+# Lost IOs have been observed with the default aio=threads with
+# QEMU 2.5.0 when running crash consistency tests.
+# The issue has not been observed with QEMU 2.9.0.
+# Native AIO is probably better for our goal which is test proofing
+# production systems.
+AIO=",aio=native"
