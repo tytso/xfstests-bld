@@ -73,6 +73,10 @@ if ionice -h > /dev/null ; then
     IONICE="ionice -n 5"
 fi
 
+if test -z "$VIRTFS_PATH"; then
+    VIRTFS_PATH=/tmp/kvm-xfstests-$USER
+fi
+
 VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
 trap 'rm -f "$VDH"' 0
 tar -c -f "$VDH" -T /dev/null
@@ -112,7 +116,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
-	-fsdev local,id=v_tmp,path=/tmp/kvm-xfstests-$USER,security_model=none \
+	-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none \
 	-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp \
 	$VIRTIO_RNG \
 	$CONSOLE \
