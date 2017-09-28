@@ -46,6 +46,7 @@ print_help ()
     if flavor_in kvm gce ; then
 	echo "	-o opts		- Extra kernel command line options"
     fi
+    echo "	-O opts		- Extra options for test runner"
     if flavor_in kvm gce ; then
 	echo "	-r ram		- Specify memory to be used in megabytes"
     fi
@@ -229,6 +230,9 @@ while [ "$1" != "" ]; do
 	-N)
 	    supported_flavors kvm
 	    DO_NET=yes
+	    ;;
+	-O) shift
+	    FSTESTOPT="$FSTESTOPT,extra_opt,$1"
 	    ;;
 	-X) shift
 	    if test -n "$FSTESTEXC" ; then

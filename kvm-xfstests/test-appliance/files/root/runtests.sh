@@ -114,6 +114,9 @@ while [ "$1" != "" ]; do
 	ALL_XFS_IO_AVOID="$ALL_XFS_IO_AVOID zero"
 	FSTESTSET="$FSTESTSET -x zero"
 	;;
+    extra_opt) shift
+	EXTRA_OPT="$EXTRA_OPT $1"
+	;;
     *)
 	echo " "
 	echo "Unrecognized option $i"
@@ -432,7 +435,7 @@ do
 	    fi
 	    if test -s /tmp/tests-to-run
 	    then
-		bash ./check -R xunit -T $AEX $TEST_SET_EXCLUDE \
+		bash ./check -R xunit -T $EXTRA_OPT $AEX $TEST_SET_EXCLUDE \
 		     $(cat /tmp/tests-to-run)
 		copy_xunit_results
 	    else
