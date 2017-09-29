@@ -132,8 +132,9 @@ wait_for_command "gcloud compute instances describe \
     --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE"
 echo " Done!"
 
-gcloud compute instances describe $INSTANCE \
-    | grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.ltm_instance
+gcloud compute instances describe "$INSTANCE" \
+       --project "$GCE_PROJECT" --zone "$GCE_ZONE" | \
+    grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.ltm_instance
 
 echo -n "Fetching password..."
 wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
