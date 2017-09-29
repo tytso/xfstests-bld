@@ -391,6 +391,10 @@ while [ "$1" != "" ]; do
 	    supported_flavors kvm
 	    CACHE="$1"
 	    ;;
+	--virtfs) shift
+	    supported_flavors kvm
+	    VIRTFS_PATH="$1"
+	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \
