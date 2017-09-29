@@ -1,9 +1,10 @@
 # This Dockerfile creates an debian image with xfstests-bld build environment
 #
-# This is more for the sake of showing how to use a Dockerfile to
-# build the xfstests.tar.gz file more than anything else.  (The resulting
-# docker image is almost twice as big as it would be if we didn't try
-# building it inside Docker.)
+# This Dockerfile file is useful for building the xfstests.tar.gz file
+# in a Docker environment, for continuous build testing.  It can also
+# be useful for testing whatever the file system environemnt is
+# provided in the Docker environment, without requiring any special
+# privileges.
 #
 # VERSION 0.1
 FROM debian:stretch
