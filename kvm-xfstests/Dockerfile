@@ -1,23 +1,24 @@
-# This Dockerfile creates an debian image with xfstests-bld build environment
+# This Dockerfile creates kvm-xfstests runtime environment
 #
-# This is more for the sake of showing how to use a Dockerfile to
-# build the xfstests.tar.gz file more than anything else.  (The resulting
-# docker image is almost twice as big as it would be if we didn't try
-# building it inside Docker.)
+# For reasonable performance one need to grant access to /dev/kvm
+# Usage:
+# docker run --device /dev/kvm:/dev/kvm \
+#            -v /my-kernel:/tmp tytso/kvm-xfstests \
+#	  	 kvm-xfstests --kernel /tmp/vmlinuz smoke
 #
-# VERSION 0.1
-FROM debian:stretch
+# VERSION 0.2
+FROM alpine
 
-# Install Dependencies
-RUN apt-get update && \
-    apt-get install -y \
-	    curl \
-	    qemu-kvm \
-	    qemu-utils && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
-       /usr/share/doc /usr/share/doc-base \
-       /usr/share/man /usr/share/locale /usr/share/zoneinfo
+RUN apk add --no-cache --update \
+	bash \
+	e2fsprogs-libs \
+	e2fsprogs \
+	e2fsprogs-extra \
+	curl \
+	util-linux \
+	qemu-img \
+	qemu-system-x86_64 \
+	tar
 
 MAINTAINER Theodore Y. Ts'o tytso@mit.edu
 
@@ -27,6 +28,9 @@ RUN cd /usr/local/lib/kvm-xfstests && \
     mkdir -p /usr/local/bin && \
     sed -e 's;@DIR@;/usr/local/lib;' < kvm-xfstests.in > /usr/local/bin/kvm-xfstests && \
     chmod +x /usr/local/bin/kvm-xfstests && \
+    sed -ie "s/QEMU=.*/QEMU=qemu-system-x86_64/g" config.kvm && \
+    mkdir -p /logs && \
+    ln -s /logs logs && \
     cd test-appliance && \
     ln -s /linux /root/linux && \
     if ! test -f root_fs.img ; then \
