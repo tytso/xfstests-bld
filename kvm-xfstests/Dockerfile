@@ -1,4 +1,4 @@
-# This Dockerfile creates kvm-xfstests runtime environment
+# This Dockerfile creates a kvm-xfstests runtime environment
 #
 # For reasonable performance one needs to grant access to /dev/kvm
 #
@@ -25,6 +25,8 @@ MAINTAINER Theodore Y. Ts'o tytso@mit.edu
 
 COPY . /usr/local/lib/kvm-xfstests
 
+ARG IMAGE_URL=https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+
 RUN cd /usr/local/lib/kvm-xfstests && \
     mkdir -p /usr/local/bin && \
     sed -e 's;@DIR@;/usr/local/lib;' < kvm-xfstests.in > /usr/local/bin/kvm-xfstests && \
@@ -35,13 +37,14 @@ RUN cd /usr/local/lib/kvm-xfstests && \
     cd test-appliance && \
     ln -s /linux /root/linux && \
     if ! test -f root_fs.img ; then \
-        curl -o root_fs.img \
-	    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386 ; \
+        curl -o root_fs.img $IMAGE_URL ; \
     fi
 
-# This is build environment so there is no sane default command here,
-# this command simply demonstrate that the environment is sane
-CMD curl -o /tmp/initrd.img https://dl.fedoraproject.org/pub/fedora/linux/releases/26/Server/x86_64/os/images/pxeboot/initrd.img && \
-    curl -o /tmp/vmlinuz https://dl.fedoraproject.org/pub/fedora/linux/releases/26/Server/x86_64/os/images/pxeboot/vmlinuz && \
+ENV SAMPLE_KERNEL_URL=https://dl.fedoraproject.org/pub/fedora/linux/releases/26/Server/x86_64/os/images/pxeboot
+
+# The default command serves merely as a demo and can be used as a
+# sanity check that docker image was built correctly.
+CMD curl -o /tmp/initrd.img $SAMPLE_KERNEL_URL/initrd.img && \
+    curl -o /tmp/vmlinuz $SAMPLE_KERNEL_URL/vmlinuz && \
     kvm-xfstests --kernel /tmp/vmlinuz \
                     --initrd /tmp/initrd.img smoke
