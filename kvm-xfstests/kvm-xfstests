@@ -43,11 +43,13 @@ fi
 
 EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
 
+DATE=$(date +%Y%m%d%H%M)
 if test -n "$SKIP_LOG" ; then
-    LOGFILE=/tmp/log.$(date +%Y%m%d%H%M)
+    LOGFILE=/tmp/log.$DATE
 else
     mkdir -p "$DIR/logs"
-    LOGFILE="$DIR/logs/log.$(date +%Y%m%d%H%M)"
+    LOGFILE="$DIR/logs/log.$DATE"
+    RESULTFILE="$DIR/logs/resutls-$DATE.tar.xz"
 fi
 
 if test -n "$INITRD" ; then
@@ -130,7 +132,10 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 tee $LOGFILE
 
 $DIR/get-results $LOGFILE
-
+if test -n "$DO_ARCHIVE"; then
+    debugfs -R "dump /results.tar.xz $RESULTFILE" $VDG
+    echo "result  in $RESULTFILE"
+fi
 if test -n "$SKIP_LOG" ; then
   rm $LOGFILE
 else
