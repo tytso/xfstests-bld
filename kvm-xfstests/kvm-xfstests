@@ -101,21 +101,14 @@ chmod 400 "$VDH"
 
 mkdir -p /tmp/kvm-xfstests-$USER
 
-# Lost IOs have been observed with the default aio=threads with
-# QEMU 2.5.0 when running crash consistency tests.
-# The issue has not been observed with QEMU 2.9.0.
-# Native AIO is probably better for our goal which is test proofing
-# production systems.
-AIO=",aio=native"
-
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-machine type=pc,accel=kvm:tcg \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
-	-drive file=$VDB,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDC,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDD,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDE,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDF,cache=none,if=virtio,format=raw$AIO \
+	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDD,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDE,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
 	-vga none -nographic -smp $NR_CPU -m $MEM \

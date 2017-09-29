@@ -383,6 +383,14 @@ while [ "$1" != "" ]; do
 	    fi
 	    NO_REGION_SHARD="yes"
 	    ;;
+	--aio) shift
+	    supported_flavors kvm
+	    AIO=",aio=$1"
+	    ;;
+	--cache) shift
+	    supported_flavors kvm
+	    CACHE="$1"
+	    ;;
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \
