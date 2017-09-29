@@ -109,6 +109,10 @@ then
 	/bin/rm -f /run/gce-finalize-wait
     else
 	/root/runtests.sh
+	if test -b /dev/vdh -a -n "$FSTEST_ARCHIVE"
+	then
+	    tar -C /tmp -cf /dev/vdh results.tar.xz
+	fi
 	umount /results
 	poweroff -f > /dev/null 2>&1
     fi

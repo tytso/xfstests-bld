@@ -492,6 +492,6 @@ done
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.after"
 cp /proc/meminfo "$RESULTS/meminfo.after"
 if test -n "$FSTEST_ARCHIVE"; then
-    tar -C $RESULTS --exclude results.tar.xz -cf - . | \
-	xz -6e > $RESULTS/results.tar.xz
+    tar -C $RESULTS -cf - . | \
+	xz -6e > /tmp/results.tar.xz
 fi

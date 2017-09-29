@@ -103,7 +103,8 @@ then
     rm -rf "$TDIR"
 fi
 
-chmod 400 "$VDH"
+fallocate -l 128M "$VDH"
+chmod 600 "$VDH"
 
 mkdir -p /tmp/kvm-xfstests-$USER
 
@@ -116,7 +117,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDE,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
+	-drive file=$VDH,if=virtio,format=raw \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
 	-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none \
 	-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp \
@@ -133,7 +134,7 @@ tee $LOGFILE
 
 $DIR/get-results $LOGFILE
 if test -n "$DO_ARCHIVE"; then
-    debugfs -R "dump /results.tar.xz $RESULTFILE" $VDG
+    tar -O -xf "$VDH" results.tar.xz > $RESULTFILE
     echo "result  in $RESULTFILE"
 fi
 if test -n "$SKIP_LOG" ; then
