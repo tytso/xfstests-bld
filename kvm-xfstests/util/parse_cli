@@ -47,6 +47,9 @@ print_help ()
 	echo "	-o opts		- Extra kernel command line options"
     fi
     if flavor_in kvm gce ; then
+	echo "	-O opts		- Extra options for test runner"
+    fi
+    if flavor_in kvm gce ; then
 	echo "	-r ram		- Specify memory to be used in megabytes"
     fi
     echo "	-x group	- Exclude group of tests from running"
@@ -215,6 +218,10 @@ while [ "$1" != "" ]; do
 	-o) shift
 	    supported_flavors kvm gce
 	    EXTRA_ARG=$(echo "$1" | sed -e 's/ /:/g')
+	    ;;
+	-O) shift
+	    supported_flavors kvm gce
+	    FSTESTOPT="$FSTESTOPT,extra_opt,$1"
 	    ;;
 	-v)
 	    supported_flavors kvm gce
