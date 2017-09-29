@@ -47,6 +47,9 @@ print_help ()
 	echo "	-o opts		- Extra kernel command line options"
     fi
     if flavor_in kvm gce ; then
+	echo "	-O opts		- Extra options for test runner"
+    fi
+    if flavor_in kvm gce ; then
 	echo "	-r ram		- Specify memory to be used in megabytes"
     fi
     echo "	-x group	- Exclude group of tests from running"
@@ -216,6 +219,10 @@ while [ "$1" != "" ]; do
 	    supported_flavors kvm gce
 	    EXTRA_ARG=$(echo "$1" | sed -e 's/ /:/g')
 	    ;;
+	-O) shift
+	    supported_flavors kvm gce
+	    FSTESTOPT="$FSTESTOPT,extra_opt,$1"
+	    ;;
 	-v)
 	    supported_flavors kvm gce
 	    if test "$V" = "1" ; then
@@ -383,6 +390,23 @@ while [ "$1" != "" ]; do
 	    fi
 	    NO_REGION_SHARD="yes"
 	    ;;
+	--aio) shift
+	    supported_flavors kvm
+	    AIO=",aio=$1"
+	    ;;
+	--cache) shift
+	    supported_flavors kvm
+	    CACHE="$1"
+	    ;;
+	--virtfs) shift
+	    supported_flavors kvm
+	    VIRTFS_PATH="$1"
+	    ;;
+	--archive)
+	    supported_flavors kvm
+	    DO_ARCHIVE=1
+	    ;;
+
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \
@@ -499,6 +523,10 @@ fi
 
 if test -n "$TZ" ; then
     ARG="$ARG fstesttz=$TZ"
+fi
+
+if test -n "$DO_ARCHIVE" ; then
+    ARG="$ARG fstest_arch=$DO_ARCHIVE"
 fi
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then

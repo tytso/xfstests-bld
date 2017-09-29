@@ -43,11 +43,13 @@ fi
 
 EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
 
+DATE=$(date +%Y%m%d%H%M)
 if test -n "$SKIP_LOG" ; then
-    LOGFILE=/tmp/log.$(date +%Y%m%d%H%M)
+    LOGFILE=/tmp/log.$DATE
 else
     mkdir -p "$DIR/logs"
-    LOGFILE="$DIR/logs/log.$(date +%Y%m%d%H%M)"
+    LOGFILE="$DIR/logs/log.$DATE"
+    RESULTFILE="$DIR/logs/resutls-$DATE.tar.xz"
 fi
 
 if test -n "$INITRD" ; then
@@ -71,6 +73,10 @@ done
 
 if ionice -h > /dev/null ; then
     IONICE="ionice -n 5"
+fi
+
+if test -z "$VIRTFS_PATH"; then
+    VIRTFS_PATH=/tmp/kvm-xfstests-$USER
 fi
 
 VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
@@ -101,25 +107,18 @@ chmod 400 "$VDH"
 
 mkdir -p /tmp/kvm-xfstests-$USER
 
-# Lost IOs have been observed with the default aio=threads with
-# QEMU 2.5.0 when running crash consistency tests.
-# The issue has not been observed with QEMU 2.9.0.
-# Native AIO is probably better for our goal which is test proofing
-# production systems.
-AIO=",aio=native"
-
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-machine type=pc,accel=kvm:tcg \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
-	-drive file=$VDB,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDC,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDD,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDE,cache=none,if=virtio,format=raw$AIO \
-	-drive file=$VDF,cache=none,if=virtio,format=raw$AIO \
+	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDD,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDE,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
 	-drive file=$VDH,cache=unsafe,readonly,if=virtio \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
-	-fsdev local,id=v_tmp,path=/tmp/kvm-xfstests-$USER,security_model=none \
+	-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none \
 	-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp \
 	$VIRTIO_RNG \
 	$CONSOLE \
@@ -133,7 +132,10 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 tee $LOGFILE
 
 $DIR/get-results $LOGFILE
-
+if test -n "$DO_ARCHIVE"; then
+    debugfs -R "dump /results.tar.xz $RESULTFILE" $VDG
+    echo "result  in $RESULTFILE"
+fi
 if test -n "$SKIP_LOG" ; then
   rm $LOGFILE
 else

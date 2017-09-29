@@ -24,6 +24,7 @@ timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
+FSTEST_ARCHIVE=$(parse fstest_arch | sed -e 's/\./ /g')
 
 cat > /run/test-env <<EOF
 FSTESTCFG="$FSTESTCFG"
@@ -77,6 +78,7 @@ export FSTESTTYP
 export FSTESTAPI
 export FSTESTEXC
 export MNTOPTS
+export FSTEST_ARCHIVE
 
 if test -n "$timezone" -a -f /usr/share/zoneinfo/$timezone
 then
