@@ -182,8 +182,8 @@ then
     echo "FSTESTIMG: $image" >> "$RUNSTATS"
     echo "FSTESTPRJ: $(get_metadata_value_with_retries project-id)" >> "$RUNSTATS"
 fi
+echo -e "KERNEL: kernel\t$(uname -r -v -m)" >> "$RUNSTATS"
 sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> "$RUNSTATS"
-echo -e "FSTESTVER: kernel\t$(uname -r -v -m)" >> "$RUNSTATS"
 echo FSTESTCFG: \"$FSTESTCFG\" >> "$RUNSTATS"
 echo FSTESTSET: \"$FSTESTSET\" >> "$RUNSTATS"
 echo FSTESTEXC: \"$FSTESTEXC\" >> "$RUNSTATS"
@@ -203,7 +203,7 @@ then
     PARAM_MEM=$(gce_attribute mem)
     if test -n "$PARAM_MEM"
     then
-	echo "MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
+	echo "PARAM_MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
     fi
     GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
     echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
