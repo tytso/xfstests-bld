@@ -491,6 +491,13 @@ done
 
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.after"
 cp /proc/meminfo "$RESULTS/meminfo.after"
+
+/usr/local/bin/gen_results_summary $RESULTS > $RESULTS/report
+
+echo "-------------------- Summary report"
+
+cat $RESULTS/report
+
 if test -n "$FSTEST_ARCHIVE"; then
     tar -C $RESULTS -cf - . | \
 	xz -6e > /tmp/results.tar.xz

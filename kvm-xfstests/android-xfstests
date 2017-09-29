@@ -490,10 +490,9 @@ adb shell "chmod +x $CHROOT_DIR/run-xfstests"
 
 chroot_run /run-xfstests |& tee $LOGFILE
 
-$DIR/get-results $LOGFILE
-
 if test -n "$SKIP_LOG" ; then
     rm $LOGFILE
 else
+    sed -i -e '/^-------------------- Summary report/,$d' $LOGFILE
     echo "logfile in $LOGFILE"
 fi

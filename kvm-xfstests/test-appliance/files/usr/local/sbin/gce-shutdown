@@ -58,13 +58,19 @@ then
     fi
     if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
     then
+	if test -f /results/report
+	then
+	    RESULTS_REPORT=/results/report
+	else
+	    RESULTS_REPORT=/results/failures
+	fi
 	subj="xfstests results $TESTRUNID - $(uname -r)"
 	if test -z "$GCE_REPORT_SENDER"
 	then
 	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	fi
 	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
-		-s "$subj" "$REPORT_EMAIL" < /results/failures
+		-s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \
