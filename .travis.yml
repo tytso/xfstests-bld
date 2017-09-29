@@ -1,0 +1,20 @@
+language: c
+os:
+  - linux
+compiler:
+  - gcc
+script: make clean && make && make tarball
+env:
+  global:
+    - MAKEFLAGS="-j 2"
+matrix:
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    sudo apt-get install -y
+    build-essential autoconf autoconf2.64
+    automake libgdbm-dev libtool qemu-utils gettext
+    e2fslibs-dev git debootstrap fakechroot libdbus-1-3
+    autopoint pkg-config symlinks ca-certificates bison;
+    fi
