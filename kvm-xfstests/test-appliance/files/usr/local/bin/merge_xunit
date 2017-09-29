@@ -21,13 +21,12 @@ parser.add_argument('input_file', help='input test result file')
 args = parser.parse_args()
 
 merge = get_test_suite(args.merge_file)
-
 input = get_test_suite(args.input_file)
 
 for tc in input:
     merge.add_testcase(tc)
 
-merge.write(args.merge_file + '.new', pretty=True)
-
+merge.update_statistics()
+merge.write(args.merge_file + '.new')
 os.rename(args.merge_file, args.merge_file + '.bak')
 os.rename(args.merge_file + '.new' , args.merge_file)

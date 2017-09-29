@@ -35,12 +35,10 @@ f = open(args.run_stats_file, "r")
 for l in f:
     key, value = l.split(': ', 1)
     value = value.rstrip('\n').strip('"')
-    if key == 'FSTESTCFG' and args.fsconfig:
-        key = 'FSTESTCFGS'
     ts.add_property(key, value)
 
 if args.fsconfig:
-    ts.add_property('FSTESTCFG', args.fsconfig)
+    ts.add_property('TESTCFG', args.fsconfig)
 
 f.close()
 
