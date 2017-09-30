@@ -1,136 +1,22 @@
 #!/usr/bin/python
 
 import argparse
-import os
 import sys
-from datetime import datetime
-import time
-from junitparser import JUnitXml, TestSuite, Failure, Error, Skipped
+from gen_results_summary import gen_results_summary
 
-def get_results(dirroot):
-    for dirpath, dirs, filenames in os.walk(dirroot):
-        if 'results.xml' in filenames:
-            yield dirpath + '/results.xml'
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('results_dir', help='Results directory to process')
+    parser.add_argument('--merge_file',
+                        help='Combined output file for XML xUnit')
+    parser.add_argument('--output_file', help='Combined text output file')
+    parser.add_argument('--verbose', help='Generate a verbose output',
+                        action='store_true')
+    args = parser.parse_args()
 
-def parse_timestamp(str):
-    return time.mktime(datetime.strptime(str, '%Y-%m-%dT%H:%M:%S').timetuple())
+    if gen_results_summary(args.results_dir, args.output_file,
+                           args.merge_file, args.verbose) == 0:
+        sys.exit('No results file found in ' + results_dir)
 
-def failed_tests(ts):
-    for t in ts:
-        if isinstance(t.result, Failure):
-            yield t
-
-def get_property(props, key):
-    if props is None:
-        return None
-    for p in props:
-        if p.name == key:
-	    return p.value
-    return None
-
-def get_properties(props, key):
-    if props is None:
-        yield None
-    for p in props:
-        if p.name == key:
-	    yield p.value
-
-def save_properties(ts):
-    if ts.properties is None:
-        return None
-    l = []
-    for p in ts.properties():
-        l.append(p)
-    return l
-
-def print_summary(ts):
-    cfg = get_property(ts.properties(), 'TESTCFG')
-    if cfg is None:
-        cfg = get_property(ts.properties(), 'FSTESTCFG')
-
-    tests = ts.tests
-    if tests is None:
-        tests = 0
-    skipped = ts.skipped
-    if skipped is None:
-        skipped = 0
-    errors = ts.errors
-    if errors is None:
-        errors = 0
-    runtime = ts.time
-    if runtime is None:
-        runtime = 0
-    print '%s %d tests, %d skipped, %d errors, %d seconds' % \
-        (cfg, tests, skipped, errors, runtime)
-    if (ts.errors > 0):
-        sys.stdout.write('   ')
-        p = 0
-        for t in failed_tests(ts):
-            l = len(t.name) + 1
-            p += l
-            if (p > 76):
-                sys.stdout.write('\n   ')
-                p = len(t.name) + 1
-            sys.stdout.write(t.name + ' ')
-        sys.stdout.write('\n')
-
-def print_property_line(props, key):
-    v = get_property(props, key)
-    if v is not None and v != "":
-        print '%-10s: %s' % (key, get_property(props, key))
-
-def print_properties(props, key):
-    for v in get_properties(props, key):
-        print '%-10s: %s' % (key, v)
-
-def print_header(props):
-    print_property_line(props, 'TESTRUNID')
-    print_property_line(props, 'KERNEL')
-    print_property_line(props, 'CMDLINE')
-    print_property_line(props, 'CPUS')
-    print_property_line(props, 'MEM')
-    print_property_line(props, 'MNTOPTS')
-    sys.stdout.write('\n')
-
-def print_trailer(props):
-    sys.stdout.write('\n')
-    print_property_line(props, 'FSTESTIMG')
-    print_property_line(props, 'FSTESTPRJ')
-    print_properties(props, 'FSTESTVER')
-    print_property_line(props, 'FSTESTCFG')
-    print_property_line(props, 'FSTESTSET')
-    print_property_line(props, 'FSTESTEXC')
-    print_property_line(props, 'FSTESTOPT')
-    print_property_line(props, 'GCE ID')
-
-parser = argparse.ArgumentParser()
-parser.add_argument('results_dir', help='Results directory to process')
-parser.add_argument('--merge_file', help='Combined output file')
-args = parser.parse_args()
-
-reports = []
-combined = JUnitXml()
-
-for f in get_results(args.results_dir):
-    reports.append(JUnitXml.fromfile(f))
-
-if len(reports) == 0:
-    sys.exit('No results file found in ' + args.results_dir)
-
-props = save_properties(reports[0])
-
-print_header(props)
-
-for ts in sorted(reports, key=lambda t: parse_timestamp(t.timestamp)):
-    print_summary(ts)
-    combined.add_testsuite(ts)
-
-print_trailer(props)
-
-if args.merge_file is not None:
-    combined.update_statistics()
-    combined.write(args.merge_file + '.new')
-    if os.path.exists(args.merge_file):
-        os.rename(args.merge_file, args.merge_file + '.bak')
-    os.rename(args.merge_file + '.new' , args.merge_file)
-
+if __name__ == "__main__":
+    main()

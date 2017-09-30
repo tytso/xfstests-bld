@@ -41,12 +41,13 @@ from subprocess import call
 import sys
 from time import sleep
 from urllib2 import HTTPError
+
 import gce_funcs
 from ltm import LTM
 import sendgrid
 from sharder import Sharder
 from google.cloud import storage
-
+from gen_results_summary import gen_results_summary
 
 class TestRunManager(object):
   """TestRunManager class.
@@ -64,7 +65,7 @@ class TestRunManager(object):
     logging.info('Creating new TestRun with id %s', test_run_id)
 
     self.id = test_run_id
-    self.orig_cmd = orig_cmd
+    self.orig_cmd = orig_cmd.strip()
     self.log_dir_path = LTM.test_log_dir + '%s/' % test_run_id
     self.log_file_path = self.log_dir_path + 'run.log'
     self.agg_results_dir = '%sresults-%s-%s/' % (
@@ -193,8 +194,11 @@ class TestRunManager(object):
 
     any_results = self.__aggregate_results()
     if any_results:
-      self._email_report()
       self.__create_ltm_info()
+      self.__create_ltm_run_stats()
+      gen_results_summary(self.agg_results_dir,
+                          os.path.join(self.agg_results_dir, 'report'))
+      self.__email_report()
       self.__pack_results_file()
     else:
       logging.error('Finishing without uploading anything.')
@@ -359,6 +363,22 @@ class TestRunManager(object):
     # __cleanup function.
     logging.info('Finished creating ltm-info')
 
+  def __create_ltm_run_stats(self):
+    """Creates an ltm-run-stats file in the results dir.
+
+    This function creates a easily machine-readable run-stats file at
+    the top level of the results dir called "ltm-run-stats", with
+    information about the overall LTM test run.
+
+    """
+    logging.info('Entered create_ltm_run_stats')
+    fa = open(os.path.join(self.agg_results_dir, 'ltm-run-stats'), 'w')
+
+    fa.write('TESTRUNID: %s-%s\n' % (LTM.ltm_username, self.id))
+    fa.write('CMDLINE: %s\n' % self.orig_cmd)
+    fa.close()
+    logging.info('Finished creating ltm-run-stats')
+
   def __pack_results_file(self):
     """tars and xz's the aggregate results directory, uploading to GS bucket.
 
@@ -440,7 +460,7 @@ class TestRunManager(object):
     logging.info('finished cleanup')
     return
 
-  def _email_report(self):
+  def __email_report(self):
     """Emails the testrun report to the report receiver.
 
     If no report receiver email is specified, or if the api key is not found,
@@ -464,14 +484,14 @@ class TestRunManager(object):
     logging.debug('email_subject %s, report_sender %s, report_receiver %s',
                   email_subject, report_sender, self.report_receiver)
     try:
-      logging.info('Reading failures file as report contents')
-      with open('%s%s' % (self.agg_results_dir, 'failures'), 'r') as ff:
+      logging.info('Reading reports file as e-mail contents')
+      with open(os.path.join(self.agg_results_dir, 'report'), 'r') as ff:
         report_content = sendgrid.helpers.mail.Content('text/plain', ff.read())
     except IOError:
-      logging.warning('Unable to read failures file for report contents')
+      logging.warning('Unable to read report file for report contents')
       report_content = sendgrid.helpers.mail.Content(
           'text/plain',
-          'Could not read contents of failures file')
+          'Could not read contents of report file')
     sg = sendgrid.SendGridAPIClient(apikey=sendgrid_api_key)
     full_email = sendgrid.helpers.mail.Mail(source_email, email_subject,
                                             dest_email, report_content)
