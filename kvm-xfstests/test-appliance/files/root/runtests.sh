@@ -201,7 +201,7 @@ then
 		     sed -e 's/.*: //')
     if test $? -eq 0
     then
-	echo "MEM: $DMI_MEM (Max capacity)" >> "$RUNSTATS"
+	echo "DMI_MEM: $DMI_MEM (Max capacity)" >> "$RUNSTATS"
     fi
     PARAM_MEM=$(gce_attribute mem)
     if test -n "$PARAM_MEM"
