@@ -18,6 +18,7 @@ Main endpoints are:
 All of the logging done in the server process is sent to the file
 "/var/log/lgtm/lgtm.log".
 """
+import base64
 import binascii
 import logging
 import os
@@ -178,7 +179,7 @@ def gce_xfstests():
     opts = None
 
   try:
-    test_run = TestRunManager(cmd_in_base64, opts)
+    test_run = TestRunManager(base64.decodestring(cmd_in_base64), opts)
     run_info = test_run.get_info()
     test_run.run()
   except:

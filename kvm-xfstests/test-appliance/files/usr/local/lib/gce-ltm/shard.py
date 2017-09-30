@@ -12,7 +12,6 @@ When the test VM is no longer present, the shard will unpack the uploaded
 results directory from GCS into the LTM's local filesystem before exiting the
 process.
 """
-import base64
 import io
 import logging
 from multiprocessing import Process
@@ -31,21 +30,21 @@ from google.cloud import storage
 class Shard(object):
   """Shard class."""
 
-  def __init__(self, test_fs_cfg, extra_cmds_b64, shard_id, test_run_id,
+  def __init__(self, test_fs_cfg, extra_cmds, shard_id, test_run_id,
                log_dir_path, gce_zone=None, gs_bucket=None, gce_project=None,
                bucket_subdir=None, gs_kernel=None):
-    if (not isinstance(extra_cmds_b64, basestring) or
+    if (not isinstance(extra_cmds, basestring) or
         not isinstance(shard_id, basestring) or
         not isinstance(test_run_id, basestring)):
       raise TypeError
     logging.debug('Creating Shard instance %s', shard_id)
 
-    self.extra_cmds_b64 = extra_cmds_b64
+    self.extra_cmds = extra_cmds
     self.test_run_id = test_run_id
     self.id = shard_id
     self.test_fs_cfg = test_fs_cfg
     self.config_cmd_arr = ['-c', test_fs_cfg]
-    self.extra_cmd_arr = base64.decodestring(extra_cmds_b64).strip().split(' ')
+    self.extra_cmd_arr = extra_cmds.strip().split(' ')
     if gce_zone:
       self.gce_zone = gce_zone
     else:

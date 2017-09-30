@@ -1,8 +1,9 @@
 """Sharding module to shard a gce-xfstests test run.
 
-The Sharder takes a command in base64, invokes the command parser to understand
-the command, and performs querying of GCE quota limitations (as well as
-user-configurable limitations) to shard the configurations of the test run.
+The Sharder takes a command, invokes the command parser to understand
+it, and performs querying of GCE quota limitations (as well as
+user-configurable limitations) to shard the configurations of the test
+run.
 
 When get_shards is called, the work is done to query quotas and user-configured
 limits. get_shards will then return a list of Shard objects, which will
@@ -20,7 +21,6 @@ If the sharder cannot create any shards due to limits, a ValueError will be
 raised from get_shards.
 
 """
-import base64
 import logging
 import random
 from string import ascii_lowercase as alphabetlc
@@ -50,7 +50,7 @@ timezones = {
 class Sharder(object):
   """Sharder class to query GCE quotas and create shards."""
 
-  def __init__(self, cmd_b64, test_run_id, shard_log_dir_path,
+  def __init__(self, orig_cmd, test_run_id, shard_log_dir_path,
                gs_bucket, bucket_subdir, gs_kernel):
     self.gce_proj_id = gce_funcs.get_proj_id()
     self.gce_zone = gce_funcs.get_gce_zone()
@@ -60,11 +60,10 @@ class Sharder(object):
     self.gs_kernel = gs_kernel
     self.test_run_id = test_run_id
     self.shard_log_dir_path = shard_log_dir_path
-    self.orig_cmd_b64 = cmd_b64
-    self.parser = LTMParser(cmd_b64)
+    self.orig_cmd = orig_cmd
+    self.parser = LTMParser(orig_cmd)
     self.compute = googleapiclient.discovery.build('compute', 'v1')
-    self.extra_opts = ' '.join(self.parser.extra_cmds)
-    self.extra_cmds_b64 = base64.encodestring(self.extra_opts)
+    self.extra_cmds = ' '.join(self.parser.extra_cmds)
 
   def __group_all_configs(self, max_groups=3):
     """Splits all configs into max_groups groups linearly.
@@ -148,7 +147,7 @@ class Sharder(object):
     all_shards = []
     for i, test_config in enumerate(grouped_cfgs):
       shard_id = alphabetlc[i//26] + alphabetlc[i%26]
-      shard = Shard(test_config, self.extra_cmds_b64, shard_id,
+      shard = Shard(test_config, self.extra_cmds, shard_id,
                     self.test_run_id, self.shard_log_dir_path,
                     gce_zone=zones_to_use[i], gce_project=self.gce_proj_id,
                     gs_bucket=self.gs_bucket, bucket_subdir=self.bucket_subdir,
@@ -191,7 +190,7 @@ class Sharder(object):
     for i, test_config in enumerate(grouped_cfgs):
       shard_id = alphabetlc[i//26] + alphabetlc[i%26]
 
-      shard = Shard(test_config, self.extra_cmds_b64, shard_id,
+      shard = Shard(test_config, self.extra_cmds, shard_id,
                     self.test_run_id, self.shard_log_dir_path,
                     gce_project=self.gce_proj_id,
                     bucket_subdir=self.bucket_subdir, gs_bucket=self.gs_bucket)

@@ -4,9 +4,9 @@ The LTMParser parses gce-xfstests command strings. It mostly is concerned with
 expanding fstest configuration options (like smoke, quick, auto), and with
 parsing the configurations of the tests.
 
-The parser on construction takes in a gce-xfstests commandline in base64,
-decodes it, and parses it. The main object attributes of concern to the Sharder
-are "fsconfigs" and "extra_cmds".
+The parser on construction takes in a gce-xfstests commandline and
+parses it. The main object attributes of concern to the Sharder are
+"fsconfigs" and "extra_cmds".
 
 - "fsconfigs" will be a dictionary, where
 keys correspond to filesystem names, and the value is a list of configurations
@@ -88,8 +88,8 @@ Things to note:
     full (-g auto), quick (-g quick), smoke (-c ext4/4k -g quick),
 
   Other command line args we could exclude: launch, shell, maint, ver
+
 """
-import base64
 import logging
 import os
 
@@ -97,22 +97,22 @@ import os
 class LTMParser(object):
   """Main gce-xfstests parsing class for the LTM."""
 
-  def __init__(self, cmd_in_b64, default_fstype='ext4', xfs_path='/root/'):
-    if not isinstance(cmd_in_b64, basestring):
-      raise TypeError(cmd_in_b64)
+  def __init__(self, orig_cmd, default_fstype='ext4', xfs_path='/root/'):
+    if not isinstance(orig_cmd, basestring):
+      raise TypeError(orig_cmd)
     if not os.path.isdir(xfs_path + 'fs'):
       raise ValueError
     if not os.path.isdir(xfs_path + 'fs/' + default_fstype):
       raise ValueError
     logging.debug('LTMParser init entered.')
-    logging.info('cmd_in_b64: %s', cmd_in_b64)
+    logging.info('orig_cmd: %s', orig_cmd)
     self.default_fstype = default_fstype
     self.xfs_path = xfs_path
-    self.orig_cmd_b64 = cmd_in_b64
+    self.orig_cmd = orig_cmd
 
     # After init, self.extra_cmds will be all unprocessed cmdline options.
     # (without 'smoke', 'quick', 'full', '-c', 'ltm')
-    self.extra_cmds = base64.decodestring(cmd_in_b64).strip().split(' ')
+    self.extra_cmds = orig_cmd.strip().split(' ')
     self.orig_cmds = list(self.extra_cmds)
     self.fsconfigs = {}
     self.removedopts = []

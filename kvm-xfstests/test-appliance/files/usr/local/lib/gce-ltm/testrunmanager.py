@@ -1,7 +1,6 @@
 """The TestRunManager sets up and manages a single test run.
 
-The only arguments to it are the originally executed command line in base64,
-and options.
+The only arguments to it are the originally executed command line.
 This original command can contain the "ltm" flag itself as well as other
 options that aren't used on the LTM (the command parser will remove those for
 running on the ltm).
@@ -31,7 +30,6 @@ Under normal circumstances, run() will spawn a subprocess, which when
 exited should have uploaded an aggregated results file to the GCS bucket,
 and should have cleaned up all of the shard's results and summary files.
 """
-import base64
 from datetime import datetime
 import fcntl
 import logging
@@ -59,14 +57,14 @@ class TestRunManager(object):
   monitor its shards, and aggregate the results.
   """
 
-  def __init__(self, cmd_in_base64, opts=None):
+  def __init__(self, orig_cmd, opts=None):
     logging.info('Building new Test Run')
     logging.info('Getting unique test run id..')
     test_run_id = get_unique_test_run_id()
     logging.info('Creating new TestRun with id %s', test_run_id)
 
     self.id = test_run_id
-    self.orig_cmd_b64 = cmd_in_base64
+    self.orig_cmd = orig_cmd
     self.log_dir_path = LTM.test_log_dir + '%s/' % test_run_id
     self.log_file_path = self.log_dir_path + 'run.log'
     self.agg_results_dir = '%sresults-%s-%s/' % (
@@ -94,7 +92,7 @@ class TestRunManager(object):
       self.report_receiver = opts['report_email'].strip()
     # Other shard opts could be passed here.
 
-    self.sharder = Sharder(self.orig_cmd_b64, self.id, self.log_dir_path,
+    self.sharder = Sharder(self.orig_cmd, self.id, self.log_dir_path,
                            self.gs_bucket, self.bucket_subdir, self.gs_kernel)
     self.shards = self.sharder.get_shards(region_shard=region_shard)
 
@@ -330,8 +328,7 @@ class TestRunManager(object):
     LTM.create_log_dir(results_ltm_log_dir)
 
     fa.write('LTM test run ID %s\n' % self.id)
-    fa.write('Original command: %s\n'
-             % base64.decodestring(self.orig_cmd_b64))
+    fa.write('Original command: %s\n' % self.orig_cmd)
     fa.write('Aggregate results from %d shards\n' % len(self.shards))
     fa.write('SHARD INFO:\n\n')
     for shard in self.shards:
