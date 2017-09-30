@@ -27,8 +27,11 @@ function copy_xunit_results()
 	then
 	    merge_xunit "$RESULTS" "$RESULT"
 	else
-	    update_properties_xunit --fsconfig "$FS/$i" "$RESULTS" \
-				    "$RESULT" "$RUNSTATS"
+	    if ! update_properties_xunit --fsconfig "$FS/$i" "$RESULTS" \
+		 "$RESULT" "$RUNSTATS"
+	    then
+		mv "$RESULT" "$RESULT.broken"
+	    fi
 	fi
 	rm "$RESULT"
     fi
