@@ -67,6 +67,9 @@ IMAGE_FLAG="--image-family"
 
 ARG="gs_bucket=$GS_BUCKET serial-port-enable=true"
 ARG="$ARG gce_xfs_ltm=YES"
+if test -n "$TZ" ; then
+    ARG="$ARG fstesttz=$TZ"
+fi
 
 if ! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
 then

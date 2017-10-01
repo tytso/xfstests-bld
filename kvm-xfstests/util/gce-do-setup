@@ -188,6 +188,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p BUCKET_SUBDIR
     declare -p GCE_MIN_SCR_SIZE
     declare -p GCE_LTM_KEEP_DEAD_VM
+    declare -p TZ
 } 2>/dev/null > $tmpf
 
 gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config

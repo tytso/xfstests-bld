@@ -6,6 +6,13 @@
 
 gcloud config set compute/zone $ZONE
 
+fstesttz=$(gce_attribute fstesttz)
+if test -n "$fstesttz" -a -f /usr/share/zoneinfo/$fstesttz
+then
+    ln -sf /usr/share/zoneinfo/$fstesttz /etc/localtime
+    echo $fstesttz > /etc/timezone
+fi
+
 /usr/local/lib/gce-logger starting ltm server
 
 # login shells dont need test env on the LTM (shouldn't be running tests
