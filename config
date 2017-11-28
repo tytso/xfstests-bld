@@ -13,9 +13,9 @@ QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 # STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
 # UTIL_LINUX_GIT=git://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
 
-FIO_COMMIT=fio-2.21
-QUOTA_COMMIT=16f31b1
-XFSPROGS_COMMIT=v4.12.0
+FIO_COMMIT=fio-3.2
+QUOTA_COMMIT=4d81e8b4af
+XFSPROGS_COMMIT=v4.14.0
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
