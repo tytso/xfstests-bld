@@ -1,5 +1,12 @@
 ext4/004	# dump/restore doesn't handle quotas
 
+# These tests try to create extended attributes which are
+# large enough to stress the limits of the available
+# xattr size.  This causes problems with encryption
+# which requires its own xattrs which take space.
+ext4/022
+ext4/026
+
 # encryption doesn't play well with quota
 generic/082
 generic/219
