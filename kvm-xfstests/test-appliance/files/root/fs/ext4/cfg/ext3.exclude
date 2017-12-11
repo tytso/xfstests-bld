@@ -1,3 +1,8 @@
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
+
+# The generic/382 test fails on ext3 because the indirect blocks
+# are included in the quota report, and so the resulting quota
+# report output is different from what is expected in the 382.out file
+generic/382
