@@ -1,3 +1,9 @@
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
+
+# In data=journal mode, fsync() will try to write data blocks into
+# the journal.  This will cause the file system to go read-only
+# when the journal aborts as a result of the device being put
+# into dm-error mode, and this guarantees that this test will fail.
+generic/441
