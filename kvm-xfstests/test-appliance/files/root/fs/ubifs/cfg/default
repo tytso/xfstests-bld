@@ -1,0 +1,11 @@
+SIZE=small
+
+# set up UBI volumes for our block devices
+export TEST_DEV=$(__blkdev_to_ubi_volume $SM_TST_DEV)
+export TEST_DIR=$SM_TST_MNT
+export SCRATCH_DEV=$(__blkdev_to_ubi_volume $SM_SCR_DEV)
+export SCRATCH_MNT=$SM_SCR_MNT
+
+export MKFS_OPTIONS=""
+export UBIFS_MOUNT_OPTIONS=""
+TESTNAME="ubifs"

@@ -22,6 +22,7 @@ liblzo2-2
 libbsd0
 lvm2
 makedev
+mtd-utils
 perl
 procps
 psmisc

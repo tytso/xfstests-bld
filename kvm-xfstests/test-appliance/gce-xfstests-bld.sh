@@ -43,6 +43,7 @@ PACKAGES="bash-completion \
 	liblzo2-2 \
 	lighttpd \
 	lvm2 \
+	mtd-utils \
 	nano \
 	openssl \
 	perl \

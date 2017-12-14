@@ -285,11 +285,11 @@ do
 	    */ovl) ;;
 	    *:/*) ;;
 	    *)
-		if ! test -b $TEST_DEV ; then
+		if ! [ -b $TEST_DEV -o -c $TEST_DEV ]; then
 		    echo "Test device $TEST_DEV does not exist, skipping $i config"
 		    continue
 		fi
-		if ! test -b $SCRATCH_DEV ; then
+		if ! [ -b $SCRATCH_DEV -o -c $SCRATCH_DEV ]; then
 		    echo "Scratch device $SCRATCH_DEV does not exist, skipping $i config"
 		    continue
 		fi
