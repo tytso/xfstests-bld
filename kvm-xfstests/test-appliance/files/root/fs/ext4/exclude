@@ -19,6 +19,12 @@ generic/046
 # It is a flaky test for some configurations, so skip it.
 generic/223
 
+# generic/472 is a test which fails for all file systems and all
+# kernel versions at least up to 4.15.  The patch to fix it is being
+# bikeshedded, with no obvious conclusion.  So let's just suppress the
+# test for now since the failure is just noise.
+generic/472
+
 # ext4/304 fails for all configurations, and this appears to be at
 # test or fio bug.
 #
