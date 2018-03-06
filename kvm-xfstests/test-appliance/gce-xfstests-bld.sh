@@ -145,7 +145,7 @@ systemctl enable telnet-getty@ttyS3.service
 
 if gsutil -m cp gs://$BUCKET/debs/*.deb /run
 then
-    dpkg -i --ignore-depends=e2fsprogs /run/*.deb
+    dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
     rm -f /run/*.deb
 fi
 chmod +rx /usr/local/lib/gce-ltm/gce-xfs-ltm.fcgi
