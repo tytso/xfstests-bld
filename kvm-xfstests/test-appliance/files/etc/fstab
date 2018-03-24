@@ -14,4 +14,4 @@ v_tmp		/vtmp	9p	trans=virtio,version=9p2000.L,noauto	0	0
 /dev/vde	/vde	auto	defaults,noauto		0	0
 /dev/vdf	/vdf	auto	defaults,noauto		0	0
 
-/dev/vdg	/results ext4	defaults 0 2
+/dev/vdg	/results auto	defaults 0 2
