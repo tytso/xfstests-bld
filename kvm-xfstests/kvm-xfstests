@@ -78,6 +78,22 @@ fi
 if test -z "$VIRTFS_PATH"; then
     VIRTFS_PATH=/tmp/kvm-xfstests-$USER
 fi
+VIRTFS="-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none "
+VIRTFS+="-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp "
+
+if test -z "$VIRTFS_MODEL"; then
+    VIRTFS_MODEL=none
+fi
+if test -n "$VIRTFS_TEST_PATH"; then
+    VIRTFS+="-fsdev local,id=p9test,path=$VIRTFS_TEST_PATH,"
+    VIRTFS+="security_model=$VIRTFS_MODEL "
+    VIRTFS+="-device virtio-9p-pci,fsdev=p9test,mount_tag=9ptest "
+fi
+if test -n "$VIRTFS_SCRATCH_PATH"; then
+    VIRTFS+=" -fsdev local,id=p9scratch,path=$VIRTFS_SCRATCH_PATH,"
+    VIRTFS+="security_model=$VIRTFS_MODEL "
+    VIRTFS+="-device virtio-9p-pci,fsdev=p9scratch,mount_tag=9pscratch "
+fi
 
 VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
 trap 'rm -f "$VDH"' 0
@@ -119,8 +135,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
 	-drive file=$VDH,if=virtio,format=raw \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
-	-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none \
-	-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp \
+	$VIRTFS \
 	$VIRTIO_RNG \
 	$CONSOLE \
 	$MONITOR \

@@ -399,6 +399,18 @@ while [ "$1" != "" ]; do
 	    supported_flavors kvm
 	    VIRTFS_PATH="$1"
 	    ;;
+	--virtfs-test) shift
+	    supported_flavors kvm
+	    VIRTFS_TEST_PATH="$1"
+	    ;;
+	--virtfs-scratch) shift
+	    supported_flavors kvm
+	    VIRTFS_SCRATCH_PATH="$1"
+	    ;;
+	--virtfs-model) shift
+	    supported_flavors kvm
+	    VIRTFS_MODEL="$1"
+	    ;;
 	--archive)
 	    supported_flavors kvm
 	    DO_ARCHIVE=1

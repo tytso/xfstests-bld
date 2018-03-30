@@ -48,3 +48,8 @@ CONSOLE=" -serial mon:stdio"
 # Native AIO is probably better for our goal which is test proofing
 # production systems.
 AIO=",aio=native"
+
+# Exported test/scratch dirs for 9p test in kvm guest, and virtfs security model
+#VIRTFS_TEST_PATH=/tmp/9ptest
+#VIRTFS_SCRATCH_PATH=/tmp/9pscratch
+#VIRTFS_MODEL=mapped
