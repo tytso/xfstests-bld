@@ -1,0 +1,50 @@
+#
+# Configuration file for 9pfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	return 0
+}
+
+function format_filesystem()
+{
+	return 0
+}
+
+function setup_mount_opts()
+{
+	if test -z "$PLAN9_MOUNT_OPTIONS" ; then
+		export PLAN9_MOUNT_OPTIONS="-o trans=virtio,version=9p2000.L,posixacl"
+	fi
+	if test -n "$MNTOPTS" ; then
+		export PLAN9_MOUNT_OPTIONS="$PLAN9_MOUNT_OPTIONS,$MNTOPTS"
+	fi
+}
+
+function get_mkfs_opts()
+{
+	return 0
+}
+
+function show_mkfs_opts()
+{
+	return 0
+}
+
+function show_mount_opts()
+{
+	echo PLAN9_MOUNT_OPTIONS: "$PLAN9_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+	echo "$1"
+}
+
+function reset_vars()
+{
+	unset PLAN9_MOUNT_OPTIONS
+}

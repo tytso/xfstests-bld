@@ -1,0 +1,7 @@
+export TEST_DEV=9ptest
+export TEST_DIR=/mnt/test
+export SCRATCH_DEV=9pscratch
+export SCRATCH_MNT=/mnt/scratch
+export PLAN9_MOUNT_OPTIONS="-o trans=virtio,version=9p2000.L,posixacl"
+TESTNAME="9pfs"
+mkdir -p /mnt/test /mnt/scratch
