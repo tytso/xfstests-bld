@@ -209,6 +209,49 @@ all_partitions_present()
     return 0
 }
 
+# Extract a little-endian binary field from a file or device.
+extract_binval()
+{
+    local file="$1"
+    local offset="$2"
+    local size="$3"
+
+    od "$file" -j $offset -N $size -t x$size -A none --endian=little \
+	| sed 's/^[[:space:]]*/0x/'
+}
+
+# Get the size of the filesystem on the specified device.
+get_fs_size()
+{
+    local device="$1" fstype="$2"
+
+    case "$fstype" in
+    ext4)
+	dumpe2fs -h "$device" 2>/dev/null | \
+	    awk '/^Block count:/{blockcount=$3}
+		 /^Block size:/{blocksize=$3}
+		  END { print blockcount * blocksize }'
+	;;
+    f2fs)
+	local super_offset=1024
+	local magic log_blocksize block_count
+
+	# see 'struct f2fs_super_block'
+	magic=$(extract_binval "$device" $super_offset 4)
+	log_blocksize=$(extract_binval "$device" $(( super_offset + 16 )) 4)
+	block_count=$(extract_binval "$device" $(( super_offset + 36 )) 8)
+
+	if (( magic != 0xF2F52010 )); then
+	    die "f2fs superblock not found on \"$device\""
+	fi
+	echo $(( block_count * (1 << log_blocksize) ))
+	;;
+    *)
+	die "unsupported filesystem type \"$fstype\" on \"$device\""
+	;;
+    esac
+}
+
 # Transiently shrink the userdata partition, as viewed by the kernel, if it's
 # not fully used by the filesystem on it.
 #
@@ -219,11 +262,10 @@ all_partitions_present()
 # the end of the filesystem.
 shrink_userdata_partition()
 {
-    local fs_size=$(dumpe2fs -h $USERDATA_FS_DEV 2>/dev/null | \
-	    awk '/^Block count:/{blockcount=$3}
-		 /^Block size:/{blocksize=$3}
-		  END { print blockcount * blocksize }')
-    local part_size=$(get_partition_size $USERDATA_RAW_DEV)
+    local fs_size part_size
+
+    fs_size=$(get_fs_size "$USERDATA_FS_DEV" "$USERDATA_FS_TYPE")
+    part_size=$(get_partition_size "$USERDATA_RAW_DEV")
 
     if (( fs_size <= 0 )); then
 	die "unable to determine size of userdata filesystem"
@@ -336,6 +378,9 @@ if [ -n "$USERDATA_FS_DEV" ]; then
 else
     USERDATA_FS_DEV=$USERDATA_RAW_DEV
 fi
+
+# Type of the userdata filesystem, e.g. ext4 or f2fs
+USERDATA_FS_TYPE=$(blkid -s TYPE -o value "$USERDATA_FS_DEV")
 
 if ! all_partitions_present ; then
     # Free up as much space as we can, then create the partitions.
