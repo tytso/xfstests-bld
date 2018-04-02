@@ -16,7 +16,7 @@ def main():
 
     if gen_results_summary(args.results_dir, args.output_file,
                            args.merge_file, args.verbose) == 0:
-        sys.exit('No results file found in ' + results_dir)
+        sys.exit('No results file found in ' + args.results_dir)
 
 if __name__ == "__main__":
     main()
