@@ -1,0 +1,5 @@
+#!/bin/sh
+
+DIR=/root/xfstests/bin
+
+$DIR/syz-execprog -executor=$DIR/syz-executor "$@"
