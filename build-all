@@ -8,6 +8,18 @@ else
 	. config
 fi
 
+if test -z "$GOROOT" -a -d /usr/lib/go-1.8 ; then
+    GOROOT=/usr/lib/go-1.8
+fi
+
+if test -n "$GOROOT" ; then
+    export GOROOT
+    export GOPATH=$(pwd)/go
+    PATH="$GOROOT/bin:$PATH"
+else
+    SKIP_SYZKALLER=yes
+fi
+
 if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
     PATH=$TOOLCHAIN_DIR/bin:$PATH
 fi
@@ -46,12 +58,14 @@ function set_skip_all () {
     SKIP_KEYUTILS=yes
     SKIP_STRESS_NG=yes
     SKIP_UTIL_LINUX=yes
+    SKIP_SYZKALLER=yes
 }
 
 # Optional components
 [ -d keyutils ] || SKIP_KEYUTILS=yes
 [ -d stress-ng ] || SKIP_STRESS_NG=yes
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
+[ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
 
 MAKE_CLEAN=":"
 
@@ -102,6 +116,10 @@ while [ "$1" != "" ]; do
 	--stress-ng-only)
 	    set_skip_all
 	    unset SKIP_STRESS_NG
+	    ;;
+	--syzkaller-only)
+	    set_skip_all
+	    unset SKIP_SYZKALLER
 	    ;;
 	--util-linux-only)
 	    set_skip_all
@@ -341,6 +359,13 @@ EOF
      autoreconf -fvi ; \
      ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
      $MAKE_CLEAN ; make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
+fi
+
+if test -z "$SKIP_SYZKALLER"; then
+    build_start "syzkaller"
+    (cd go/src/github.com/google/syzkaller; \
+     ver=$(git describe --always --dirty); echo "syzkaller		$ver ($(git log -1 --pretty=%cD))" > ../../../../../syzkaller.ver ; \
+     $MAKE_CLEAN ; make $J execprog executor ; cp bin/*/syz-* $DESTDIR/bin)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then

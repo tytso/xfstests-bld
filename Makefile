@@ -8,7 +8,8 @@ REPOS =		fio \
 		stress-ng \
 		util-linux \
 		xfsprogs-dev \
-		xfstests-dev
+		xfstests-dev \
+		go/src/github.com/google/syzkaller
 
 SUBDIRS =	acl \
 		android-compat \
@@ -51,7 +52,7 @@ kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
 	cc -static -o $@ $< -lext2fs -lcom_err -lpthread
 
 realclean: clean
-	rm -rf $(REPOS) *.ver
+	rm -rf $(REPOS) *.ver go
 
 tarball:
 	./gen-tarball

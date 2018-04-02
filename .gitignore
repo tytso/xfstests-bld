@@ -88,6 +88,7 @@ MAKELOG
 /xfsprogs-dev/
 /xfstests-dev/
 /xfstests/
+/go/
 /misc/fname_benchmark
 /misc/resize
 /misc/syncfs

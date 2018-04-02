@@ -2,16 +2,17 @@
 # Configuration file for building xfstests and root filesystem images
 #
 
-XFSTESTS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
-XFSPROGS_GIT=git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-FIO_GIT=git://git.kernel.dk/fio.git
-QUOTA_GIT=git://git.kernel.org/pub/scm/utils/quota/quota-tools.git
+XFSTESTS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
+FIO_GIT=https://git.kernel.dk/fio.git
+QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 
 # Optional repositories, uncomment only if needed
 #
-# KEYUTILS_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
+# KEYUTILS_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
 # STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
-# UTIL_LINUX_GIT=git://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
+# UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
+# SYZKALLER_GIT=https://github.com/google/syzkaller
 
 FIO_COMMIT=fio-3.2
 QUOTA_COMMIT=59b280ebe22e
