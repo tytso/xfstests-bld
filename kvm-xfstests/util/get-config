@@ -48,21 +48,6 @@ then
 	rm "$tmpfile"
 	unset tmpfile
 fi
-
 if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
     . "$DIR/config-$GCE_ACCOUNT"
-elif test -f $DIR/config.custom ; then
-# Else, source kvm-xfstests/config.custom if present (deprecated)
-    echo -e 1>&2 "Warning: use of kvm-xfstests/config.custom is deprecated." \
-	    "Move your settings\n         into ~/.config/kvm-xfstests," \
-	    "~/.config/gce-xfstests,\n         ~/.config/android-xfstests," \
-	    "and/or ~/.config/xfstests-common"
-    . $DIR/config.custom
-fi
-
-# Source $KVM_CONFIG if present (deprecated)
-if test -n "$KVM_CONFIG" -a -f "$KVM_CONFIG"; then
-    echo -e 1>&2 "Warning: use of \$KVM_CONFIG is deprecated." \
-	    "Move your settings into\n         ~/.config/kvm-xfstests"
-    . $KVM_CONFIG
 fi
