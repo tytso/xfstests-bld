@@ -155,8 +155,56 @@ validate_config_name()
     fi
 }
 
-while [ "$1" != "" ]; do
-    case $1 in
+shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
+longopts=(
+aio:
+archive
+bucket-subdir:
+cache:
+email:
+gce-zone:
+gs-bucket:
+help
+hooks:
+image-project:
+initrd:
+instance-name:
+kernel:
+local-ssd
+log
+machtype:
+no-action
+no-archive
+no-collapse
+no-email
+no-insert
+no-log
+no-preemptible
+no-punch
+no-region-shard
+no-virtio-rng
+no-zero
+numa:
+pmem-device
+preemptible
+testrunid:
+update-files
+update-xfstests
+update-xfstests-tar
+virtfs-model:
+virtfs-scratch:
+virtfs-test:
+virtfs:
+)
+longopts=$(echo "${longopts[*]}" | tr ' ' ,)
+
+if ! options=$(getopt -o "$shortopts" -l "$longopts" -- "$@"); then
+    print_help
+fi
+
+eval set -- "$options"
+while (( $# >= 1 )); do
+    case "$1" in
 	-a)
 	    DO_AEX=""
 	    ;;
@@ -419,6 +467,20 @@ while [ "$1" != "" ]; do
 	    supported_flavors kvm
 	    unset DO_ARCHIVE
 	    ;;
+	--)
+	    shift
+	    break
+	    ;;
+	*)
+	    echo 1>&2 "Invalid option: \"$1\""
+	    print_help
+	    ;;
+    esac
+    shift
+done
+
+while (( $# >= 1 )); do
+    case "$1" in
 	smoke)
 	    if test -n "$FSTESTCFG" ; then
 		echo "You can use either '-c' or 'smoke', not both! " \
@@ -458,9 +520,6 @@ while [ "$1" != "" ]; do
 	    ;;
 	ver)
 	    ARG="cmd=ver"
-	    ;;
-	-*)
-	    print_help
 	    ;;
 	*)
 	    validate_test_name "$1"
