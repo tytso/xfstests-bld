@@ -95,13 +95,17 @@ if test -n "$VIRTFS_SCRATCH_PATH"; then
     VIRTFS+="-device virtio-9p-pci,fsdev=p9scratch,mount_tag=9pscratch "
 fi
 
-VDH=$(mktemp /tmp/kvm-upload.XXXXXXXX)
-trap 'rm -f "$VDH"' 0
+VDH="$ourtmp/kvm-vdh"
 tar -c -f "$VDH" -T /dev/null
 
 if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
 then
     tar -r -f $VDH -C "$DIR/.." xfstests.tar.gz
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_EXTRA_TESTS" = "yes"
+then
+    tar -r -f $VDH -C "$ourtmp" extra-tests.tar.gz
 fi
 
 if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
