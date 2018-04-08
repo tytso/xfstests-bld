@@ -1,5 +1,74 @@
-#!/bin/sh
+#!/bin/bash
 
 DIR=/root/xfstests/bin
 
-$DIR/syz-execprog -executor=$DIR/syz-executor "$@"
+while [ "$1" != "" ]; do
+    case $1 in
+	-*)
+	    OPTS="$OPTS $1"
+	    ;;
+	*)
+	    if test -n "$SYZFILE" ; then
+		echo "More than one .syz file specified"
+		exit 1
+	    fi
+	    SYZFILE=$1
+	    ;;
+    esac
+    shift
+done
+
+echo OPTS: $OPTS
+echo SYZFILE: $SYZFILE
+
+if test -z "$SYZFILE" ; then
+    echo "No .syz file specified"
+    exit 1
+fi
+
+for i in $(grep ^#{Thread "$SYZFILE" | sed -e s'/^#{//' -e 's/}$//')
+do
+    word=(${i/:/ })
+    key="${word[0]}"
+    value="${word[1]}"
+    case "$value" in
+	false)
+	    if test "$key" = Repeat ; then
+		value=1
+	    else
+		value=0
+	    fi
+	    ;;
+	true)
+	    if test "$key" = Repeat ; then
+		value=100
+	    else
+		value=1
+	    fi
+	    ;;
+    esac
+    case "$key" in
+	Threaded)
+	    OPTS="-threaded=$value $OPTS"
+	    ;;
+	Collide)
+	    OPTS="-collide=$value $OPTS"
+	    ;;
+	Repeat)
+	    OPTS="-repeat=$value $OPTS"
+	    ;;
+	Sandbox)
+	    if test -z "$value" ; then
+		value=none
+	    fi
+	    OPTS="-sandbox=$value $OPTS"
+	    ;;
+	Procs)
+	    OPTS="-procs=$value $OPTS"
+	    ;;
+    esac
+done
+
+echo running syz-executor with options $OPTS
+
+$DIR/syz-execprog -executor=$DIR/syz-executor $OPTS $SYZFILE
