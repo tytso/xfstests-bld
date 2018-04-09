@@ -8,7 +8,6 @@ SUITE=stretch
 MIRROR=http://mirrors.kernel.org/debian
 DIR=$(pwd)
 ROOTDIR=$DIR/rootdir
-#ARCH="--arch=i386"
 RAW_ROOT_FS=$DIR/root_fs.raw
 ROOT_FS=$DIR/root_fs.img
 COMPAT="-o compat=0.10"
@@ -20,18 +19,6 @@ DO_NETWORKING=no
 if test -r config.custom ; then
    . $(pwd)/config.custom
 fi
-
-is_native_chroot()
-{
-    DEBIAN_ARCH="$(dpkg --print-architecture)"
-    case "$(uname -m)" in
-    x86_64)	[[ $DEBIAN_ARCH = amd64 || $DEBIAN_ARCH = i386 ]] ;;
-    aarch64)	[[ $DEBIAN_ARCH = arm64 || $DEBIAN_ARCH = armhf ]] ;;
-    arm)	[[ $DEBIAN_ARCH = armhf ]] ;;
-    ppc64le)	[[ $DEBIAN_ARCH = ppc64el ]] ;;
-    *)		[[ $DEBIAN_ARCH = "$(uname -m)" ]] ;;
-    esac
-}
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -215,20 +202,39 @@ if test $DO_UPDATE = "yes" ; then
    exit 0
 fi
 
-if ! is_native_chroot ; then
-    case "$DEBIAN_ARCH" in
-	armhf)		QEMU=/usr/bin/qemu-arm-static ;;
-	arm64)		QEMU=/usr/bin/qemu-aarch64-static ;;
-	ppc64el)	QEMU=/usr/bin/qemu-ppc64le-static ;;
-	*)		QEMU="/usr/bin/qemu-$DEBIAN_ARCH-static" ;;
-    esac
-    if ! test -x $QEMU ; then
-	echo "Can't find qemu interpreter for non-native gen-image"
-#	cleanup_on_abort
-#	exit 1
+detect_foreign_chroot()
+{
+    local BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
+
+    if [ ! -d "$BINFMT_MISC_MNT" ]; then
+	# binfmt_misc disabled in kernel
+	return
     fi
+
+    if ! mountpoint "$BINFMT_MISC_MNT" &>/dev/null; then
+	mount binfmt_misc -t binfmt_misc "$BINFMT_MISC_MNT"
+	trap "umount \"$BINFMT_MISC_MNT\"" EXIT
+    fi
+
+    if [ "$(<"$BINFMT_MISC_MNT/status")" = "disabled" ]; then
+	return
+    fi
+
+    local binfmt="qemu-$(uname -m)"
+    local binfmt_file="$BINFMT_MISC_MNT/$binfmt"
+
+    if [ ! -e "$binfmt_file" ]; then
+	return
+    fi
+
+    QEMU="$(awk '/^interpreter/{print $2}' "$binfmt_file")"
     FOREIGN="--foreign"
-fi
+    echo "Detected foreign chroot, using user-mode emulation with $QEMU"
+}
+
+QEMU=
+FOREIGN=
+detect_foreign_chroot
 
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
@@ -255,7 +261,7 @@ else
    export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
 fi
 trap cleanup_on_abort INT TERM
-debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE $ARCH \
+debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE \
 	    $FOREIGN $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
 if test $? -ne 0 ; then
     echo "Deboostrap failed, aborting."
