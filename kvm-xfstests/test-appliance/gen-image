@@ -283,7 +283,8 @@ if test -f "backport-packages-$SUITE" ; then
     fi
     rm -rf "$ROOTDIR/debootstrap"
 fi
-DEBS=$(find debs -name \*.deb)
+DEBIAN_ARCH="$(dpkg --print-architecture)"
+DEBS="$(find debs -name "*_${DEBIAN_ARCH}.deb" -o -name "*_all.deb")"
 if test -n "$DEBS"
 then
     run_in_chroot "dpkg --ignore-depends=e2fsprogs --auto-deconfigure -i $(echo $DEBS)"
