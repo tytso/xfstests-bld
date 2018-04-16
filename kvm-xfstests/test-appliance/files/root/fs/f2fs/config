@@ -20,7 +20,7 @@ function format_filesystem()
     local dev="$1"
     local opts="$2"
 
-    if grep -q 'force overwrite' /sbin/mkfs.f2fs; then
+    if /sbin/mkfs.f2fs --help |& grep -q "[[:space:]]-f[[:space:]|]"; then
 	# f2fs-tools v1.9+
 	opts+=" -f"
     fi
