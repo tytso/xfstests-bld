@@ -34,12 +34,15 @@ _scratch_mount
 cd "${SCRATCH_MNT}"
 
 if test -x $here/$seqfull.exe ; then
-   $here/$seqfull.exe >> $seqres.full 2>&1
+    urk=$(timeout -s KILL 60 $here/$seqfull.exe >> $seqres.full 2>&1)
+    sleep 1
 elif test -f $here/$seqfull.syz ; then
     run-syz $here/$seqfull.syz >> $seqres.full 2>&1
 else
     _notrun "Syzkaller repro for $seq not found"
 fi
+
+cd $here
 
 # success, all done
 status=0
