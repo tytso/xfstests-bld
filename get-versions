@@ -4,6 +4,8 @@ TMPDIR=tmp-$$
 
 mkdir $TMPDIR
 
+echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > $TMPDIR/xfstests-bld.ver
+
 if test -f e2fsprogs.ver
 then
     cp e2fsprogs.ver $TMPDIR
@@ -31,6 +33,13 @@ then
     cd ..
 fi
 
+if test -d go/src/github.com/google/syzkaller
+then
+    cd go/src/github.com/google/syzkaller
+    ver=$(git describe --always --dirty); echo "syzkaller	$ver ($(git log -1 --pretty=%cD))" > ../../../../../$TMPDIR/syzkaller.ver
+    cd ../../../../..
+fi
+
 cd xfsprogs-dev
 ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfsprogs.ver
 cd ..
@@ -42,14 +51,3 @@ cd ..
 cat $TMPDIR/*.ver
 rm -rf $TMPDIR
 exit 0
-    
-
-
-
-
-
-
-
-
-
-
