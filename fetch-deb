@@ -1,0 +1,54 @@
+#!/bin/bash
+
+BASE=http://ftp.us.debian.org/debian/pool/main
+PACKAGE=e/e2fsprogs
+ARCH=amd64
+#VERSION=1.43.3-1~bpo8+1
+
+while [ "$1" != "" ];
+do
+    case "$1" in
+	--incoming)
+	    BASE=http://incoming.debian.org/debian-buildd/pool/main/
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
+	    ;;
+	--arch)
+	    shift
+	    ARCH="$1"
+	    ;;
+	--version)
+	    shift
+	    VERSION="$1"
+	    ;;
+	--btrfs-progs)
+	    PACKAGE=b/btrfs-progs
+	    ;;
+	--no-action)
+	    NO_ACTION="echo"
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+case "$PACKAGE" in
+    e/e2fsprogs)
+	PKGS="e2fsprogs e2fslibs libss2 libcomerr2"
+	DEFAULT_VERSION="1.44.0-1~bpo9+1"
+	;;
+    b/btrfs-progs)
+	PKGS="btrfs-progs"
+	DEFAULT_VERSION="4.13.3-1~bpo9+1"
+	;;
+esac
+
+for i in $PKGS
+do
+	FILE=${i}_${VERSION:-$DEFAULT_VERSION}_${ARCH}.deb
+	echo Fetching $FILE...
+	$NO_ACTION curl --progress-bar -o $FILE $BASE/$PACKAGE/$FILE
+done
