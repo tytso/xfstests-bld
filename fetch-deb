@@ -37,7 +37,7 @@ done
 
 case "$PACKAGE" in
     e/e2fsprogs)
-	PKGS="e2fsprogs e2fslibs libss2 libcomerr2"
+	PKGS="e2fsprogs e2fslibs libext2fs2 libss2 libcomerr2 libcom-err2"
 	DEFAULT_VERSION="1.44.0-1~bpo9+1"
 	;;
     b/btrfs-progs)
