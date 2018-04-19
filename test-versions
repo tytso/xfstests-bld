@@ -1,0 +1,17 @@
+#!/bin/bash
+
+ARCHS=(build-64 build-32 build-armhf)
+
+for i in "${ARCHS[@]}" ; do
+    (cd $i ; ./get-versions | \
+	 egrep -v "^(stress-ng)|(keyutils)|(syzkaller)") > git-versions-$i
+done
+
+for i in "${ARCHS[@]}" ; do
+    if ! diff git-versions-"${ARCHS[0]}" git-versions-$i
+    then
+	echo "WARNING: differences in versions detected: ${ARCHS[0]} vs $i"
+	exit 1
+    fi
+done
+

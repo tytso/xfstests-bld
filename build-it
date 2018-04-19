@@ -2,15 +2,7 @@
 
 ARCHS=(build-64 build-32 build-armhf)
 
-for i in "${ARCHS[@]}" ; do
-    (cd $i ; ./get-versions | \
-	 egrep -v "^(stress-ng)|(keyutils)") > git-versions-$i
-    if ! diff git-versions-"${ARCHS[0]}" git-versions-$i
-    then
-	echo "WARNING: differences in versions detected"
-	exit 1
-    fi
-done
+./test-versions
 
 date
 for i in "${ARCHS[@]}" ; do
