@@ -250,6 +250,9 @@ if test -z "$SKIP_UTIL_LINUX" ; then
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR \
+	--disable-makeinstall-chown \
+	--disable-makeinstall-setuid \
+	--disable-use-tty-group \
 	--disable-bash-completion \
 	--disable-nls \
 	--disable-shared \
