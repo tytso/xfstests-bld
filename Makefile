@@ -4,6 +4,7 @@
 
 REPOS =		fio \
 		keyutils \
+		fsverity \
 		quota \
 		stress-ng \
 		util-linux \

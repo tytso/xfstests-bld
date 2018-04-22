@@ -13,6 +13,7 @@ The xfstests-bld package depends on a number of external git trees:
 * xfsprogs-dev
 * fio
 * quota
+* fsverity
 
 The first time you run "make", the build system will clone these
 repositories by running ./get-all.  Their remote URLs are set in the

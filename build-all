@@ -56,6 +56,7 @@ function set_skip_all () {
     SKIP_QUOTA=yes
     SKIP_KVM_UTILS=yes
     SKIP_KEYUTILS=yes
+    SKIP_FSVERITY=yes
     SKIP_STRESS_NG=yes
     SKIP_UTIL_LINUX=yes
     SKIP_SYZKALLER=yes
@@ -108,6 +109,10 @@ while [ "$1" != "" ]; do
 	--keyutils-only)
 	    set_skip_all
 	    unset SKIP_KEYUTILS
+	    ;;
+	--fsverity-only)
+	    set_skip_all
+	    unset SKIP_FSVERITY
 	    ;;
 	--quota-only)
 	    set_skip_all
@@ -242,6 +247,13 @@ if test -z "$SKIP_KEYUTILS" ; then
     )
 fi
 
+if test -z "$SKIP_FSVERITY"; then
+    build_start "fsverity"
+    (cd fsverity; \
+     ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../fsverity.ver ; \
+     $MAKE_CLEAN ; make $J all ; make install DESTDIR=$DESTDIR)
+fi
+
 if test -z "$SKIP_UTIL_LINUX" ; then
     build_start "util-linux"
     (cd util-linux ;
@@ -367,7 +379,7 @@ fi
 if test -z "$SKIP_SYZKALLER"; then
     build_start "syzkaller"
     (cd go/src/github.com/google/syzkaller; \
-     ver=$(git describe --always --dirty); echo "syzkaller		$ver ($(git log -1 --pretty=%cD))" > ../../../../../syzkaller.ver ; \
+     ver=$(git describe --always --dirty); echo "syzkaller	$ver ($(git log -1 --pretty=%cD))" > ../../../../../syzkaller.ver ; \
      $MAKE_CLEAN ; make $J execprog executor ; cp bin/*/syz-* $DESTDIR/bin)
 fi
 
