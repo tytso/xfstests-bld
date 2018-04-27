@@ -20,6 +20,7 @@ libcap2-bin
 libgdbm3
 liblzo2-2
 libbsd0
+libkeyutils1
 lvm2
 makedev
 mtd-utils
@@ -28,6 +29,7 @@ procps
 psmisc
 python2.7
 python-future
+openssl
 strace
 systemd
 systemd-sysv

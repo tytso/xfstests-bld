@@ -41,6 +41,7 @@ PACKAGES="bash-completion \
 	"libss2$BACKPORTS" \
 	libgdbm3 \
 	liblzo2-2 \
+	libkeyutils1 \
 	lighttpd \
 	lvm2 \
 	mtd-utils \

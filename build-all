@@ -57,6 +57,7 @@ function set_skip_all () {
     SKIP_KVM_UTILS=yes
     SKIP_KEYUTILS=yes
     SKIP_FSVERITY=yes
+    SKIP_IMA_EVM_UTILS=yes
     SKIP_STRESS_NG=yes
     SKIP_UTIL_LINUX=yes
     SKIP_SYZKALLER=yes
@@ -113,6 +114,10 @@ while [ "$1" != "" ]; do
 	--fsverity-only)
 	    set_skip_all
 	    unset SKIP_FSVERITY
+	    ;;
+	--ima-evm-utils-only)
+	    set_skip_all
+	    unset SKIP_IMA_EVM_UTILS
 	    ;;
 	--quota-only)
 	    set_skip_all
@@ -252,6 +257,17 @@ if test -z "$SKIP_FSVERITY"; then
     (cd fsverity; \
      ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../fsverity.ver ; \
      $MAKE_CLEAN ; make $J all ; make install DESTDIR=$DESTDIR)
+fi
+
+if test -z "$SKIP_IMA_EVM_UTILS" ; then
+    build_start "ima-evm-utils"
+    (cd ima-evm-utils; \
+     ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../ima-evm-utils.ver ; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR ; $MAKE_CLEAN ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" dist_man_MANS= ; \
+     make $J install dist_man_MANS= )
 fi
 
 if test -z "$SKIP_UTIL_LINUX" ; then

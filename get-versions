@@ -29,6 +29,10 @@ then
     cd ..
 fi
 
+cd ima-evm-utils
+ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/ima-evm-utils.ver
+cd ..
+
 cd quota
 ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/quota.ver
 cd ..

@@ -13,6 +13,8 @@ else
 fi
 }
 
+ldconfig
+
 . /root/test-config
 
 FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')

@@ -63,6 +63,7 @@ MAKELOG
 /e2fsprogs-libs/lib/uuid/uuid.h
 /fio/
 /fsverity/
+/ima-evm-utils/
 /keyutils/
 /popt/.deps/
 /popt/Doxyfile

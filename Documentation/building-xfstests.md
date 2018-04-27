@@ -14,6 +14,7 @@ The xfstests-bld package depends on a number of external git trees:
 * fio
 * quota
 * fsverity
+* ima-evm-utils
 
 The first time you run "make", the build system will clone these
 repositories by running ./get-all.  Their remote URLs are set in the
@@ -104,10 +105,11 @@ If you want to use xfstests-bld without a dedicated build chroot, a
 number of prerequisite packages are needed.  They can be installed
 using the following command:
 
-    $ sudo apt-get install build-essential autoconf autoconf2.64 \
-                automake libgdbm-dev libtool-bin qemu-utils gettext \
-                e2fslibs-dev git debootstrap fakechroot libdbus-1-3 \
-                autopoint pkg-config symlinks ca-certificates bison
+    $ sudo apt-get install autoconf autoconf2.64 \
+		automake autopoint bison build-essential ca-certificates \
+		debootstrap e2fslibs-dev fakechroot gettext git \
+		libdbus-1-3 libgdbm-dev libkeyutils-dev libssl-dev \
+		libtool-bin pkg-config qemu-utils symlinks
 
 It is also possible to use a cross compiler rather than the native
 compiler.  To do this, set the shell variables `CROSS_COMPILE` and
