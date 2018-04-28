@@ -4,7 +4,9 @@ README.sig
 base
 build-32
 build-64
+build-amd64
+build-arm64
 build-armhf
-armhf_root_fs.tar.gz
-armhf_root_fs.tar.sig
-git-versions-build-*
+build-i386
+e2fsprogs.ver
+git-versions-*
