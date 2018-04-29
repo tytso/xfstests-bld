@@ -1,0 +1,53 @@
+#!/bin/bash
+
+VER="$1"
+
+if test -z "$VER" ; then
+    echo "Usage: $0 <version>"
+    exit 1
+fi
+
+XFSTESTS_BLD_DIR=/usr/projects/xfstests-bld/build-64
+BUILD64_DIR=/build/ext4-$VER-64
+BUILD32_DIR=/build/ext4-$VER
+
+cd /usr/projects/linux/ext4-$VER
+
+function add_config() {
+
+    if test -d $BUILD_DIR ; then
+        cp $BUILD_DIR/.config /tmp/config.save
+	cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER $BUILD_DIR/.config
+    else
+        cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER .git/kbuild/$KCONF
+    fi
+	
+    $KBUILD olddefconfig >& /dev/null
+    cp $BUILD_DIR/.config /tmp/config.orig
+
+    cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER $BUILD_DIR/.config
+    cat /tmp/config-add >> $BUILD_DIR/.config
+    $KBUILD olddefconfig
+
+    diff -u /tmp/config.orig $BUILD_DIR/.config
+    $KBUILD savedefconfig >& /dev/null
+    diff -u $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER \
+    	$BUILD_DIR/defconfig
+    cp $BUILD_DIR/defconfig $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER
+}
+
+ARCH=x86_64
+BUILD_DIR=$BUILD64_DIR
+KBUILD=kbuild
+KCONF=kernel-config
+
+add_config
+
+echo ---------- 32-bit
+
+ARCH=i386
+BUILD_DIR=$BUILD32_DIR
+KBUILD=kbuild32
+KCONF=kernel-config-32
+
+add_config
