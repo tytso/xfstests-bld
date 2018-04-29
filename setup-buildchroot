@@ -48,6 +48,7 @@ e2fslibs-dev
 fakechroot
 gettext
 git
+golang-1.8-go
 libdbus-1-3
 libgdbm-dev
 libkeyutils-dev
