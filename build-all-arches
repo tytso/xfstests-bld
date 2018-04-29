@@ -7,6 +7,9 @@ if ! ./test-versions ; then
 fi
 
 mkdir -p out_dir
+sed -e "s;@MIRROR@;$MIRROR;" \
+	-e "/@VERFILE@/r build-${ARCH_LIST[0]}/xfstests/git-versions" \
+	< README.in | sed -e '/^@VERFILE@$/d' > README
 
 date
 for i in "${ARCH_LIST[@]}" ; do

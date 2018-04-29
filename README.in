@@ -13,20 +13,14 @@ guide, located at:
     https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
 
 The "corresponding source" of the GPL binaries found in these KVM
-images can be found in the source packages for the Debian
-distribution's Stretch release as of December 31, 2017:
+images can be found in the source packages from this snapshot of
+Debian distribution's Stretch release:
 
-	http://snapshot.debian.org/archive/debian/20171231T180144Z/
+	@MIRROR@
 
 ... as well as the following git repositories:
 
-e2fsprogs	v1.43.6-85-g7595699d0 (Wed, 6 Sep 2017 22:04:14 -0400)
-fio		fio-3.2 (Fri, 3 Nov 2017 15:23:49 -0600)
-quota		4d81e8b (Mon, 16 Oct 2017 09:42:44 +0200)
-stress-ng	977ae35 (Wed, 6 Sep 2017 23:45:03 -0400)
-xfsprogs	v4.14.0-rc2-1-g19ca9b0b (Mon, 27 Nov 2017 10:56:21 -0600)
-xfstests-bld	ff7b8c2 (Wed, 13 Dec 2017 21:24:24 -0500)
-xfstests	linux-v3.8-1832-gafeee2d9 (Sun, 31 Dec 2017 13:35:28 -0500)
+@VERFILE@
 
 The gen-image script found in the kvm-xfstests/test-appliance
 directory of the xfstests-bld git repository, plus Debian jessie's
@@ -35,7 +29,7 @@ these KVM images.
 
 Local changes to xfstests can be found at:
 
-    https://github.com/tytso/xfstests release-2017-12-31-afeee2d9
+    https://github.com/tytso/xfstests release-2018-04-08-62cc6d02
 
 The URL's for the other git repositories and scripts to download the
 sources from those repositories can be found in xfstests-bld's
