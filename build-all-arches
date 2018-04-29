@@ -1,0 +1,43 @@
+#!/bin/bash
+
+. build_config.sh
+
+if ! ./test-versions ; then
+   exit 1
+fi
+
+mkdir -p out_dir
+
+date
+for i in "${ARCH_LIST[@]}" ; do
+    dir="build-$i"
+    if ! test -d $dir ; then
+	echo "Skipping $i"
+	continue
+    fi
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting $i"
+    date
+    if ! (cd $dir ; ./do-all) ; then
+	echo "Build of $i failed!"
+	exit 1
+    fi
+    egrep -v "^(stress-ng)|(keyutils)|(syzkaller)" $i/xfstests/git-versions > git-versions-$i
+    if ! diff git-versions-"${ARCH_LIST[0]}" git-versions-$i
+    then
+	echo "WARNING: differences in versions detected"
+	exit 1
+    fi
+    case $i in
+	arm*)
+	    fn=root_fs.tar.gz
+	    artifact=root_fs.img.$i
+	    ;;
+	*)
+	    fn=root_fs.img
+	    artifact=root_fs.$i.tar.gz
+	    ;;
+    esac
+    cp $dir/kvm-xfstests/test-appliance/$fn out_dir/$artifact
+done
+
+echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Finished"

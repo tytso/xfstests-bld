@@ -1,16 +1,25 @@
 #!/bin/bash
 
-ARCHS=(build-64 build-32 build-armhf)
+. build_config.sh
 
-for i in "${ARCHS[@]}" ; do
-    (cd $i ; ./get-versions | \
+for i in "${ARCH_LIST[@]}" ; do
+    dir="build-$i"
+    if ! test -d $dir ; then
+	echo "Skipping $i"
+	continue
+    fi
+    (cd $dir ; ./get-versions | \
 	 egrep -v "^(stress-ng)|(keyutils)|(syzkaller)") > git-versions-$i
 done
 
-for i in "${ARCHS[@]}" ; do
-    if ! diff git-versions-"${ARCHS[0]}" git-versions-$i
+for i in "${ARCH_LIST[@]}" ; do
+    dir="build-$i"
+    if ! test -d $dir ; then
+	continue
+    fi
+    if ! diff git-versions-"${ARCH_LIST[0]}" git-versions-$i
     then
-	echo "WARNING: differences in versions detected: ${ARCHS[0]} vs $i"
+	echo "WARNING: differences in versions detected: ${ARCH_LIST[0]} vs $i"
 	exit 1
     fi
 done

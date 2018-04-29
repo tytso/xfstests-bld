@@ -10,3 +10,4 @@ build-armhf
 build-i386
 e2fsprogs.ver
 git-versions-*
+out_dir
