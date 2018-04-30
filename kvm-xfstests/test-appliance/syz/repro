@@ -37,6 +37,9 @@ if test -x $here/$seqfull.exe ; then
     urk=$(timeout -s KILL 60 $here/$seqfull.exe >> $seqres.full 2>&1)
     sleep 1
 elif test -f $here/$seqfull.syz ; then
+    if ! test -x /root/xfstests/bin/syz-execprog ; then
+	_notrun "Syzkaller executor not available"
+    fi
     run-syz $here/$seqfull.syz >> $seqres.full 2>&1
 else
     _notrun "Syzkaller repro for $seq not found"
