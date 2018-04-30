@@ -15,8 +15,8 @@ FIO_COMMIT=fio-3.2
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 QUOTA_COMMIT=59b280e
 
-SYZKALLER_GIT=https://github.com/google/syzkaller
-SYZKALLER_COMMIT=d5a5d045176c3
+# SYZKALLER_GIT=https://github.com/google/syzkaller
+# SYZKALLER_COMMIT=d5a5d045176c3
 
 FSVERITY_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/mhalcrow/fsverity.git
 FSVERITY_COMMIT=2a7dbea90885
