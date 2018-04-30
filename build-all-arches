@@ -8,8 +8,8 @@ fi
 
 mkdir -p out_dir
 sed -e "s;@MIRROR@;$MIRROR;" \
-	-e "/@VERFILE@/r build-${ARCH_LIST[0]}/xfstests/git-versions" \
-	< README.in | sed -e '/^@VERFILE@$/d' > README
+	-e "/@VERFILE@/r git-versions-${ARCH_LIST[0]}" \
+	< README.in | sed -e '/^@VERFILE@$/d' > out_dir/README
 
 date
 for i in "${ARCH_LIST[@]}" ; do
@@ -24,10 +24,10 @@ for i in "${ARCH_LIST[@]}" ; do
 	echo "Build of $i failed!"
 	exit 1
     fi
-    egrep -v "^(stress-ng)|(keyutils)|(syzkaller)" $i/xfstests/git-versions > git-versions-$i
+    egrep -v "^(stress-ng)|(keyutils)|(syzkaller)" $dir/xfstests/git-versions > git-versions-$i
     if ! diff git-versions-"${ARCH_LIST[0]}" git-versions-$i
     then
-	echo "WARNING: differences in versions detected"
+	echo "WARNING: differences in versions detected: $i"
 	exit 1
     fi
     case $i in
@@ -41,6 +41,7 @@ for i in "${ARCH_LIST[@]}" ; do
 	    ;;
     esac
     cp $dir/kvm-xfstests/test-appliance/$fn out_dir/$artifact
+    cp $dir/xfstests/git-versions out_dir/git-versions-$i
 done
 
 echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Finished"
