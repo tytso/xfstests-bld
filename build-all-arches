@@ -33,11 +33,11 @@ for i in "${ARCH_LIST[@]}" ; do
     case $i in
 	arm*)
 	    fn=root_fs.tar.gz
-	    artifact=root_fs.img.$i
+	    artifact=root_fs.$i.tar.gz
 	    ;;
 	*)
 	    fn=root_fs.img
-	    artifact=root_fs.$i.tar.gz
+	    artifact=root_fs.img.$i
 	    ;;
     esac
     cp $dir/kvm-xfstests/test-appliance/$fn out_dir/$artifact
