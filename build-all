@@ -263,7 +263,7 @@ if test -z "$SKIP_IMA_EVM_UTILS" ; then
     build_start "ima-evm-utils"
     (cd ima-evm-utils; \
      ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../ima-evm-utils.ver ; \
-     ./autogen.sh; \
+     mv INSTALL INSTALL.save ; ./autogen.sh; mv INSTALL.save INSTALL ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR ; $MAKE_CLEAN ; \
