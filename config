@@ -18,7 +18,7 @@ FSVERITY_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/mhalcrow/fsverity.git
 
 FIO_COMMIT=fio-3.2
 QUOTA_COMMIT=59b280ebe22e
-XFSPROGS_COMMIT=v4.16.0-rc1
+XFSPROGS_COMMIT=v4.16.0
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
