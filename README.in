@@ -29,7 +29,7 @@ these KVM images.
 
 Local changes to xfstests can be found at:
 
-    https://github.com/tytso/xfstests release-2018-04-08-62cc6d02
+    https://github.com/tytso/xfstests @XFSTESTS_RELEASE@
 
 The URL's for the other git repositories and scripts to download the
 sources from those repositories can be found in xfstests-bld's
