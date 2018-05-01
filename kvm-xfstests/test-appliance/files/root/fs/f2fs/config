@@ -31,12 +31,9 @@ function format_filesystem()
 function setup_mount_opts()
 {
     if test -n "$MNTOPTS" ; then
-	if test -n "$F2FS_MOUNT_OPTIONS" ; then
-	    export F2FS_MOUNT_OPTIONS="$F2FS_MOUNT_OPTIONS,$MNTOPTS"
-	else
-	    export F2FS_MOUNT_OPTIONS="-o $MNTOPTS"
-	fi
+	F2FS_MOUNT_OPTIONS+="${F2FS_MOUNT_OPTIONS:+,}$MNTOPTS"
     fi
+    export F2FS_MOUNT_OPTIONS="${F2FS_MOUNT_OPTIONS:+-o }$F2FS_MOUNT_OPTIONS"
 }
 
 function get_mkfs_opts()
