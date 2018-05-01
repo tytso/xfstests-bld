@@ -86,6 +86,7 @@ for i in "${ARCH_LIST[@]}" ; do
 	    ;;
     esac
     cp $dir/kvm-xfstests/test-appliance/$fn out_dir/$artifact
+    cp $dir/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
     cp $dir/xfstests/git-versions out_dir/git-versions-$i
 done
 
