@@ -33,6 +33,18 @@ function setup_mount_opts()
     if test -n "$MNTOPTS" ; then
 	F2FS_MOUNT_OPTIONS+="${F2FS_MOUNT_OPTIONS:+,}$MNTOPTS"
     fi
+    if echo ",$F2FS_MOUNT_OPTIONS," | grep -q ',test_dummy_encryption,'; then
+	local mode='\x00\x00\x00\x00'
+	local raw="$(printf ""\\\\x%02x"" $(seq 0 63))"
+	if lscpu | grep "Byte Order" | grep -q Little ; then
+	    local size='\x40\x00\x00\x00'
+	else
+	    local size='\x00\x00\x00\x40'
+	fi
+	local key="${mode}${raw}${size}"
+	keyctl new_session >& /dev/null
+	echo -n -e "${key}" | keyctl padd logon fscrypt:4242424242424242 @s >& /dev/null
+    fi
     export F2FS_MOUNT_OPTIONS="${F2FS_MOUNT_OPTIONS:+-o }$F2FS_MOUNT_OPTIONS"
 }
 
