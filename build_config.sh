@@ -26,7 +26,7 @@ IMA_EVM_UTILS_COMMIT=v1.1
 
 #EXEC_LDFLAGS=-static
 #EXEC_LLDFLAGS=-all-static
-export PATH=/home/tytso/bin-ccache:/bin:/usr/bin
+export PATH=$HOME/bin-ccache:/bin:/usr/bin
 export CCACHE_DIR=/var/cache/ccache
 export CCACHE_COMPRESS=t
 
