@@ -2,6 +2,8 @@
 
 . build_config.sh
 
+BUILD_DIR=build-release
+
 function usage()
 {
     echo "Usage: build-all-arches: [--readme-only]"
@@ -21,58 +23,39 @@ while [ "$1" != "" ]; do
     shift
 done
 
-ARCH_LIST_PRESENT=()
-
-for i in "${ARCH_LIST[@]}" ; do
-    if test -d "build-$i" ; then
-	ARCH_LIST_PRESENT+=($i)
-    fi
-done
-
-ARCH_LIST=(${ARCH_LIST_PRESENT[@]})
-
-if test ${#ARCH_LIST[@]} -eq 0 ; then
-    echo "No build directories found!"
-    exit 1
-fi
-
-if ! ./test-versions ; then
-   exit 1
-fi
-
 mkdir -p out_dir
 
-first_arch="${ARCH_LIST[0]}"
-first_dir="build-$first_arch"
+(cd $dir ; ./get-versions ) > git-versions
 
-release=$(cd $first_dir/xfstests-dev ; git tag --points-at HEAD | grep ^release)
+release=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
 
 sed -e "s;@MIRROR@;$MIRROR;" \
 	-e "s/@XFSTESTS_RELEASE@/$release/" \
-	-e "/@VERFILE@/r git-versions-$first_arch" \
+	-e "/@VERFILE@/r git-versions" \
 	< README.in | sed -e '/^@VERFILE@$/d' > out_dir/README
 
 if test "$README_ONLY" = "yes" ; then
     exit 0
 fi
 
+(cd $BUILD_DIR ; git pull ; ./get-all )
+
 date
 for i in "${ARCH_LIST[@]}" ; do
-    dir="build-$i"
-    if ! test -d $dir ; then
-	echo "Skipping $i"
-	continue
-    fi
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting $i"
     date
-    if ! (cd $dir ; ./do-all) ; then
+    echo "CHROOT=stretch-$i" > $BUILD_DIR/config.custom
+    sed -e '1,/^#BEGIN CONFIG.CUSTOM/d' < build_config.sh \
+	>> $BUILD_DIR/config.custom
+    case $i in
+	arm*)
+	    echo OUT_TAR=yes >> $BUILD_DIR/config.custom
+	    ;;
+    esac
+    echo "MIRROR=$MIRROR" > $BUILD_DIR/kvm-xfstests/test-appliance/config.custom
+
+    if ! (cd $BUILD_DIR ; ./do-all) ; then
 	echo "Build of $i failed!"
-	exit 1
-    fi
-    egrep -v "^(stress-ng)|(keyutils)|(syzkaller)" $dir/xfstests/git-versions > git-versions-$i
-    if ! diff git-versions-"${ARCH_LIST[0]}" git-versions-$i
-    then
-	echo "WARNING: differences in versions detected: $i"
 	exit 1
     fi
     case $i in
@@ -85,9 +68,9 @@ for i in "${ARCH_LIST[@]}" ; do
 	    artifact=root_fs.img.$i
 	    ;;
     esac
-    cp $dir/kvm-xfstests/test-appliance/$fn out_dir/$artifact
-    cp $dir/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
-    cp $dir/xfstests/git-versions out_dir/git-versions-$i
+    cp $BUILD_DIR/kvm-xfstests/test-appliance/$fn out_dir/$artifact
+    cp $BUILD_DIR/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
+    cp $BUILD_DIR/xfstests/git-versions out_dir/git-versions-$i
 done
 
 echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Finished"
