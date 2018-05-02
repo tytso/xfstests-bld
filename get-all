@@ -22,6 +22,7 @@ checkout_commit()
     local old_url
 
     # Make sure there are no uncommitted changes.
+    git status -s >& /dev/null
     if ! git diff-index --quiet HEAD --; then
 	cat 1>&2 <<EOF
 ERROR: $repo_name has uncommitted changes.
