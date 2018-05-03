@@ -362,7 +362,7 @@ if test -z "$SKIP_XFSTESTS" ; then
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
      export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
-     libtoolize -i ; $MAKE_CLEAN ; \
+     $MAKE_CLEAN ; \
      ./configure $cross ; \
      make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" \
 	  LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
