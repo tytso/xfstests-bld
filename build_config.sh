@@ -4,7 +4,7 @@ MIRROR=http://snapshot.debian.org/archive/debian/20180418T161205Z/
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=db5d082c0aca8914885b4e87399261023ff4a381
+XFSTESTS_COMMIT=5cc2363625b752fda09c09903ffa8842af327d40
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 XFSPROGS_COMMIT=v4.16.0
