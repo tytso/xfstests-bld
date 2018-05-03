@@ -15,6 +15,10 @@ while [ "$1" != "" ]; do
 	--readme-only)
 	    README_ONLY=yes
 	    ;;
+	--resume-arch)
+	    shift
+	    RESUME_ARCH="$1"
+	    ;;
 	*)
 	    usage
 	    exit 1
@@ -42,6 +46,14 @@ fi
 
 date
 for i in "${ARCH_LIST[@]}" ; do
+    if test -n "$RESUME_ARCH" ; then
+	if test "$i" != "$RESUME_ARCH"; then
+	    echo "Resume_arch skipping $i"
+	    continue;
+	else
+	    RESUME_ARCH=
+	fi
+    fi
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting $i"
     date
     echo "CHROOT=stretch-$i" > $BUILD_DIR/config.custom
