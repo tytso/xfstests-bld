@@ -220,7 +220,14 @@ detect_foreign_chroot()
 	return
     fi
 
-    local binfmt="qemu-$(uname -m)"
+    local arch="$(uname -m)"
+    case "$arch" in
+	armv7l|armv6l)
+	    arch="arm"
+	    ;;
+	*)
+    esac
+    local binfmt="qemu-$arch"
     local binfmt_file="$BINFMT_MISC_MNT/$binfmt"
 
     if [ ! -e "$binfmt_file" ]; then
