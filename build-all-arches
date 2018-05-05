@@ -62,6 +62,8 @@ for i in "${ARCH_LIST[@]}" ; do
     case $i in
 	arm*)
 	    echo OUT_TAR=yes >> $BUILD_DIR/config.custom
+	    echo export ACCEL_BIN=/usr/local/bin-accel \
+		 >> $BUILD_DIR/config.custom
 	    ;;
     esac
     echo "MIRROR=$MIRROR" > $BUILD_DIR/kvm-xfstests/test-appliance/config.custom
