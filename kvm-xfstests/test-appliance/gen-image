@@ -15,6 +15,12 @@ SAVE_RAW_ROOT=no
 DO_GCE=no
 DO_UPDATE=no
 DO_NETWORKING=no
+RESUME=0
+
+if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
+then
+    RAW_ROOT_FS=/tmp/root_fs.raw.$$
+fi
 
 if test -r config.custom ; then
    . $(pwd)/config.custom
@@ -24,6 +30,12 @@ while [ "$1" != "" ]; do
   case $1 in
     --save_raw_root)
       SAVE_RAW_ROOT=yes;
+      ;;
+    --raw_root_fs) shift
+      RAW_ROOT_FS="$1"
+      ;;
+    --resume) shift
+      RESUME="$1"
       ;;
     --suite) shift
       SUITE=$1
@@ -64,6 +76,10 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+function stage_start () {
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): gen-image: Starting $*"
+}
 
 if test -z "$SOURCE_DATE_EPOCH" ; then
     export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
@@ -110,11 +126,6 @@ case $PACKAGES in
      *)				EXCLUDE="--exclude=apt"
 esac
 
-if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
-then
-    RAW_ROOT_FS=/tmp/root_fs.raw.$$
-fi
-
 update_xfstests()
 {
    tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
@@ -134,17 +145,19 @@ fix_symlinks()
 
 finalize_rootfs()
 {
-   # the stretch version of e2fsck will return 1 if it optimized any
-   # directories, which is the return value for "we changed something but
-   # everything is a-ok".  If we fail just continue if our return value was 1,
-   # otherwise bail.
-   e2fsck -fyD $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
-   e2fsck -fy -E discard $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
-   qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+    stage_start "to create image file"
+    # the stretch version of e2fsck will return 1 if it optimized any
+    # directories, which is the return value for "we changed something but
+    # everything is a-ok".  If we fail just continue if our return value was 1,
+    # otherwise bail.
+    e2fsck -fyD $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
+    e2fsck -fy -E discard $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
+    qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 }
 
 cleanup_rootdir()
 {
+    stage_start "to clean up rootdir"
     if test -z "$DO_FAKECHROOT"; then
 	if test -d $ROOTDIR ; then
 	    umount $ROOTDIR/var/cache/apt/archives
@@ -247,8 +260,11 @@ mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
 mkdir -p debs
 if test -z "$DO_FAKECHROOT"; then
-   cp /dev/null $RAW_ROOT_FS
-   mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
+    if test "$RESUME" -le 1 ; then
+	stage_start "stage 1: format file system"
+	cp /dev/null $RAW_ROOT_FS
+	mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
+    fi
    mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
 fi
 mkdir -p $ROOTDIR/var/cache/apt/archives
@@ -268,8 +284,13 @@ else
    export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
 fi
 trap cleanup_on_abort INT TERM
-debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE \
-	    $FOREIGN $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
+if test "$RESUME" -le 2 ; then
+    stage_start "stage 2: debootstrap"
+    debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE \
+		$FOREIGN $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
+else
+    true
+fi
 if test $? -ne 0 ; then
     echo "Deboostrap failed, aborting."
     cleanup_on_abort
@@ -277,12 +298,19 @@ if test $? -ne 0 ; then
 fi
 if test -n "$QEMU" ; then
     cp $QEMU $ROOTDIR/usr/bin/
-    run_in_chroot "/debootstrap/debootstrap --second-stage"
-    run_in_chroot "dpkg --configure -a"
+    if test "$RESUME" -le 3 ; then
+	stage_start "stage 3: second-stage debootstrap"
+	run_in_chroot "/debootstrap/debootstrap --second-stage"
+    fi
+    if test "$RESUME" -le 4 ; then
+	stage_start "stage 4: dpkg --configure -a"
+	run_in_chroot "dpkg --configure -a"
+    fi
     mkdir -p "$ROOTDIR/run/shm"
     chmod 1777 "$ROOTDIR/run/shm"
 fi
-if test -f "backport-packages-$SUITE" ; then
+if test "$RESUME" -le 5 -a -f "backport-packages-$SUITE" ; then
+    stage_start "stage 5: Installing backports"
     ./get-backports-pkgs "$SUITE" "$ROOTDIR"
     if test -f "$ROOTDIR/debootstrap/debpaths" ; then
         DEBS=$(while read pkg path; do echo -n "$path " ; done <"$ROOTDIR/debootstrap/debpaths")
@@ -294,7 +322,10 @@ DEBIAN_ARCH="$(dpkg --print-architecture)"
 DEBS="$(find debs -name "*_${DEBIAN_ARCH}.deb" -o -name "*_all.deb")"
 if test -n "$DEBS"
 then
-    run_in_chroot "dpkg --ignore-depends=e2fsprogs --auto-deconfigure -i $(echo $DEBS)"
+    if test "$RESUME" -le 6 ; then
+	stage_start "stage 6: Installing manual debs"
+	run_in_chroot "dpkg --ignore-depends=e2fsprogs --auto-deconfigure -i $(echo $DEBS)"
+    fi
 fi
 update_xfstests
 for i in vda vdb vdc vdd vde vdf results
@@ -302,6 +333,7 @@ do
 	mkdir $ROOTDIR/$i
 done
 
+stage_start "to do final VM configuration"
 echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
 echo "fsgqa:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
 echo "fsgqa:x:31415:" >> $ROOTDIR/etc/group
@@ -405,6 +437,7 @@ if test -n "$OUT_TAR"; then
 	*)	ZCMD="cat" ;
     esac
     fix_symlinks
+    stage_start "to create tarfile"
     (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
 	 tar -c --null --no-recursion -T - --numeric-owner \
 	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
