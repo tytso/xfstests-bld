@@ -11,7 +11,10 @@ do
 	--incoming)
 	    BASE=http://incoming.debian.org/debian-buildd/pool/main/
 	    ROOT_FS="$1"
-	    IMAGE_FLAG="--image-family"
+	    ;;
+	--base)
+	    shift
+	    BASE="$1";
 	    ;;
 	--arch)
 	    shift
