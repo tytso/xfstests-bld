@@ -1,5 +1,5 @@
 ARCH_LIST=(amd64 i386 arm64 armhf)
-MIRROR=http://snapshot.debian.org/archive/debian/20180418T161205Z/
+MIRROR=http://snapshot.debian.org/archive/debian/20180505T160451Z/
 
 #BEGIN CONFIG.CUSTOM
 
