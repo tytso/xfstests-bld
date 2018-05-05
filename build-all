@@ -20,6 +20,13 @@ else
     SKIP_SYZKALLER=yes
 fi
 
+if test -n "$ACCEL_BIN" -a -d "$ACCEL_BIN" ; then
+    PATH="$ACCEL_BIN:$PATH"
+    if test -x "$ACCEL_BIN/bash" ; then
+	SHELL="$ACCEL_BIN/bash"
+    fi
+fi
+
 if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
     PATH=$TOOLCHAIN_DIR/bin:$PATH
 fi

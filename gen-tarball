@@ -6,6 +6,13 @@ else
 	. config
 fi
 
+if test -n "$ACCEL_BIN" -a -d "$ACCEL_BIN" ; then
+    PATH="$ACCEL_BIN:$PATH"
+    if test -x "$ACCEL_BIN/bash" ; then
+	SHELL="$ACCEL_BIN/bash"
+    fi
+fi
+
 if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
     PATH=$TOOLCHAIN_DIR/bin:$PATH
 fi
@@ -47,7 +54,8 @@ then
     cp -r xfstests-dev xfstests
     rm -rf xfstests/.git xfstests/autom4te.cache
 else
-    (D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests)
+    (D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests \
+				       INSTALL=install SHELL=$SHELL)
     cp xfstests-dev/README* xfstests
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver

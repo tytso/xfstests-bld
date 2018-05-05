@@ -92,7 +92,7 @@ if $UPDATE; then
 else
     $BUILD_ENV make all-clean-first
 fi
-$BUILD_ENV make tarball
+$BUILD_ENV ./gen-tarball
 
 if [ "$OUT_TAR" = "yes" ]; then
     gen_image_args+=" --out-tar"
