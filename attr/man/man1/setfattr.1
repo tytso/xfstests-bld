@@ -1,3 +1,28 @@
+.\" Copyright (C) 2002, 2004  Silicon Graphics, Inc. Al rights reserved.
+.\" Copyright (C) 2002, 2004  Andreas Gruenbacher <agruen@suse.de>
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.\"
 .TH SETFATTR 1 "Extended Attributes" "Dec 2001" "File Utilities"
 .SH NAME
 setfattr \- set extended attributes of filesystem objects
@@ -15,13 +40,21 @@ command associates a new
 with an extended attribute
 .IR name
 for each specified file.
-.SS OPTIONS
+.SH OPTIONS
 .TP 4
 .BR \-n " \f2name\f1, " \-\-name "=\f2name\f1"
 Specifies the name of the extended attribute to set.
 .TP
 .BR \-v " \f2value\f1, " \-\-value "=\f2value\f1"
-Specifies the new value for the extended attribute.
+Specifies the new value of the extended attribute. There are three methods
+available for encoding the value.  If the given string is enclosed in double
+quotes, the inner string is treated as text. In that case, backslashes and
+double quotes have special meanings and need to be escaped by a preceding
+backslash. Any control characters can be encoded as a backslash followed by
+three digits as its ASCII code in octal. If the given string begins with 0x or
+0X, it expresses a hexadecimal number. If the given string begins with 0s or
+0S, base64 encoding is expected.  See also the \-\-encoding option of
+getfattr(1).
 .TP
 .BR \-x " \f2name\f1, " \-\-remove "=\f2name\f1"
 Remove the named extended attribute entirely.

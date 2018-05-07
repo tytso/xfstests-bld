@@ -1,7 +1,22 @@
 #! /bin/sh
-# 
-#	Make whichever packages have been requested.
-#	Defaults to RPMs.
+#
+# Copyright (C) 2001, 2002, 2003  Silicon Graphics, Inc.  All rights reserved.
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Make whichever packages have been requested.
+# Defaults to RPMs.
 #
 LOGDIR=Logs
 
@@ -79,9 +94,9 @@ echo
 echo "== dist, log is $LOGDIR/dist"
 [ ! -f .census ] && touch .census
 if $verbose ; then
-	$MAKE -C build dist 2>&1 | tee $LOGDIR/dist
+	$MAKE -C package dist 2>&1 | tee $LOGDIR/dist
 else
-	$MAKE -C build dist > $LOGDIR/dist 2>&1 || exit 1
+	$MAKE -C package dist > $LOGDIR/dist 2>&1 || exit 1
 	grep '^Wrote:' $LOGDIR/dist | sed -e 's/\.\.\/\.\.\///'
 fi
 

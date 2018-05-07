@@ -1,6 +1,19 @@
 #
 # Copyright (c) 2002-2003 Silicon Graphics, Inc.  All Rights Reserved.
 #
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 BUILDRULES = $(TOPDIR)/include/buildrules
 
@@ -27,9 +40,8 @@ OBJECTS = $(ASFILES:.s=.o) \
 	  $(LFILES:.l=.o) \
 	  $(YFILES:%.y=%.tab.o)
 
-INSTALL	= $(TOPDIR)/install-sh -o $(PKG_USER) -g $(PKG_GROUP)
+INSTALL	= $(TOPDIR)/include/install-sh -o $(PKG_USER) -g $(PKG_GROUP)
 
-SHELL = /bin/sh
 IMAGES_DIR = $(TOPDIR)/all-images
 DIST_DIR = $(TOPDIR)/dist
 
@@ -42,10 +54,10 @@ LIBNAME = $(basename $(LTLIBRARY))
 LTOBJECTS = $(OBJECTS:.o=.lo)
 LTVERSION = $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
 
-LTLINK = $(LIBTOOL) --tag CC --mode=link $(CC)
+LTLINK = $(LIBTOOL) --mode=link $(CC)
 LTEXEC = $(LIBTOOL) --mode=execute
 LTINSTALL = $(LIBTOOL) --mode=install $(INSTALL)
-LTCOMPILE = $(LIBTOOL)  --tag CC --mode=compile $(CCF)
+LTCOMPILE = $(LIBTOOL) --mode=compile $(CCF)
 
 ifeq ($(ENABLE_SHARED),yes)
 LTLDFLAGS += -rpath $(PKG_LIB_DIR)
@@ -74,17 +86,18 @@ INSTALL_LTLIB_DEV = \
 	../$(INSTALL) -m 644 $(LIBNAME).lai $(PKG_DEVLIB_DIR)/$(LIBNAME).la ; \
 	../$(INSTALL) -m 755 -d $(PKG_LIB_DIR); \
 	../$(INSTALL) -T so_base $(LIBNAME).lai $(PKG_LIB_DIR); \
+	if test "x$(PKG_DEVLIB_DIR)" != "x$(PKG_LIB_DIR)" ; then \
 	../$(INSTALL) -S $(PKG_DEVLIB_DIR)/$(LIBNAME).a $(PKG_LIB_DIR)/$(LIBNAME).a; \
 	../$(INSTALL) -S $(PKG_DEVLIB_DIR)/$(LIBNAME).la $(PKG_LIB_DIR)/$(LIBNAME).la; \
-	../$(INSTALL) -S $(PKG_LIB_DIR)/$(LIBNAME).so $(PKG_DEVLIB_DIR)/$(LIBNAME).so
+	../$(INSTALL) -S $(PKG_LIB_DIR)/$(LIBNAME).so $(PKG_DEVLIB_DIR)/$(LIBNAME).so; \
+	fi
 else
 INSTALL_LTLIB_DEV = $(INSTALL_LTLIB_STATIC)
 endif
 
 INSTALL_LTLIB_STATIC = \
 	cd $(TOPDIR)/$(LIBNAME)/.libs; \
-	../$(INSTALL) -m 755 -d $(PKG_DEVLIB_DIR); \
-	../$(INSTALL) -m 644 -T old_lib $(LIBNAME).lai $(PKG_DEVLIB_DIR)
+	../$(INSTALL) -m 755 -d $(PKG_DEVLIB_DIR);
 
 INSTALL_MAN = \
 	@for d in $(MAN_PAGES); do \
@@ -122,14 +135,6 @@ INSTALL_LINGUAS = \
 		fi; \
 	done
 endif
-
-SUBDIRS_MAKERULE = \
-	@for d in $(SUBDIRS) ""; do \
-		if test -d "$$d" -a ! -z "$$d"; then \
-			$(ECHO) === $$d ===; \
-			$(MAKEF) -C $$d $@ || exit $$?; \
-		fi; \
-	done
 
 MAN_MAKERULE = \
 	@for f in *.[12345678] ""; do \

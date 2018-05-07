@@ -1,3 +1,8 @@
+attr-2.4.44
+	- Fix attr/acl code for handling of recursive walking without following symlinks
+	  Patch contributed by Brandon Philips <brandon@ifup.org>.
+	  http://oss.sgi.com/archives/xfs/2008-07/msg00162.html
+
 attr-2.4.43 (20 June 2008)
 	- Added configurable attr exception list for xattr copy, thanks to
 	  Andreas Gruenbacher.

@@ -1,18 +1,18 @@
-/* Copyright (C) 2006 Andreas Gruenbacher <agruen@xxxxxxx>, SuSE Linux AG.
+/*
+  Copyright (C) 2006 Andreas Gruenbacher <agruen@suse.de>, SuSE Linux AG.
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
-  version 2 of the License, or (at your option) any later version.
+  version 2.1 of the License, or (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+  You should have received a copy of the GNU Lesser General Public License
+  along with this manual.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <alloca.h>
@@ -53,7 +53,7 @@ free_attr_actions(void)
 static int
 attr_parse_attr_conf(struct error_context *ctx)
 {
-	char *text, *t;
+	char *text = NULL, *t;
 	size_t size_guess = 4096, len;
 	FILE *file;
 	char *pattern = NULL;
@@ -64,15 +64,16 @@ attr_parse_attr_conf(struct error_context *ctx)
 		return 0;
 
 repeat:
-	text = malloc(size_guess + 1);
-	if (!text)
-		goto fail;
-
 	if ((file = fopen(ATTR_CONF, "r")) == NULL) {
 		if (errno == ENOENT)
 			return 0;
 		goto fail;
 	}
+
+	text = malloc(size_guess + 1);
+	if (!text)
+		goto fail;
+
 	len = fread(text, 1, size_guess, file);
 	if (ferror(file))
 		goto fail;
@@ -80,6 +81,7 @@ repeat:
 		fclose(file);
 		file = NULL;
 		free(text);
+		text = NULL;
 		size_guess *= 2;
 		goto repeat;
 	}
@@ -128,6 +130,7 @@ repeat:
 
 		t += strcspn(t, "\n");
 	}
+	free(text);
 	return 0;
 
 parse_error:

@@ -5,20 +5,18 @@
   Copyright (C) 2001-2002 Andreas Gruenbacher <a.gruenbacher@bestbits.at>
   Copyright (C) 2001-2002 Silicon Graphics, Inc.  All Rights Reserved.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or (at
-  your option) any later version.
+  This program is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 2 of the License, or
+  (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this library; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
-  USA.
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <limits.h>
@@ -28,6 +26,7 @@
 #include <getopt.h>
 #include <locale.h>
 #include <ctype.h>
+#include <libgen.h>
 
 #include <attr/xattr.h>
 #include "config.h"
@@ -66,14 +65,17 @@ int base64_digit(char c);
 
 const char *strerror_ea(int err)
 {
+#ifdef __linux__
+	/* The Linux kernel does not define ENOATTR, but maps it to ENODATA. */
 	if (err == ENODATA)
 		return _("No such attribute");
+#endif
 	return strerror(err);
 }
 
-static const char *xquote(const char *str)
+static const char *xquote(const char *str, const char *quote_chars)
 {
-	const char *q = quote(str);
+	const char *q = quote(str, quote_chars);
 	if (q == NULL) {
 		fprintf(stderr, "%s: %s\n", progname, strerror(errno));
 		exit(1);
@@ -119,7 +121,7 @@ int restore(const char *filename)
 			break;
 		line++;
 		if (strncmp(l, "# file: ", 8) != 0) {
-			if (filename) {
+			if (file != stdin) {
 				fprintf(stderr, _("%s: %s: No filename found "
 				                  "in line %d, aborting\n"),
 					progname, filename, backup_line);
@@ -275,7 +277,7 @@ int do_set(const char *path, const char *name, const char *value)
 
 	if (error < 0) {
 		fprintf(stderr, "%s: %s: %s\n",
-			progname, xquote(path), strerror_ea(errno));
+			progname, xquote(path, "\n\r"), strerror_ea(errno));
 		had_errors++;
 		return 1;
 	}

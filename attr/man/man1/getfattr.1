@@ -1,3 +1,25 @@
+.\" Copyright (C) 2002, 2004, 2007  Silicon Graphics, Inc. All rights reserved.
+.\" Copyright (C) 2002, 2004, 2007  Andreas Gruenbacher <agruen@suse.de>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual.  If not, see
+.\" <http://www.gnu.org/licenses/>.
+.\"
 .TH GETFATTR 1 "Extended Attributes" "Dec 2001" "File Utilities"
 .SH NAME
 getfattr \- get extended attributes of filesystem objects
@@ -37,7 +59,7 @@ The remaining lines (lines 2 to 4 above) show the
 and 
 .I value
 pairs associated with the specified file.
-.SS OPTIONS
+.SH OPTIONS
 .TP 4
 .BR \-n " \f2name\f1, " \-\-name "=\f2name\f1"
 Dump the value of the named extended attribute extended attribute.
@@ -57,7 +79,8 @@ while strings encoded as hexidecimal and base64 are prefixed with
 .TP
 .BR \-h ", " \-\-no-dereference
 Do not dereference symlinks. Instead of the file a symlink refers to, the
-symlink itself is examined.
+symlink itself is examined.  Unless doing a logical (\-L) traversal, do not
+traverse symlinks to directories.
 .TP
 .BR \-m " \f2pattern\f1, " \-\-match "=\f2pattern\f1"
 Only include attributes with names matching the regular expression
@@ -75,15 +98,16 @@ Do not strip leading slash characters ('/').
 The default behaviour is to strip leading slash characters.
 .TP
 .B \-\-only-values
-Dump out the extended attribute value(s) only.
+Dump out the raw extended attribute value(s) without encoding them.
 .TP
 .BR \-R ", " \-\-recursive
 List the attributes of all files and directories recursively.
 .TP
 .BR \-L ", " \-\-logical
 Logical walk, follow symbolic links to directories.
-The default behaviour is to follow symbolic link arguments, and to 
-skip symbolic links encountered in subdirectories.
+The default behaviour is to follow symbolic link arguments unless
+\-\-no\-dereference is given, and to skip symbolic links encountered in
+subdirectories.
 Only effective in combination with \-R.
 .TP
 .BR \-P ", " \-\-physical

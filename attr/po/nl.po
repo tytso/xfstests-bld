@@ -1,3 +1,19 @@
+# Copyright (C) 2004  Luk Claes <luk.claes@ugent.be>
+# Copyright (C) 2007  Free Software Foundation
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: attr 2.4.16-1\n"
@@ -6,7 +22,7 @@ msgstr ""
 "Last-Translator: Luk Claes <luk.claes@ugent.be>\n"
 "Language-Team: Debian l10n Dutch <debian-l10n-dutch@lists.debian.org>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=iso-8859-1\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../attr/attr.c:57
@@ -26,7 +42,7 @@ msgstr ""
 #: ../attr/attr.c:108
 #: ../attr/attr.c:117
 msgid "Only one of -s, -g, or -r allowed\n"
-msgstr "Slechts één van -s, -g of -r is toegestaan\n"
+msgstr "Slechts Ã©Ã©n van -s, -g of -r is toegestaan\n"
 
 #: ../attr/attr.c:99
 msgid "-V only allowed with -s\n"
@@ -68,7 +84,7 @@ msgstr "Kon \"%s\" niet verwijderen voor %s\n"
 
 #: ../attr/attr.c:226
 msgid "At least one of -s, -g, or -r is required\n"
-msgstr "Minstens één van -s, -g of -r is vereist\n"
+msgstr "Minstens Ã©Ã©n van -s, -g of -r is vereist\n"
 
 #: ../getfattr/getfattr.c:97
 #: ../setfattr/setfattr.c:69

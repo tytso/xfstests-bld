@@ -3,19 +3,18 @@
 
   Copyright (C) 2007 Andreas Gruenbacher <a.gruenbacher@computer.org>
 
-  This program is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Library General Public
-  License as published by the Free Software Foundation; either
-  version 2 of the License, or (at your option) any later version.
+  This program is free software; you can redistribute it and/or modify it under
+  the terms of the GNU Lesser General Public License as published by the
+  Free Software Foundation; either version 2.1 of the License, or (at
+  your option) any later version.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Library General Public License for more details.
+  This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+  License for more details.
 
-  You should have received a copy of the GNU Library General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+  You should have received a copy of the GNU Lesser General Public
+  License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <sys/types.h>
@@ -28,41 +27,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "config.h"
 #include "walk_tree.h"
-
-#ifndef HAVE_TELLDIR
-/*
- * We're doing something evil, evil, evil, but there's no way around
- * this because bionic doesn't implment telldir/seekdir, even though
- * those interfaces are in POSIX (sob).  Fortunately (unfortunately)
- * Apportable decided to copy this structure into a commonly used NDK
- * library, so it's unlikely the first field in this structure will
- * change.  See b/210372080 or bionic/libc/bionic/dirent.cpp and the
- * comments before the definition of struct DIR in that file for more
- * details.
- *
- * The real right answer is the telldir/seekdir functions that we're
- * implementing here should be moved to bionic....
- */
-struct DIR {
-  int fd_;
-};
-
-static long int my_telldir(struct DIR *dirp)
-{
-	return (long) lseek(dirp->fd_, 0, SEEK_CUR);
-}
-
-static void my_seekdir(DIR *dirp, long loc)
-{
-	(void) lseek(dirp->fd_, loc, SEEK_SET);
-}
-
-#define telldir my_telldir
-#define seekdir my_seekdir
-
-#endif
 
 struct entry_handle {
 	struct entry_handle *prev, *next;
@@ -92,10 +57,11 @@ static int walk_tree_visited(dev_t dev, ino_t ino)
 
 static int walk_tree_rec(const char *path, int walk_flags,
 			 int (*func)(const char *, const struct stat *, int,
-			 	     void *), void *arg, int depth)
+				     void *), void *arg, int depth)
 {
 	int follow_symlinks = (walk_flags & WALK_TREE_LOGICAL) ||
-			      (!(walk_flags & WALK_TREE_PHYSICAL) &&
+			      ((walk_flags & WALK_TREE_DEREFERENCE) &&
+			       !(walk_flags & WALK_TREE_PHYSICAL) &&
 			       depth == 0);
 	int have_dir_stat = 0, flags = walk_flags, err;
 	struct entry_handle dir;
@@ -113,7 +79,9 @@ static int walk_tree_rec(const char *path, int walk_flags,
 		return func(path, NULL, flags | WALK_TREE_FAILED, arg);
 	if (S_ISLNK(st.st_mode)) {
 		flags |= WALK_TREE_SYMLINK;
-		if (flags & WALK_TREE_DEREFERENCE) {
+		if ((flags & WALK_TREE_DEREFERENCE) ||
+		    ((flags & WALK_TREE_TOPLEVEL) &&
+		     (flags & WALK_TREE_DEREFERENCE_TOPLEVEL))) {
 			if (stat(path, &st) != 0)
 				return func(path, NULL,
 					    flags | WALK_TREE_FAILED, arg);
@@ -127,8 +95,15 @@ static int walk_tree_rec(const char *path, int walk_flags,
 		have_dir_stat = 1;
 	}
 	err = func(path, &st, flags, arg);
-	if ((flags & WALK_TREE_RECURSIVE) &&
-	    (S_ISDIR(st.st_mode) || (S_ISLNK(st.st_mode) && follow_symlinks))) {
+
+	/*
+	 * Recurse if WALK_TREE_RECURSIVE and the path is:
+	 *      a dir not from a symlink
+	 *      a link and follow_symlinks
+	 */
+        if ((flags & WALK_TREE_RECURSIVE) &&
+	   (!(flags & WALK_TREE_SYMLINK) && S_ISDIR(st.st_mode)) ||
+	   ((flags & WALK_TREE_SYMLINK) && follow_symlinks)) {
 		struct dirent *entry;
 
 		/*

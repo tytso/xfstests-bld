@@ -5,20 +5,18 @@
   Copyright (C) 2001-2002 Andreas Gruenbacher <a.gruenbacher@bestbits.at>
   Copyright (C) 2001-2002 Silicon Graphics, Inc.  All Rights Reserved.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or (at
-  your option) any later version.
+  This program is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 2 of the License, or
+  (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this library; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
-  USA.
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <stdio.h>
@@ -70,9 +68,9 @@ int had_errors;
 regex_t name_regex;
 
 
-static const char *xquote(const char *str)
+static const char *xquote(const char *str, const char *quote_chars)
 {
-	const char *q = quote(str);
+	const char *q = quote(str, quote_chars);
 	if (q == NULL) {
 		fprintf(stderr, "%s: %s\n", progname, strerror(errno));
 		exit(1);
@@ -94,8 +92,11 @@ int do_listxattr(const char *path, char *list, size_t size)
 
 const char *strerror_ea(int err)
 {
+#ifdef __linux__
+	/* The Linux kernel does not define ENOATTR, but maps it to ENODATA. */
 	if (err == ENODATA)
 		return _("No such attribute");
+#endif
 	return strerror(err);
 }
 
@@ -133,7 +134,7 @@ const char *encode(const char *value, size_t *size)
 		size_t n, extra = 0;
 
 		for (e=(char *)value; e < value + *size; e++) {
-			if (!isprint(*e))
+			if (*e == '\0' || *e == '\n' || *e == '\r')
 				extra += 4;
 			else if (*e == '\\' || *e == '"')
 				extra++;
@@ -147,7 +148,9 @@ const char *encode(const char *value, size_t *size)
 		e = encoded;
 		*e++='"';
 		for (n = 0; n < *size; n++, value++) {
-			if (!isprint(*value)) {
+			if (*value == '\0' && n + 1 == *size)
+				break;
+			if (*value == '\0' || *value == '\n' || *value == '\r') {
 				*e++ = '\\';
 				*e++ = '0' + ((unsigned char)*value >> 6);
 				*e++ = '0' + (((unsigned char)*value & 070) >> 3);
@@ -230,8 +233,8 @@ int print_attribute(const char *path, const char *name, int *header_printed)
 	if (opt_dump || opt_value_only) {
 		rval = do_getxattr(path, name, NULL, 0);
 		if (rval < 0) {
-			fprintf(stderr, "%s: ", xquote(path));
-			fprintf(stderr, "%s: %s\n", xquote(name),
+			fprintf(stderr, "%s: ", xquote(path, "\n\r"));
+			fprintf(stderr, "%s: %s\n", xquote(name, "\n\r"),
 				strerror_ea(errno));
 			return 1;
 		}
@@ -242,8 +245,8 @@ int print_attribute(const char *path, const char *name, int *header_printed)
 		}
 		rval = do_getxattr(path, name, value, value_size);
 		if (rval < 0) {
-			fprintf(stderr, "%s: ", xquote(path));
-			fprintf(stderr, "%s: %s\n", xquote(name),
+			fprintf(stderr, "%s: ", xquote(path, "\n\r"));
+			fprintf(stderr, "%s: %s\n", xquote(name, "\n\r"),
 				strerror_ea(errno));
 			return 1;
 		}
@@ -268,7 +271,7 @@ int print_attribute(const char *path, const char *name, int *header_printed)
 	}
 
 	if (!*header_printed && !opt_value_only) {
-		printf("# file: %s\n", xquote(path));
+		printf("# file: %s\n", xquote(path, "\n\r"));
 		*header_printed = 1;
 	}
 
@@ -278,9 +281,9 @@ int print_attribute(const char *path, const char *name, int *header_printed)
 		const char *enc = encode(value, &length);
 		
 		if (enc)
-			printf("%s=%s\n", xquote(name), enc);
+			printf("%s=%s\n", xquote(name, "=\n\r"), enc);
 	} else
-		puts(xquote(name));
+		puts(xquote(name, "=\n\r"));
 
 	return 0;
 }
@@ -297,7 +300,7 @@ int list_attributes(const char *path, int *header_printed)
 
 	length = do_listxattr(path, NULL, 0);
 	if (length < 0) {
-		fprintf(stderr, "%s: %s: %s\n", progname, xquote(path),
+		fprintf(stderr, "%s: %s: %s\n", progname, xquote(path, "\n\r"),
 			strerror_ea(errno));
 		had_errors++;
 		return 1;
@@ -312,7 +315,7 @@ int list_attributes(const char *path, int *header_printed)
 
 	length = do_listxattr(path, list, list_size);
 	if (length < 0) {
-		perror(xquote(path));
+		perror(xquote(path, "\n\r"));
 		had_errors++;
 		return 1;
 	}
@@ -351,21 +354,22 @@ int do_print(const char *path, const struct stat *stat, int walk_flags,
 	     void *unused)
 {
 	int header_printed = 0;
+	int err = 0;
 
 	if (walk_flags & WALK_TREE_FAILED) {
-		fprintf(stderr, "%s: %s: %s\n", progname, xquote(path),
+		fprintf(stderr, "%s: %s: %s\n", progname, xquote(path, "\n\r"),
 			strerror(errno));
 		return 1;
 	}
 
 	if (opt_name)
-		print_attribute(path, opt_name, &header_printed);
+		err = print_attribute(path, opt_name, &header_printed);
 	else
-		list_attributes(path, &header_printed);
+		err = list_attributes(path, &header_printed);
 
 	if (header_printed)
 		puts("");
-	return 0;
+	return err;
 }
 
 void help(void)

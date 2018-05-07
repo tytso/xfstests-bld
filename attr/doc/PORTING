@@ -72,7 +72,7 @@
 
    # ./Makepkgs
    this script generates all of the packages supported - each has a
-   subdirectory below attr/build where knowledge specific to each
+   subdirectory below attr/package where knowledge specific to each
    package type is maintained.
 
    The script produces logs of each stage of the build (this info is
@@ -80,7 +80,7 @@
 
 	attr/Logs/configure	- `autoconf; ./configure' output
 	attr/Logs/default	- `make default' output
-	attr/Logs/dist		- `make build dist' output
+	attr/Logs/dist		- `make package dist' output
 
    On successful completion, the script echoes the names of packages
    successfully generated.
