@@ -6,7 +6,7 @@ BUILD_DIR=build-release
 
 function usage()
 {
-    echo "Usage: build-all-arches: [--readme-only]"
+    echo "Usage: build-all-arches: [--readme-only] [--resume-arch <arch>]"
     exit 1
 }
 
@@ -29,7 +29,7 @@ done
 
 mkdir -p out_dir
 
-(cd $dir ; ./get-versions ) > git-versions
+(cd $BUILD_DIR ; ./get-versions ) > git-versions
 
 release=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
 
