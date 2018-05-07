@@ -67,13 +67,8 @@ function upload_file()
     fi
 }
 
-sign_file root_fs.arm64.tar.gz
-upload_file root_fs.arm64.tar.gz
-
-exit 0
-
 for i in "${FILES[@]}" ; do
-#    sign_file $i
+    sign_file $i
     echo $i
 done
 
@@ -82,29 +77,3 @@ for i in "${FILES[@]}" ; do
 done
 
 exit 0
-
-
-/bin/rm -f $README.sig
-gpg2 --sign --detach $README
-
-/bin/rm -f $DIR_32/root_fs.img.i386.sig $DIR_32/root_fs.img.i386
-cp $DIR_32/root_fs.img $DIR_32/root_fs.img.i386
-gpg2 --sign --detach $DIR_32/root_fs.img.i386
-
-/bin/rm -f $DIR_64/root_fs.img.x86_64.sig $DIR_64/root_fs.img.x86_64
-cp $DIR_64/root_fs.img $DIR_64/root_fs.img.x86_64
-gpg2 --sign --detach $DIR_64/root_fs.img.x86_64
-
-/bin/rm -f $DIR_ARMHF/root_fs.armhf.tar.gz.sig $DIR_ARMHF/root_fs.armhf.tar.gz
-cp $DIR_ARMHF/root_fs.tar.gz $DIR_ARMHF/root_fs.armhf.tar.gz
-gunzip < $DIR_ARMHF/root_fs.armhf.tar.gz > /tmp/armhf_root_fs.tar
-gpg2 --sign --detach /tmp/armhf_root_fs.tar
-mv /tmp/armhf_root_fs.tar.sig $DIR_ARMHF/root_fs.armhf.tar.sig
-
-gpg2 --sign --detach $DIR_ARMHF/root_fs.armhf.tar.gz
-
-kup put $README $README.sig  $DEST/README
-kup put $DIR_32/root_fs.img.i386 $DIR_32/root_fs.img.i386.sig   $DEST/root_fs.img.i386
-kup put $DIR_64/root_fs.img.x86_64 $DIR_64/root_fs.img.x86_64.sig   $DEST/root_f
-s.img.x86_64
-kup put $DIR_ARMHF/root_fs.armhf.tar.gz $DIR_ARMHF/root_fs.armhf.tar.sig   $DEST/armhf_root_fs.tar.gz
