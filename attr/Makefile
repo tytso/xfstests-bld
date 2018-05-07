@@ -36,7 +36,7 @@ LDIRT = config.log .dep config.status config.cache confdefs.h conftest* \
 	Logs/* built .census install.* install-dev.* install-lib.* *.gz
 
 LIB_SUBDIRS = include libmisc libattr
-TOOL_SUBDIRS = attr getfattr setfattr examples test m4 man doc po debian package
+TOOL_SUBDIRS = attr getfattr setfattr
 
 SUBDIRS = $(LIB_SUBDIRS) $(TOOL_SUBDIRS)
 
