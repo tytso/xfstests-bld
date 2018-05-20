@@ -1,3 +1,8 @@
+# ext4/304 fails for all configurations, and this appears to be at
+# test or fio bug.
+#
+ext4/304
+
 # generic/042 and generic/392 are failing because ext4 forces the
 # resuolution of all delayed allocation writes before allowing the
 # punch operation to proceed.  We probably want to see if we can avoid
@@ -23,9 +28,11 @@ generic/223
 # kernel versions at least up to 4.15.  The patch to fix it is being
 # bikeshedded, with no obvious conclusion.  So let's just suppress the
 # test for now since the failure is just noise.
+# Patch subject: Return bytes transferred for partial direct I/O
 generic/472
 
-# ext4/304 fails for all configurations, and this appears to be at
-# test or fio bug.
-#
-ext4/304
+# The proposed fix for generic/484, "locks: change POSIX lock
+# ownership on execve when files_struct is displaced" would break NFS
+# Jeff Layton and Eric Biederman have some ideas for how to address it
+# but fixing it is non-trivial
+generic/484
