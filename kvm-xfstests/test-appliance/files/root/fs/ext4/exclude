@@ -24,13 +24,6 @@ generic/046
 # It is a flaky test for some configurations, so skip it.
 generic/223
 
-# generic/472 is a test which fails for all file systems and all
-# kernel versions at least up to 4.15.  The patch to fix it is being
-# bikeshedded, with no obvious conclusion.  So let's just suppress the
-# test for now since the failure is just noise.
-# Patch subject: Return bytes transferred for partial direct I/O
-generic/472
-
 # The proposed fix for generic/484, "locks: change POSIX lock
 # ownership on execve when files_struct is displaced" would break NFS
 # Jeff Layton and Eric Biederman have some ideas for how to address it
