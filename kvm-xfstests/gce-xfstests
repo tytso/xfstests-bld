@@ -429,6 +429,44 @@ case "$1" in
 	"$DIR/test-appliance/gce-copy-image" "$@"
 	exit $?
 	;;
+    upload-kernel)
+	shift
+	while (( $# >= 1 )); do
+	    case $1 in
+		--no-action)
+		    NO_ACTION="echo "
+		    ;;
+		--kernel) shift
+		    GCE_KERNEL="$1"
+		    ;;
+		--gs-bucket) shift
+		    GS_BUCKET="$1"
+		    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+			echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+			exit 1
+		    fi
+		    ;;
+		*)
+		    break
+		    ;;
+	    esac
+	    shift
+	done
+	if test -d "$GCE_KERNEL" ; then
+	    GCE_KERNEL="$GCE_KERNEL/arch/x86/boot/bzImage"
+	fi
+	if test -n "$1" ; then
+	    GS_KERNEL=gs://$GS_BUCKET/$1
+	else
+	    GS_KERNEL=gs://$GS_BUCKET/bzImage
+	fi
+	if ! test -f "$GCE_KERNEL" ; then
+	    echo "Can't find kernel at $GCE_KERNEL"
+	    exit 1
+	fi
+	$NO_ACTION gsutil cp $GCE_KERNEL $GS_KERNEL
+	exit $?
+	;;
     launch-ltm)
 	shift
 	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
