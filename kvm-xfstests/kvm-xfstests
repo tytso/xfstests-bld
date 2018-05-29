@@ -161,3 +161,5 @@ else
     sed -i -e '/^-------------------- Summary report/,$d' $LOGFILE
     echo "logfile in $LOGFILE"
 fi
+# Fix line wrap from qemu
+echo -ne '\e[?7h'
