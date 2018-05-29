@@ -41,6 +41,7 @@ MAKELOG
 /attr/include/attr
 /attr/include/builddefs
 /attr/include/config.h
+/attr/libtool
 /attr/po/attr.pot
 /attr/setfattr/setfattr
 /bld/
