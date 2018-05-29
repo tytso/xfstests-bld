@@ -19,6 +19,7 @@ PACKAGES="bash-completion \
 	"btrfs-progs$BACKPORTS" \
 	bzip2 \
 	cpio \
+	cryptsetup \
 	curl \
 	dc \
 	dbench \

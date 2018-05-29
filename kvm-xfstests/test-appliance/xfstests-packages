@@ -4,6 +4,7 @@ bsdmainutils
 btrfs-progs
 bzip2
 cpio
+cryptsetup
 dc
 dbench
 dbus
