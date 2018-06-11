@@ -25,7 +25,7 @@ fi
 if test -d fsverity
 then
     cd fsverity
-    ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/keyutils.ver
+    ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/fsverity.ver
     cd ..
 fi
 
