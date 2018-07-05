@@ -65,6 +65,7 @@ apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
 kexec-tools	kexec-tools/load_kexec	boolean	true
+keyboard-configuration	keyboard-configuration/variant	select	English (US)
 EOF
 apt-get install -y $PACKAGES
 apt-get clean
