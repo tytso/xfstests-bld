@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if test -f /run/test-env ; then
+    . /run/test-env
+fi
+
+if test -z "$FSTESTSTR" ; then
+    exit 1
+fi
+
+exec stress $FSTESTSTR
+

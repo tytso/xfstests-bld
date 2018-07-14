@@ -1,7 +1,7 @@
 #!/bin/bash
 
 API_MAJOR=1
-API_MINOR=3
+API_MINOR=4
 . /root/test-config
 . /root/runtests_utils
 
@@ -246,6 +246,10 @@ touch "$RESULTS/fstest-completed"
 
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
 cp /proc/meminfo "$RESULTS/meminfo.before"
+
+if test -n "$FSTESTSTR" ; then
+    systemctl start stress
+fi
 
 while test -n "$FSTESTCFG"
 do
@@ -493,6 +497,13 @@ END	{ if (NR > 0) {
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $i: $TESTNAME "
 done
+
+if test -n "$FSTESTSTR" ; then
+    [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.stress"
+    cp /proc/meminfo "$RESULTS/meminfo.stress"
+    systemctl status stress
+    systemctl stop stress
+fi
 
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.after"
 cp /proc/meminfo "$RESULTS/meminfo.after"

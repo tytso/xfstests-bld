@@ -3,7 +3,7 @@
 FSTESTCFG=""
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
-API="1.3"
+API="1.4"
 
 ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
 done_cleanup=false
@@ -205,6 +205,8 @@ no-zero
 numa:
 pmem-device
 preemptible
+stress-mem:
+stress-opts:
 testrunid:
 update-files
 update-xfstests
@@ -487,6 +489,26 @@ while (( $# >= 1 )); do
 	    supported_flavors kvm
 	    unset DO_ARCHIVE
 	    ;;
+	--stress-opts) shift
+	    supported_flavors kvm gce
+	    stress_opts=$(echo "$1" | sed -e 's/ /,/g')
+	    if test -n "$FSTESTSTR" ; then
+		FSTESTSTR="$FSTESTSTR $stress_opts"
+	    else
+		FSTESTSTR="$stress_opts"
+	    fi
+	    unset stress_opts
+	    ;;
+	--stress-mem) shift
+	    supported_flavors kvm gce
+	    stress_opts="-m,1,--vm-bytes,$1"
+	    if test -n "$FSTESTSTR" ; then
+		FSTESTSTR="$FSTESTSTR $stress_opts"
+	    else
+		FSTESTSTR="$stress_opts"
+	    fi
+	    unset stress_opts
+	    ;;
 	--)
 	    shift
 	    break
@@ -748,3 +770,7 @@ if test -z "$NO_VIRTIO_RNG" ; then
 fi
 
 ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
+
+if test -n "$FSTESTSTR" ; then
+    ARG="$ARG fsteststr=$FSTESTSTR"
+fi

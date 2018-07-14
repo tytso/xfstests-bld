@@ -32,6 +32,7 @@ python2.7
 python-future
 openssl
 strace
+stress
 systemd
 systemd-sysv
 time

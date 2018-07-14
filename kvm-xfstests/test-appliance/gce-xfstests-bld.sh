@@ -54,6 +54,7 @@ PACKAGES="bash-completion \
 	python-future \
 	python-setuptools \
 	strace \
+	stress \
 	time \
 	xz-utils"
 

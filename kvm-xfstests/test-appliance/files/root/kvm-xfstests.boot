@@ -22,6 +22,7 @@ FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
 FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
 FSTESTTYP=$(parse fstesttyp)
 FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
+FSTESTSTR=$(parse fsteststr | sed -e 's/\,/ /g')
 timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
@@ -34,6 +35,7 @@ FSTESTSET="$FSTESTSET"
 FSTESTOPT="$FSTESTOPT"
 FSTESTTYP="$FSTESTTYP"
 FSTESTAPI="$FSTESTAPI"
+FSTESTSTR="$FSTESTSTR"
 timezone="$timezone"
 MNTOPTS="$MNTOPTS"
 CMD="$CMD"
@@ -82,6 +84,7 @@ export FSTESTSET
 export FSTESTOPT
 export FSTESTTYP
 export FSTESTAPI
+export FSTESTSTR
 export FSTESTEXC
 export MNTOPTS
 export FSTEST_ARCHIVE
