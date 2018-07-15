@@ -129,7 +129,7 @@ chmod 600 "$VDH"
 mkdir -p /tmp/kvm-xfstests-$USER
 
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
-	-machine type=pc,accel=kvm:tcg \
+	-machine type=pc,accel=kvm:tcg $CPU_TYPE \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \

@@ -179,6 +179,7 @@ aio:
 archive
 bucket-subdir:
 cache:
+cpu-type:
 email:
 gce-zone:
 gs-bucket:
@@ -341,6 +342,10 @@ while (( $# >= 1 )); do
 		    echo "Invalid number of NUMA nodes: $NUMA_NUM"
 		    exit 1
 	    esac
+	    ;;
+	--cpu-type) shift
+	    supported_flavors kvm
+	    CPU_TYPE="$1"
 	    ;;
 	--no-action)
 	    supported_flavors kvm gce
@@ -762,6 +767,14 @@ if test -n "$NUMA_NUM" ; then
     for i in $(seq 2 "$NUMA_NUM") ; do
 	NUMA="$NUMA -numa node"
     done
+fi
+
+if test -n "$CPU_TYPE" ; then
+    if test "$CPU_TYPE" = none ; then
+	CPU_TYPE=
+    else
+	CPU_TYPE="-cpu $CPU_TYPE"
+    fi
 fi
 
 if test -z "$NO_VIRTIO_RNG" ; then
