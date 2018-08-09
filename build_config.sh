@@ -7,7 +7,7 @@ XFSTESTS_GIT=https://github.com/tytso/xfstests
 XFSTESTS_COMMIT=34977a44c0d813e603c64567cc9d8b1c8ef32edd
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-XFSPROGS_COMMIT=v4.16.0
+XFSPROGS_COMMIT=v4.17.0
 
 FIO_GIT=http://git.kernel.dk/fio.git
 FIO_COMMIT=fio-3.2
