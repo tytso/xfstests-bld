@@ -10,6 +10,14 @@ function usage()
     exit 1
 }
 
+function gen_README()
+{
+	sed -e "s;@MIRROR@;$MIRROR;" \
+		-e "s/@XFSTESTS_RELEASE@/$release/" \
+		-e "/@VERFILE@/r git-versions" \
+		< README.in | sed -e '/^@VERFILE@$/d' > out_dir/README
+}
+
 while [ "$1" != "" ]; do
     case $1 in
 	--readme-only)
@@ -28,17 +36,14 @@ while [ "$1" != "" ]; do
 done
 
 mkdir -p out_dir
+rm -f out_dir/README
 
 (cd $BUILD_DIR ; ./get-versions ) > git-versions
 
 release=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
 
-sed -e "s;@MIRROR@;$MIRROR;" \
-	-e "s/@XFSTESTS_RELEASE@/$release/" \
-	-e "/@VERFILE@/r git-versions" \
-	< README.in | sed -e '/^@VERFILE@$/d' > out_dir/README
-
 if test "$README_ONLY" = "yes" ; then
+    gen_README
     exit 0
 fi
 
@@ -85,6 +90,9 @@ for i in "${ARCH_LIST[@]}" ; do
     cp $BUILD_DIR/kvm-xfstests/test-appliance/$fn out_dir/$artifact
     cp $BUILD_DIR/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
     cp $BUILD_DIR/xfstests/git-versions out_dir/git-versions-$i
+    if test ! -f out_dir/README ; then
+	gen_README
+    fi
 done
 
 echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Finished"
