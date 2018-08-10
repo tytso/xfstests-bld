@@ -32,7 +32,7 @@ EXP_INST="xfstests-exp-$DATECODE"
 EXP_DISK="xfstests-exp-$DATECODE"
 IMG_DISK="xfstests-img-$DATECODE"
 TMP_DISK="xfstests-tmp-$DATECODE"
-DEB_IMAGE_FAMILY=debian-8
+DEB_IMAGE_FAMILY=debian-9
 DEB_IMAGE_PROJECT=debian-cloud
 
 if ! test -f $TARBALL ; then
