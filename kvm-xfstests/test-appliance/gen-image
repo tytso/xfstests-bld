@@ -120,6 +120,9 @@ if test $DO_NETWORKING = "yes"; then
     PACKAGES="$PACKAGES $(cat net-packages)"
 fi
 PACKAGES="$PACKAGES $(cat xfstests-packages) $LIBSSL"
+if test -f xfstests-packages.$SUITE ; then
+    PACKAGES="$PACKAGES $(cat xfstests-packages.$SUITE)"
+fi
 PACKAGES=$(echo $PACKAGES | sed 's/ /,/g')
 case $PACKAGES in
      apt,*|*,apt,*|*,apt)	EXCLUDE="" ;;
@@ -347,12 +350,13 @@ fix_symlinks
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
     -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
 	$ROOTDIR/lib/systemd/system/serial-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
     -e 's/After=rc.local.service/After=network.target/' \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
-run_in_chroot "dpkg --purge gcc-4.7-base gcc-4.8-base"
 run_in_chroot "systemctl enable kvm-xfstests.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS1.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS2.service"

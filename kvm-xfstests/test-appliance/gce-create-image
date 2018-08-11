@@ -58,8 +58,8 @@ BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
 IMAGE_FAMILY=debian-9
 IMAGE_PROJECT=debian-cloud
-#BACKPORTS=/stretch-backports
-BACKPORTS=
+BACKPORTS=/stretch-backports
+SUITE=stretch
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
@@ -71,14 +71,16 @@ fi
 while [ "$1" != "" ];
 do
     case $1 in
-	--jessie)
-	    IMAGE_FAMILY=debian-8
-	    IMAGE_PROJECT=debian-cloud
-	    BACKPORTS=/jessie-backports
-	    ;;
 	--stretch)
 	    IMAGE_FAMILY=debian-9
 	    IMAGE_PROJECT=debian-cloud
+	    BACKPORTS=/stretch-backports
+	    SUITE=stretch
+	    ;;
+	--buster)
+	    IMAGE_FAMILY=debian-9
+	    IMAGE_PROJECT=debian-cloud
+	    SUITE=buster
 	    BACKPORTS=
 	    ;;
 	-I) shift
@@ -96,7 +98,7 @@ do
 done
 
 GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
-METADATA="startup-script-url=$GS_SCRIPT"
+METADATA="startup-script-url=$GS_SCRIPT suite=$SUITE"
 GCE_MACHTYPE=n1-standard-1
 
 td=$(mktemp -d /tmp/gce-create.XXXXXXXX)

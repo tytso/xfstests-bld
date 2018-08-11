@@ -40,7 +40,6 @@ PACKAGES="bash-completion \
 	"libcomerr2$BACKPORTS" \
 	libsasl2-modules \
 	"libss2$BACKPORTS" \
-	libgdbm3 \
 	liblzo2-2 \
 	libkeyutils1 \
 	lighttpd \
@@ -58,10 +57,107 @@ PACKAGES="bash-completion \
 	time \
 	xz-utils"
 
+if test -z "$MDS_PREFIX"
+then
+    declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1
+    declare -r MDS_TRIES=${MDS_TRIES:-100}
+fi
+
+function print_metadata_value() {
+  local readonly tmpfile=$(mktemp)
+  http_code=$(curl -f "${1}" -H "Metadata-Flavor: Google" -w "%{http_code}" \
+    -s -o ${tmpfile} 2>/dev/null)
+  local readonly return_code=$?
+  # If the command completed successfully, print the metadata value to stdout.
+  if [[ ${return_code} == 0 && ${http_code} == 200 ]]; then
+    cat ${tmpfile}
+  fi
+  rm -f ${tmpfile}
+  return ${return_code}
+}
+
+function print_metadata_value_if_exists() {
+  local return_code=1
+  local readonly url=$1
+  print_metadata_value ${url}
+  return_code=$?
+  return ${return_code}
+}
+
+function get_metadata_value() {
+  local readonly varname=$1
+  # Print the instance metadata value.
+  print_metadata_value_if_exists ${MDS_PREFIX}/instance/${varname}
+  return_code=$?
+  # If the instance doesn't have the value, try the project.
+  if [[ ${return_code} != 0 ]]; then
+    print_metadata_value_if_exists ${MDS_PREFIX}/project/${varname}
+    return_code=$?
+  fi
+  return ${return_code}
+}
+
+function get_metadata_value_with_retries() {
+  local return_code=1  # General error code.
+  for ((count=0; count <= ${MDS_TRIES}; count++)); do
+    get_metadata_value $1
+    return_code=$?
+    case $return_code in
+      # No error.  We're done.
+      0) return ${return_code};;
+      # Failed to resolve host or connect to host.  Retry.
+      6|7) sleep 0.3; continue;;
+      # A genuine error.  Exit.
+      *) return ${return_code};
+    esac
+  done
+  # Exit with the last return code we got.
+  return ${return_code}
+}
+
+function gce_attribute() {
+	get_metadata_value_with_retries attributes/$1
+}
+
 touch /run/gce-xfstests-bld
 
-apt-get update
-apt-get -y --with-new-pkgs upgrade
+cp -f /lib/systemd/system/serial-getty@.service \
+	/etc/systemd/system/telnet-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
+    -e 's/After=rc.local.service/After=network.target/' \
+	/etc/systemd/system/telnet-getty@.service
+
+systemctl enable telnet-getty@ttyS1.service
+systemctl enable telnet-getty@ttyS2.service
+systemctl enable telnet-getty@ttyS3.service
+systemctl start telnet-getty@ttyS1.service
+systemctl start telnet-getty@ttyS2.service
+systemctl start telnet-getty@ttyS3.service
+
+NEW_SUITE=$(gce_attribute suite)
+OLD_SUITE=$(cat /etc/apt/sources.list | grep ^deb | grep -v updates | head -1 | awk '{print $3}')
+if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
+    sed -e "s/$OLD_SUITE/$NEW_SUITE/g" < /etc/apt/sources.list > /etc/apt/sources.list.new
+    mv /etc/apt/sources.list.new /etc/apt/sources.list
+    apt-get update
+    apt-get dist-upgrade
+    DEBIAN_FRONTEND=noninteractive apt-get \
+		   -o Dpkg::Options::="--force-confnew" \
+		   --force-yes -fuy dist-upgrade
+    apt-get -fuy autoremove
+    logger -s "Update to $NEW_SUITE complete"
+else
+    apt-get update
+    apt-get -y --with-new-pkgs upgrade
+fi
+
+if test "$NEW_SUITE" = buster ; then
+    PACKAGES="$PACKAGES libgdbm5"
+else
+    PACKAGES="$PACKAGES libgdbm3"
+fi
+
 apt-get install -y debconf-utils
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
@@ -129,12 +225,14 @@ mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
 chmod 755 /root
 
-cp /lib/systemd/system/serial-getty@.service \
+cp -f /lib/systemd/system/serial-getty@.service \
 	/etc/systemd/system/telnet-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
     -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
 	/lib/systemd/system/serial-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
     -e 's/After=rc.local.service/After=network.target/' \
 	/etc/systemd/system/telnet-getty@.service
 
