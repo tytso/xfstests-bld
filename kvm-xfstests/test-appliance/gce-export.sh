@@ -54,17 +54,12 @@ if test -z "$SKIP_UUID" ; then
     image_dev=/dev/disk/by-id/google-image-disk-part1
     old_uuid=$(tune2fs -l "$image_dev" | grep "Filesystem UUID:" | awk '{print $3}')
     new_uuid=$(uuidgen)
+    e2fsck -fy "$image_dev"
+
+    echo "Changing UUID from $old_uuid to $new_uuid"
+    tune2fs -U "$new_uuid" "$image_dev"
     e2fsck -fy -E discard "$image_dev"
 
-# this doesn't work with tune2fs 1.42.12, which is used by jessie by default
-# tune2fs -U "$new_uuid" /dev/disk/by-id/google-image-disk-part1
-#
-# So we do this instead --- which might not work well in next verison of
-# debian if we turn on metadata_csum by default.  So when we switch to Debian
-# Stretch (Debian 9.0), we will need to  switch back to the tune2fs command
-    debugfs -R "ssv uuid $new_uuid" -w "$image_dev"
-
-    e2fsck -fy "$image_dev"
     mount "$image_dev" /mnt/image-disk
     sed -ie "s/$old_uuid/$new_uuid/" /mnt/image-disk/etc/fstab
     sed -ie "s/$old_uuid/$new_uuid/" /mnt/image-disk/boot/grub/grub.cfg
