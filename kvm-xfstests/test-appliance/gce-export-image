@@ -34,6 +34,7 @@ IMG_DISK="xfstests-img-$DATECODE"
 TMP_DISK="xfstests-tmp-$DATECODE"
 DEB_IMAGE_FAMILY=debian-9
 DEB_IMAGE_PROJECT=debian-cloud
+NO_ACTION=
 
 if ! test -f $TARBALL ; then
    echo $TARBALL does not exist!
@@ -64,6 +65,7 @@ do
 		   ;;
 	--skip-uuid) SKIP_UUID="yes" ;;
 	--debug) DO_DEBUG="yes" ;;
+	--no-action) NO_ACTION="echo" ;;
 	*)
 	    echo "unknown option: $1"
 	    exit 1
@@ -127,14 +129,14 @@ fi
 gsutil cp $t $GS_SCRIPT
 /bin/rm -f $t
 
-gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
-gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
-gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
 
-gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "default" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --metadata "^ ^$METADATA" \
@@ -142,6 +144,11 @@ gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$EXP_DISK"
 
 echo "Image export will be to: $GS_TAR"
+
+if test -n "$NO_ACTION" ; then
+    exit 0
+fi
+
 echo -n "Waiting for creation image export"
 
 cnt=0
