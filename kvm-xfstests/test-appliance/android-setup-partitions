@@ -259,7 +259,8 @@ get_fs_size()
 # userdata partition.  That isn't necessary, since resizing the underlying
 # partition to a size smaller than the dm device just causes I/O requests to the
 # truncated region to fail, and normally there should be no I/O occurring beyond
-# the end of the filesystem.
+# the end of the filesystem.  Exception: this makes 'blkid' stop reporting
+# information about the device, unless blkid's -p and -S options are used.
 shrink_userdata_partition()
 {
     local fs_size part_size
@@ -380,7 +381,9 @@ else
 fi
 
 # Type of the userdata filesystem, e.g. ext4 or f2fs
-USERDATA_FS_TYPE=$(blkid -s TYPE -o value "$USERDATA_FS_DEV")
+USERDATA_FS_TYPE=$(blkid -s TYPE -o value \
+		   -p -S $(get_partition_size "$USERDATA_RAW_DEV") \
+		   "$USERDATA_FS_DEV")
 
 if ! all_partitions_present ; then
     # Free up as much space as we can, then create the partitions.
