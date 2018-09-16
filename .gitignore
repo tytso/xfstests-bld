@@ -45,6 +45,7 @@ MAKELOG
 /attr/po/attr.pot
 /attr/setfattr/setfattr
 /bld/
+/blktests/
 /dmapi/doc/CHANGES.gz
 /dmapi/include/builddefs
 /dmapi/include/xfs

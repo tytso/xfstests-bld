@@ -44,6 +44,13 @@ then
     cd ..
 fi
 
+if test -d blktests
+then
+    cd blktests
+    ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/blktests.ver
+    cd ..
+fi
+
 if test -d go/src/github.com/google/syzkaller
 then
     cd go/src/github.com/google/syzkaller

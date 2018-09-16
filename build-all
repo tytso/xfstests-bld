@@ -68,6 +68,7 @@ function set_skip_all () {
     SKIP_STRESS_NG=yes
     SKIP_UTIL_LINUX=yes
     SKIP_SYZKALLER=yes
+    SKIP_BLKTESTS=yes
 }
 
 # Optional components
@@ -75,6 +76,7 @@ function set_skip_all () {
 [ -d stress-ng ] || SKIP_STRESS_NG=yes
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
 [ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
+[ -d blktests ] || SKIP_BLKTESTS=yes
 
 MAKE_CLEAN=":"
 
@@ -153,6 +155,10 @@ while [ "$1" != "" ]; do
 	--kvm-utils-only)
 	    set_skip_all
 	    unset SKIP_KVM_UTILS
+	    ;;
+	--blktests-only)
+	    set_skip_all
+	    unset SKIP_BLKTESTS
 	    ;;
 	--clean-first)
 	    MAKE_CLEAN="make clean"
@@ -405,6 +411,12 @@ if test -z "$SKIP_SYZKALLER"; then
     (cd go/src/github.com/google/syzkaller; \
      ver=$(git describe --always --dirty); echo "syzkaller	$ver ($(git log -1 --pretty=%cD))" > ../../../../../syzkaller.ver ; \
      $MAKE_CLEAN ; make $J execprog executor ; cp bin/*/syz-* $DESTDIR/bin)
+fi
+
+if test -z "$SKIP_BLKTESTS"; then
+    build_start "blktests"
+    (cd blktests ; $MAKE_CLEAN ; make ; \
+     ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../blktests.ver)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
