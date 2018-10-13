@@ -1,0 +1,11 @@
+ext4/004	# dump/restore doesn't handle the bigalloc feature
+
+# ext4/033 creates a special file system using dmhugedisk to test for
+# inode overflow when online resizing.  With a bigalloc config, this takes
+# too much space, so test VM will hang or abort the test run.  We
+# don't need to test this for all file system configs, so just skip it here.
+ext4/033
+
+# This takes a *long* time and doesn't add much value to run on all
+# configurations.  So we're going to be selective where we run it.
+generic/027

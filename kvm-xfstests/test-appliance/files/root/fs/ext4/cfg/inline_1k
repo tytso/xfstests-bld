@@ -1,0 +1,5 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-I 256 -b 1024 -O inline_data,metadata_csum,64bit"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 4k block w/inline"
+
