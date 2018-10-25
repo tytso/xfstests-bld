@@ -66,11 +66,6 @@ cp bld/lib/client.txt xfstests/lib
 cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
 ln -s libimaevm.so.0.0.0 xfstests/lib/libimaevm.so.0
 rm xfstests/bin/compile_et xfstests/bin/mk_cmds
-if test -d blktests ; then
-    rm -rf xfstests/blktests
-    cp -r blktests xfstests
-    rm -rf xfstests/blktests/.git
-fi
 for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
 do
     ln -s ../$i xfstests/bin
@@ -78,6 +73,7 @@ done
 echo "STRIP xfstests/*"
 find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
 echo "TAR xfstests"
-find xfstests -print0 | LC_ALL=C sort -z | \
+find xfstests blktests -path blktests/.git -prune -o -print0 | \
+    LC_ALL=C sort -z | \
     tar c --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" \
     --mode=go+u-w --null --no-recursion -T - | $GZIP > xfstests.tar.gz
