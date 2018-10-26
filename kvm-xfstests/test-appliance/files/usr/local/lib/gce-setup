@@ -40,6 +40,14 @@ case "$kexec" in
 	;;
 esac
 
+tarmodules=$(gce_attribute tarmodules)
+
+case "$tarmodules" in
+    *-onetime)
+	gsutil rm "$tarmodules" &
+	;;
+esac
+
 wait
 
 if test ! -f /results/setup-syslog

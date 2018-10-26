@@ -571,10 +571,7 @@ case "$OVERRIDE_KERNEL" in
 	;;
     "")
 	GS_KERNEL=gs://$GS_BUCKET/bzImage
-	if test -z "$GCE_KERNEL"
-	then
-	    GCE_KERNEL=$KERNEL
-	fi
+	GCE_KERNEL=$KERNEL
 	;;
     *)
 	GCE_KERNEL=$OVERRIDE_KERNEL
@@ -669,6 +666,53 @@ then
     fi
     ARG="$ARG tarfiles=$GS_FILES"
     rm -f "$LOCAL_FILES"
+fi
+
+case "$OVERRIDE_MODULES" in
+    gs://*)
+	GS_MODULES="$OVERRIDE_MODULES"
+	GCE_MODULES=""
+	;;
+    "")
+	if test -n "$MODULES" ; then
+	    GS_MODULES="gs://$GS_BUCKET/modules.tar.xz"
+	    GCE_MODULES="$MODULES";
+	fi
+	;;
+    *)
+	GCE_MODULES="$OVERRIDE_MODULES"
+	if test -z "$OVERRIDE_MODULES" ; then
+	    GS_MODULES="gs://$GS_BUCKET/modules.tar.xz"
+	elif test -n "$RUN_ON_LTM"; then
+	    # every shard will have to download the image. changing the
+	    # -onetime tag is necessary to not cause the first shard to attempt
+	    # to delete the image.
+	    GS_MODULES="gs://$GS_BUCKET/modules-$TESTRUNID-onerun"
+	else
+	    GS_MODULES="gs://$GS_BUCKET/modules-$TESTRUNID-onetime"
+	fi
+	;;
+esac
+
+if [ -z "$NO_ACTION" -a -n "$GCE_MODULES" ] || \
+   [ -n "$RUN_ON_LTM" -a -n "$GCE_MODULES" ]
+then
+    if ! test -f "$GCE_MODULES"
+    then
+	echo "Can't find modules at $GCE_MODULES"
+	exit 1
+    fi
+    get_local_hash "$GCE_MODULES"
+    get_remote_hash "$GS_MODULES"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$GCE_MODULES" "$GS_MODULES"
+    fi
+fi
+
+if test -n "$GS_MODULES"
+then
+    ARG="$ARG tarmodules=$GS_MODULES"
 fi
 
 if test -n "$GS_KERNEL"

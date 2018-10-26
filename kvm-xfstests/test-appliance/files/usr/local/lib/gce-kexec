@@ -46,6 +46,7 @@ fstestapi=$(gce_attribute fstestapi)
 fsteststr=$(gce_attribute fsteststr)
 tarxfstests=$(gce_attribute tarxfstests)
 tarfiles=$(gce_attribute tarfiles)
+tarmodules=$(gce_attribute tarmodules)
 
 if test -n "$tarxfstests" ; then
     gsutil cp "$tarxfstests" /run/xfstests.tar.gz
@@ -63,6 +64,13 @@ if test -n "$tarfiles" ; then
     mv /tmp/test-config /root/test-config
     rm -f /root/*~
     chown root:root /root
+fi
+
+if test -n "$tarmodules" ; then
+    gsutil cp "$tarmodules" /run/modules.tar.xz
+    tar -C / -xJf /run/modules.tar.xz
+    rm /run/modules.tar.xz
+    depmod -a
 fi
 
 if test -z "$kexec"

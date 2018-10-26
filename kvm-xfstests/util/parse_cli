@@ -173,6 +173,17 @@ validate_config_name()
     fi
 }
 
+if flavor_in gce && test -n "$GCE_KERNEL" ; then
+    KERNEL="$GCE_KERNEL"
+fi
+
+if test -d "$KERNEL" ; then
+    if test -f "$KERNEL/modules.tar.xz" ; then
+	MODULES="$KERNEL/modules.tar.xz"
+    fi
+    KERNEL="$KERNEL/arch/x86/boot/bzImage"
+fi
+
 shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
@@ -192,6 +203,7 @@ kernel:
 local-ssd
 log
 machtype:
+modules:
 no-action
 no-archive
 no-collapse
@@ -375,9 +387,40 @@ while (( $# >= 1 )); do
 	--kernel) shift
 	    KERNEL="$1"
 	    if test -d "$KERNEL" ; then
+		if test -z "$OVERRIDE_MODULES" ; then
+		    if test -f "$KERNEL/modules.tar.xz" ; then
+			MODULES="$KERNEL/modules.tar.xz"
+			OVERRIDE_MODULES="$MODULES"
+		    else
+			MODULES=""
+		    fi
+		fi
 		KERNEL="$KERNEL/arch/x86/boot/bzImage"
 	    fi
 	    OVERRIDE_KERNEL="$KERNEL"
+	    ;;
+	--modules) shift
+	    supported_flavors kvm gce
+	    case "$1" in
+		gs://*)
+		    MODULES="$1"
+		    ;;
+		//*)
+		    MODULES=$(echo "$1" | sed -e "s;//;gs://$GS_BUCKET/;")
+		    ;;
+		none)
+		    MODULES=""
+		    ;;
+		*)
+		    if test -f "$1" ; then
+			MODULES="$1"
+		    else
+			echo "Can't find modules at $1"
+			exit 1
+		    fi
+		    ;;
+	    esac
+	    OVERRIDE_MODULES="$MODULES";
 	    ;;
 	--initrd) shift
 	    supported_flavors kvm
@@ -695,10 +738,6 @@ fi
 
 if test "$NO_ZERO" = yes ; then
     FSTESTOPT="$FSTESTOPT,no_zero"
-fi
-
-if test -d "$KERNEL" ; then
-    KERNEL="$KERNEL/arch/x86/boot/bzImage"
 fi
 
 FSTESTOPT=${FSTESTOPT/#,/}

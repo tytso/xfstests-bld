@@ -123,6 +123,12 @@ then
     rm -rf "$TDIR"
 fi
 
+if test -z "$NO_ACTION" -a -n "$MODULES" -a -f "$MODULES"
+then
+    tar -r -f $VDH -C $(dirname "$MODULES") \
+	--transform="s/.*/modules.tar.xz/" $(basename "$MODULES")
+fi
+
 fallocate -l 128M "$VDH"
 chmod 600 "$VDH"
 
