@@ -14,6 +14,7 @@ BACKPORTS="@BACKPORTS@"
 
 PACKAGES="bash-completion \
 	bc \
+	blktrace \
 	bsdmainutils \
 	bsd-mailx \
 	"btrfs-progs$BACKPORTS" \
@@ -46,7 +47,11 @@ PACKAGES="bash-completion \
 	lvm2 \
 	mtd-utils \
 	nano \
+	nbd-client \
+	nbd-server \
+	nvme-cli \
 	openssl \
+	pciutils \
 	perl \
 	procps \
 	psmisc \

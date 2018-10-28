@@ -94,6 +94,13 @@ export FSTESTEXC
 export MNTOPTS
 export FSTEST_ARCHIVE
 
+case "$FSTESTOPT" in
+    *blktests*)
+	export DO_BLKTESTS=yes
+	touch /run/do_blktests
+	;;
+esac
+
 if test -n "$timezone" -a -f /usr/share/zoneinfo/$timezone
 then
     ln -sf /usr/share/zoneinfo/$timezone /etc/localtime
@@ -112,7 +119,25 @@ then
 	poweroff -f > /dev/null 2>&1
 fi
 
-if test -n "$FSTESTCFG" -a -n "$FSTESTSET"
+if test -n "$DO_BLKTESTS"
+then
+    if test -n "$RUN_ON_GCE"
+    then
+	/usr/local/lib/gce-setup
+	/root/runblktests.sh --run-once >> /results/runtests.log 2>&1
+
+	/usr/local/lib/gce-logger tests complete
+	/bin/rm -f /run/gce-finalize-wait
+    else
+	/root/runblktests.sh
+	if test -b /dev/vdh -a -n "$FSTEST_ARCHIVE"
+	then
+	    tar -C /tmp -cf /dev/vdh results.tar.xz
+	fi
+	umount /results
+	poweroff -f > /dev/null 2>&1
+    fi
+elif test -n "$FSTESTCFG" -a -n "$FSTESTSET"
 then
     if test -n "$RUN_ON_GCE"
     then

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 API_MAJOR=1
-API_MINOR=4
+API_MINOR=5
 . /root/test-config
 . /root/runtests_utils
 

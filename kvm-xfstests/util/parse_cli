@@ -3,7 +3,7 @@
 FSTESTCFG=""
 SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
-API="1.4"
+API="1.5"
 
 ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
 done_cleanup=false
@@ -119,14 +119,25 @@ print_help ()
 
 validate_test_name()
 {
-    case "$1" in
-	btrfs*|cifs*|ext4*|f2fs*|generic*|shared*|udf*|xfs*|overlay*) ;;
-	*)
-	    echo -e "Invalid test name: $1\n"
-	    print_help
-	    exit 1
-	    ;;
-    esac
+    if test -z "$DO_BLKTESTS" ; then
+	case "$1" in
+	    btrfs*|cifs*|ext4*|f2fs*|generic*|shared*|udf*|xfs*|overlay*) ;;
+	    *)
+		echo -e "Invalid xfstests test name: $1\n"
+		print_help
+		exit 1
+		;;
+	esac
+    else
+	case "$1" in
+	    block*|loop*|meta*|nbd*|nvme*|nvmeof-mp*|scsi*|srp*) ;;
+	    *)
+		echo -e "Invalid blktests test name: $1\n"
+		print_help
+		exit 1
+		;;
+	esac
+    fi
 }
 
 validate_config_name()
@@ -188,6 +199,7 @@ shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
 archive
+blktests
 bucket-subdir:
 cache:
 cpu-type:
@@ -321,6 +333,11 @@ while (( $# >= 1 )); do
 	    else
 		FSTESTEXC="$1"
 	    fi
+	    ;;
+	--blktests)
+	    supported_flavors kvm gce
+	    FSTESTOPT="$FSTESTOPT,blktests"
+	    DO_BLKTESTS=yes
 	    ;;
 	--hooks) shift
 	    supported_flavors gce
@@ -705,7 +722,13 @@ if test -z "$FSTESTCFG" ; then
     FSTESTCFG=all
 fi
 
-if test -z "$FSTESTSET" -a -z "$ARG"
+if test -n "$RUN_ON_LTM" -a -n "$DO_BLKTESTS"
+then
+    echo "Block tests can not be using LTM"
+    exit 1
+fi
+
+if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS"
 then
     echo -e "No tests specified!\n"
     print_help
@@ -747,7 +770,13 @@ if test "$SKIP_LOG" = no ; then
 fi
 
 if test -n "$ARG" ; then
-  :
+    :
+elif test -n "$DO_BLKTESTS" ; then
+    ARG="fstestopt=$FSTESTOPT"
+    if test -n "$FSTESTSET" ; then
+     FSTESTSET=${FSTESTSET/#,/}
+     ARG="$ARG fstestset=$FSTESTSET"
+    fi
 elif test -n "$FSTESTSET"; then
      FSTESTSET=${FSTESTSET/#,/}
      ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET fstestopt=$FSTESTOPT"
