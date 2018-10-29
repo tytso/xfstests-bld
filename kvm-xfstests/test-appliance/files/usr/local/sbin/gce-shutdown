@@ -101,7 +101,7 @@ then
 	else
 	    RESULTS_REPORT=/results/failures
 	fi
-	subj="xfstests $suite $TESTRUNID - $(uname -r)"
+	subj="$suite results $TESTRUNID - $(uname -r)"
 	if test -z "$GCE_REPORT_SENDER"
 	then
 	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
