@@ -361,6 +361,7 @@ run_in_chroot "systemctl enable kvm-xfstests.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS1.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS2.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS3.service"
+run_in_chroot "systemctl disable multipathd"
 find $ROOTDIR/usr/share/doc -type f | grep -v copyright | xargs rm
 find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
 find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p

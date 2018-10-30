@@ -46,6 +46,7 @@ PACKAGES="bash-completion \
 	lighttpd \
 	lvm2 \
 	mtd-utils \
+	multipath-tools \
 	nano \
 	nbd-client \
 	nbd-server \
@@ -249,6 +250,8 @@ systemctl enable gen-ssh-keys.service
 systemctl enable telnet-getty@ttyS1.service
 systemctl enable telnet-getty@ttyS2.service
 systemctl enable telnet-getty@ttyS3.service
+systemctl stop multipathd
+systemctl disable multipathd
 
 if gsutil -m cp gs://$BUCKET/debs/*.deb /run
 then

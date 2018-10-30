@@ -26,6 +26,7 @@ libkeyutils1
 lvm2
 makedev
 mtd-utils
+multipath-tools
 nbd-client
 nbd-server
 nvme-cli
