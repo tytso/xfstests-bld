@@ -33,12 +33,15 @@ if ! test -f "$KERNEL"; then
 fi
 
 if test -z "$DO_NET" ; then
-   echo "Networking disabled."
-   NET="-net none "
-elif test $(whoami) = "root" ; then
-  NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
+    echo "Networking disabled."
+    NET="-net none "
 else
-  NET="-netdev user,id=mynet0,net=172.20.0.0/24 -device virtio-net,netdev=mynet0 "
+    ARG="$ARG net.ifnames=0"
+    if test $(whoami) = "root" ; then
+	NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
+    else
+	NET="-netdev user,id=mynet0,net=172.20.0.0/24 -device virtio-net,netdev=mynet0 "
+    fi
 fi
 
 EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
