@@ -78,8 +78,8 @@ do
 	    SUITE=stretch
 	    ;;
 	--buster)
-	    IMAGE_FAMILY=debian-9
-	    IMAGE_PROJECT=debian-cloud
+	    IMAGE_FAMILY=debian-10
+	    IMAGE_PROJECT=debian-cloud-testing
 	    SUITE=buster
 	    BACKPORTS=
 	    ;;

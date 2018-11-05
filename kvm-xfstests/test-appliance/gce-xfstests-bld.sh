@@ -57,7 +57,8 @@ PACKAGES="bash-completion \
 	procps \
 	psmisc \
 	python-future \
-	python-setuptools \
+	python-gdbm \
+	python-pip \
 	strace \
 	stress \
 	time \
@@ -141,16 +142,25 @@ systemctl start telnet-getty@ttyS1.service
 systemctl start telnet-getty@ttyS2.service
 systemctl start telnet-getty@ttyS3.service
 
+apt-get update
+apt-get install -y debconf-utils curl
+debconf-set-selections <<EOF
+kexec-tools	kexec-tools/use_grub_config	boolean	true
+kexec-tools	kexec-tools/load_kexec	boolean	true
+keyboard-configuration	keyboard-configuration/variant	select	English (US)
+grub-pc	grub-pc/install_devices	multiselect	/dev/sda
+EOF
+
+export DEBIAN_FRONTEND=noninteractive
+
 NEW_SUITE=$(gce_attribute suite)
 OLD_SUITE=$(cat /etc/apt/sources.list | grep ^deb | grep -v updates | head -1 | awk '{print $3}')
 if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
     sed -e "s/$OLD_SUITE/$NEW_SUITE/g" < /etc/apt/sources.list > /etc/apt/sources.list.new
     mv /etc/apt/sources.list.new /etc/apt/sources.list
     apt-get update
-    apt-get dist-upgrade
-    DEBIAN_FRONTEND=noninteractive apt-get \
-		   -o Dpkg::Options::="--force-confnew" \
-		   --force-yes -fuy dist-upgrade
+    apt-get -y dist-upgrade
+    apt-get -o Dpkg::Options::="--force-confnew" --force-yes -fuy dist-upgrade
     apt-get -fuy autoremove
     logger -s "Update to $NEW_SUITE complete"
 else
@@ -158,18 +168,6 @@ else
     apt-get -y --with-new-pkgs upgrade
 fi
 
-if test "$NEW_SUITE" = buster ; then
-    PACKAGES="$PACKAGES libgdbm5"
-else
-    PACKAGES="$PACKAGES libgdbm3"
-fi
-
-apt-get install -y debconf-utils
-debconf-set-selections <<EOF
-kexec-tools	kexec-tools/use_grub_config	boolean	true
-kexec-tools	kexec-tools/load_kexec	boolean	true
-keyboard-configuration	keyboard-configuration/variant	select	English (US)
-EOF
 apt-get install -y $PACKAGES
 apt-get clean
 
@@ -185,7 +183,6 @@ rm /run/files.tar.gz
 
 # this is to install some python packages into the image for
 # the LTM web server.
-easy_install pip
 pip install -r /usr/local/lib/gce-ltm/requirements.txt
 
 for i in /results/runtests.log /var/log/syslog \
