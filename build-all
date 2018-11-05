@@ -221,8 +221,7 @@ if test -z "$SKIP_ACL" ; then
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" \
-	  LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" ; \
      make $J install)
 fi
 
@@ -233,7 +232,7 @@ if test -z "$SKIP_POPT" ; then
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LLDFLAGS=-all-static LIBTOOL="/usr/bin/libtool --tag=CC" ; \
+     make $J LLDFLAGS=-all-static ; \
      make $J install)
 fi
 
@@ -344,7 +343,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
@@ -377,8 +376,7 @@ if test -z "$SKIP_XFSTESTS" ; then
      export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
      libtoolize -i ; $MAKE_CLEAN ; \
      ./configure $cross ; \
-     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" \
-	  LIBTOOL="/usr/bin/libtool --tag=CC" BUILD_VERBOSE=1)
+     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" BUILD_VERBOSE=1)
 fi
 
 if test -z "$SKIP_QUOTA"; then
