@@ -132,10 +132,10 @@ setup_repo quota		QUOTA_GIT	QUOTA_COMMIT		true
 setup_repo xfsprogs-dev		XFSPROGS_GIT	XFSPROGS_COMMIT		true
 setup_repo xfstests-dev		XFSTESTS_GIT	XFSTESTS_COMMIT		true
 setup_repo fsverity		FSVERITY_GIT	FSVERITY_COMMIT		true
-setup_repo ima-evm-utils	IMA_EVM_UTILS_GIT IMA_EVM_UTILS_COMMIT	true
 setup_repo blktests 		BLKTESTS_GIT	BLKTESTS_COMMIT		true
 
 # optional repositories
+setup_repo ima-evm-utils	IMA_EVM_UTILS_GIT IMA_EVM_UTILS_COMMIT	false
 setup_repo keyutils		KEYUTILS_GIT	KEYUTILS_COMMIT		false
 setup_repo stress-ng		STRESS_NG_GIT	STRESS_NG_COMMIT	false
 setup_repo util-linux		UTIL_LINUX_GIT	UTIL_LINUX_COMMIT	false
