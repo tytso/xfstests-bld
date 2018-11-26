@@ -253,14 +253,15 @@ if test -z "$SKIP_KEYUTILS" ; then
 	export AR="$CROSS_COMPILE-ar"
      fi
 
-     # For now we only care about keyctl, not libkeyutils.  Therefore, specify
-     # NO_SOLIB=1 so that libkeyutils is only built as a static library.  Then
-     # keyctl will be statically linked to it, and we won't have to install
-     # libkeyutils.so.
+     # Specify NO_SOLIB=1 so that libkeyutils is only built as a static
+     # library.  Then keyctl will be statically linked to it, and we won't
+     # have to install libkeyutils.so.
      $MAKE_CLEAN ;
-     make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl ;
+     make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl libkeyutils.a;
 
      install -D -m 0755 keyctl $DESTDIR/bin/keyctl ;
+     install -D -m 0644 keyutils.h $DESTDIR/include/keyutils.h ;
+     install -D -m 0644 libkeyutils.a $DESTDIR/include/libkeyutils.a ;
     )
 fi
 
