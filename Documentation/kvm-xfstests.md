@@ -43,8 +43,11 @@ file to see the shell variables you can set.
 
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
-will boot to run the test appliance.  This is, in general, in the
-primary build tree that you use for kernel development.
+will boot to run the test appliance.  This is, in general, should be
+the primary build tree that you use for kernel development.  If
+kvm-xfstests is run from the top-level of a kernel build or source
+tree where there is a built kernel, kvm-xfstests will use it.
+Otherwise, it will use the kernel specified by the KERNEL variable.
 
 The kernel for kvm-xfstests must not use modules, and it must include
 the paravirtual device drivers needed for qemu.  To build a correctly

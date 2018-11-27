@@ -797,6 +797,22 @@ if test -n "$DO_ARCHIVE" ; then
     ARG="$ARG fstestarc=$DO_ARCHIVE"
 fi
 
+if test -z "$OVERRIDE_KERNEL" ; then
+    if test -f .git/kbuild/config ; then
+	t=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
+	if test -n "$t" ; then
+	    echo "Detected kbuild config; using $t for kernel"
+	    KERNEL=$t
+	    OVERRIDE_KERNEL=$t
+	fi
+    elif test -f "./arch/x86/boot/bzImage" ; then
+	t=$(pwd)
+	echo "Current directory appears to be a kernel tree; using it"
+	KERNEL=$t
+	OVERRIDE_KERNEL=$t
+	fi
+fi
+
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
     (cd $DIR/.. ; ./gen-tarball --fast)
 fi

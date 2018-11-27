@@ -238,11 +238,17 @@ Once you have completed all of the set up tasks listed above, you can
 now start using gce-xfstests.  The GCE_KERNEL configuration parameter
 should be set to the location of your build directory or the kernel
 that you want to boot.  So for example, you could set it to
-/build/ext4, or /build/ext4/arch/x86/boot/bzImage.  By setting it to
-the top-level of the build directory, you can apply a patch to your
-kernel, build it, and then run "gce-xfstests smoke".  This speeds up
-your edit, compile, debug cycle, so you can improve your development
-velocity.
+/build/ext4, or /build/ext4/arch/x86/boot/bzImage.  If gce-xfstests is
+run from the top-level of a kernel build or source tree where there is
+a built kernel, gce-xfstests will use it.  Otherwise, it will use the
+kernel specified by the GCE_KERNEL variable.
+
+The design of gce-xfstests allows you to to apply a patch to your
+kernel, build it, and then run "gce-xfstests smoke", which will test
+the kernel without needing to install it first; gce-xfstests will
+upload it to Google Cloud Storage, and then the test appliance VM will
+kexec into that kernel.  This speeds up your edit, compile, debug
+cycle, so you can improve your development velocity.
 
 Running gce-xfstests is much like [kvm-xfstests](kvm-xfstests.md):
 
