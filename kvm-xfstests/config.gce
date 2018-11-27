@@ -21,11 +21,11 @@ GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server" \
 NR_CPU=2
 MEM=7680
 
-# Name of the GCE image from which the test instances will be created.
-# This can also be set by the -I option.
-# If "xfstests" (the default), this is actually treated as an image family, and
-# the latest image from the xfstests family will be used.
+# Name of the GCE image or image family from which the test instances
+# will be created.
+# This can also be set by the -I or --image-family options.
 ROOT_FS="xfstests"
+IMAGE_FLAG="--image-family"
 
 # By default use a minimum scratch result of 100G because the disk
 # space saved isn't worth the additional VM time to run certain

@@ -504,13 +504,6 @@ then
     ARG="$ARG kopt=$EXTRA_ARG"
 fi
 
-if test "$ROOT_FS" = "xfstests" ;
-then
-    IMAGE_FLAG="--image-family"
-else
-    IMAGE_FLAG="--image"
-fi
-
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
 LOG_WR=https://www.googleapis.com/auth/logging.write

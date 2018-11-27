@@ -208,6 +208,7 @@ gce-zone:
 gs-bucket:
 help
 hooks:
+image-family:
 image-project:
 initrd:
 instance-name:
@@ -300,6 +301,9 @@ while (( $# >= 1 )); do
 	    ;;
 	-I) shift
 	    ROOT_FS="$1"
+	    if flavor_in gce ; then
+		IMAGE_FLAG="--image"
+	    fi
 	    ;;
 	-n) shift
 	    supported_flavors kvm gce
@@ -342,6 +346,11 @@ while (( $# >= 1 )); do
 	--hooks) shift
 	    supported_flavors gce
 	    GCE_HOOKS="$1"
+	    ;;
+	--image-family) shift
+	    supported_flavors gce
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
 	    ;;
 	--update-xfstests-tar)
 	    supported_flavors kvm gce
