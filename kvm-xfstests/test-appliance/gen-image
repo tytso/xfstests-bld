@@ -283,7 +283,9 @@ if test -z "$DO_FAKECHROOT"; then
 else
    ln var.cache.apt.archives/* $ROOTDIR/var/cache/apt/archives
    ln var.lib.apt.lists/* $ROOTDIR/var/lib/apt/lists
-   ln debs/* $ROOTDIR/debs
+   if ! find debs -maxdepth 0 -empty | grep -q . > /dev/null ; then
+       ln debs/* $ROOTDIR/debs
+   fi
    export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
 fi
 trap cleanup_on_abort INT TERM
