@@ -6,7 +6,7 @@ XFSTESTS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 FIO_GIT=http://git.kernel.dk/fio.git
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
-FSVERITY_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/mhalcrow/fsverity.git
+FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
 BLKTESTS_GIT=https://github.com/osandov/blktests.git
 
 # Optional repositories, uncomment only if needed
