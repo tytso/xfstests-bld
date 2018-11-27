@@ -72,6 +72,7 @@ function set_skip_all () {
 }
 
 # Optional components
+[ -d keyutils ] || SKIP_KEYUTILS=yes
 [ -d ima-evm-utils ] || SKIP_IMA_EVM_UTILS=yes
 [ -d stress-ng ] || SKIP_STRESS_NG=yes
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
