@@ -204,6 +204,7 @@ bucket-subdir:
 cache:
 cpu-type:
 email:
+gce-network:
 gce-zone:
 gs-bucket:
 help
@@ -486,6 +487,16 @@ while (( $# >= 1 )); do
 	--no-preemptible|--no-preempt)
 	    supported_flavors gce
 	    PREMPTIBLE=
+	    ;;
+	--gce-network) shift
+	    supported_flavors gce
+	    GCE_NETWORK="$1"
+	    if ! gcloud compute networks describe "$GCE_NETWORK" > /dev/null ; then
+		echo -e "Invalid GCE network: $GCE_NETWORK"
+		echo -e "To see a list of valid zones, run"
+		echo -e "\tgcloud compute networks list\n"
+		exit 1
+	    fi
 	    ;;
 	--gce-zone) shift
 	    supported_flavors gce

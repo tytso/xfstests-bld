@@ -93,7 +93,7 @@ trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance; fi' EXIT
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
     instances create "$INSTANCE" --zone "$GCE_ZONE" \
-    --machine-type "$GCE_LTM_MACHTYPE" --network "default" \
+    --machine-type "$GCE_LTM_MACHTYPE" --network "$GCE_NETWORK" \
     --boot-disk-size 50GB \
     $PREEMPTIBLE \
     --scopes "$SCOPES" \

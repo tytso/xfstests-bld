@@ -15,6 +15,9 @@
 GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server" \
 		    "allow-https --allow tcp:443 --target-tags https-server")
 
+# GCE network to use
+GCE_NETWORK="default"
+
 # Use different defaults for GCE because the background ruby monitoring
 # program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
 # so use that.

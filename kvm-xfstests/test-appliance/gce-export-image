@@ -137,7 +137,7 @@ $NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
-       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "default" \
+       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "$GCE_NETWORK" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --metadata "^ ^$METADATA" \
        --image-family "$DEB_IMAGE_FAMILY" --image-project "$DEB_IMAGE_PROJECT" \

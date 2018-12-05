@@ -854,7 +854,7 @@ fi
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
-       --machine-type "$GCE_MACHTYPE" --network "default" \
+       --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
        --no-boot-disk-auto-delete \
        $SSD_ARG $PREEMPTIBLE \
        --scopes "$SCOPES" \

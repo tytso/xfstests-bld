@@ -177,7 +177,7 @@ gcloud compute --project "$GCE_PROJECT" -q disks delete "$BLD_DISK" 2> /dev/null
 
 gcloud compute --project "$GCE_PROJECT" instances create "$BLD_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
-       --network "default" --metadata "^ ^$METADATA" \
+       --network "$GCE_NETWORK" --metadata "^ ^$METADATA" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$BLD_DISK"
