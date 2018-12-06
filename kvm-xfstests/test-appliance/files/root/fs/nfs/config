@@ -1,0 +1,59 @@
+#
+# Configuration file for nfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+case "$NFSSRV" in
+     localhost)
+	NFSROOT="localhost:"
+	;;
+     *)
+	NFSROOT=$NFSSRV
+	;;
+esac
+
+function check_filesystem()
+{
+	return 0
+}
+
+function format_filesystem()
+{
+	return 0
+}
+
+function setup_mount_opts()
+{
+	if test -z "NFS_MOUNT_OPTIONS" ; then
+		export NFS_MOUNT_OPTIONS="-o rw,relatime"
+	fi
+	if test -n "$MNTOPTS" ; then
+		export NFS_MOUNT_OPTIONS="NFS_MOUNT_OPTIONS,$MNTOPTS"
+	fi
+}
+
+function get_mkfs_opts()
+{
+	return 0
+}
+
+function show_mkfs_opts()
+{
+	return 0
+}
+
+function show_mount_opts()
+{
+	echo NFS_MOUNT_OPTIONS: "$NFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+	echo "$1"
+}
+
+function reset_vars()
+{
+	unset NFS_MOUNT_OPTIONS
+}

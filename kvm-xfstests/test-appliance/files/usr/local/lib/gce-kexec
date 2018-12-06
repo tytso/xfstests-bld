@@ -47,6 +47,7 @@ fsteststr=$(gce_attribute fsteststr)
 tarxfstests=$(gce_attribute tarxfstests)
 tarfiles=$(gce_attribute tarfiles)
 tarmodules=$(gce_attribute tarmodules)
+nfssrv=$(gce_attribute nfssrv)
 
 if test -n "$tarxfstests" ; then
     gsutil cp "$tarxfstests" /run/xfstests.tar.gz
@@ -87,6 +88,7 @@ FSTESTSTR="${fsteststr//,/ }"
 timezone="$fstesttz"
 MNTOPTS="$mount_opts"
 FSTESTEXC="${fstestexc//,/ }"
+NFSSRV="${$nfssrv}"
 EOF
     exit 0
 fi
@@ -126,4 +128,4 @@ run_hooks kexec
 /usr/local/lib/gce-logger kexec to test kernel
 systemctl stop rsyslog.service
 sync
-kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop net.ifnames=0 biosdevname=0 console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi fsteststr=$fsteststr"
+kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop net.ifnames=0 biosdevname=0 console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi fsteststr=$fsteststr nfssrv=$nfssrv"

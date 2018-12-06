@@ -28,6 +28,7 @@ MNTOPTS=$(parse mount_opts)
 CMD=$(parse cmd)
 FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
 FSTEST_ARCHIVE=$(parse fstestarc | sed -e 's/\./ /g')
+NFSSRV=$(parse nfssrv)
 
 cat > /run/test-env <<EOF
 FSTESTCFG="$FSTESTCFG"
@@ -40,6 +41,7 @@ timezone="$timezone"
 MNTOPTS="$MNTOPTS"
 CMD="$CMD"
 FSTESTEXC="$FSTESTEXC"
+NFSSRV="$NFSSRV"
 EOF
 
 if test -e /usr/local/lib/gce-kexec
@@ -93,6 +95,7 @@ export FSTESTSTR
 export FSTESTEXC
 export MNTOPTS
 export FSTEST_ARCHIVE
+export NFSSRV
 
 case "$FSTESTOPT" in
     *blktests*)

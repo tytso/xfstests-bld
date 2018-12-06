@@ -1,0 +1,7 @@
+export TEST_DEV=$NFSROOT/test
+export TEST_DIR=/mnt/test
+export SCRATCH_DEV=$NFSROOT/scratch
+export SCRATCH_MNT=/mnt/scratch
+export NFS_MOUNT_OPTIONS="-o rw,relatime"
+TESTNAME="nfs"
+mkdir -p /mnt/test /mnt/scratch

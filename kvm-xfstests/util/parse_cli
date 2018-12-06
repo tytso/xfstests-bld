@@ -218,6 +218,7 @@ local-ssd
 log
 machtype:
 modules:
+nfssrv:
 no-action
 no-archive
 no-collapse
@@ -372,6 +373,9 @@ while (( $# >= 1 )); do
 	--update-files)
 	    supported_flavors kvm gce
 	    UPDATE_FILES=yes
+	    ;;
+	--nfssrv) shift
+	    NFSSRV="$1"
 	    ;;
 	--numa) shift
 	    supported_flavors kvm
@@ -807,6 +811,10 @@ fi
 
 if test -n "$MNTOPTS" ; then
     ARG="$ARG mount_opts=$MNTOPTS"
+fi
+
+if test -n "$NFSSRV" ; then
+    ARG="$ARG nfssrv=$NFSSRV"
 fi
 
 if test -n "$TZ" ; then

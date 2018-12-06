@@ -50,6 +50,8 @@ PACKAGES="bash-completion \
 	nano \
 	nbd-client \
 	nbd-server \
+	nfs-common \
+	nfs-kernel-server \
 	nvme-cli \
 	openssl \
 	pciutils \
