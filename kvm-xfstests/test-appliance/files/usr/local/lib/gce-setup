@@ -11,6 +11,9 @@ gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
 /usr/local/lib/gce-setup-results &
 /usr/local/lib/gce-setup-scratch &
+if test -n "$NFSSRV" ; then
+    /usr/local/lib/gce-setup-nfs &
+fi
 
 cat > /var/www/varz <<EOF
 kernel_version $(uname -a)

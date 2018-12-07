@@ -113,6 +113,24 @@ then
     gsutil cp /tmp/results.tar.xz \
 	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
 fi
+
+if test -f /run/test-env ; then
+    . /run/test-env
+    if test -n "$NFSSRV_TOP" ; then
+	mount -t nfs "$NFSSRV_TOP" /mnt
+	rm -rf /mnt/$instance /mnt/busy-$instance
+	busy=
+	if ls /mnt/busy-* > /dev/null 2>&1 ; then
+	    busy=t
+	fi
+	umount /mnt
+	if test -z "$busy" ; then
+	    gcloud beta filestore instances delete nfstest \
+		   --quiet --async --location="$ZONE"
+	fi
+    fi
+fi
+
 run_hooks shutdown
 /usr/local/lib/gce-logger shutting down
 if test -f /run/powerbtn

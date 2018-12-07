@@ -1,0 +1,47 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+. /root/runtests_utils
+
+logger -i "Entered nfs setup"
+
+if test "$NFSSRV" = "filestore" ; then
+    filestore_info=$(mktemp)
+    if ! gcloud beta filestore instances describe nfstest \
+	 --location="$ZONE" --format=json > "$filestore_info" ; then
+	network=$(gcloud compute instances describe $instance --format=json | \
+		      jq ".networkInterfaces[].network" | \
+		      sed -e 's;^".*/;;' -e 's/"$//')
+	gcloud beta filestore instances create nfstest \
+	       --file-share=capacity=1TB,name=nfstest \
+	       --network=name="$network" --location="$ZONE"
+	if ! gcloud beta filestore instances describe nfstest \
+	     --location="$ZONE" --format=json > "$filestore_info" ; then
+	    logger -i "Couldn't start filestore"
+	    exit 1
+	fi
+    fi
+    ipaddr=$(cat "$filestore_info" | jq '.networks[].ipAddresses[]' | \
+		 sed -e 's/^"//' -e 's/"$//')
+    NFSSRV_TOP="$ipaddr:/nfstest"
+    mount -t nfs "$NFSSRV_TOP" /mnt
+    mkdir -p /mnt/$instance/test
+    mkdir -p /mnt/$instance/scratch
+    touch /mnt/busy-$instance
+    umount /mnt
+    NFSSRV="$ipaddr:/nfstest/$instance"
+    ed /run/test-env <<EOF
+/NFSSRV_TOP/d
+w
+q
+EOF
+    ed /run/test-env <<EOF
+/^NFSSRV=/c
+NFSSRV="$NFSSRV_TOP/$instance"
+NFSSRV_TOP="$NFSSRV_TOP"
+.
+w
+q
+EOF
+fi

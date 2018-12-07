@@ -789,6 +789,16 @@ fi
 
 FSTESTOPT=${FSTESTOPT/#,/}
 
+case "$FSTESTCFG" in
+    dax|dax,*|*,dax,*|*,dax)
+	PMEM_DEVICE=yes
+	;;
+    nfs|nfs,*|*,nfs,*|*,nfs)
+	if test -z "$NFSSRV" ; then
+	    NFSSRV=filestore
+	fi
+esac
+
 if test "$SKIP_LOG" = no ; then
    unset SKIP_LOG
 fi
@@ -861,12 +871,6 @@ fi
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
     (cd $DIR/.. ; ./gen-tarball --fast)
 fi
-
-case "$FSTESTCFG" in
-    dax|dax,*|*,dax,*|*,dax)
-	PMEM_DEVICE=yes
-	;;
-esac
 
 if test -n "$PMEM_DEVICE" ; then
     if test -n "$EXTRA_ARG" ; then

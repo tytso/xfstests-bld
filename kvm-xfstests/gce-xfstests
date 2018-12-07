@@ -504,12 +504,7 @@ then
     ARG="$ARG kopt=$EXTRA_ARG"
 fi
 
-GS_RW=https://www.googleapis.com/auth/devstorage.read_write
-GS_RO=https://www.googleapis.com/auth/devstorage.read_only
-LOG_WR=https://www.googleapis.com/auth/logging.write
-COMPUTE_RW=https://www.googleapis.com/auth/compute
-
-SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
+SCOPES="https://www.googleapis.com/auth/cloud-platform"
 
 if test -n "$PREEMPTIBLE"
 then

@@ -127,6 +127,7 @@ then
     if test -n "$RUN_ON_GCE"
     then
 	/usr/local/lib/gce-setup
+	. /run/test-env
 	/root/runblktests.sh --run-once >> /results/runtests.log 2>&1
 
 	/usr/local/lib/gce-logger tests complete
@@ -145,6 +146,7 @@ then
     if test -n "$RUN_ON_GCE"
     then
 	/usr/local/lib/gce-setup
+	. /run/test-env
 	/root/runtests.sh --run-once >> /results/runtests.log 2>&1
 
 	/usr/local/lib/gce-logger tests complete
@@ -166,6 +168,7 @@ else
 	    # If we kexec'ed into a test kernel, we probably want to
 	    # run tests, so set up the scratch volumes
 	    /usr/local/lib/gce-setup
+	    . /run/test-env
 	    /usr/local/lib/gce-logger setup complete
 	else
 	    /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
