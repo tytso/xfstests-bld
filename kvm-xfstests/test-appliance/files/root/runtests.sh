@@ -456,6 +456,7 @@ do
 	    if test $? -gt 0 ; then
 		cat $RESULT_BASE/fsck.out
 	    fi
+	    rm -f "$RESULT_BASE/completed"
 	done
 	if test -n "$RUN_ON_GCE"
 	then
