@@ -185,6 +185,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p MEM
     declare -p GS_BUCKET
     declare -p ROOT_FS
+    declare -p IMAGE_FLAG
     declare -p BUCKET_SUBDIR
     declare -p GCE_MIN_SCR_SIZE
     declare -p GCE_LTM_KEEP_DEAD_VM
