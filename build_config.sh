@@ -1,13 +1,13 @@
 ARCH_LIST=(amd64 i386 arm64 armhf)
-MIRROR=http://snapshot.debian.org/archive/debian/20180529T032410Z/
+MIRROR=https://snapshot.debian.org/archive/debian/20181210T092708Z/
 
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=34977a44c0d813e603c64567cc9d8b1c8ef32edd
+XFSTESTS_COMMIT=12eec16d7d7cc36945275d1ea5e33e0f627409a5
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-XFSPROGS_COMMIT=v4.17.0
+XFSPROGS_COMMIT=v4.19.0
 
 FIO_GIT=http://git.kernel.dk/fio.git
 FIO_COMMIT=fio-3.2
@@ -18,11 +18,17 @@ QUOTA_COMMIT=59b280ebe22eceaf4250cb3b776674619a4d4ece
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # SYZKALLER_COMMIT=2f93b54f26aa40233a0a584ce8714e55c8dd159a
 
-FSVERITY_GIT=git://git.kernel.org/pub/scm/linux/kernel/git/mhalcrow/fsverity.git
-FSVERITY_COMMIT=2a7dbea90885dbd1dadc3d4a2873008ae618614e
+FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
+FSVERITY_COMMIT=bdebc45b4527d64109723ad5753fa514bac47c9f
 
 IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
-IMA_EVM_UTILS_COMMIT=5fa7d35de50c65ac58911ca4f7f0bb8c076d7ecf
+IMA_EVM_UTILS_COMMIT=0267fa16990fd0ddcc89984a8e55b27d43e80167
+
+BLKTESTS_GIT=https://github.com/osandov/blktests.git
+BLKTESTS_COMMIT=69a95c6f260f9f65551214a0291f82326a57f8f7
+
+NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
+NVME_CLI_COMMIT=e145ab4d9b5966ee7964a3b724af1855080465ca
 
 #EXEC_LDFLAGS=-static
 #EXEC_LLDFLAGS=-all-static
