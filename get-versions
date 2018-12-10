@@ -51,6 +51,13 @@ then
     cd ..
 fi
 
+if test -d nvme-cli
+then
+    cd nvme-cli
+    ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/nvme-cli.ver
+    cd ..
+fi
+
 if test -d go/src/github.com/google/syzkaller
 then
     cd go/src/github.com/google/syzkaller

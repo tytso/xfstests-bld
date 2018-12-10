@@ -16,6 +16,7 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 # STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
 # UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
 # SYZKALLER_GIT=https://github.com/google/syzkaller
+# NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
 
 FIO_COMMIT=fio-3.2
 QUOTA_COMMIT=59b280ebe22e

@@ -67,6 +67,7 @@ MAKELOG
 /fsverity/
 /ima-evm-utils/
 /keyutils/
+/nvme-cli
 /popt/.deps/
 /popt/Doxyfile
 /popt/Makefile

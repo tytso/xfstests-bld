@@ -69,6 +69,7 @@ function set_skip_all () {
     SKIP_UTIL_LINUX=yes
     SKIP_SYZKALLER=yes
     SKIP_BLKTESTS=yes
+    SKIP_NVME_CLI=yes
 }
 
 # Optional components
@@ -78,6 +79,7 @@ function set_skip_all () {
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
 [ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
 [ -d blktests ] || SKIP_BLKTESTS=yes
+[ -d nvme_cli ] || SKIP_NVME_CLI=yes
 
 MAKE_CLEAN=":"
 
@@ -160,6 +162,10 @@ while [ "$1" != "" ]; do
 	--blktests-only)
 	    set_skip_all
 	    unset SKIP_BLKTESTS
+	    ;;
+	--nvme-cli-only)
+	    set_skip_all
+	    unset SKIP_NVME_CLI
 	    ;;
 	--clean-first)
 	    MAKE_CLEAN="make clean"
@@ -417,6 +423,14 @@ if test -z "$SKIP_BLKTESTS"; then
     build_start "blktests"
     (cd blktests ; $MAKE_CLEAN ; make ; \
      ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../blktests.ver)
+fi
+
+if test -z "$SKIP_NVME_CLI"; then
+    build_start "nvme-cli"
+    (cd nvme-cli ; $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     install -D -m 0755 nvme $DESTDIR/bin/nvme ; \
+     ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../nvme-cli.ver)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
