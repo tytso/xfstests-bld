@@ -13,5 +13,10 @@ v_tmp		/vtmp	9p	trans=virtio,version=9p2000.L,nofail,x-systemd.device-timeout=1	
 /dev/vdd	/vdd	auto	defaults,noauto		0	0
 /dev/vde	/vde	auto	defaults,noauto		0	0
 /dev/vdf	/vdf	auto	defaults,noauto		0	0
+/dev/vdg	/results auto	defaults		0	2
 
-/dev/vdg	/results auto	defaults 0 2
+localhost:/test	/mnt/test nfs 	defaults,noauto		0	0
+localhost:/scratch /mnt/scratch nfs defaults,noauto	0	0
+
+/vdc/scratch	/scratch none	defaults,noauto,bind	0	0
+/vdc/test	/test	 none	defaults,noauto,bind	0	0

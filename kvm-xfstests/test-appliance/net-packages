@@ -5,3 +5,4 @@ iputils-ping
 isc-dhcp-client
 net-tools
 netbase
+nfs-kernel-server
