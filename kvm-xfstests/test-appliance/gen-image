@@ -349,6 +349,11 @@ chmod 755 $ROOTDIR/root
 ln -sf ../proc/self/mounts $ROOTDIR/etc/mtab
 fix_symlinks
 
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
+	$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
+	$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount
+
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \

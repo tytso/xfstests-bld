@@ -144,6 +144,11 @@ systemctl start telnet-getty@ttyS1.service
 systemctl start telnet-getty@ttyS2.service
 systemctl start telnet-getty@ttyS3.service
 
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
+	/lib/systemd/system/run-rpc_pipefs.mount
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
+	/lib/systemd/system/proc-fs-nfsd.mount
+
 apt-get update
 apt-get install -y debconf-utils curl
 debconf-set-selections <<EOF
