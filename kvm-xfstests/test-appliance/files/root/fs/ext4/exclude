@@ -4,7 +4,7 @@
 ext4/304
 
 # generic/042 and generic/392 are failing because ext4 forces the
-# resuolution of all delayed allocation writes before allowing the
+# resolution of all delayed allocation writes before allowing the
 # punch operation to proceed.  We probably want to see if we can avoid
 # this for the future, but what ext4 is doing is legal, so just skip
 # the test for now
@@ -23,6 +23,11 @@ generic/046
 # because we have bias towards aligning on power-of-two block numbers.
 # It is a flaky test for some configurations, so skip it.
 generic/223
+
+# The shutdown ioctl will sometimes result in a corrupted file systems
+# it really shouldn't, but we probably won't have it fixed for a while.
+# So exclude it for now.
+generic/388
 
 # The proposed fix for generic/484, "locks: change POSIX lock
 # ownership on execve when files_struct is displaced" would break NFS
