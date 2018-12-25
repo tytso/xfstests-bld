@@ -12,3 +12,8 @@ generic/027
 # are included in the quota report, and so the resulting quota
 # report output is different from what is expected in the 382.out file
 generic/382
+
+# The generic/235 test fails for the same rason as generic/382 above
+# after xfstests 4f4b89cdf353 which was fixing the test for 64k block
+# sizes.  Unfortunately it breaks the test which use indirect blocks.
+generic/235
