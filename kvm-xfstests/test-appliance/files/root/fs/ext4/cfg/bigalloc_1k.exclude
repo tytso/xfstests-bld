@@ -6,6 +6,10 @@ ext4/004	# dump/restore doesn't handle the bigalloc feature
 # don't need to test this for all file system configs, so just skip it here.
 ext4/033
 
+# This test uses dioread_nolock which currently isn't supported when
+# block_size != PAGE_SIZE.
+ext4/034
+
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027

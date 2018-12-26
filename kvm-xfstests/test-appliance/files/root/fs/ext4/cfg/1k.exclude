@@ -4,3 +4,7 @@
 # where it's not clear what it was originally trying to test in the
 # first place.  So let's just skip it for now.
 generic/273
+
+# This test uses dioread_nolock which currently isn't supported when
+# block_size != PAGE_SIZE.
+ext4/034
