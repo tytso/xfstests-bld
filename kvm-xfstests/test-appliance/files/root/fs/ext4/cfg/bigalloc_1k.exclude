@@ -13,3 +13,6 @@ ext4/034
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
+
+# This test creates too many extended attributes to fit in a 1k block
+generic/454
