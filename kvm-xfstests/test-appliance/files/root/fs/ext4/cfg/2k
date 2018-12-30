@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-q -b 2048"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 2k block"
