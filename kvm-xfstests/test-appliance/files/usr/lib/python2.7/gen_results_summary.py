@@ -26,6 +26,8 @@ def get_results(dirroot):
 
 def parse_timestamp(timestamp):
     """Parse an ISO-8601-like timestamp as found in an xUnit file."""
+    if timestamp == "":
+        return 0
     return time.mktime(datetime.strptime(timestamp,
                                          '%Y-%m-%dT%H:%M:%S').timetuple())
 
