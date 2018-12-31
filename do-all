@@ -6,6 +6,7 @@
 
 set -e -u
 
+gen_image_args=
 OUT_TAR=
 BUILD_ENV=
 SUDO_ENV=sudo
@@ -83,8 +84,6 @@ if $UPDATE && [ "$OUT_TAR" = "yes" ]; then
     echo 1>&2 "--update is only supported with .img output currently!"
     exit 1
 fi
-
-gen_image_args=
 
 if $UPDATE; then
     $BUILD_ENV ./update-all

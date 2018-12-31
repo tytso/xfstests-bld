@@ -43,3 +43,8 @@ SUDO_ENV=sudo
 # root_fs.tar.gz by default rather than a root_fs.img
 #
 # OUT_TAR=yes
+
+# Uncomment this to make a kvm-xfstests VM appliance with networking
+# support enabled.
+#
+gen_image_args="--networking"

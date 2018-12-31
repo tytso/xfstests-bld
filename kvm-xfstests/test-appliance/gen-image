@@ -349,10 +349,14 @@ chmod 755 $ROOTDIR/root
 ln -sf ../proc/self/mounts $ROOTDIR/etc/mtab
 fix_symlinks
 
-sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
-	$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount
-sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
-	$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount
+if [ -f "$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount" ]; then
+	sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
+	    "$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount"
+fi
+if [ -f "$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount" ]; then
+	sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
+	    "$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount"
+fi
 
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
