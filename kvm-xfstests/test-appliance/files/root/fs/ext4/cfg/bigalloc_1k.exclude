@@ -16,3 +16,19 @@ generic/027
 
 # This test creates too many extended attributes to fit in a 1k block
 generic/454
+
+# This test needs to know the inode size and block size for the file
+# system; for bigalloc, we need to use the cluster size instead of the
+# block size.
+generic/204
+
+# This test uses the block size to figure out how many files to
+# create; for bigalloc, we need to use the cluster size instead of the
+# block size.
+generic/273
+
+# This test creates a very small file system on a dm-thin device.
+# The file system is too small for bigalloc, so skip it.  It was
+# introduced to test a dm-thin bug combined with an XFS bug regression.
+# If it's a problem for ext4, we'll catch it in other ext4 configs.
+generic/500
