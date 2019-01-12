@@ -213,21 +213,14 @@ then
     echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
 fi
 
-if test -z "$RUN_ON_GCE"
+if test -z "$RUN_ON_GCE" -o -z "$RUN_ONCE"
 then
     for i in $(find "$RESULTS" -name results-\* -type d)
     do
-	find $i/* -type d -print | xargs rm -rf 2> /dev/null
-	find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
-    done
-fi
-
-if test -z "$RUN_ONCE"
-then
-    for i in $(find "$RESULTS" -name results-\* -type d)
-    do
-	find $i/* -type d -print | xargs rm -rf 2> /dev/null
-	find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
+	if [ "$(ls -A $i)" ]; then
+	    find $i/* -type d -print | xargs rm -rf 2> /dev/null
+	    find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
+	fi
     done
 fi
 
