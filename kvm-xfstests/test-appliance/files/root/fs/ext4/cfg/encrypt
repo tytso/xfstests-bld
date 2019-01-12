@@ -1,5 +1,5 @@
 SIZE=small
-export EXT_MKFS_OPTIONS="-O encrypt -b 4096"
+export EXT_MKFS_OPTIONS="-O encrypt -b $(getconf PAGE_SIZE)"
 export EXT_MOUNT_OPTIONS="test_dummy_encryption"
 REQUIRE_FEATURE=encryption
 TESTNAME="Ext4 encryption"

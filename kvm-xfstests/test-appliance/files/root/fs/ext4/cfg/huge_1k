@@ -1,6 +1,4 @@
-export FS=ext4
-export TEST_DEV=$SM_TST_DEV
-export TEST_DIR=$SM_TST_MNT
-export EXT_MKFS_OPTIONS="-q -b 1024"
+SIZE=small
+export EXT_MKFS_OPTIONS="-b 1024"
 export EXT_MOUNT_OPTIONS="huge=always"
 TESTNAME="Ext4 1k block with huge pages"

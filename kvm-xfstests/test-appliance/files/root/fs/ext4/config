@@ -2,7 +2,7 @@
 # Configuration file for ext4
 #
 
-DEFAULT_MKFS_OPTIONS=""
+DEFAULT_MKFS_OPTIONS="-b 4096"
 
 function check_filesystem()
 {
@@ -28,7 +28,7 @@ function format_filesystem()
 
 function setup_mount_opts()
 {
-    export MKFS_OPTIONS="$EXT_MKFS_OPTIONS"
+    export MKFS_OPTIONS="-q $EXT_MKFS_OPTIONS"
     if test -n "$EXT_MOUNT_OPTIONS" ; then
 	export EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
     else
