@@ -120,7 +120,7 @@ function test_name_alias()
 {
     case "$1" in
 	default)	echo "small" ;;
-	*)		echo "large" ;;
+	*)		echo "$1" ;;
     esac
 }
 
