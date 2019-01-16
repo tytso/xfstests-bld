@@ -35,7 +35,7 @@ function clear_fs_config()
 # variables modified include SIZE REQUIRE_FEATURE
 # FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
 # TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
-# The variables explicitly set by the func are FS, i, FSTESTCFG
+# The variables explicitly set by the func are FS, TC, and FSTESTCFG
 
 # If return value is 1, no config was successfully sourced, and
 # this function should be called again if FSTESTCFG is not empty
@@ -48,20 +48,20 @@ function get_one_fs_config() {
     if test ! -d "$cfg_dir"; then
 	return 2
     fi
-    i="${FSTESTCFG%% *}"
+    TC="${FSTESTCFG%% *}"
     case "$FSTESTCFG" in
 	*\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
 	*)    FSTESTCFG=""
     esac
-    case "$i" in
+    case "$TC" in
 	*/*)
-	    FS="${i%%/*}"
-	    i="${i#*/}"
+	    FS="${TC%%/*}"
+	    TC="${TC#*/}"
 	    ;;
 	*)
-	    if test -d "$cfg_dir/$i"; then
-		FS="$i"
-		i=default
+	    if test -d "$cfg_dir/$TC"; then
+		FS="$TC"
+		TC=default
 	    else
 		FS="$FSTESTTYP"
 	    fi
@@ -73,17 +73,17 @@ function get_one_fs_config() {
     fi
     clear_fs_config
     get_fs_config "$FS" "$cfg_dir"
-    i=$(test_name_alias $i)
-    if test -f "$cfg_dir/$FS/cfg/$i.list"; then
-	FSTESTCFG="$(cat $cfg_dir/$FS/cfg/$i.list | sed -e '/#/d' \
+    TC=$(test_name_alias $TC)
+    if test -f "$cfg_dir/$FS/cfg/$TC.list"; then
+	FSTESTCFG="$(cat $cfg_dir/$FS/cfg/$TC.list | sed -e '/#/d' \
 		    -e '/^$/d' -e s:^:$FS/:) $FSTESTCFG"
 	FSTESTCFG="$(echo $FSTESTCFG)"
 	return 1
     fi
-    if test -f "$cfg_dir/$FS/cfg/$i"; then
-	. "$cfg_dir/$FS/cfg/$i"
+    if test -f "$cfg_dir/$FS/cfg/$TC"; then
+	. "$cfg_dir/$FS/cfg/$TC"
     else
-	echo "Unknown configuration $FS/$i"
+	echo "Unknown configuration $FS/$TC"
 	return 1
     fi
     if test -z "$TEST_DEV" ; then

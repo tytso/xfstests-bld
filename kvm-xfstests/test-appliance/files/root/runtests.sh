@@ -27,7 +27,7 @@ function copy_xunit_results()
 	then
 	    merge_xunit "$RESULTS" "$RESULT"
 	else
-	    if ! update_properties_xunit --fsconfig "$FS/$i" "$RESULTS" \
+	    if ! update_properties_xunit --fsconfig "$FS/$TC" "$RESULTS" \
 		 "$RESULT" "$RUNSTATS"
 	    then
 		mv "$RESULT" "$RESULT.broken"
@@ -122,7 +122,7 @@ while [ "$1" != "" ]; do
 	;;
     *)
 	echo " "
-	echo "Unrecognized option $i"
+	echo "Unrecognized option $1"
 	echo " "
   esac
   shift
@@ -285,11 +285,11 @@ do
 	    *:/*) ;;
 	    *)
 		if ! [ -b $TEST_DEV -o -c $TEST_DEV ]; then
-		    echo "Test device $TEST_DEV does not exist, skipping $i config"
+		    echo "Test device $TEST_DEV does not exist, skipping $TC config"
 		    continue
 		fi
 		if ! [ -b $SCRATCH_DEV -o -c $SCRATCH_DEV ]; then
-		    echo "Scratch device $SCRATCH_DEV does not exist, skipping $i config"
+		    echo "Scratch device $SCRATCH_DEV does not exist, skipping $TC config"
 		    continue
 		fi
 		;;
@@ -309,19 +309,19 @@ do
 	    XFS_IO_AVOID="$ALL_XFS_IO_AVOID $XFS_IO_AVOID"
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
-	echo $FS/$i > /run/fstest-config
+	echo $FS/$TC > /run/fstest-config
 	if test -n "$RUN_ONCE" && \
-		grep -q "^$FS/$i\$" "$RESULTS/fstest-completed"
+		grep -q "^$FS/$TC\$" "$RESULTS/fstest-completed"
 	then
-	    echo "$FS/$i: already run"
+	    echo "$FS/$TC: already run"
 	    /usr/local/lib/gce-logger already run
 	    continue
 	fi
 	setup_mount_opts
-	export RESULT_BASE="$RESULTS/$FS/results-$i"
-	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$i" ; then
+	export RESULT_BASE="$RESULTS/$FS/results-$TC"
+	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$TC" ; then
 	    mkdir -p "$RESULTS/$FS"
-	    mv "$RESULTS/results-$i" "$RESULT_BASE"
+	    mv "$RESULTS/results-$TC" "$RESULT_BASE"
 	fi
 	mkdir -p "$RESULT_BASE"
 	copy_xunit_results
@@ -343,8 +343,8 @@ do
 	cp /proc/meminfo "$RESULT_BASE/meminfo.before"
 	if test -n "$REQUIRE_FEATURE" -a \
 		! -f "/sys/fs/$FS/features/$REQUIRE_FEATURE" ; then
-	    echo -n "BEGIN TEST $i: $TESTNAME " ; date
-	    logger "BEGIN TEST $i: $TESTNAME "
+	    echo -n "BEGIN TEST $TC: $TESTNAME " ; date
+	    logger "BEGIN TEST $TC: $TESTNAME "
 	    echo "END TEST: Kernel does not support $REQUIRE_FEATURE"
 	    logger "END TEST: Kernel does not support $REQUIRE_FEATURE"
 	    continue
@@ -381,9 +381,9 @@ do
 	    else
 		cp /dev/null "$RESULT_BASE/exclude"
 	    fi
-	    if test -f "/root/fs/$FS/cfg/$i.exclude"; then
+	    if test -f "/root/fs/$FS/cfg/$TC.exclude"; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/cfg/$i.exclude" >> "$RESULT_BASE/exclude"
+		    < "/root/fs/$FS/cfg/$TC.exclude" >> "$RESULT_BASE/exclude"
 	    fi
 	    if test $(stat -c %s "$RESULT_BASE/exclude") -gt 0 ; then
 		AEX="-E $RESULT_BASE/exclude"
@@ -412,15 +412,15 @@ do
 	    else
 		nr_tests="$nr_tests test"
 	    fi
-	    echo -n "BEGIN TEST $i ($nr_tests): $TESTNAME " ; date
-	    logger "BEGIN TEST $i: $TESTNAME "
+	    echo -n "BEGIN TEST $TC ($nr_tests): $TESTNAME " ; date
+	    logger "BEGIN TEST $TC: $TESTNAME "
 	    echo DEVICE: $TEST_DEV
 	    show_mkfs_opts
 	    show_mount_opts
 	fi
-	gce_run_hooks fs-config-begin $i
+	gce_run_hooks fs-config-begin $TC
 	for j in $(seq 1 $RPT_COUNT) ; do
-	    gce_run_hooks pre-xfstests $i $j
+	    gce_run_hooks pre-xfstests $TC $j
 	    if test -n "$RUN_ONCE" ; then
 		if test -f "$RESULT_BASE/completed"
 		then
@@ -443,7 +443,7 @@ do
 	    else
 		echo "No tests to run"
 	    fi
-	    gce_run_hooks post-xfstests $i $j
+	    gce_run_hooks post-xfstests $TC $j
 	    umount "$TEST_DEV" >& /dev/null
 	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out
 	    if test $? -gt 0 ; then
@@ -458,9 +458,9 @@ do
 	    then
 		tar -C /tmp -xzf /tmp/check-time.tar.gz
 	    fi
-	    check_time="/tmp/check.time.$FS.$i"
-	    if test ! -f "$check_time" -a -f "/tmp/check.time.$i"; then
-		mv "/tmp/check.time.$i" "$check_time"
+	    check_time="/tmp/check.time.$FS.$TC"
+	    if test ! -f "$check_time" -a -f "/tmp/check.time.$TC"; then
+		mv "/tmp/check.time.$TC" "$check_time"
 	    fi
 	    touch "$RESULT_BASE/check.time" "$check_time"
 	    cat "$check_time" "$RESULT_BASE/check.time" \
@@ -482,14 +482,14 @@ END	{ if (NR > 0) {
 	[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULT_BASE/slabinfo.after"
 	cp /proc/meminfo "$RESULT_BASE/meminfo.after"
 	free -m
-	gce_run_hooks fs-config-end $i
+	gce_run_hooks fs-config-end $TC
 	umount "$TEST_DIR" >& /dev/null
 	umount "$SCRATCH_MNT" >& /dev/null
 	if test -n "$RUN_ONCE" ; then
 	    cat /run/fstest-config >> "$RESULTS/fstest-completed"
 	fi
 	echo -n "END TEST: $TESTNAME " ; date
-	logger "END TEST $i: $TESTNAME "
+	logger "END TEST $TC: $TESTNAME "
 done
 
 if test -n "$FSTESTSTR" ; then
