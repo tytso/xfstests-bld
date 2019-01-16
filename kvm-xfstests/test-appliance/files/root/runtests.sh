@@ -135,19 +135,21 @@ if ! get_fs_config $FSTESTTYP ; then
     exit 1
 fi
 
-if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
-    format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
-fi
-check_filesystem "$PRI_TST_DEV" >& "/tmp/fsck.$$"
-FSCKCODE=$?
-if test $FSCKCODE -gt 1
-then
-    cat /tmp/fsck.$$
-fi
+if test -b "$PRI_TST_DEV" ; then
+    if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
+	format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
+    fi
+    check_filesystem "$PRI_TST_DEV" >& "/tmp/fsck.$$"
+    FSCKCODE=$?
+    if test $FSCKCODE -gt 1
+    then
+	cat /tmp/fsck.$$
+    fi
 
-if test $FSCKCODE -ge 8
-then
-    format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
+    if test $FSCKCODE -ge 8
+    then
+	format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
+    fi
 fi
 if test ! -f /.dockerenv ; then
     dmesg -n 5
@@ -259,7 +261,8 @@ do
 		export TEST_DIR=$LG_TST_MNT
 	    else
 		if test "$FSTESTTYP" = "$FS" -a \
-		   "$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"
+			-b "$PRI_TST_DEV" -a \
+			"$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"
 		then
 		    export TEST_DEV=$PRI_TST_DEV
 		    export TEST_DIR=$PRI_TST_MNT
