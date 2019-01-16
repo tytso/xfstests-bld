@@ -145,7 +145,7 @@ function compute_partition_sizes()
 	    continue
 	fi
 	# Find the right TST_DEV
-	if test -z "$TEST_DEV" ; then
+	if test -n "$SIZE" ; then
 	    if test "$SIZE" = "large" ; then
 		lg_tst=true
 	    else
@@ -156,58 +156,14 @@ function compute_partition_sizes()
 		    sm_tst=true
 		fi
 	    fi
-	else
-	    # The reason we test whether "TEST_DEV" has any substring
-	    # equal to X_TST_DEV or X_TST_MNT is because some configs
-	    # export TEST_DEV explicitly to a device (huge_4k and huge_1k do
-	    # this), and some export it to a subdirectory in (LG|SM)_TST_MNT
-	    # (overlayfs does this)
-	    # Normally since TEST_DEV is set to a non-zero string, we expect
-	    # to not have to set up the scratch disk partitions, (as is the
-	    # case with ext4/dax) but this is currently not the case with
-	    # those certain configs (huge_4k exports as PRI_TST_DEV which just
-	    # happens to work fine without this check)
-	    if [[ ( -n "${PRI_TST_DEV:+x}" && \
-		"$TEST_DEV" == *"$PRI_TST_DEV"* ) || \
-		( -n "${PRI_TST_MNT:+x}" && \
-		"$TEST_DEV" == *"$PRI_TST_MNT"* ) ]] ; then
-		pri_tst=true
-	    fi
-	    if [[ ( -n "${SM_TST_DEV:+x}" && \
-		"$TEST_DEV" == *"$SM_TST_DEV"* ) || \
-		( -n "${SM_TST_MNT:+x}" && \
-		"$TEST_DEV" == *"$SM_TST_MNT"* ) ]] ; then
-		sm_tst=true
-	    fi
-	    if [[ ( -n "${LG_TST_DEV:+x}" && \
-		"$TEST_DEV" == *"$LG_TST_DEV"* ) || \
-		( -n "${LG_TST_MNT:+x}" && \
-		"$TEST_DEV" == *"$LG_TST_MNT"* ) ]] ; then
-		lg_tst=true
-	    fi
 	fi
 
 	# Find the right SCR_DEV
-	if test -z "$SCRATCH_DEV" ; then
+	if test -n "$SIZE" ; then
 	    if test "$SIZE" = "large" ; then
 		lg_scr=true
 	    else
 		sm_scr=true
-	    fi
-	else
-	    # Same reason as above here. overlay exports SCRATCH_DEV as subdirs
-	    # in $LG_SCR_MNT.
-	    if [[ ( -n "${SM_SCR_DEV:+x}" && \
-		"$SCRATCH_DEV" == *"$SM_SCR_DEV"* ) || \
-		( -n "${SM_SCR_MNT:+x}" && \
-		"$SCRATCH_DEV" == *"$SM_SCR_MNT"* ) ]] ; then
-		sm_scr=true
-	    fi
-	    if [[ ( -n "${LG_SCR_DEV:+x}" && \
-		"$SCRATCH_DEV" == *"$LG_SCR_DEV"* ) || \
-		( -n "${LG_SCR_MNT:+x}" && \
-		"$SCRATCH_DEV" == *"$LG_SCR_MNT"* ) ]] ; then
-		lg_scr=true
 	    fi
 	fi
     done
