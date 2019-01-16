@@ -13,13 +13,62 @@ case "$NFSSRV" in
 	;;
 esac
 
+function __fsck()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/e2fsck -fy "$dev"
+		;;
+	    xfs)
+		xfs_repair "$dev"
+		;;
+	    *)
+	        btrfs check --repair "$dev"
+		;;
+	esac
+}
+
 function check_filesystem()
 {
-	return 0
+    if test "$TC" = "loopback" ; then
+	umount "$SM_TST_MNT"/test >& /dev/null
+	umount "$SM_TST_MNT"/scratch >& /dev/null
+	umount "$SM_TST_MNT" >& /dev/null
+	__fsck "$SM_TST_DEV"
+    fi
+    return 0
+}
+
+function __mkfs()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/mke2fs -F -q -t ext4 "$dev"
+		;;
+	    xfs)
+		mkfs.xfs -f -m rmapbt=1,reflink=1 "$dev"
+		;;
+	    *)
+		mkfs.$FSTESTTYP "$dev"
+		;;
+	esac
 }
 
 function format_filesystem()
 {
+	if test "$TC" = "loopback" ; then
+	   umount "$SM_TST_DEV" >& /dev/null
+	   __mkfs "$SM_TST_DEV"
+	   mount -t $FSTESTTYP "$SM_TST_DEV" "$SM_TST_MNT"
+	   mkdir "$SM_TST_MNT"/test
+	   mkdir "$SM_TST_MNT"/scratch
+	   mount --bind "$SM_TST_MNT"/test /test
+	   mount --bind "$SM_TST_MNT"/scratch /scratch
+	fi
 	return 0
 }
 
@@ -50,7 +99,10 @@ function show_mount_opts()
 
 function test_name_alias()
 {
-	echo "$1"
+    case "$1" in
+	default)	echo "loopback" ;;
+	*)		echo "$1" ;;
+    esac
 }
 
 function reset_vars()
