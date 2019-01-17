@@ -9,10 +9,10 @@ gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
 /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
 
-/usr/local/lib/gce-setup-results &
-/usr/local/lib/gce-setup-scratch &
+script -c /usr/local/lib/gce-setup-results /var/log/gce-setup-results.log &
+script -c /usr/local/lib/gce-setup-scratch /var/log/gce-setup-scratch.log &
 if test -n "$NFSSRV" ; then
-    /usr/local/lib/gce-setup-nfs &
+    script -c /usr/local/lib/gce-setup-nfs /var/log/gce-setup-nfs.log &
 fi
 
 cat > /var/www/varz <<EOF
