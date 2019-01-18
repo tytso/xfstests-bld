@@ -4,15 +4,6 @@
 
 DEFAULT_MKFS_OPTIONS=""
 
-case "$NFSSRV" in
-     localhost)
-	NFSROOT="localhost:"
-	;;
-     *)
-	NFSROOT=$NFSSRV
-	;;
-esac
-
 function __fsck()
 {
 	local dev="$1"
@@ -107,5 +98,5 @@ function test_name_alias()
 
 function reset_vars()
 {
-	unset NFS_MOUNT_OPTIONS
+	unset NFS_MOUNT_OPTIONS USE_FILESTORE
 }

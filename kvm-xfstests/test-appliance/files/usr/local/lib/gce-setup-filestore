@@ -1,0 +1,35 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+
+logger -i "Entered nfs setup"
+
+set -vx
+filestore_info=$(mktemp)
+if ! gcloud beta filestore instances describe nfstest \
+     --location="$ZONE" --format=json > "$filestore_info" ; then
+    network=$(gcloud compute instances describe $instance --format=json | \
+		  jq ".networkInterfaces[].network" | \
+		  sed -e 's;^".*/;;' -e 's/"$//')
+    gcloud beta filestore instances create nfstest \
+	   --file-share=capacity=1TB,name=nfstest \
+	   --network=name="$network" --location="$ZONE"
+    if ! gcloud beta filestore instances describe nfstest \
+	 --location="$ZONE" --format=json > "$filestore_info" ; then
+	logger -i "Couldn't start filestore"
+	exit 1
+    fi
+fi
+ipaddr=$(cat "$filestore_info" | jq '.networks[].ipAddresses[]' | \
+	     sed -e 's/^"//' -e 's/"$//')
+FILESTORE_TOP="$ipaddr:/nfstest"
+FILESTORE_SUBDIR="$instance"
+mount -t nfs "$FILESTORE_TOP" /mnt
+mkdir -p /mnt/$FILESTORE_SUBDIR/test
+mkdir -p /mnt/$FILESTORE_SUBDIR/scratch
+touch /mnt/busy-$FILESTORE_SUBDIR
+umount /mnt
+echo export FILESTORE_TOP FILESTORE_SUBDIR >> /run/test-env
+echo FILESTORE_TOP=\"$FILESTORE_TOP\" >> /run/test-env
+echo FILESTORE_SUBDIR=\"$instance\" >> /run/test-env

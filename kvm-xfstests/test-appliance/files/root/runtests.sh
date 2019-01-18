@@ -251,6 +251,13 @@ do
 	if ! get_one_fs_config "/root/fs"; then
           continue
         fi
+	if test -z "$RUN_ON_GCE" -a -n "$USE_FILESTORE" ; then
+	    echo -n "BEGIN TEST $TC: $TESTNAME " ; date
+	    logger "BEGIN TEST $TC: $TESTNAME "
+	    echo "END TEST: $FS/$TC only supported on gce-xfstests"
+	    logger "END TEST: $FS/$TC only supported on gce-xfstests"
+	    continue
+	fi
 	if test -z "$TEST_DEV" ; then
 	    if test -z "$SIZE" ; then
 		echo "No TEST_DEV and no SIZE"

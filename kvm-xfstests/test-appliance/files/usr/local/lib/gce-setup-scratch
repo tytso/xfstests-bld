@@ -2,7 +2,6 @@
 
 . /usr/local/lib/gce-funcs
 . /root/test-config
-. /root/runtests_utils
 
 logger -i "Entered setup scratch"
 
@@ -16,38 +15,8 @@ then
     CREATED_SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
 fi
 
-
 if ! test -e $CREATED_SCRATCH_DEV
 then
-    if test -f "/run/do_blktests" ; then
-	SCRATCH_SIZE=50
-    else
-	logger -i "compute partition sizes"
-	# pass pri_tst size as 0, so TOTAL_SIZE doesn't include it.
-	if compute_partition_sizes "/root/fs" 5 5 5 20 20; then
-	    VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
-	    VDC_SIZE="${REQUIRED_PARTITION_SIZE["SM_SCR"]:-0}""g"
-	    VDD_SIZE="${REQUIRED_PARTITION_SIZE["SM_TST"]:-0}""g"
-	    VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
-	    VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
-	    SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
-	    if test "$SCRATCH_SIZE" -eq 0 ; then
-		exit 0
-	    fi
-	    ((SCRATCH_SIZE+=1)) # Add 1gb for overhead.
-	    logger -i "Computed partition sizes successfully:"
-	    logger -i "VDC: $VDC_SIZE VDD: $VDD_SIZE"
-	    logger -i "VDE: $VDE_SIZE VDF: $VDF_SIZE"
-	    logger -i "Total disk size: $SCRATCH_SIZE"
-	fi
-    fi
-    if test -n "$GCE_MIN_SCR_SIZE" -a -n "$SCRATCH_SIZE" && \
-	[[ $GCE_MIN_SCR_SIZE =~ [0-9]* ]] && \
-	(( GCE_MIN_SCR_SIZE < 250 )) && \
-	(( GCE_MIN_SCR_SIZE > SCRATCH_SIZE )); then
-	SCRATCH_SIZE=$GCE_MIN_SCR_SIZE
-    fi
-
     gcloud compute -q disks create "$SCRATCH_DSK" \
 	--size "${SCRATCH_SIZE:-100}" \
 	--zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"

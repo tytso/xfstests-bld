@@ -1,0 +1,7 @@
+USE_FILESTORE=yes
+export TEST_DEV=$FILESTORE_TOP/$FILESTORE_SUBDIR/test
+export TEST_DIR=/mnt/test
+export SCRATCH_DEV=$FILESTORE_TOP/$FILESTORE_SUBDIR/scratch
+export SCRATCH_MNT=/mnt/scratch
+export NFS_MOUNT_OPTIONS="-o rw,relatime"
+TESTNAME="nfs client running against GCE filestore"
