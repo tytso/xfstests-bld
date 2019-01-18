@@ -30,6 +30,9 @@ then
 	    VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
 	    VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
 	    SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
+	    if test "$SCRATCH_SIZE" -eq 0 ; then
+		exit 0
+	    fi
 	    ((SCRATCH_SIZE+=1)) # Add 1gb for overhead.
 	    logger -i "Computed partition sizes successfully:"
 	    logger -i "VDC: $VDC_SIZE VDD: $VDD_SIZE"
