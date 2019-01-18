@@ -23,14 +23,14 @@ then
     else
 	logger -i "compute partition sizes"
 	# pass pri_tst size as 0, so TOTAL_SIZE doesn't include it.
-	if compute_partition_sizes "/root/fs" 0 5 5 20 20; then
-	    # VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
+	if compute_partition_sizes "/root/fs" 5 5 5 20 20; then
+	    VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
 	    VDC_SIZE="${REQUIRED_PARTITION_SIZE["SM_SCR"]:-0}""g"
 	    VDD_SIZE="${REQUIRED_PARTITION_SIZE["SM_TST"]:-0}""g"
 	    VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
 	    VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
 	    SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
-	    ((SCRATCH_SIZE+=6)) # Add 5 for PRI_TST and 1gb overhead.
+	    ((SCRATCH_SIZE+=1)) # Add 1gb for overhead.
 	    logger -i "Computed partition sizes successfully:"
 	    logger -i "VDC: $VDC_SIZE VDD: $VDD_SIZE"
 	    logger -i "VDE: $VDE_SIZE VDF: $VDF_SIZE"
@@ -68,8 +68,12 @@ if ! vgs xt >& /dev/null
 then
     pvcreate $CREATED_SCRATCH_DEV
     vgcreate xt $CREATED_SCRATCH_DEV
-    lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
 
+    if [ "$VDB_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
+	mke2fs -t ext4 -q /dev/mapper/xt-vdb
+    fi
     if [ "$VDC_SIZE" != '0g' ]
     then
 	lvcreate -L "${VDC_SIZE:-5g}"  -n vdc xt
@@ -86,6 +90,4 @@ then
     then
 	lvcreate -L "${VDF_SIZE:-20g}"  -n vdf xt
     fi
-
-    mke2fs -t ext4 -q /dev/mapper/xt-vdb
 fi
