@@ -6,6 +6,7 @@
 
 logger -i "Entered nfs setup"
 
+set -vx
 if test "$NFSSRV" = "filestore" ; then
     filestore_info=$(mktemp)
     if ! gcloud beta filestore instances describe nfstest \

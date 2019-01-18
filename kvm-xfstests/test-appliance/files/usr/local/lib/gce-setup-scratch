@@ -6,6 +6,7 @@
 
 logger -i "Entered setup scratch"
 
+set -vx
 SCRATCH_DSK=$instance-scratch
 CREATED_SCRATCH_DEV=/dev/disk/by-id/google-scratch
 
