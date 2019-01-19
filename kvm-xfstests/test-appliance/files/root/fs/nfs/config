@@ -25,9 +25,12 @@ function check_filesystem()
 {
     case "$TC" in
 	loopback*)
-	    umount "$SM_TST_MNT"/test >& /dev/null
-	    umount "$SM_TST_MNT"/scratch >& /dev/null
-	    umount "$SM_TST_MNT" >& /dev/null
+	    systemctl stop nfs-kernel-server
+	    sleep 0.5
+	    umount /test
+	    umount /scratch
+	    umount "$SM_TST_MNT"
+	    systemctl start nfs-kernel-server
 	    __fsck "$SM_TST_DEV"
 	    ;;
     esac
@@ -55,7 +58,12 @@ function format_filesystem()
 {
     case "$TC" in
 	loopback*)
+	    systemctl stop nfs-kernel-server
+	    sleep 0.5
+	    umount /test >& /dev/null
+	    umount /scratch >& /dev/null
 	    umount "$SM_TST_DEV" >& /dev/null
+	    systemctl start nfs-kernel-server
 	    __mkfs "$SM_TST_DEV"
 	    mount -t $FSTESTTYP "$SM_TST_DEV" "$SM_TST_MNT"
 	    mkdir "$SM_TST_MNT"/test
