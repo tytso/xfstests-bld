@@ -1,0 +1,5 @@
+# The proposed fix for generic/484, "locks: change POSIX lock
+# ownership on execve when files_struct is displaced" would break NFS
+# Jeff Layton and Eric Biederman have some ideas for how to address it
+# but fixing it is non-trivial
+generic/484

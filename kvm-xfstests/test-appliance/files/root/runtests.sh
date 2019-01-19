@@ -385,11 +385,15 @@ do
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
-	    if test -f "/root/fs/$FS/exclude" ; then
+	    if test -f "/root/fs/global_exclude" ; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/exclude" > "$RESULT_BASE/exclude"
+		    < "/root/fs/global_exclude" > "$RESULT_BASE/exclude"
 	    else
 		cp /dev/null "$RESULT_BASE/exclude"
+	    fi
+	    if test -f "/root/fs/$FS/exclude" ; then
+		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+		    < "/root/fs/$FS/exclude" >> "$RESULT_BASE/exclude"
 	    fi
 	    if test -f "/root/fs/$FS/cfg/$TC.exclude"; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
