@@ -1,10 +1,10 @@
 ARCH_LIST=(amd64 i386 arm64 armhf)
-MIRROR=https://snapshot.debian.org/archive/debian/20181210T092708Z/
+MIRROR=https://snapshot.debian.org/archive/debian/20190118T220436Z/
 
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=12eec16d7d7cc36945275d1ea5e33e0f627409a5
+XFSTESTS_COMMIT=4ad32d1950b292c139c8479e4f0bace6fac818f4
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 XFSPROGS_COMMIT=v4.19.0
@@ -25,10 +25,10 @@ IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
 IMA_EVM_UTILS_COMMIT=0267fa16990fd0ddcc89984a8e55b27d43e80167
 
 BLKTESTS_GIT=https://github.com/osandov/blktests.git
-BLKTESTS_COMMIT=69a95c6f260f9f65551214a0291f82326a57f8f7
+BLKTESTS_COMMIT=4cc46670a681cb2f039f9c92994eaa7455de841f
 
 NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
-NVME_CLI_COMMIT=e145ab4d9b5966ee7964a3b724af1855080465ca
+NVME_CLI_COMMIT=eb58f548342f477d02da555cb939b3e6a5609269
 
 #EXEC_LDFLAGS=-static
 #EXEC_LLDFLAGS=-all-static
