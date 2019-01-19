@@ -412,6 +412,17 @@ EOF
     fi
 fi
 
+if test -f $ROOTDIR/etc/default/nfs-kernel-server ; then
+    ed $ROOTDIR/etc/default/nfs-kernel-server <<EOF
+/RPCNFSDCOUNT/c
+c
+RPCNFSDCOUNT="8 --nfs-version 2"
+.
+w
+q
+EOF
+fi
+
 if test -n "$PAUSE_DEBUG"
 then
     ${SHELL:-/bin/sh}

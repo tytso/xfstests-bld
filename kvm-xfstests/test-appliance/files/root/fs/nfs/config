@@ -23,12 +23,14 @@ function __fsck()
 
 function check_filesystem()
 {
-    if test "$TC" = "loopback" ; then
-	umount "$SM_TST_MNT"/test >& /dev/null
-	umount "$SM_TST_MNT"/scratch >& /dev/null
-	umount "$SM_TST_MNT" >& /dev/null
-	__fsck "$SM_TST_DEV"
-    fi
+    case "$TC" in
+	loopback*)
+	    umount "$SM_TST_MNT"/test >& /dev/null
+	    umount "$SM_TST_MNT"/scratch >& /dev/null
+	    umount "$SM_TST_MNT" >& /dev/null
+	    __fsck "$SM_TST_DEV"
+	    ;;
+    esac
     return 0
 }
 
@@ -51,16 +53,18 @@ function __mkfs()
 
 function format_filesystem()
 {
-	if test "$TC" = "loopback" ; then
-	   umount "$SM_TST_DEV" >& /dev/null
-	   __mkfs "$SM_TST_DEV"
-	   mount -t $FSTESTTYP "$SM_TST_DEV" "$SM_TST_MNT"
-	   mkdir "$SM_TST_MNT"/test
-	   mkdir "$SM_TST_MNT"/scratch
-	   mount --bind "$SM_TST_MNT"/test /test
-	   mount --bind "$SM_TST_MNT"/scratch /scratch
-	fi
-	return 0
+    case "$TC" in
+	loopback*)
+	    umount "$SM_TST_DEV" >& /dev/null
+	    __mkfs "$SM_TST_DEV"
+	    mount -t $FSTESTTYP "$SM_TST_DEV" "$SM_TST_MNT"
+	    mkdir "$SM_TST_MNT"/test
+	    mkdir "$SM_TST_MNT"/scratch
+	    mount --bind "$SM_TST_MNT"/test /test
+	    mount --bind "$SM_TST_MNT"/scratch /scratch
+	    ;;
+    esac
+    return 0
 }
 
 function setup_mount_opts()

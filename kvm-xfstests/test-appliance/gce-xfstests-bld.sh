@@ -258,6 +258,17 @@ systemctl enable telnet-getty@ttyS3.service
 systemctl stop multipathd
 systemctl disable multipathd
 
+if test -f /etc/default/nfs-kernel-server ; then
+    ed /etc/default/nfs-kernel-server <<EOF
+/RPCNFSDCOUNT/c
+c
+RPCNFSDCOUNT="8 --nfs-version 2"
+.
+w
+q
+EOF
+fi
+
 if gsutil -m cp gs://$BUCKET/debs/*.deb /run
 then
     dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
