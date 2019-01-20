@@ -107,7 +107,7 @@ using the following command:
 
     $ sudo apt-get install autoconf autoconf2.64 \
 		automake autopoint bison build-essential ca-certificates \
-		debootstrap e2fslibs-dev fakechroot gettext git \
+		debootstrap e2fslibs-dev ed fakechroot gettext git \
 		libdbus-1-3 libgdbm-dev libkeyutils-dev libssl-dev \
 		libtool-bin pkg-config qemu-utils symlinks golang-1.8-go
 

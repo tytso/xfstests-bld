@@ -45,6 +45,7 @@ build-essential
 ca-certificates
 debootstrap
 e2fslibs-dev
+ed
 fakechroot
 gettext
 git
