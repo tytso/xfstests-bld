@@ -113,9 +113,6 @@ function compute_partition_sizes()
 {
     unset REQUIRED_PARTITION_SIZE CREATE_FILESTORE
     declare -g -A REQUIRED_PARTITION_SIZE
-    if test -z "$FSTESTCFG" -o -z "$FSTESTSET"; then
-	return 1
-    fi
     local cfg_dir="${1:-/root/fs}"
     if test ! -d "$cfg_dir"; then
 	return 1
@@ -139,6 +136,13 @@ function compute_partition_sizes()
     local lg_tst=false # LG_TST_DEV LG_TST_MNT
     local lg_scr=false # LG_SCR_DEV LG_SCR_MNT
 
+    if test -z "$FSTESTCFG" ; then
+	pri_tst=true
+	sm_tst=true
+	lg_tst=true
+	sm_scr=true
+	lg_scr=true
+    fi
     while test -n "$FSTESTCFG"
     do
 	if ! get_one_fs_config $cfg_dir; then
