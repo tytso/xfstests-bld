@@ -38,3 +38,4 @@ export CCACHE_COMPRESS=t
 
 BUILD_ENV="schroot -c $CHROOT --"
 SUDO_ENV="schroot -c $CHROOT -u root --"
+gen_image_args="--networking"
