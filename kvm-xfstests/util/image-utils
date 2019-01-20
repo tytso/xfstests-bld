@@ -1,0 +1,24 @@
+get_labels()
+{
+    while read k v rest
+    do
+	case "$v" in
+	    [0-9]*)
+		v="g$v"
+		;;
+	    *-*)
+		;;
+	    *)
+		v="g$v"
+		;;
+	esac
+	v=$(echo $v | sed -e 's/\./_/g' | tr '[:upper:]' '[:lower:]')
+	if [ -n "$l" ] ; then
+	    l="$l,$k=$v"
+	else
+	    l="$k=$v"
+	fi
+    done
+    echo "$l"
+}
+

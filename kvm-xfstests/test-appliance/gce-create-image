@@ -7,6 +7,7 @@ then
     DIR="$GCE_XFSTESTS_DIR"
 fi
 . "$DIR/util/get-config"
+. "$DIR/util/image-utils"
 
 cd "$DIR/test-appliance"
 
@@ -20,30 +21,6 @@ then
 	echo "your config file"
 	exit 1
 fi
-
-get_labels()
-{
-    while read k v rest
-    do
-	case "$v" in
-	    [0-9]*)
-		v="g$v"
-		;;
-	    *-*)
-		;;
-	    *)
-		v="g$v"
-		;;
-	esac
-	v=$(echo $v | sed -e 's/\./_/g' | tr '[:upper:]' '[:lower:]')
-	if [ -n "$l" ] ; then
-	    l="$l,$k=$v"
-	else
-	    l="$k=$v"
-	fi
-    done
-    echo "$l"
-}
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 GS_RO=https://www.googleapis.com/auth/devstorage.read_only
