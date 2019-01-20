@@ -325,7 +325,7 @@ if test -z "$SKIP_STRESS_NG" ; then
     (cd stress-ng; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     $MAKE_CLEAN ; make $J ; make DESTDIR=$DESTDIR $J install ; \
+     $MAKE_CLEAN ; make makeconfig ; make $J ; make DESTDIR=$DESTDIR $J install ; \
      ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../stress-ng.ver ; \
     )
 fi
