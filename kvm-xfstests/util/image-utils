@@ -3,13 +3,11 @@ get_labels()
     while read k v rest
     do
 	case "$v" in
+	    [0-9a-f][0-9a-f][0-9a-f]*)
+		v="g$v"
+		;;
 	    [0-9]*)
-		v="g$v"
-		;;
-	    *-*)
-		;;
-	    *)
-		v="g$v"
+		v="v$v"
 		;;
 	esac
 	v=$(echo $v | sed -e 's/\./_/g' | tr '[:upper:]' '[:lower:]')
