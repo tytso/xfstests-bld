@@ -258,11 +258,22 @@ case "$1" in
 	exit 0
 	;;
     ls-images)
+	shift
+	case $1 in
+	    --project) shift
+		GCE_PROJECT=$1
+		shift ;;
+	esac
 	gcloud compute --project "$GCE_PROJECT" images list --no-standard-images
 	exit 0
 	;;
     rm-images)
 	shift
+	case $1 in
+	    --project) shift
+		GCE_PROJECT=$1
+		shift ;;
+	esac
 	gcloud compute --project "$GCE_PROJECT" images delete "$@"
 	exit 0
 	;;
