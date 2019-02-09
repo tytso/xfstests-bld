@@ -79,7 +79,7 @@ function set_skip_all () {
 [ -d util-linux ] || SKIP_UTIL_LINUX=yes
 [ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
 [ -d blktests ] || SKIP_BLKTESTS=yes
-[ -d nvme_cli ] || SKIP_NVME_CLI=yes
+[ -d nvme-cli ] || SKIP_NVME_CLI=yes
 
 MAKE_CLEAN=":"
 
