@@ -19,6 +19,7 @@ RUN apt-get update && \
 	    curl \
 	    gettext \
 	    git \
+	    libkeyutils-dev \
 	    libtool \
 	    libtool-bin \
 	    pkg-config \
@@ -54,9 +55,12 @@ RUN cd /devel/xfstests-bld && \
     apt-get purge -y \
 	    autoconf \
 	    automake \
+	    autopoint \
 	    build-essential \
 	    gettext \
 	    git \
+	    libkeyutils-dev \
+	    libssl-dev \
 	    libtool \
 	    libtool-bin \
 	    pkg-config \
