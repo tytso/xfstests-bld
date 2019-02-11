@@ -39,8 +39,7 @@ MAINTAINER Theodore Y. Ts'o tytso@mit.edu
 COPY . /devel/xfstests-bld
 
 RUN cd /devel/xfstests-bld && \
-    cp config config.custom && \
-    echo "XFSTESTS_GIT=https://github.com/tytso/xfstests" >> config.custom && \
+    cp config.docker config.custom && \
     make && \
     make tarball && \
     tar -C /root -xf xfstests.tar.gz && \
