@@ -23,7 +23,12 @@ RUN apt-get update && \
 	    libtool-bin \
 	    pkg-config \
 	    pigz \
-	    uuid-dev && \
+	    uuid-dev \
+	    libssl-dev \
+	    autopoint  \
+	    procps \
+	    python \
+	    python-future && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \
