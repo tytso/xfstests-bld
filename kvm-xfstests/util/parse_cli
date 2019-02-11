@@ -849,7 +849,8 @@ if test -z "$OVERRIDE_KERNEL" ; then
 	fi
     elif test -f "./arch/x86/boot/bzImage" ; then
 	t=$(pwd)
-	if "$KERNEL" != "$t" -a "$KERNEL" != "$t/arch/x86/boot/bzImage" ; then
+	if test "$KERNEL" != "$t" -a "$KERNEL" != "$t/arch/x86/boot/bzImage"
+	then
 	    echo "Current directory appears to be a kernel tree; using it"
 	    KERNEL=$t
 	    OVERRIDE_KERNEL=$t
