@@ -13,7 +13,8 @@ function usage()
 function gen_README()
 {
 	sed -e "s;@MIRROR@;$MIRROR;" \
-		-e "s/@XFSTESTS_RELEASE@/$release/" \
+		-e "s/@XFSTESTS_RELEASE@/$xfstests_rel/" \
+		-e "s/@BLKTESTS_RELEASE@/$blktests_rel/" \
 		-e "/@VERFILE@/r git-versions" \
 		< README.in | sed -e '/^@VERFILE@$/d' > out_dir/README
 }
@@ -38,16 +39,18 @@ done
 mkdir -p out_dir
 rm -f out_dir/README
 
+sed -e '1,/^#BEGIN CONFIG.CUSTOM/d' < build_config.sh \
+	>> $BUILD_DIR/config.custom
+(cd $BUILD_DIR ; git pull ; ./get-all )
 (cd $BUILD_DIR ; ./get-versions ) > git-versions
 
-release=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
+xfstests_rel=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
+blktests_rel=$(cd $BUILD_DIR/blktests ; git tag --points-at HEAD | grep ^release)
 
 if test "$README_ONLY" = "yes" ; then
     gen_README
     exit 0
 fi
-
-(cd $BUILD_DIR ; git pull ; ./get-all )
 
 date
 for i in "${ARCH_LIST[@]}" ; do
