@@ -261,7 +261,6 @@ systemctl disable multipathd
 if test -f /etc/default/nfs-kernel-server ; then
     ed /etc/default/nfs-kernel-server <<EOF
 /RPCNFSDCOUNT/c
-c
 RPCNFSDCOUNT="8 --nfs-version 2"
 .
 w
