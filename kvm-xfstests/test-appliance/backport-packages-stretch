@@ -4,6 +4,7 @@ libcomerr2
 libcom-err2
 libext2fs2
 libss2
+libzstd1
 btrfs-progs
 f2fs-tools
 libf2fs5
