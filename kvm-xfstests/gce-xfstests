@@ -252,7 +252,16 @@ case "$1" in
 	;;
     rm-disks|rm-disk)
 	shift
-	GCE_ZONE=$(get_gce_zone_disk "$1")
+	case "$1" in
+	    --zone) shift
+		zone=$1
+		shift ;;
+	esac
+	if test -n "$zone" ; then
+	    GCE_ZONE="$zone"
+	else
+	    GCE_ZONE=$(get_gce_zone_disk "$1")
+	fi
 	gcloud compute --project "$GCE_PROJECT" disks delete "$@" \
 	       --zone $GCE_ZONE
 	exit 0
