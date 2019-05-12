@@ -34,6 +34,7 @@ then
 fi
 
 if test -f "/run/do_blktests" ; then
+    wait
     exit 0
 fi
 
@@ -64,3 +65,5 @@ then
 	lvcreate -L "${VDF_SIZE:-20g}"  -n vdf xt
     fi
 fi
+wait
+exit 0

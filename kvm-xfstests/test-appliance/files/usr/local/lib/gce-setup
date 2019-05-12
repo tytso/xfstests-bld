@@ -45,10 +45,10 @@ fi
 
 script -c /usr/local/lib/gce-setup-results /var/log/gce-setup-results.log &
 if test "$SCRATCH_SIZE" -gt 0 ; then
-    script -c /usr/local/lib/gce-setup-scratch /results/gce-setup-scratch.log &
+    script -c /usr/local/lib/gce-setup-scratch /var/log/gce-setup-scratch.log &
 fi
 if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
-    script -c /usr/local/lib/gce-setup-filestore /results/gce-setup-filestore.log &
+    script -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log &
 fi
 
 cat > /var/www/varz <<EOF
