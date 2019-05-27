@@ -181,7 +181,7 @@ then
     cp /usr/local/lib/gce-local.config /root/xfstests/local.config
     . /usr/local/lib/gce-funcs
     image=$(gcloud compute disks describe --format='value(sourceImage)' \
-		${instance} | \
+		--zone "$ZONE" ${instance} | \
 		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \
 		    -e 's;global/images/;;')
     echo "FSTESTIMG: $image" >> "$RUNSTATS"
