@@ -2,6 +2,9 @@
 generic/050
 generic/052
 
+# Without a journal, tests which do a shutdown won't pass
+generic/530
+
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
