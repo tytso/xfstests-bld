@@ -8,6 +8,13 @@ generic/027
 # into dm-error mode, and this guarantees that this test will fail.
 generic/441
 
+# Ext4 doesn't suppport mounting with norecovery && data=journal.
+# We could fix this in the future by no giving an error in the case
+# where we are mounting with ro, norecovery, and data=journal.
+# (XFS requires ro with norecovery, and perhaps we should make
+# a similar restriction.)
+generic/537
+
 # This test uses dioread_nolock which currently isn't supported with
 # data=journal
 ext4/034
