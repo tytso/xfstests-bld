@@ -3,3 +3,10 @@
 # Jeff Layton and Eric Biederman have some ideas for how to address it
 # but fixing it is non-trivial
 generic/484
+
+# This test has false positives on all file systems that don't support
+# copy_file_range, since swap files can be read by root, and this
+# test tries to enforce that copy_file_range won't work on swap files.
+# Unfortunately, xfs_io falls back to read/write if necessary, which
+# causes generic/554 to fail.
+generic/554
