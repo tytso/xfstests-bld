@@ -1,19 +1,19 @@
 ARCH_LIST=(amd64 i386 arm64)
-MIRROR=http://snapshot.debian.org/archive/debian/20190304T102049Z/
+MIRROR=http://snapshot.debian.org/archive/debian/20190610T085841Z/
 
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=476f61a48d6499949096436065f9fdd8e9ab7c37
+XFSTESTS_COMMIT=a3cc922a340d487130d68e21a5775d02a24580d9
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-XFSPROGS_COMMIT=413a0f0d91a15b9eab0d8ea7a4ed773243f14f88 # v4.20.0
+XFSPROGS_COMMIT=65dcd3bc30ecda90728cd8ceceebc028f7feb47b # v5.0.0
 
 FIO_GIT=http://git.kernel.dk/fio.git
-FIO_COMMIT=9f50b4106bd1d6fa1c325900d1fb286832ccc5e8 # fio-3.2
+FIO_COMMIT=a7760ecdb13394819b719f3f8181cc74c3d4affa # fio-3.14
 
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
-QUOTA_COMMIT=59b280ebe22eceaf4250cb3b776674619a4d4ece
+QUOTA_COMMIT=daba90fb6d9b8c8f1361457bf2bea7b18f4e35ec
 
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # SYZKALLER_COMMIT=bab43553a904660266fdcd8fb974c7bdd96b3f58
@@ -25,10 +25,10 @@ IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
 IMA_EVM_UTILS_COMMIT=0267fa16990fd0ddcc89984a8e55b27d43e80167
 
 BLKTESTS_GIT=https://github.com/tytso/blktests.git
-BLKTESTS_COMMIT=baccddc0063f4e5706a73a4f17cdf83cc15fb10a
+BLKTESTS_COMMIT=e689373c30a271b6a1fa7b45770dd306306ebd8a
 
 NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
-NVME_CLI_COMMIT=669d75939802b12598f66de95c9d6454c3ad6fa3
+NVME_CLI_COMMIT=4fe9563f8851cee4986d6f0d3bfcffc599e99fd4
 
 #EXEC_LDFLAGS=-static
 #EXEC_LLDFLAGS=-all-static
