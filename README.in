@@ -27,10 +27,9 @@ directory of the xfstests-bld git repository, plus Debian jessie's
 debootstrap, constitutes the scripts used to control the creation of
 these KVM images.
 
-Local changes to xfstests and blktests can be found at:
+Local changes to xfstests can be found at:
 
     https://github.com/tytso/xfstests @XFSTESTS_RELEASE@
-    https://github.com/tytso/blktests @BLKTESTS_RELEASE@
 
 The URL's for the other git repositories and scripts to download the
 sources from those repositories can be found in xfstests-bld's
