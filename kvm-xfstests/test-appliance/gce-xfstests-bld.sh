@@ -234,6 +234,12 @@ echo "fsgqa:x:31415:" >> /etc/group
 echo "fsgqa:!::" >> /etc/gshadow
 mkdir -p /home/fsgqa
 chown 31415:31415 /home/fsgqa
+echo "123456-fsgqa:x:31416:31416:numberic fsgqa user:/home/123456-fsgqa:/bin/bash" >> /etc/passwd
+echo "123456-fsgqa:!::0:99999:7:::" >> /etc/shadow
+echo "123456-fsgqa:x:31416:" >> /etc/group
+echo "123456-fsgqa:!::" >> /etc/gshadow
+mkdir /home/123456-fsgqa
+chown 31416:31416 /home/123456-fsgqa
 chmod 755 /root
 
 cp -f /lib/systemd/system/serial-getty@.service \
