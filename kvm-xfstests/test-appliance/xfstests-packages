@@ -42,6 +42,7 @@ strace
 stress
 systemd
 systemd-sysv
+thin-provisioning-tools
 time
 uuid-runtime
 udev

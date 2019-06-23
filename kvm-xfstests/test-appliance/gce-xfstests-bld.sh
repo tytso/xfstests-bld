@@ -63,6 +63,7 @@ PACKAGES="bash-completion \
 	python-pip \
 	strace \
 	stress \
+	thin-provisioning-tools \
 	time \
 	xz-utils"
 
