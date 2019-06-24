@@ -33,6 +33,7 @@ PACKAGES="bash-completion \
 	"f2fs-tools$BACKPORTS" \
 	file \
 	gawk \
+	jfsutils \
 	jq \
 	kexec-tools \
 	keyutils \
