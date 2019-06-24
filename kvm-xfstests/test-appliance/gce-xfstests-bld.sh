@@ -62,6 +62,7 @@ PACKAGES="bash-completion \
 	python-future \
 	python-gdbm \
 	python-pip \
+	reiserfsprogs \
 	strace \
 	stress \
 	thin-provisioning-tools \

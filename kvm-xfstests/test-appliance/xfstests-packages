@@ -39,6 +39,7 @@ psmisc
 python2.7
 python-future
 openssl
+reiserfsprogs
 strace
 stress
 systemd
