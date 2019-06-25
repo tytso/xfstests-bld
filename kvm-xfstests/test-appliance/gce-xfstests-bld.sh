@@ -178,6 +178,10 @@ else
     apt-get -y --with-new-pkgs upgrade
 fi
 
+if test "$NEW_SUITE" = "buster" ; then
+    PACKAGES="$PACKAGES duperemove"
+fi
+
 apt-get install -y $PACKAGES
 apt-get clean
 
