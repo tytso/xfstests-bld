@@ -59,6 +59,6 @@ function test_name_alias()
 
 function reset_vars()
 {
-    unset EXT_MOUNT_OPTIONS
+    unset REISERFS_MOUNT_OPTIONS
     unset MKFS_OPTIONS
 }

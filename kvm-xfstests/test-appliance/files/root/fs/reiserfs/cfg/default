@@ -1,4 +1,4 @@
 SIZE=small
-export JFS_MKFS_OPTIONS=""
-export MOUNT_OPTIONS=""
+export MKFS_OPTIONS=""
+export REISERFS_MOUNT_OPTIONS=""
 TESTNAME="reiserfs"
