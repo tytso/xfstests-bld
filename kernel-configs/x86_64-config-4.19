@@ -220,6 +220,7 @@ CONFIG_FUNCTION_PROFILER=y
 CONFIG_DEBUG_WX=y
 # This is needed for 5.0+ kernels
 CONFIG_PCI=y
+CONFIG_CRYPTO_ADIANTUM=y
 # This is needed for 5.1+ kernels
 CONFIG_FS_ENCRYPTION=y
 # This is needed for 5.2+ kernels
