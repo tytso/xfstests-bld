@@ -46,7 +46,7 @@ clean:
 		if test -f $$i/Makefile ; then make -C $$i clean ; fi ; \
 	done
 	if test -d xfsprogs-dev; then make -C xfsprogs-dev realclean; fi
-	rm -rf bld xfstests
+	rm -rf bld xfstests build-distro
 	rm -f kvm-xfstests/util/zerofree $(SCRIPTS)
 
 kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c

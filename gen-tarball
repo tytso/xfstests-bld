@@ -60,6 +60,11 @@ else
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
 cat *.ver > xfstests/git-versions
+if test -f build-distro ; then
+    cp build-distro xfstests/build-distro
+else
+    rm -f xfstests/build-distro
+fi
 mkdir -p xfstests/bin xfstests/lib
 cp bld/bin/* bld/sbin/* bld/usr/bin/* xfstests/bin
 cp bld/lib/client.txt xfstests/lib

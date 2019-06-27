@@ -2,6 +2,12 @@
 
 set -e
 
+if type lsb_release >& /dev/null ; then
+    lsb_release -c | awk '{print $2}' > build-distro
+else
+    rm -f build-distro
+fi
+
 if test -f config.custom ; then
 	. config.custom
 else

@@ -33,10 +33,25 @@ SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 ROOT_FS=xfstests
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
-IMAGE_FAMILY=debian-9
-IMAGE_PROJECT=debian-cloud
-BACKPORTS=/stretch-backports
-SUITE=stretch
+
+setup_for_stretch()
+{
+	IMAGE_FAMILY=debian-9
+	IMAGE_PROJECT=debian-cloud
+	BACKPORTS=/stretch-backports
+	SUITE=stretch
+}
+
+setup_for_buster()
+{
+	IMAGE_FAMILY=debian-10
+	IMAGE_PROJECT=debian-cloud-testing
+	SUITE=buster
+	BACKPORTS=
+}
+
+setup_for_stretch
+
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
 
@@ -45,20 +60,23 @@ if ! test -f $TARBALL ; then
    exit 1
 fi
 
+if test -f ../../xfstests/build-distro ; then
+    distro=$(cat ../../xfstests/build-distro)
+    if test "$distro" = buster ; then
+	setup_for_buster
+    else
+	setup_for_stretch
+    fi
+fi
+
 while [ "$1" != "" ];
 do
     case $1 in
 	--stretch)
-	    IMAGE_FAMILY=debian-9
-	    IMAGE_PROJECT=debian-cloud
-	    BACKPORTS=/stretch-backports
-	    SUITE=stretch
+	    setup_for_stretch
 	    ;;
 	--buster)
-	    IMAGE_FAMILY=debian-10
-	    IMAGE_PROJECT=debian-cloud-testing
-	    SUITE=buster
-	    BACKPORTS=
+	    setup_for_buster
 	    ;;
 	-I) shift
 	    ROOT_FS="$1"

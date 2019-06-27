@@ -22,6 +22,15 @@ then
     RAW_ROOT_FS=/tmp/root_fs.raw.$$
 fi
 
+if test -f ../../xfstests/build-distro ; then
+    distro=$(cat ../../xfstests/build-distro)
+    if test "$distro" = buster ; then
+	SUITE=buster
+    else
+	SUITE=stretch
+    fi
+fi
+
 if test -r config.custom ; then
    . $(pwd)/config.custom
 fi
