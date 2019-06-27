@@ -69,6 +69,8 @@ PACKAGES="bash-completion \
 	time \
 	xz-utils"
 
+PACKAGES_REMOVE="e2fsprogs-l10n"
+
 if test -z "$MDS_PREFIX"
 then
     declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1
@@ -183,6 +185,8 @@ if test "$NEW_SUITE" = "buster" ; then
 fi
 
 apt-get install -y $PACKAGES
+dpkg --remove $PACKAGES_REMOVE
+apt-get -fuy autoremove
 apt-get clean
 
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
