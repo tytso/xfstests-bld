@@ -38,7 +38,8 @@ then
     rm -r /var/www/*
     mkdir -p /var/log/lgtm
     chown www-data:www-data -R /var/log/lgtm
-    cp /usr/local/lib/gce-ltm/ltm-lighttpd.conf /etc/lighttpd/lighttpd.conf
+    lighttpd-enable-mod fastcgi
+    cat /usr/local/lib/gce-ltm/ltm-lighttpd.conf >> /etc/lighttpd/lighttpd.conf
     # Webserver static files should go in static
     mv /usr/local/lib/gce-ltm/static /var/www/
     systemctl restart lighttpd.service

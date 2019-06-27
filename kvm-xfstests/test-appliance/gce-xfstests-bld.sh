@@ -207,11 +207,25 @@ done
 
 for i in diskstats meminfo lockdep lock_stat slabinfo vmstat
 do
-    ln /var/www/cgi-bin/print_proc "/var/www/cgi-bin/$i"
+    ln /usr/lib/cgi-bin/print_proc "/usr/lib/cgi-bin/$i"
 done
-rm -rf /var/www/html
+rm -rf /var/www/html /var/www/cgi-bin
+ln -s /usr/lib/cgi-bin /var/www/cgi-bin
 chown www-data:www-data -R /usr/local/lib/gce-ltm
 chown www-data:www-data -R /var/www
+
+lighttpd-enable-mod ssi
+lighttpd-enable-mod ssl
+lighttpd-enable-mod cgi
+ed /etc/lighttpd/lighttpd.conf <<EOF
+/^server.document-root/s/^/#/p
+/^index-file.names/s/^/#/p
+/^include_shell.*create-mime/s/^/#/p
+w
+q
+EOF
+cp /etc/lighttpd/lighttpd.conf /etc/lighttpd/lighttpd-orig.conf
+cat /etc/lighttpd/ltm.conf >> /etc/lighttpd/lighttpd.conf
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
