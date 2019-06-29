@@ -303,6 +303,12 @@ fi
 
 if test -z "$SKIP_UTIL_LINUX" ; then
     build_start "util-linux"
+    if test -z "$UTIL_LINUX_LIBS_ONLY" ; then
+	export make_target="install"
+    else
+	export make_target="install-nodist_blkidincHEADERS \
+	       install-uuidincHEADERS install-usrlib_execLTLIBRARIES"
+    fi
     (cd util-linux ;
      ver=$(git describe --always --dirty); echo "util-linux	$ver ($(git log -1 --pretty=%cD))" > ../util-linux.ver ;
      ./autogen.sh;
@@ -320,12 +326,13 @@ if test -z "$SKIP_UTIL_LINUX" ; then
 	--without-ncurses \
 	--without-python \
 	--without-tinfo;
-     $MAKE_CLEAN ; make $J install;
+     $MAKE_CLEAN ; make $J $make_target;
 
      # Installing mkfs causes problems because xfstests assumes that mkfs.ext4
      # is in the same directory as mkfs.  So rely on the system mkfs instead.
-     rm $DESTDIR/sbin/mkfs*;
+     rm -f $DESTDIR/sbin/mkfs*;
     )
+    unset make_target
 fi
 
 if test -z "$SKIP_STRESS_NG" ; then
