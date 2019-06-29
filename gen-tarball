@@ -66,11 +66,14 @@ else
     rm -f xfstests/build-distro
 fi
 mkdir -p xfstests/bin xfstests/lib
-cp bld/bin/* bld/sbin/* bld/usr/bin/* xfstests/bin
+cp bld/bin/* bld/sbin/* xfstests/bin
+if test -d bld/usr/bin ; then
+    cp bld/usr/bin/* xfstests/bin
+fi
 cp bld/lib/client.txt xfstests/lib
 cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
 ln -s libimaevm.so.0.0.0 xfstests/lib/libimaevm.so.0
-rm xfstests/bin/compile_et xfstests/bin/mk_cmds
+rm -f xfstests/bin/compile_et xfstests/bin/mk_cmds
 for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
 do
     ln -s ../$i xfstests/bin

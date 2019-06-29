@@ -109,7 +109,8 @@ using the following command:
 		automake autopoint bison build-essential ca-certificates \
 		debootstrap e2fslibs-dev ed fakechroot gettext git \
 		libdbus-1-3 libgdbm-dev libkeyutils-dev libssl-dev \
-		libtool-bin pkg-config qemu-utils symlinks golang-1.8-go
+		libblkid-dev libtool-bin pkg-config qemu-utils uuid-dev \
+		symlinks golang-1.8-go
 
 It is also possible to use a cross compiler rather than the native
 compiler.  To do this, set the shell variables `CROSS_COMPILE` and

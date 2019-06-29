@@ -14,7 +14,9 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     sudo apt-get install -y
     build-essential autoconf autoconf2.64
-    automake libgdbm-dev libtool qemu-utils gettext
-    e2fslibs-dev ed git debootstrap fakechroot libdbus-1-3
-    autopoint pkg-config symlinks ca-certificates bison;
+    automake autopoint bison build-essential ca-certificates
+    debootstrap e2fslibs-dev ed fakechroot gettext git
+    libdbus-1-3 libgdbm-dev libkeyutils-dev libssl-dev
+    libblkid-dev libtool-bin pkg-config qemu-utils uuid-dev
+    symlinks golang-1.8-go ;
     fi

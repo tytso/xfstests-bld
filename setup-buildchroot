@@ -50,6 +50,7 @@ fakechroot
 gettext
 git
 golang-1.8-go
+libblkid-dev
 libdbus-1-3
 libgdbm-dev
 libkeyutils-dev
@@ -58,6 +59,7 @@ libtool-bin
 pkg-config
 qemu-utils
 symlinks
+uuid-dev
 )
 
 die()

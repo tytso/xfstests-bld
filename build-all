@@ -42,6 +42,10 @@ if test -n "$CROSS_COMPILE" ; then
     crossfio="--cc=$CROSS_COMPILE-gcc"
 fi
 
+if test -z "$USE_LOCAL_E2FSLIBS" -o -d util-linux; then
+    SKIP_E2FSLIBS=yes
+fi
+
 case "$CROSS_COMPILE" in
     *-android|*-androideabi)
 	DO_ANDROID=yes
@@ -352,12 +356,20 @@ fi
 
 if test -z "$SKIP_XFSPROGS" ; then
     build_start "xfsprogs"
+    unset disable_blkid
+    # If libblkid.a exists and util-linux is not present, then it
+    # must have come from e2fslibs, and that v1 version of libblkid doesn't
+    # have the topology functions which xfsprogs needs; hence, we have to
+    # disable xfsprogs's use of blkid.
+    if test -f $DESTDIR/lib/libblkid.a -a ! -d util-linux; then
+	 export disable_blkid="--disable-blkid"
+     fi
     (cd xfsprogs-dev; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu --disable-blkid" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu $disable_blkid" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
@@ -365,6 +377,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install-dev)
+    unset disable_blkid
 fi
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
