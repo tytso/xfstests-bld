@@ -60,6 +60,7 @@ select_packages()
     libkeyutils-dev
     libssl-dev
     libtool-bin
+    lsb-release
     pkg-config
     qemu-utils
     rsync
