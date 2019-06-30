@@ -34,33 +34,41 @@ SCHROOT_FSTAB_FILE=/etc/schroot/$SCHROOT_FSTAB
 
 PROXY=
 
-# Additional packages to install in the build chroot
-BUILD_DEPENDENCIES=(
-autoconf
-autoconf2.64
-automake
-autopoint
-bison
-build-essential
-ca-certificates
-debootstrap
-e2fslibs-dev
-ed
-fakechroot
-gettext
-git
-golang-1.8-go
-libblkid-dev
-libdbus-1-3
-libgdbm-dev
-libkeyutils-dev
-libssl-dev
-libtool-bin
-pkg-config
-qemu-utils
-symlinks
-uuid-dev
-)
+select_packages()
+{
+    # Additional packages to install in the build chroot
+    BUILD_DEPENDENCIES=(
+    autoconf
+    autoconf2.64
+    automake
+    autopoint
+    bison
+    build-essential
+    ca-certificates
+    debootstrap
+    e2fslibs-dev
+    ed
+    fakechroot
+    gettext
+    git
+    libblkid-dev
+    libdbus-1-3
+    libgdbm-dev
+    libkeyutils-dev
+    libssl-dev
+    libtool-bin
+    pkg-config
+    qemu-utils
+    symlinks
+    uuid-dev
+    )
+    case "$DEBIAN_RELEASE" in
+	buster)
+	    BUILD_PACKAGES+=(golang-1.11-go) ;;
+	stretch)
+	    BUILD_PACKAGES+=(golang-1.8-go) ;;
+    esac
+}
 
 die()
 {
@@ -575,6 +583,7 @@ if ! is_native_chroot; then
 fi
 
 # the real work
+select_packages
 create_chroot
 add_schroot_conf_entry
 create_schroot_fstab
