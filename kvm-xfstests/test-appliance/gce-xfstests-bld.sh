@@ -173,7 +173,7 @@ if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
     apt-get update
     apt-get -y dist-upgrade
     apt-get -o Dpkg::Options::="--force-confnew" --force-yes -fuy dist-upgrade
-    apt-get -fuy autoremove
+    apt-get -fy autoremove
     logger -s "Update to $NEW_SUITE complete"
 else
     apt-get update
