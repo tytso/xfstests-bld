@@ -510,3 +510,4 @@ if test "$SAVE_RAW_ROOT" = "yes" ; then
 else
   rm -f $RAW_ROOT_FS
 fi
+stage_start "gen-image complete"
