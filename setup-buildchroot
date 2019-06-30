@@ -541,6 +541,7 @@ create_chroot()
 {
     mkdir -p "$CHROOT_DIR"
 
+    test -z "${PROXY}" || export http_proxy=${PROXY}
     if ! run_cmd debootstrap --arch "$DEBIAN_ARCH" ${QEMU:+--foreign} \
 	    "$DEBIAN_RELEASE" "$CHROOT_DIR" "$DEBIAN_MIRROR"; then
 	# Clean up if the first step fails since the problem may be trivial,
