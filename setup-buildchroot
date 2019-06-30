@@ -124,6 +124,7 @@ Options:
     --chroot-user=USER  User which will be allowed to access the chroot,
                         ***including passwordless root access***.  Default:
                         value of \$SUDO_USER, if any.
+    --proxy             Web proxy to use when fetching the packages.
     --use-overlay       Use the overlay file system when creating the chroot
     --no-overlay        Don't use the overlay file system in the chroot
     --noninteractive    Use the defaults rather than prompting
@@ -244,6 +245,7 @@ parse_options()
     longopts+=",chroot-dir:"
     longopts+=",chroot-name:"
     longopts+=",chroot-user:"
+    longopts+=",proxy:"
     longopts+=",use-overlay"
     longopts+=",no-overlay"
     longopts+=",noninteractive"
@@ -282,6 +284,10 @@ parse_options()
 	    ;;
 	--chroot-user)
 	    CHROOT_USER="$2"
+	    shift
+	    ;;
+	--proxy)
+	    PROXY="$2"
 	    shift
 	    ;;
 	--use-overlay)
