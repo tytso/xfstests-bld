@@ -62,6 +62,7 @@ select_packages()
     libtool-bin
     pkg-config
     qemu-utils
+    rsync
     symlinks
     uuid-dev
     )
