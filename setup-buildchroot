@@ -24,6 +24,9 @@ CHROOT_DIR=
 CHROOT_NAME=
 CHROOT_USER=
 
+DO_OVERLAY=
+DO_OVERLAY_DEFAULT=no
+
 QEMU=
 BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
 
@@ -119,6 +122,8 @@ Options:
     --chroot-user=USER  User which will be allowed to access the chroot,
                         ***including passwordless root access***.  Default:
                         value of \$SUDO_USER, if any.
+    --use-overlay       Use the overlay file system when creating the chroot
+    --no-overlay        Don't use the overlay file system in the chroot
     --noninteractive    Use the defaults rather than prompting
 EOF
 }
@@ -213,6 +218,7 @@ select_chroot_dir()
 select_chroot_name()
 {
     prompt_for_param "chroot name" CHROOT_NAME "$(basename "$CHROOT_DIR")"
+    prompt_for_param "yes to use overlay file system" DO_OVERLAY "$DO_OVERLAY_DEFAULT"
 }
 
 select_chroot_user()
@@ -236,6 +242,8 @@ parse_options()
     longopts+=",chroot-dir:"
     longopts+=",chroot-name:"
     longopts+=",chroot-user:"
+    longopts+=",use-overlay"
+    longopts+=",no-overlay"
     longopts+=",noninteractive"
 
     if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
@@ -273,6 +281,12 @@ parse_options()
 	--chroot-user)
 	    CHROOT_USER="$2"
 	    shift
+	    ;;
+	--use-overlay)
+	    DO_OVERLAY=yes
+	    ;;
+	--no-overlay)
+	    DO_OVERLAY=no
 	    ;;
 	--noninteractive)
 	    INTERACTIVE=false
@@ -426,6 +440,13 @@ root-users=$CHROOT_USER
 setup.fstab=$SCHROOT_FSTAB
 setup.nssdatabases=
 EOF
+    if [ "${DO_OVERLAY}" != "no" ]; then
+	cat <<EOF
+union-type=overlay
+source-users=${CHROOT_USER:+$CHROOT_USER,}root
+source-root-users=$CHROOT_USER
+EOF
+    fi
 }
 
 check_for_conflicting_schroot_entry()
@@ -559,8 +580,15 @@ setup_mtab()
 
 install_build_dependencies()
 {
+    local chroot
+
     log "Installing build dependencies: ${BUILD_DEPENDENCIES[*]}"
-schroot -c "$CHROOT_NAME" -u root -- <<EOF
+    if [ "${DO_OVERLAY}" = "no" ]; then
+	chroot="${CHROOT_NAME}"
+    else
+	chroot="source:${CHROOT_NAME}"
+    fi
+    schroot -c "$chroot" -u root -- <<EOF
 test -z "${PROXY}" || export http_proxy=${PROXY}
 apt-get update
 apt-get install -y ${BUILD_DEPENDENCIES[@]}
