@@ -33,7 +33,7 @@ all: $(SCRIPTS)
 
 all-clean-first: $(SCRIPTS)
 	./get-all
-	rm -rf bld xfstests
+	rm -rf bld xfstests *.ver
 	./build-all --clean-first
 
 $(SCRIPTS): %.sh: kvm-xfstests/%.in

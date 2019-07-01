@@ -59,7 +59,8 @@ else
     cp xfstests-dev/README* xfstests
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
-cat *.ver > xfstests/git-versions
+debs_vers=$(find kvm-xfstests/test-appliance/debs -name "*.ver" -print 2>/dev/null)
+cat *.ver $debs_vers | sort > xfstests/git-versions
 if test -f build-distro ; then
     cp build-distro xfstests/build-distro
 else

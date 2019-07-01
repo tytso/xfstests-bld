@@ -297,7 +297,7 @@ q
 EOF
 fi
 
-if gsutil -m cp gs://$BUCKET/debs/*.deb /run
+if gsutil -m cp gs://$BUCKET/debs/*_amd64.deb /run
 then
     dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
     rm -f /run/*.deb
