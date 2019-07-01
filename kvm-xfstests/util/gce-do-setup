@@ -25,20 +25,16 @@ function gce_gen_cert() {
 
     # generate self-signed cert.
 
-    openssl req -x509 -newkey rsa:4096 -keyout /tmp/key.pem -nodes \
-      -out /tmp/cert.pem -days 365 -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
+    tmpdir=$(mktemp -d)
+    openssl req -x509 -newkey rsa:4096 -keyout "$tmpdir/gce-xfstests-key.pem" \
+	    -nodes -out "$tmpdir/gce-xfstests-cert.pem" -days 365 \
+	    -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
 
-    gsutil cp /tmp/key.pem gs://$GS_BUCKET/gce-xfstests-key.pem
+    cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
+	> "$tmpdir/gce-xfstests-server.pem"
 
-    # this cert can be used with curl --cacert, to send LTM commands.
-    gsutil cp /tmp/cert.pem gs://$GS_BUCKET/gce-xfstests-cert.pem
-
-    cat /tmp/key.pem /tmp/cert.pem > /tmp/server.pem
-
-    # this is the file to be used on all booted test appliances.
-    gsutil cp /tmp/server.pem gs://$GS_BUCKET/gce-xfstests-server.pem
-
-    rm /tmp/key.pem /tmp/cert.pem /tmp/server.pem
+    gsutil -m cp "$tmpdir/*" gs://$GS_BUCKET/
+    rm -rf "$tmpdir"
 }
 
 function gce_gen_ltm_pass() {

@@ -191,13 +191,11 @@ apt-get clean
 
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
-gsutil cp gs://$BUCKET/create-image/xfstests.tar.gz /run/xfstests.tar.gz
+gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \
+	gs://$BUCKET/create-image/files.tar.gz /run/
 tar -C /root -xzf /run/xfstests.tar.gz
-rm /run/xfstests.tar.gz
-
-gsutil cp gs://$BUCKET/create-image/files.tar.gz /run/files.tar.gz
 tar -C / -xzf /run/files.tar.gz
-rm /run/files.tar.gz
+rm /run/xfstests.tar.gz /run/files.tar.gz
 
 # this is to install some python packages into the image for
 # the LTM web server.

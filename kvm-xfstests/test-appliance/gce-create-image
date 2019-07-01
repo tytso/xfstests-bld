@@ -155,7 +155,7 @@ gzip -c -9 -n $td/files.tar > $td/files.tar.gz
 
 rm -f $td/files.tar
 
-gsutil rsync -c $td gs://$GS_BUCKET/create-image
+gsutil -m rsync -c $td gs://$GS_BUCKET/create-image
 
 if test -f files/root/xfstests/git-versions
 then
@@ -164,7 +164,7 @@ fi
 rm -rf $td
 
 mkdir -p debs
-gsutil rsync -cd debs gs://$GS_BUCKET/debs
+gsutil -m rsync -cd debs gs://$GS_BUCKET/debs
 
 gcloud compute --project "$GCE_PROJECT" -q instances delete "$BLD_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
