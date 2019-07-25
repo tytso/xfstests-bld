@@ -13,12 +13,19 @@ INTERACTIVE=true
 
 DEBIAN_RELEASE=
 DEBIAN_RELEASE_DEFAULT=stretch
+DEBIAN_PORTS_RELEASE_DEFAULT=unstable
+
+DEBIAN_KEYRING=
+DEBIAN_KEYRING_DEFAULT=/usr/share/keyrings/debian-archive-keyring.gpg
+DEBIAN_PORTS_KEYRING_DEFAULT=/usr/share/keyrings/debian-ports-archive-keyring.gpg
 
 DEBIAN_ARCH=
 DEBIAN_ARCH_DEFAULT=amd64
+DEBIAN_PORTS_ARCH_DEFAULT=x32
 
 DEBIAN_MIRROR=
 DEBIAN_MIRROR_DEFAULT=http://ftp.debian.org/debian
+DEBIAN_PORTS_MIRROR_DEFAULT=http://ftp.ports.debian.org/debian-ports
 
 CHROOT_DIR=
 CHROOT_NAME=
@@ -119,6 +126,7 @@ Options:
     --release=RELEASE   Debian release to use.  Default: $DEBIAN_RELEASE_DEFAULT
     --arch=ARCH         Debian architecture to use.  Default: $DEBIAN_ARCH_DEFAULT
     --mirror=MIRROR     Debian mirror to use.  Default: $DEBIAN_MIRROR_DEFAULT
+    --keyring=KEYRING   Debian keyring to use.  Default: $DEBIAN_KEYRING_DEFAULT
     --chroot-dir=DIR    Chroot directory.  Default: /chroots/\$RELEASE-\$ARCH
     --chroot-name=NAME  Name of chroot.  Default: basename of \$DIR
     --chroot-user=USER  User which will be allowed to access the chroot,
@@ -127,6 +135,7 @@ Options:
     --proxy             Web proxy to use when fetching the packages.
     --use-overlay       Use the overlay file system when creating the chroot
     --no-overlay        Don't use the overlay file system in the chroot
+    --ports		Change the defaults for debian-ports architectures.
     --noninteractive    Use the defaults rather than prompting
 EOF
 }
@@ -209,6 +218,11 @@ select_debian_mirror()
     prompt_for_param "Debian mirror" DEBIAN_MIRROR "$DEBIAN_MIRROR_DEFAULT"
 }
 
+select_debian_keyring()
+{
+    prompt_for_param "Debian keyring" DEBIAN_KEYRING "$DEBIAN_KEYRING_DEFAULT"
+}
+
 select_chroot_dir()
 {
     prompt_for_param "chroot directory" \
@@ -242,6 +256,7 @@ parse_options()
     longopts+=",release:"
     longopts+=",arch:"
     longopts+=",mirror:"
+    longopts+=",keyring:"
     longopts+=",chroot-dir:"
     longopts+=",chroot-name:"
     longopts+=",chroot-user:"
@@ -249,6 +264,7 @@ parse_options()
     longopts+=",use-overlay"
     longopts+=",no-overlay"
     longopts+=",noninteractive"
+    longopts+=",ports"
 
     if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
 	usage 1>&2
@@ -274,6 +290,10 @@ parse_options()
 	    DEBIAN_MIRROR="$2"
 	    shift
 	    ;;
+	--keyring)
+	    DEBIAN_KEYRING="$2"
+	    shift
+	    ;;
 	--chroot-dir)
 	    CHROOT_DIR="$2"
 	    shift
@@ -296,6 +316,12 @@ parse_options()
 	--no-overlay)
 	    DO_OVERLAY=no
 	    ;;
+	--ports)
+	    DEBIAN_ARCH_DEFAULT="$DEBIAN_PORTS_ARCH_DEFAULT"
+	    DEBIAN_KEYRING_DEFAULT="$DEBIAN_PORTS_KEYRING_DEFAULT"
+	    DEBIAN_MIRROR_DEFAULT="$DEBIAN_PORTS_MIRROR_DEFAULT"
+	    DEBIAN_RELEASE_DEFAULT="$DEBIAN_PORTS_RELEASE_DEFAULT"
+	    ;;
 	--noninteractive)
 	    INTERACTIVE=false
 	    ;;
@@ -316,7 +342,8 @@ parse_options()
 is_native_chroot()
 {
     case "$(uname -m)" in
-    x86_64)	[[ $DEBIAN_ARCH = amd64 || $DEBIAN_ARCH = i386 ]] ;;
+    x86_64)	[[ $DEBIAN_ARCH = amd64 || $DEBIAN_ARCH = i386 ||
+		   $DEBIAN_ARCH = x32 ]] ;;
     aarch64)	[[ $DEBIAN_ARCH = arm64 || $DEBIAN_ARCH = armhf ]] ;;
     arm)	[[ $DEBIAN_ARCH = armhf ]] ;;
     ppc64le)	[[ $DEBIAN_ARCH = ppc64el ]] ;;
@@ -543,7 +570,9 @@ create_chroot()
 
     test -z "${PROXY}" || export http_proxy=${PROXY}
     if ! run_cmd debootstrap --arch "$DEBIAN_ARCH" ${QEMU:+--foreign} \
-	    "$DEBIAN_RELEASE" "$CHROOT_DIR" "$DEBIAN_MIRROR"; then
+	    --keyring "$DEBIAN_KEYRING" "$DEBIAN_RELEASE" "$CHROOT_DIR" \
+	    "$DEBIAN_MIRROR"
+    then
 	# Clean up if the first step fails since the problem may be trivial,
 	# e.g. an invalid release, arch, or mirror.  But if we fail later, leave
 	# the directory around so that the problem can be debugged.
@@ -610,6 +639,7 @@ check_prerequisites
 select_debian_release
 select_debian_arch
 select_debian_mirror
+select_debian_keyring
 select_chroot_dir
 select_chroot_name
 select_chroot_user
