@@ -11,13 +11,16 @@ BUCKET=@BUCKET@
 GS_TAR=@GS_TAR@
 BLD_INST=@BLD_INST@
 BACKPORTS="@BACKPORTS@"
+BTRFS_PROGS="@BTRFS_PROGS@"
+F2FS_TOOLS="@F2FS_TOOLS@"
+DUPEREMOVE="@DUPEREMOVE@"
 
 PACKAGES="bash-completion \
 	bc \
 	blktrace \
 	bsdmainutils \
 	bsd-mailx \
-	"btrfs-progs$BACKPORTS" \
+	"$BTRFS_PROGS" \
 	bzip2 \
 	cpio \
 	cryptsetup \
@@ -26,11 +29,12 @@ PACKAGES="bash-completion \
 	dbench \
 	dbus \
 	dmsetup \
+	"$DUPEREMOVE" \
 	dump \
 	"e2fsprogs$BACKPORTS" \
 	e3 \
 	ed \
-	"f2fs-tools$BACKPORTS" \
+	"$F2FS_TOOLS" \
 	file \
 	gawk \
 	jfsutils \

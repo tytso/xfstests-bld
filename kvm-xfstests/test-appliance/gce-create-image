@@ -39,15 +39,21 @@ setup_for_stretch()
 	IMAGE_FAMILY=debian-9
 	IMAGE_PROJECT=debian-cloud
 	BACKPORTS=/stretch-backports
+	BTRFS_PROGS=btrfs-progs/stretch-backports
+	F2FS_TOOLS=f2fs-tools/stretch-backports
+	DUPEREMOVE=
 	SUITE=stretch
 }
 
 setup_for_buster()
 {
 	IMAGE_FAMILY=debian-10
-	IMAGE_PROJECT=debian-cloud-testing
+	IMAGE_PROJECT=debian-cloud
 	SUITE=buster
-	BACKPORTS=
+	BTRFS_PROGS=btrfs-progs
+	F2FS_TOOLS=f2fs-tools
+	DUPEREMOVE=duperemove
+	BACKPORTS=/buster-backports
 }
 
 setup_for_stretch
@@ -62,16 +68,23 @@ fi
 
 if test -f ../../xfstests/build-distro ; then
     distro=$(cat ../../xfstests/build-distro)
-    if test "$distro" = buster ; then
-	setup_for_buster
-    else
-	setup_for_stretch
-    fi
+    case "$distro" in
+	stretch)
+	    setup_for_stretch
+	    ;;
+	buster)
+	    setup_for_buster
+	    ;;
+	*)
+	    echo "No support for build gce image for $distro"
+	    exit 1
+	    ;;
+    esac
 fi
 
 while [ "$1" != "" ];
 do
-    case $1 in
+    case "$1" in
 	--stretch)
 	    setup_for_stretch
 	    ;;
@@ -103,6 +116,9 @@ sed -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GS_TAR@;$GS_TAR;" \
     -e "s/@BLD_INST@/$BLD_INST/" \
     -e "s;@BACKPORTS@;$BACKPORTS;" \
+    -e "s;@BTRFS_PROGS@;$BTRFS_PROGS;" \
+    -e "s;@F2FS_TOOLS@;$F2FS_TOOLS;" \
+    -e "s;@DUPEREMOVE@;$DUPEREMOVE;" \
     < gce-xfstests-bld.sh > $td/gce-xfstests-bld.sh
 
 # Update the git-versions file
