@@ -1,3 +1,8 @@
+#
+# ext4/023 tests the populate function which needs to require files with
+# extents.  This doesn't work with ext3, naturally.
+ext4/023
+
 # ext4/033 creates a special file system using dmhugedisk to test for
 # inode overflow when online resizing.  With an ext3 config, this takes
 # too much space, so test VM will hang or abort the test run.  We
