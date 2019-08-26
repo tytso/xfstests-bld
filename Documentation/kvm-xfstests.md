@@ -18,17 +18,17 @@ one of the pre-compiled VM images which can be found on
 You will find there a 32-bit test appliance named
 [root_fs.img.i386](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386)
 and a 64-bit test appliance named
-[root_fs.img.x86_64](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.x86_64).
+[root_fs.img.amd64](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.amd64).
 This file should be installed as root_fs.img in the
 kvm-xfstests/test-appliance directory.
 
-A 64-bit kernel can use both the 32-bit and 64-bit test appliance VM,
-since you can run 32-bit ELF binaries using a 64-bit kernel.  However,
-the reverse is not true; a 32-bit kernel can not run 64-bit x86_64
-binaries.  This makes the 32-bit test appliance more flexible.  In
-addition, if you use the 64-bit kernel with 32-bit interfaces, it
-tests the 32-bit compat ioctl code paths, which otherwise may not get
-sufficient testing.
+A 64-bit x86 kernel can use both the 32-bit and 64-bit test appliance
+VM, since you can run 32-bit ELF binaries using a 64-bit kernel.
+However, the reverse is not true; a 32-bit x86 kernel can not run
+64-bit x86 binaries.  This makes the 32-bit test appliance more
+flexible.  In addition, if you use the 64-bit kernel with 32-bit
+interfaces, it tests the 32-bit compat ioctl code paths, which
+otherwise may not get sufficient testing.
 
 If you want to build your own test appliance VM, see
 [building-rootfs.md](building-rootfs.md).
