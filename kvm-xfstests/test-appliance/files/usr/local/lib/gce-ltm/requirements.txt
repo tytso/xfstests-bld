@@ -2,7 +2,7 @@ cachetools==3.0.0
 certifi==2018.11.29
 chardet==3.0.4
 click==7.0
-Flask==1.0.2
+Flask==1.0.4
 Flask-Login==0.4.0
 flup==1.0.2
 google-api-core==1.7.0
@@ -28,4 +28,4 @@ rsa==4.0
 six==1.12.0
 uritemplate==3.0.0
 urllib3==1.24.2
-Werkzeug==0.14.1
+Werkzeug==0.15.5
