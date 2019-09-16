@@ -18,8 +18,8 @@ This additional functionality will allow us to implement two key features:
 ## 2. Users/Personas Of The Project:
 
 The target users of the project are Linux kernel or file system developers. They can be broadly grouped as follows:
-* Kernel/fs developers: these users require consistent and repeatible automated testing that is the same across developers. In addition, since they may have to run many of these tests, the testing should be reasonably fast, cheap and not hog the resources of the user's machine.
-* Repository maintainers/managers: these users may want to verify that any new changes pushed to them have passed the comprehensive xfstests before pushing them further upstream.
+* Kernel/fs developers: these users require consistent and repeatable automated testing that is the same across developers. In addition, since they may have to run many of these tests, the testing should be reasonably fast, cheap and not hog the resources of the user's machine.
+* Repository maintainers/managers: these users may want to verify that any new changes pushed to them have passed the comprehensive xfstests before pushing them further upstream for integration.
 * Academic researchers: these users benefit from testing their prototypes against real-world integration tests
 * Developers in general (who care the Linux kernel or file systems)  
   
@@ -39,6 +39,10 @@ The two main features we are aiming to deliver are specified clearly by our ment
   The second feature the Build VM will enable is the ability to do automated bisection for bug finding, using the   git bisect feature.   In this mode, the LTM server will be given a starting good commit, and a starting bad       commit, and a specific test to be run.   It will then launch the Build VM, and use the git bisect feature to       find successful kernel versions to be tested, so that the first bad commit which introduced the problem can be     found."
 
 The gce-xfstests currently supports all major file systems on Linux (xfs, ext2/3/4, cifs, btrfs, f2fs, reiserfs, gfs2, jfs, udf, nfs, tmpfs). The build VM uses a Debian "Buster" 10 image. 
+
+Reporting of test results is limited to an email summary, but can be extended to include test failures on regression/flaky tests as a stretch goal.
+
+Other work outside the scope of the project includes enhancing the speed of the LTM server launch, or any feature development for the closely related kvm-xfstests and the androi-xfstests.
 
 ** **
 
