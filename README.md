@@ -38,6 +38,8 @@ The two main features we are aiming to deliver are specified clearly by our ment
 
   The second feature the Build VM will enable is the ability to do automated bisection for bug finding, using the   git bisect feature.   In this mode, the LTM server will be given a starting good commit, and a starting bad       commit, and a specific test to be run.   It will then launch the Build VM, and use the git bisect feature to       find successful kernel versions to be tested, so that the first bad commit which introduced the problem can be     found."
 
+The gce-xfstests currently supports all major file systems on Linux (xfs, ext2/3/4, cifs, btrfs, f2fs, reiserfs, gfs2, jfs, udf, nfs, tmpfs). The build VM uses a Debian "Buster" 10 image. 
+
 ** **
 
 ## 4. Solution Concept
