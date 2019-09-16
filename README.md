@@ -42,7 +42,7 @@ The gce-xfstests currently supports all major file systems on Linux (xfs, ext2/3
 
 Reporting of test results is limited to an email summary, but can be extended to include test failures on regression/flaky tests as a stretch goal.
 
-Other work outside the scope of the project includes enhancing the speed of the LTM server launch, or any feature development for the closely related kvm-xfstests and the androi-xfstests.
+Other work outside the scope of the project includes enhancing the speed of the LTM server launch, or any feature development for the closely related kvm-xfstests and the android-xfstests.
 
 ** **
 
