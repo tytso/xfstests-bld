@@ -42,7 +42,7 @@ The two main features we are aiming to deliver are specified clearly by our ment
 
 ## 4. Solution Concept
 
-####Global Architectural Structure of the Project:
+#### Global Architectural Structure of the Project:
 
 The first feature: up-to-date kernel testing (supervision).
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
@@ -51,7 +51,7 @@ The second feature: bisection bug finding.
 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
-####Design Implications and Discussion:
+#### Design Implications and Discussion:
 Below is a description of the system components that will be used to accomplish our goals:
 * Google Compute Engine: the platform to run the server process;
 * Virtual Machine: the holder for kernel building and test;
