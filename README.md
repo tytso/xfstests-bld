@@ -36,10 +36,11 @@ It should be specific enough that you can determine that e.g. feature A is in-sc
 
 Global Architectural Structure of the Project:
 The first feature: up-to-date kernel testing (supervision).
-
+![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
 
 The second feature: bisection bug finding.
 
+![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
 Design Implications and Discussion:
 Below are the descriptions of the system components that will be used to accomplish the goals:
