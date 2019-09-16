@@ -6,7 +6,7 @@
 
 ## 1.   Vision and Goals Of The Project:
 
-The gce-xfstests project provides quick and easy regression testing for file system and kernel developers by leveraging the Google Compute Engine (GCE).The GCE allows for launching tests in the cloud and in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. gce-xfstests relies on hermetic builds to ensure consistency and repeatability. The project currently offers a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), launches multiple test VMs with various configurations, and emails a report back to the user/developer. 
+The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides quick and easy regression testing for file system and kernel developers by leveraging the Google Compute Engine (GCE).The GCE allows for launching tests in the cloud and in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. gce-xfstests relies on hermetic builds to ensure consistency and repeatability. The project currently offers a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), launches multiple test VMs with various configurations, and emails a report back to the user/developer. 
 
 Our goal is to extend the functionality of the LTM so that it launchs a build VM from a specific version of the kernel, as specified by the user through a git commit id.
 
