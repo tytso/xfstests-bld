@@ -177,6 +177,6 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 * [Gordon Wallace](https://github.com/GordonWallace)
 * [Jing Li](https://github.com/jingli18)
 * [Maha Ashour](https://github.com/mashbu)
-* [Zhenpeng Shi]()
+* [Zhenpeng Shi](https://github.com/ZhenpengShi)
 
 ** **
