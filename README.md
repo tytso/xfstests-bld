@@ -94,9 +94,9 @@ Release planning section describes how the project will deliver incremental sets
 
 ## 7.  Contributors:
 
-Gordon Wallace
-Jing Li
-Maha Ashour
-Zhenpeng Shi
+* Gordon Wallace
+* Jing Li
+* Maha Ashour
+* Zhenpeng Shi
 
 ** **
