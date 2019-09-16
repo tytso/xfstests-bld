@@ -88,7 +88,45 @@ Stretch goals:
 
 ## 6.  Release Planning:
 
-Release planning section describes how the project will deliver incremental sets of features and functions in a series of releases to completion. Identification of user stories associated with iterations that will ease/guide sprint planning sessions is encouraged. Higher level details for the first iteration is expected.
+*Sprint 1: 9/19 – 10/3*
+Sprint Goals
+The first sprint will focus on learning the necessary technical background information needed to proceed with the project, configuring our build environments, and familiarizing ourselves with the use of the existing gce-xfstests code.  We will also take our first steps towards our first milestone, the LTM repository monitoring and testing on an automatically generated VM.
+•	Technical spike: Google Compute Engine (GCE) and Light GCE-XFStests Manager (LTM).  We will learn about GCE and practice using it, particularly in conjunction with the LTM that our mentor has developed.  We will practice launching VMs with various configurations and verify our results through the emailed reports.
+•	Begin progress towards first milestone by writing code to monitor a repository branch, detect whether there have been changes, and automatically launching a VM with the correct kernel version.
+Possible User Stories
+•	User would like to monitor a repository, so they set an interval of one hour at which to receive a report on changes.
+•	User wants a VM with the same kernel identified in their commit, and one is generated automatically.
+Sprint 2: 10/3 – 10/17
+Sprint Goals
+In Sprint 2, we’d like to move close to completion on our first milestone and begin work on our second.  Particularly, we’d like to finish the following features:
+•	Implement desired filesystem tests on automatically generated VMs.
+•	This will allow us to begin working on bisection bug testing, since our system will be identifying bad commits.  Accordingly, we’ll begin work on milestone two.
+Possible User Stories
+•	User wants to run a series of tests on a repository at a desired interval.  The user is able to implement those tests and run them automatically at that interval.
+Sprint 3: 10/17 – 10/31
+Sprint Goals
+We’d like to reach the first milestone towards our minimum acceptance criteria in Sprint 3:
+•	New LTM feature completed, which monitors a repository, and at an interval, builds a VM with the correct kernel based on the commit ID and runs tests on the kernel.
+•	Verify completion of this by receiving accurate emailed results.
+•	Continue bisection bug testing work.
+Possible User Stories
+•	User receives emailed reports on new commits to a repository and the tests results on automatically generated VMs at a designated interval.
+Sprint 4: 10/31 – 11/14
+Sprint Goals
+In Sprint 4, we aim to complete the minimum acceptance criteria for the project.  This means that in addition to the LTM improvements from Sprint 3, we will finish the following:
+•	Automated kernel testing (accurate reports being generated at a specified interval)
+•	Correct identification of bad commits using bisection bug testing
+Possible User Stories
+•	Bisection bug testing allows the user to see which commit caused the failure in their emailed test results.
+Sprint 5: 11/14 – 11/28
+Sprint Goals
+This sprint is dedicated to the completion of any goals that weren’t completed on time in previous sprints, and to reaching stretch goals.  Specifically, these goals include:
+•	Checking for test failures by regression and flaky tests (and notifying the developer)
+•	Finding the first good commit by reverse bisection bug testing
+Possible User Stories
+•	The user receives emailed reports on the results of these new features.
+
+
 
 ** **
 
