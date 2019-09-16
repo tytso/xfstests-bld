@@ -17,7 +17,7 @@ Gce-xfstests is an integrated test server for file systems of Linux kernels whic
 This project is designed for users who are concerned about the Linux kernel building, especially for the file systems works. Below are the sets of users.
 * Kernel developers: launch the build VM to see if it passes tests
 * Repository managers
-* Developers in general( who concerned about the Linux file system)
+* Developers in general( who concerned about the Linux file system)  
 It doesn’t target:
 * Linux kernel users
 
