@@ -63,7 +63,7 @@ Below is a description of the system components that will be used to accomplish 
 * SendMail: used to send the result report by SMTP mail server;
 
 Relevant git commands to implement the features: 
-* git remote update and git status to see whether a watched git repository is updated and should be fetched;
+* git remote update, git fetch and git status to see whether a watched git repository is updated and should be fetched;
 * git bisect to find the commit that introduced a bug via binary search.
 
 As we are building on the existing gce-xfxtests project, we will continue using the exisiting techonology stack notably the GCE due to its many benefits.
