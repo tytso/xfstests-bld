@@ -174,9 +174,9 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 7.  Contributors:
 
-* Gordon Wallace
-* Jing Li
-* Maha Ashour
-* Zhenpeng Shi
+* [Gordon Wallace](https://github.com/GordonWallace)
+* [Jing Li](https://github.com/jingli18)
+* [Maha Ashour](https://github.com/mashbu)
+* [Zhenpeng Shi]()
 
 ** **
