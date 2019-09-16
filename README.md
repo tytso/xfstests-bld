@@ -44,7 +44,7 @@ The two main features we are aiming to deliver are specified clearly by our ment
 
 #### Global Architectural Structure of the Project:
 
-The first feature: up-to-date kernel testing (supervision).
+The first feature: up-to-date automated kernel testing (supervision).
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
 
 The second feature: bisection bug finding.
