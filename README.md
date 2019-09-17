@@ -6,7 +6,7 @@
 
 ## 1.   Vision and Goals Of The Project:
 
-The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides quick and easy regression testing for file system and kernel developers by leveraging the Google Compute Engine (GCE).The GCE allows for launching tests in the cloud and in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. gce-xfstests relies on hermetic builds to ensure consistency and repeatability. The project currently offers a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), launches multiple test VMs with various configurations, and emails a report back to the user/developer. 
+The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides quick and easy regression testing for file system and kernel developers by leveraging the Google Compute Engine (GCE). The GCE allows for launching tests in the cloud and in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. gce-xfstests relies on hermetic builds to ensure consistency and repeatability. The project currently offers a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), launches multiple test VMs with various configurations, and emails a report back to the user/developer. 
 
 Our goal is to extend the functionality of the LTM so that it launchs a build VM from a specific version of the kernel, as specified by the user through a git commit id.
 
@@ -20,8 +20,8 @@ This additional functionality will allow us to implement two key features:
 The target users of the project are Linux kernel or file system developers. They can be broadly grouped as follows:
 * Kernel/fs developers: these users require consistent and repeatable automated testing that is the same across developers. In addition, since they may have to run many of these tests, the testing should be reasonably fast, cheap and not hog the resources of the user's machine.
 * Repository maintainers/managers: these users may want to verify that any new changes pushed to them have passed the comprehensive xfstests before pushing them further upstream for integration.
-* Academic researchers: these users benefit from testing their prototypes against real-world integration tests
-* Developers in general (who care the Linux kernel or file systems)  
+* Academic researchers: these users benefit from testing their prototypes against real-world integration tests.
+* Developers in general (who care the Linux kernel or file systems).  
   
 It doesn’t target:
 * Non-linux kernel developers
@@ -34,9 +34,9 @@ It doesn’t target:
 
 The two main features we are aiming to deliver are specified clearly by our mentor below:
 
-  "The first is that the LTM server can watch a particular git repository's branch every N minutes, and if it has   changed, it will fetch the newly updated kernel, and run a suite of tests against that kernel and a report sent   back to the developer.
+  "The first is that the LTM server can watch a particular git repository's branch every N minutes, and if it has   changed, it will fetch the newly updated kernel, and run a suite of tests against that kernel and a report sent back to the developer.
 
-  The second feature the Build VM will enable is the ability to do automated bisection for bug finding, using the   git bisect feature.   In this mode, the LTM server will be given a starting good commit, and a starting bad       commit, and a specific test to be run.   It will then launch the Build VM, and use the git bisect feature to       find successful kernel versions to be tested, so that the first bad commit which introduced the problem can be     found."
+  The second feature the Build VM will enable is the ability to do automated bisection for bug finding, using the   git bisect feature.   In this mode, the LTM server will be given a starting good commit, and a starting bad commit, and a specific test to be run.   It will then launch the Build VM, and use the git bisect feature to find successful kernel versions to be tested, so that the first bad commit which introduced the problem can be found."
 
 The gce-xfstests currently supports all major file systems on Linux (xfs, ext2/3/4, cifs, btrfs, f2fs, reiserfs, gfs2, jfs, udf, nfs, tmpfs). The build VM uses a Debian "Buster" 10 image. 
 
@@ -67,8 +67,8 @@ Below is a description of the system components that will be used to accomplish 
 * SendMail: used to send the result report by SMTP mail server;
 
 Relevant git commands to implement the features: 
-* git remote update, git fetch and git status to see whether a watched git repository is updated and should be fetched;
-* git bisect to find the commit that introduced a bug via binary search.
+* `git remote update`, `git fetch` and `git status` to see whether a watched git repository is updated and should be fetched;
+* `git bisect` to find the commit that introduced a bug via binary search.
 
 As we are building on the existing gce-xfxtests project, we will continue using the exisiting techonology stack notably the GCE due to its many benefits.
 
@@ -88,6 +88,7 @@ We can verify that this feature is completed if we are able to successfully rece
 * Implement the bisection bug finding feature. We can verify that this feature is completed, if we are able to artificially introduce a bug in the kernel code and then identify the offending commit using git bisection testing.
 
 Stretch goals:
+* Provide a command-line interface for users to communicate with the LTM server and request a build of a specific git commit found on a particular git repository.
 * Run regression tests and send the report to the developer if new test failures are noted.
 * Run flaky tests and send the report to the developer if flaky test failures are noted.
 * Reverse bisection bug finding mode: to find the first good commit when the fix to a particular problem is unknown.
