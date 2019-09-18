@@ -18,7 +18,7 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
 
-FIO_COMMIT=fio-3.2
+FIO_COMMIT=fio-3.15
 QUOTA_COMMIT=59b280ebe22e
 XFSPROGS_COMMIT=v4.16.0
 
