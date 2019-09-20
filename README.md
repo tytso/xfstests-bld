@@ -67,7 +67,8 @@ Bisection bug finding:
 #### Design Implications and Discussion:
 As we are building on top of the gce-xfxtests project, we will continue using the same techonology stack. Below is a description of the system components that will be used to accomplish our goals:
 
-* Google Compute Engine: IaaS used to launch virtual machines;
+* Google Compute Engine: Infrastructure as a Service (IaaS) used to launch virtual machines;
+* Google Cloud Storage:  used to store kernel image under test;
 * Virtual Machine: bucket used for building the kernel and running tests;
 * Lightweight GCE-Xfstests Test Manager (LTM) server: the main process to build kernels and test file systems;
 * Git: to fetch a specific kernel, supervise new kernel commits and assist with the bisection bug finding feature;
@@ -99,6 +100,7 @@ It makes sense to keep the build server running in between builds so that we can
 The main hurdle here will be figuring out where to store the whole git tree which is needed for git bisect to work. It makes sense for it to be on the build server but then the LTM will not be able to access it. We will need a way for the LTM to communicate to the build server which version of the kernel to build. Perhaps we can set up some mechanism for the build server to decide. We are not sure how to approach this right now, but we will revise this section as our understanding of the problem improves.
 
 
+###### _Other_
 The Google Cloud SDK is used to build the GCE image from the root disk of the Debian build VM thus speeding up build time and ensuring that builds are reliable and reproducible. Since our goal is to be able to run automated tests every N minutes, it is essential to rely on a cloud VM so as not to overwhelm the user's machine. In addition, we are able to leverage GCE to launch multiple parallel VM instances to significantly speed up the testing process (currently ~7/8 hours)
 
 The SendMail integration is a very practical and efficient way to report back test results to the user, but we are open to considering other approaches to organizing and sharing the test results especially given the increased frequency of automated testing. However, this will largely depend on whether there is a user need for such a functionality.
