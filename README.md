@@ -6,9 +6,9 @@
 
 ## 1.   Vision and Goals Of The Project:
 
-The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides quick and easy regression testing for file system and kernel developers by leveraging the Google Compute Engine (GCE). The GCE allows for launching tests in the cloud and in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. gce-xfstests relies on hermetic builds to ensure consistency and repeatability. The project currently offers a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), launches multiple test VMs with various configurations, and emails a report back to the user/developer. 
+The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides fast and cost-effective cloud-based regression testing for file system and kernel developers using the Google Compute Engine (GCE). The project provides a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM), which then launches multiple test VMs with various configurations from a provided test image, and emails a report back to the user/developer. Using GCE allows us to run multiple tests in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. Using VMs also enables us to have hermetic builds to ensure consistency and repeatability. 
 
-Our goal is to extend the functionality of the LTM so that it launchs a build VM from a specific version of the kernel, as specified by the user through a git commit id.
+Our goal is to create a build server so that instead of providing a test image, the user can provide a specific kernel version (by specifying its git commit id) which will then be used to build the test image in the cloud. The build server will then communicate to the LTM that the build is complete, so that it can begin the testing. We plan to implement this by extending the functionalility of the LTM's exisiting web services framework so that instead of launching the LTM server, we will have the option of launching a build server running on larger build VM.
 
 This additional functionality will allow us to implement two key features:
 * Automated testing for 'watched' repositories every time there is a new commit to the kernel;
@@ -18,7 +18,7 @@ This additional functionality will allow us to implement two key features:
 ## 2. Users/Personas Of The Project:
 
 The target users of the project are Linux kernel or file system developers. They can be broadly grouped as follows:
-* Kernel/fs developers: these users require consistent and repeatable automated testing that is the same across developers. In addition, since they may have to run many of these tests, the testing should be reasonably fast, cheap and not hog the resources of the user's machine.
+* Kernel/fs developers: these users require consistent and repeatable automated testing that is the same across builds. In addition, since they may have to run many of these tests, the testing should be reasonably fast, cheap and not hog the resources of the user's machine.
 * Repository maintainers/managers: these users may want to verify that any new changes pushed to them have passed the comprehensive xfstests before pushing them further upstream for integration.
 * Academic researchers: these users benefit from testing their prototypes against real-world integration tests.
 * Developers in general (who care the Linux kernel or file systems).  
@@ -50,15 +50,23 @@ Other work outside the scope of the project includes enhancing the speed of the 
 
 #### Global Architectural Structure of the Project:
 
-The first feature: up-to-date automated kernel testing (supervision).
+#### Overview
+
+Build server: 
+
+![]()
+
+Repository monitoring:
+
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
 
-The second feature: bisection bug finding.
+Bisection bug finding:
 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
 #### Design Implications and Discussion:
-Below is a description of the system components that will be used to accomplish our goals:
+As we are building on top of the gce-xfxtests project, we will continue using the same techonology stack. Below is a description of the system components that will be used to accomplish our goals:
+
 * Google Compute Engine: IaaS used to launch virtual machines;
 * Virtual Machine: bucket used for building the kernel and running tests;
 * Lightweight GCE-Xfstests Test Manager (LTM) server: the main process to build kernels and test file systems;
@@ -70,7 +78,26 @@ Relevant git commands to implement the features:
 * `git remote update`, `git fetch` and `git status` to see whether a watched git repository is updated and should be fetched;
 * `git bisect` to find the commit that introduced a bug via binary search.
 
-As we are building on the existing gce-xfxtests project, we will continue using the exisiting techonology stack notably the GCE due to its many benefits.
+
+###### Build server
+This stage will be completed first and consists of two parts:
+
+1) We will use the existing web services framework to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. 
+
+2) Instead of using a separate image for the build VM, we will enhance the current Debian image to include packages needed to build the kernel (such as make, gcc, etc.)
+
+###### Repository monitoring
+To enable repository monitoring and testing, we can take one of two approaches:
+
+1) keep the build server alive between builds 
+
+2) shutdown the build server inbetween builds
+
+It makes sense to keep the build server running in between builds so that we can take advantage of the existing build tree to minimize build time after small changes to the kernel. However this approach incurs a large storage cost that needs to be balanced against the cost of shutting down the server between builds and building the kernel from scratch every time. We will mostly likely take the first approach, however we may revise this as we are further along in the project
+
+###### Bisection testing
+The main hurdle here will be figuring out where to store the whole git tree which is needed for git bisect to work. It makes sense for it to be on the build server but then the LTM will not be able to access it. We will need a way for the LTM to communicate to the build server which version of the kernel to build. Perhaps we can set up some mechanism for the build server to decide. We are not sure how to approach this right now, but we will revise this section as our understanding of the problem improves.
+
 
 The Google Cloud SDK is used to build the GCE image from the root disk of the Debian build VM thus speeding up build time and ensuring that builds are reliable and reproducible. Since our goal is to be able to run automated tests every N minutes, it is essential to rely on a cloud VM so as not to overwhelm the user's machine. In addition, we are able to leverage GCE to launch multiple parallel VM instances to significantly speed up the testing process (currently ~7/8 hours)
 
@@ -173,7 +200,13 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ** **
 
-## 7.  Contributors:
+## 7. Outstanding Questions
+
+1) Where do we keep the git tree and how does the LTM communicate to the build server which version of the kernel to build.
+
+** **
+
+## 8.  Contributors:
 
 * [Gordon Wallace](https://github.com/GordonWallace)
 * [Jing Li](https://github.com/jingli18)
