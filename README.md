@@ -79,23 +79,23 @@ Relevant git commands to implement the features:
 * `git bisect` to find the commit that introduced a bug via binary search.
 
 
-###### Build server
+###### _Build server_
 This stage will be completed first and consists of two parts:
 
-1) We will use the existing web services framework to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. 
++ We will use the existing web services framework to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. 
 
-2) Instead of using a separate image for the build VM, we will enhance the current Debian image to include packages needed to build the kernel (such as make, gcc, etc.)
++ Instead of using a separate image for the build VM, we will enhance the current Debian image to include packages needed to build the kernel (such as make, gcc, etc.)
 
-###### Repository monitoring
+###### _Repository monitoring_
 To enable repository monitoring and testing, we can take one of two approaches:
 
-1) keep the build server alive between builds 
++ keep the build server alive between builds 
 
-2) shutdown the build server inbetween builds
++ shutdown the build server inbetween builds
 
 It makes sense to keep the build server running in between builds so that we can take advantage of the existing build tree to minimize build time after small changes to the kernel. However this approach incurs a large storage cost that needs to be balanced against the cost of shutting down the server between builds and building the kernel from scratch every time. We will mostly likely take the first approach, however we may revise this as we are further along in the project
 
-###### Bisection testing
+###### _Bisection testing_
 The main hurdle here will be figuring out where to store the whole git tree which is needed for git bisect to work. It makes sense for it to be on the build server but then the LTM will not be able to access it. We will need a way for the LTM to communicate to the build server which version of the kernel to build. Perhaps we can set up some mechanism for the build server to decide. We are not sure how to approach this right now, but we will revise this section as our understanding of the problem improves.
 
 
