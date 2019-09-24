@@ -54,6 +54,7 @@ Other work outside the scope of the project includes enhancing the speed of the 
 
 Build server: 
 
+![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/EC528%20Diagram.JPG)
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/architecture.png)
 
 Repository monitoring:
