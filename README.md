@@ -28,6 +28,8 @@ It doesn’t target:
 * Linux kernel users
 * Anyone that doesn't believe in release automation
 
+Since the developer or repository maintainer is the one launching the tests, they will incur the cost of the testing and therefore it should be as low as possible.
+
 ** **
 
 ## 3.   Scope and Features Of The Project:
