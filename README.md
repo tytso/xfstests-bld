@@ -207,6 +207,8 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 1) Where do we keep the git tree and how does the LTM communicate to the build server which version of the kernel to build.
 
+2) How do we test repository monitoring? In particular how do we simulate new commits to a repository so that we can build and test new versions? We thought of using existing commits to simulate new commits, but the details on this are fuzzy at the moment.
+
 ** **
 
 ## 8.  Contributors:
