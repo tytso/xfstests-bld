@@ -69,7 +69,7 @@ Other work outside the scope of the project includes enhancing the speed of the 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
 #### Design Implications and Discussion:
-As we are building on top of the gce-xfxtests project, we will continue using the same techonology stack. Below is a description of the system components that will be used to accomplish our goals:
+As we are building on top of the gce-xfstests project, we will continue using the same techonology stack. Below is a description of the system components that will be used to accomplish our goals:
 
 * Google Compute Engine: Infrastructure as a Service (IaaS) used to launch virtual machines;
 * Google Cloud Storage:  used to store kernel image under test;
@@ -97,7 +97,7 @@ Here the LTM server is the long running server and is responsible for monitoring
 
 + keep the build server alive between builds 
 
-+ shutdown the build server inbetween builds
++ shutdown the build server in between builds
 
 It makes sense to keep the build server running in between builds so that we can take advantage of the existing build tree to minimize build time after small changes to the kernel. However this approach incurs a large storage cost that needs to be balanced against the cost of shutting down the server between builds and building the kernel from scratch every time. We will mostly likely take the first approach, however we may revise this as we are further along in the project
 
