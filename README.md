@@ -6,7 +6,7 @@
 
 ## 1.   Vision and Goals Of The Project:
 
-The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides fast and cost-effective cloud-based regression testing for file system and kernel developers using the Google Compute Engine (GCE). gce-xfstests provides a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM) and is used to launch multiple test VMs (from a user-provided image) with different test configurations, and emails a report back to the user/developer who launched the test. Using GCE allows us to run multiple tests in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. Using VMs also enables us to have hermetic builds to ensure consistency and repeatability. 
+The [gce-xfstests project](https://github.com/tytso/xfstests-bld) provides fast and cost-effective cloud-based regression testing for file system and kernel developers using the Google Compute Engine (GCE). gce-xfstests provides a Light GCE-Xfstests Test Manager (LTM) that runs on a micro virtual machine (VM) and is used to launch multiple test VMs (from a user-provided image) with different test configurations, and emails a report back to the user/developer who launched the test. Using GCE allows us to run multiple tests in parallel, thereby speeding up the testing process and freeing up resources on the developer's computer. Using VMs also enables us to have hermetic builds[^1] to ensure consistency and repeatability. 
 
 Our goal is to create a build server so we can introduce new features such as repository monitoring for automated testing and bug finding. With a build server, instead of providing a pre-built test image, the user will be able to provide a specific kernel version (by specifying its git commit id) which will then be used to build the test image in the cloud. The build server will then communicate to the LTM that the build is complete, so that it can begin the testing. We plan to implement this by extending the functionalility of the LTM's exisiting web services framework so that in addition to launching the LTM server, we will have the option of launching a build server running on a larger build VM.
 
@@ -14,6 +14,7 @@ This additional functionality will allow us to implement two key features:
 * Automated testing for 'watched' repositories every time there is a new commit to the kernel;
 * Bisection bug finding between any two commits given by the user, in order to identify the offending commit;
 
+[^1] [Hermetic builds](https://landing.google.com/sre/sre-book/chapters/release-engineering/) are insensitive to the libraries and other software installed on the build machine. Instead, builds depend on known versions of build tools, such as compilers, and dependencies, such as libraries. 
 
 ## 2. Users/Personas Of The Project:
 
