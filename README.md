@@ -203,7 +203,7 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ** **
 
-## 7. Outstanding Questions
+## 7. Open Questions & Risks
 
 1) Where do we keep the git tree and how does the LTM communicate to the build server which version of the kernel to build.
 
