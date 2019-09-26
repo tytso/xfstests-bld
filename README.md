@@ -81,7 +81,7 @@ Relevant git commands to implement the features:
 
 
 ###### _Build server_
-This stage will be completed first and consists of two parts:
+This stage will be completed first and consists of three parts:
 
 + We will use the existing web services framework to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. 
 So instead of running `gce-xfstests launch-ltm` we can instead run `gce-xfstests launch-bld`.
