@@ -71,8 +71,8 @@ As we are building on top of the gce-xfxtests project, we will continue using th
 * Google Compute Engine: Infrastructure as a Service (IaaS) used to launch virtual machines;
 * Google Cloud Storage:  used to store kernel image under test;
 * Virtual Machine: bucket used for building the kernel and running tests;
-* Lightweight GCE-Xfstests Test Manager (LTM) server: to manage testing and monitoring VMs;
-* Build server: to build test images and monitor repositories;
+* Lightweight GCE-Xfstests Test Manager (LTM) server: to manage testing, monitoring VMs and repositories;
+* Build server: to build test images;
 * Git: to fetch a specific kernel, supervise new kernel commits and assist with the bisection bug finding feature;
 * JUnit-XML: library used to generate the test result report;
 * SendMail: used to send the result report by SMTP mail server;
