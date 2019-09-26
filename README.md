@@ -88,7 +88,9 @@ So instead of running `gce-xfstests launch-ltm` we can instead run `gce-xfstests
 + Instead of using a separate image for the build VM, we will enhance the current Debian image to include packages needed to build the kernel (such as make, gcc, etc.)
 
 ###### _Repository monitoring_
-Here the LTM server is the long running server and is responsible for monitoring the repository. To enable repository monitoring and testing, we can take one of two approaches:
+Here the LTM server is the long running server and is responsible for monitoring the repository. When it detects a change, it launches a build server and instructs it to build an image from the new commit. The first step to implementing this will be to allow the user to pass a git commit id as a command line argument when running gce-xfstests. That should build the image from the commit rather than upload a pre-built image from the user.
+
+To enable repository monitoring and testing, we can take one of two approaches:
 
 + keep the build server alive between builds 
 
@@ -99,7 +101,7 @@ It makes sense to keep the build server running in between builds so that we can
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
 
 ###### _Bisection testing_
-The main hurdle here will be figuring out where to store the whole git tree which is needed for git bisect to work. It makes sense for it to be on the build server but then the LTM will not be able to access it. We will need a way for the LTM to communicate to the build server which version of the kernel to build. Perhaps we can set up some mechanism where the build server decides which commit to use for the build based on feedback from the LTM server. For example, the LTM server reviews the results of the tests and then instructs the build server to keep bisecting the tree and building kernels till the bug is found. We are not sure how to approach this right now, but we will revise this section as our understanding of the problem improves.
+The main hurdle here will be figuring out where to store the whole git tree which is needed for git bisect to work. It makes sense for it to be on the build server but then the LTM will not be able to access it. We will need a way for the LTM to communicate to the build server which version of the kernel to build. Perhaps we can set up some mechanism where the build server decides which commit to use for the build based on feedback from the LTM server. For example, the LTM server reviews the results of the tests and then instructs the build server to keep bisecting the git tree and building kernels till the bug is found. We are not clear on all of the details of this part at the moment, but we will revise this section as our understanding of the problem improves.
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
 
