@@ -145,6 +145,10 @@ The first sprint will focus on learning the necessary technical background infor
 
 * User wants a VM with the same kernel identified in their commit, and one is generated automatically.
 
+*Presentation*
+
+[Sprint 1 presentation](https://docs.google.com/presentation/d/10n1Gsa0CnHEb0iCrL7Uecdb7gwPbQwc_KQGtDD6IkX0/edit?usp=sharing)
+
 **Sprint 2: 10/3 – 10/17**
 
 *Sprint Goals*
@@ -223,3 +227,7 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 * [Zhenpeng Shi](https://github.com/ZhenpengShi)
 
 ** **
+
+## 9. Other notes:
+
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or (here)[https://docs.google.com/presentation/d/10n1Gsa0CnHEb0iCrL7Uecdb7gwPbQwc_KQGtDD6IkX0/edit?usp=sharing].
