@@ -166,6 +166,10 @@ In Sprint 2, we’d like to move close to completion on our first milestone and 
 
 *	User wants to run a series of tests on a repository at a desired interval.  The user is able to implement those tests and run them automatically at that interval.
 
+*Presentation*
+
+[Sprint 2 presentation](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit#slide=id.g617fb8e826_0_275)
+
 **Sprint 3: 10/17 – 10/31**
 
 *Sprint Goals*
