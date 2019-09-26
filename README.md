@@ -14,7 +14,7 @@ This additional functionality will allow us to implement two key features:
 * Automated testing for 'watched' repositories every time there is a new commit to the kernel;
 * Bisection bug finding between any two commits given by the user, in order to identify the offending commit;
 
-<b id="1">1</b> [Hermetic builds](https://landing.google.com/sre/sre-book/chapters/release-engineering/) are insensitive to the libraries and other software installed on the build machine. Instead, builds depend on known versions of build tools, such as compilers, and dependencies, such as libraries. [↩](#a1)
+Note: <b id="1">1</b> [Hermetic builds](https://landing.google.com/sre/sre-book/chapters/release-engineering/) are insensitive to the libraries and other software installed on the build machine. Instead, builds depend on known versions of build tools, such as compilers, and dependencies, such as libraries. [↩](#a1)
 
 ## 2. Users/Personas Of The Project:
 
