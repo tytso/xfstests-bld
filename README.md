@@ -52,19 +52,19 @@ Other work outside the scope of the project includes enhancing the speed of the 
 
 #### Overview
 
-Existing architecture:
+###### _Existing architecture_:
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/old_arch.png)
 
-Propose architecture (with build server): 
+###### _Proposed architecture (with build server)_: 
 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/new_build_diagram.JPG)
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/new_arch.png)
 
-Repository monitoring:
+###### _Repository monitoring_:
 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature1.png)  
 
-Bisection bug finding:
+###### _Bisection bug finding_:
 
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/feature2.png)  
 
