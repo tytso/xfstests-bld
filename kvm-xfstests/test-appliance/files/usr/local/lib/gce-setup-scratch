@@ -24,7 +24,7 @@ then
 	--disk "$SCRATCH_DSK" \
 	--device-name scratch --zone "$ZONE"
     gcloud compute -q instances set-disk-auto-delete ${instance} \
-	--auto-delete --disk "$SCRATCH_DSK" --zone "$ZONE" &
+	--auto-delete --device-name scratch --zone "$ZONE" &
 fi
 
 if ! test -e $CREATED_SCRATCH_DEV
