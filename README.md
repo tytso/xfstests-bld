@@ -168,7 +168,7 @@ In Sprint 2, we’d like to move close to completion on our first milestone and 
 
 *Presentation*
 
-[Sprint 2 presentation](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit#slide=id.g617fb8e826_0_275)
+[Sprint 2 presentation](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit?usp=sharing)
 
 **Sprint 3: 10/17 – 10/31**
 
@@ -237,4 +237,4 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 9. Other notes:
 
-You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here](https://docs.google.com/presentation/d/10n1Gsa0CnHEb0iCrL7Uecdb7gwPbQwc_KQGtDD6IkX0/edit?usp=sharing).
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit?usp=sharing).
