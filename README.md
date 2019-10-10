@@ -56,11 +56,11 @@ Other work outside the scope of the project includes enhancing the speed of the 
 #### Overview
 
 ###### _Existing architecture_:
-![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/old_arch.png)
+![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/arch_pre.png)
 
 ###### _Proposed architecture (with build server)_: 
 
-![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/new_arch.png)
+![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/arch_post.png)
 ![](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/Pictures/new_build_diagram.JPG)
 
 #### Design Implications and Discussion:
