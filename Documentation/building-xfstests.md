@@ -61,7 +61,7 @@ cross-architecture builds.
 
 To set up a Debian build chroot, run the `setup-buildchroot` script.
 `setup-buildchroot` will invoke `debootstrap` to bootstrap a minimal
-Debian Stretch system into a directory (by default a subdirectory of
+Debian system into a directory (by default a subdirectory of
 `/chroots/`), then set it up for use with `schroot` and install into
 it all the Debian packages needed for the build.  `setup-buildchroot`
 must be run as root, since it needs root permission to run
@@ -92,8 +92,8 @@ Afterwards, it will behave just like a native chroot.
 Once you're created a chroot, you should be able to use the `schroot`
 program to enter it, e.g.:
 
-    $ schroot -c stretch-amd64         # enter chroot as regular user
-    $ schroot -c stretch-amd64 -u root # enter chroot as root
+    $ schroot -c buster-amd64         # enter chroot as regular user
+    $ schroot -c buster-amd64 -u root # enter chroot as root
 
 The `-c` option must specify the name of the chroot as listed in
 `/etc/schroot/schroot.conf`.  By default `setup-buildchroot` names the
@@ -117,10 +117,9 @@ compiler.  To do this, set the shell variables `CROSS_COMPILE` and
 optionally `TOOLCHAIN_DIR` in your `config.custom` file as follows:
 
 * `CROSS_COMPILE` should be set to the target triplet.  For example,
-  on a Debian stretch system, you can install the
-  `gcc-arm-linux-gnueabihf` package and then set
-  `CROSS_COMPILE=arm-linux-gnueabihf` to cross compile for the Debian
-  armhf platform.
+  on a Debian system, you can install the `gcc-arm-linux-gnueabihf`
+  package and then set `CROSS_COMPILE=arm-linux-gnueabihf` to cross
+  compile for the Debian armhf platform.
 
 * `TOOLCHAIN_DIR` can be set to the directory containing the
   cross-compiler toolchain, if it is not already on your `$PATH`.  It

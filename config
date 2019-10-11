@@ -36,8 +36,8 @@ SUDO_ENV=sudo
 # Uncomment these to make the do-all script use the specified
 # Debian chroot by default
 #
-#BUILD_ENV="schroot -c stretch-amd64 --"
-#SUDO_ENV="schroot -c stretch-amd64 -u root --"
+#BUILD_ENV="schroot -c buster-amd64 --"
+#SUDO_ENV="schroot -c buster-amd64 -u root --"
 
 # Uncomment this to make the do-all script build a
 # root_fs.tar.gz by default rather than a root_fs.img

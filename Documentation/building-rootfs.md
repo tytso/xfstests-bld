@@ -5,7 +5,7 @@
 For kvm-xfstests, a `root_fs.img` disk image file is used as the test
 VM's root filesystem, while for android-xfstests the tests are run in
 a chroot directory created by unpacking a file `root_fs.tar.gz`.  Both
-types of `root_fs` contain a Debian Stretch root filesystem, some
+types of `root_fs` contain a Debian root filesystem, some
 configuration files and test runner scripts, and the `xfstests.tar.gz`
 unpacked in the `/root` directory.
 
@@ -51,14 +51,14 @@ build chroot to use as well as whether a `root_fs.img` or
 For kvm-xfstests, use one of the following commands to create an i386
 or amd64 test appliance, respectively:
 
-    ./do-all --chroot=stretch-i386  --no-out-tar
-    ./do-all --chroot=stretch-amd64 --no-out-tar
+    ./do-all --chroot=buster-i386  --no-out-tar
+    ./do-all --chroot=buster-amd64 --no-out-tar
 
 For android-xfstests, use one of the following commands to create an
 armhf or arm64 test appliance, respectively:
 
-    ./do-all --chroot=stretch-armhf --out-tar
-    ./do-all --chroot=stretch-arm64 --out-tar
+    ./do-all --chroot=buster-armhf --out-tar
+    ./do-all --chroot=buster-arm64 --out-tar
 
 The build chroot(s) can be created using the `setup-buildchroot`
 script as described in [building-xfstests](building-xfstests.md).
@@ -71,8 +71,8 @@ You may also set the shell variables `BUILD_ENV`, `SUDO_ENV`, and/or
 For example, if you'd like to default to building an amd64
 kvm-xfstests appliance, use:
 
-    BUILD_ENV="schroot -c stretch-amd64 --"
-    SUDO_ENV="schroot -c stretch-amd64 -u root --"
+    BUILD_ENV="schroot -c buster-amd64 --"
+    SUDO_ENV="schroot -c buster-amd64 -u root --"
     OUT_TAR=
 
 ## Adding additional packages
