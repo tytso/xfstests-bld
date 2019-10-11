@@ -334,6 +334,8 @@ EOF
 
 try_shrink_userdata()
 {
+    local fs_type
+
     cat <<EOF
 
 It seems you haven't run android-xfstests on this device yet, so
@@ -344,8 +346,16 @@ a smaller size?  WARNING: THIS WILL DELETE ALL USER DATA!
 EOF
     ask_yesno "    Erase and reformat userdata with smaller size?"
     echo
+
+    # The filesystem type (e.g. "ext4" or "f2fs") for 'fastboot format' defaults
+    # to the value of the bootloader variable "partition-type:userdata".  But on
+    # some devices this is set to "raw" which doesn't work.  Instead, just
+    # specify the filesystem type which the device is already using.
+    fs_type=$(adb shell "cat /proc/mounts" | awk '$2 == "/data" {print $3}')
+
     reboot_into_fastboot_mode
-    fastboot format::0x100000000 userdata # 4 GiB
+
+    fastboot "format:$fs_type:0x100000000" userdata # 4 GiB
 }
 
 setup_partitions()
