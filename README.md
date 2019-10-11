@@ -186,6 +186,10 @@ We’d like to reach the first milestone towards our minimum acceptance criteria
 
 *	User receives emailed reports on new commits to a repository and the tests results on automatically generated VMs at a designated interval.
 
+*Presentation*
+
+[Sprint 3 presentation](https://docs.google.com/presentation/d/1H4hqiuCrjCaMHDIxIzGvnmgX5nTJR4KF1Rgc1sRTMUI/edit?usp=sharing)
+
 **Sprint 4: 10/31 – 11/14**
 
 *Sprint Goals*
