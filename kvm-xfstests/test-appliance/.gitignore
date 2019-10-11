@@ -1,4 +1,3 @@
-armhf_root_fs.*
 debs
 root_fs.img*
 root_fs.raw

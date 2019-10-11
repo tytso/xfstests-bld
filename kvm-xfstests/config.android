@@ -5,11 +5,11 @@
 #
 
 # Path to chroot tarball; this can also be set by the -I option
-ROOT_FS="$DIR/test-appliance/armhf_root_fs.tar.gz"
+ROOT_FS="$DIR/test-appliance/root_fs.tar.gz"
 
 # Where to download the tarball from (at user's request) if we don't have it.
 # If you want to disable this functionality, set this to an empty string.
-ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/armhf_root_fs.tar.gz"
+ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.arm64.tar.gz"
 
 # Path to the kernel which android-xfstests will boot on the device using
 # 'fastboot boot', if it's not already running.  This can also be set by the

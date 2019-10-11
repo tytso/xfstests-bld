@@ -31,16 +31,16 @@ devices.  If you encounter a problem, please submit a fix!
 - Ability to connect to the Android device with adb and fastboot.
   Usually this is done via a USB cable.
 
-- An armhf Debian root filesystem set up with xfstests and the
-  xfstests-bld scripts.  Either fetch the prebuilt
-  `armhf_root_fs.tar.gz` from
+- An armhf or arm64 Debian root filesystem set up with xfstests and
+  the xfstests-bld scripts.  Either fetch the prebuilt
+  `root_fs.arm64.tar.gz` from
   [kernel.org](http://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests),
   or build one yourself as described in
   [building-rootfs](building-rootfs.md).  Then, either put the chroot
   tarball in the default location of
-  `kvm-xfstests/test-appliance/armhf_root_fs.tar.gz`, or specify it
-  with `ROOT_FS` in your `~/.config/android-xfstests` or the `-I`
-  option to android-xfstests.
+  `kvm-xfstests/test-appliance/root_fs.tar.gz`, or specify it with
+  `ROOT_FS` in your `~/.config/android-xfstests` or the `-I` option to
+  android-xfstests.
 
 ## Procedure
 
