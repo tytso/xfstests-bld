@@ -17,10 +17,12 @@ DUPEREMOVE="@DUPEREMOVE@"
 
 PACKAGES="bash-completion \
 	bc \
+	bison \
 	blktrace \
 	bsdmainutils \
 	bsd-mailx \
 	"$BTRFS_PROGS" \
+	build-essential \
 	bzip2 \
 	cpio \
 	cryptsetup \
@@ -36,7 +38,9 @@ PACKAGES="bash-completion \
 	ed \
 	"$F2FS_TOOLS" \
 	file \
+	flex \
 	gawk \
+	git	\
 	jfsutils \
 	jq \
 	kexec-tools \
@@ -44,10 +48,13 @@ PACKAGES="bash-completion \
 	less \
 	libcap2-bin \
 	"libcomerr2$BACKPORTS" \
+	libelf-dev \
 	libsasl2-modules \
 	"libss2$BACKPORTS" \
 	liblzo2-2 \
 	libkeyutils1 \
+	libncurses-dev \
+	libssl-dev \
 	lighttpd \
 	lvm2 \
 	mtd-utils \
