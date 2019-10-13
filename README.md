@@ -230,6 +230,8 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 2) How do we test repository monitoring? In particular how do we simulate new commits to a repository so that we can build and test new versions? We thought of using existing commits to simulate new commits, but the details on this are fuzzy at the moment.
 
+3) How to have two-way communication between the build server and the LTM? Two synchronous endpoints? Gunicorn? 
+
 ** **
 
 ## 8.  Contributors:
