@@ -243,4 +243,4 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 9. Other notes:
 
-You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit?usp=sharing).
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here](https://docs.google.com/presentation/d/1H4hqiuCrjCaMHDIxIzGvnmgX5nTJR4KF1Rgc1sRTMUI/edit?usp=sharing).
