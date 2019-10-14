@@ -1,8 +1,3 @@
-# ext4/304 fails for all configurations, and this appears to be at
-# test or fio bug.
-#
-ext4/304
-
 # generic/042 and generic/392 are failing because ext4 forces the
 # resolution of all delayed allocation writes before allowing the
 # punch operation to proceed.  We probably want to see if we can avoid
