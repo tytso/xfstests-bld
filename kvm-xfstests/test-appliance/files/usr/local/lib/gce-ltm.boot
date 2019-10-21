@@ -26,6 +26,14 @@ systemctl disable gce-finalize.timer
 
 logger -i "Disabled gce-finalize timer"
 
+# Configure swap space so that we have some extra elbow room; otherwise
+# some monitoring threads for ltm shards can end up dying due to memory
+# allocation failures
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+
 # adjust the configuration of the web server of the test appliance and
 # relaunch lighttpd with the new configuration.
 # essentially create a webserver right here.
