@@ -1,4 +1,4 @@
 SIZE=small
 export EXT_MKFS_OPTIONS="-b $(getconf PAGE_SIZE)"
 export EXT_MOUNT_OPTIONS="dioread_nolock"
-TESTNAME="Ext4 4k block w/dioread_nolock"
+TESTNAME="Ext4 native blocksize w/dioread_nolock"
