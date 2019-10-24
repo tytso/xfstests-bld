@@ -232,6 +232,11 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 3) How to have two-way communication between the build server and the LTM? Two synchronous endpoints? Gunicorn? 
 
+4) Should we ditch Flask? Might simplify python3 migration
+
+5) For git bisect, how to ignore bugs that are NOT the ones we are looking for. This is a problem that comes up in practice.
+
+
 ** **
 
 ## 8.  Contributors:
