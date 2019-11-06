@@ -206,6 +206,10 @@ In Sprint 4, we aim to complete the minimum acceptance criteria for the project.
 
 *	Bisection bug testing allows the user to see which commit caused the failure in their emailed test results.
 
+*Presentation*
+
+[Sprint 4 presentation](https://docs.google.com/presentation/d/13IO25TCbVnzGfY53VFzKXKWx0aUPtIrSCe5YqINw8Ng/edit?usp=sharing)
+
 **Sprint 5: 11/14 – 11/28**
 
 *Sprint Goals*
@@ -250,4 +254,4 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 9. Other notes:
 
-You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here](https://docs.google.com/presentation/d/1H4hqiuCrjCaMHDIxIzGvnmgX5nTJR4KF1Rgc1sRTMUI/edit?usp=sharing).
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/13IO25TCbVnzGfY53VFzKXKWx0aUPtIrSCe5YqINw8Ng/edit?usp=sharing).
