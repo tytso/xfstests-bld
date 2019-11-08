@@ -315,9 +315,9 @@ case "$1" in
 	then
 	    if test -n "$do_all"
 	    then
-		arg="gs://$GS_BUCKET"
-	    else
 		arg="gs://$GS_BUCKET/**results*"
+	    else
+		arg="gs://$GS_BUCKET/results/results*"
 	    fi
 	fi
 	gsutil ls $opt "$arg"

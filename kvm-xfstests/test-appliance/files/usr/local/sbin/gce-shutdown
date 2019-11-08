@@ -90,9 +90,6 @@ then
 
     REPORT_EMAIL=$(gce_attribute report_email)
     run_hooks send-email
-    if test -f /usr/local/lib/sg_key ; then
-	. /usr/local/lib/sg_key
-    fi
     if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
     then
 	if test -f /results/report

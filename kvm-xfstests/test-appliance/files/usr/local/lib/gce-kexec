@@ -1,16 +1,11 @@
 #!/bin/bash
 #
 # gce-kexec -- this script handles switching to the kernel to be
-# tested (using kexec), as well as those things that should be done as
-# soon as possible (such as transferring the sendgrid password to a
-# config file and erasing it)
+# tested (using kexec), as well as one-time setups that we want to do
+# as early as possible (such as unpacking any modules or modifications
+# to the test appliance via xfstests.tar.gz and files.tar.gz).
 
 . /usr/local/lib/gce-funcs
-
-if test -n "$SENDGRID_API_KEY"
-then
-    echo "export SENDGRID_API_KEY=$SENDGRID_API_KEY" > /usr/local/lib/sg_key
-fi
 
 gcloud config set compute/zone $ZONE
 
