@@ -4,6 +4,25 @@
 . /root/test-config
 . /root/runtests_utils
 
+for i in /usr/sbin/rsyslogd /usr/sbin/sshd
+do
+    pgrep -f $i | while read PID
+    do
+	echo -1000 > /proc/$PID/oom_score_adj
+    done
+done
+
+# We've already run gce-setup from a previous boot
+if test -f /results/setup-syslog ; then
+    echo "---------" >> /results/dmesg
+    dmesg 2>&1 >> /results/dmesg
+    # We need to remount the filestore NFS server after a reboot
+    if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
+	script -a -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log
+    fi
+    exit 0
+fi
+
 run_hooks pre-setup
 
 /usr/local/lib/gce-logger disk setup
@@ -96,13 +115,5 @@ then
     dmesg >& /results/dmesg
     cp /var/log/syslog /results/setup-syslog
 fi
-
-for i in /usr/sbin/rsyslogd /usr/sbin/sshd
-do
-    pgrep -f $i | while read PID
-    do
-	echo -1000 > /proc/$PID/oom_score_adj
-    done
-done
 
 run_hooks post-setup
