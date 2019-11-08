@@ -5,7 +5,14 @@
 # as early as possible (such as unpacking any modules or modifications
 # to the test appliance via xfstests.tar.gz and files.tar.gz).
 
+if grep -q fstestcfg /proc/cmdline; then exit 0; fi
+
 . /usr/local/lib/gce-funcs
+
+if test -f /root/do_kexec ; then
+    /usr/local/lib/gce-logger do_kexec file found, using it
+    . /root/do_kexec
+fi
 
 gcloud config set compute/zone $ZONE
 
@@ -25,7 +32,6 @@ then
 fi
 
 kexec=$(gce_attribute kexec)
-if grep -q fstestcfg /proc/cmdline; then exit 0; fi
 
 kopt=$(gce_attribute kopt | sed -e 's/:/ /')
 mem=$(gce_attribute mem)
@@ -119,8 +125,13 @@ then
     kopt="$kopt mount_opts=$mount_opts"
 fi
 
+cat > /root/do_kexec <<EOF
 run_hooks kexec
 /usr/local/lib/gce-logger kexec to test kernel
 systemctl stop rsyslog.service
 sync
 kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop net.ifnames=0 biosdevname=0 console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi fsteststr=$fsteststr nfssrv=$nfssrv"
+/usr/local/lib/gce-logger kexec failed?!?
+exit 1
+EOF
+. /root/do_kexec
