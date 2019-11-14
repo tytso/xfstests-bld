@@ -162,10 +162,12 @@ apt-get update
 apt-get install -y debconf-utils curl
 debconf-set-selections <<EOF
 kexec-tools	kexec-tools/use_grub_config	boolean	true
-kexec-tools	kexec-tools/load_kexec	boolean	true
+kexec-tools	kexec-tools/load_kexec		boolean	true
+man-db		man-db/auto-update 		boolean false
 keyboard-configuration	keyboard-configuration/variant	select	English (US)
 grub-pc	grub-pc/install_devices	multiselect	/dev/sda
 EOF
+rm -f /var/lib/man-db/auto-update
 
 export DEBIAN_FRONTEND=noninteractive
 
