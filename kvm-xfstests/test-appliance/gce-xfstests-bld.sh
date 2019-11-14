@@ -325,6 +325,7 @@ rm -rf $GCE_STATE_DIR
 
 find /var/cache/man /var/cache/apt /var/lib/apt/lists -type f -print | xargs rm
 rm -f /etc/ssh/ssh_host_key* /etc/ssh/ssh_host_*_key*
+rm -rf /root/.cache/*
 sync
 fstrim /
 gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \
