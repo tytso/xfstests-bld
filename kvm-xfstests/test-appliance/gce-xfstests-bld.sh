@@ -195,6 +195,15 @@ dpkg --remove $PACKAGES_REMOVE
 apt-get -fuy autoremove
 apt-get clean
 
+PHORONIX=$(gce_attribute phoronix)
+if test -n "${PHORONIX}" ; then
+    curl -o /tmp/pts.deb "http://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_${PHORONIX}_all.deb"
+    apt-get install -y php-cli php-xml unzip
+    dpkg -i /tmp/pts.deb
+    rm -f /tmp/pts.deb
+    mkdir -p /var/lib/phoronix-test-suite
+fi
+
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
 gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \

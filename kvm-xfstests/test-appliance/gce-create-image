@@ -91,6 +91,9 @@ do
 	--buster)
 	    setup_for_buster
 	    ;;
+	--phoronix) shift
+	    PHORONIX="$1"
+	    ;;
 	-I) shift
 	    ROOT_FS="$1"
 	    BLD_INST="xfstests-bld-$1"
@@ -108,6 +111,17 @@ done
 GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
 METADATA="startup-script-url=$GS_SCRIPT suite=$SUITE"
 GCE_MACHTYPE=n1-standard-1
+
+if test -n "${PHORONIX}" ; then
+    url="http://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_${PHORONIX}_all.deb"
+    code=$(curl -o /dev/null --silent --head --write-out '%{http_code}' $url)
+    if test $code -ne 200 ; then
+	echo "Can't find Phoronix version ${PHORONIX}"
+	echo "  (url $url returned http code $code)"
+	exit 1
+    fi
+    METADATA="$METADATA phoronix=${PHORONIX}"
+fi
 
 td=$(mktemp -d /tmp/gce-create.XXXXXXXX)
 
