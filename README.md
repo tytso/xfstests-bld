@@ -226,7 +226,7 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 *Presentation*
 
-[Sprint 4 presentation](https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing)
+[Sprint 5 presentation](https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing)
 
 ** **
 
