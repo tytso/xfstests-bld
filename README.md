@@ -224,7 +224,9 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 *	The user receives emailed reports on the results of these new features.
 
+*Presentation*
 
+[Sprint 4 presentation](https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing)
 
 ** **
 
@@ -254,4 +256,4 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 9. Other notes:
 
-You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/13IO25TCbVnzGfY53VFzKXKWx0aUPtIrSCe5YqINw8Ng/edit?usp=sharing).
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing).
