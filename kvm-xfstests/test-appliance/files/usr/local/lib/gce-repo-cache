@@ -1,0 +1,48 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+
+logger -i "Entered repo cache PD"
+
+set -vx
+PDCACHE_DSK=$instance-repo-cache
+CREATED_PDCACHE_DEV=/dev/disk/by-id/google-repo-cache
+PDCACHE_SIZE=200
+
+DISK_LIST="$(gcloud compute --project ${GCE_PROJECT} disks list)"
+
+if [[ $DISK_LIST == *"repo-cache"* ]]
+then
+    logger -s "Test repository cache disk already exists!"
+    # attach the disk & turn off auto-delete
+    gcloud compute -q instances attach-disk ${instance} \
+  --disk "$PDCACHE_DSK" \
+  --device-name repo-cache --zone "$ZONE"
+    gcloud compute -q instances set-disk-auto-delete ${instance} \
+  --no-auto-delete --device-name repo-cache --zone "$ZONE" &
+
+else
+    gcloud compute -q disks create "$PDCACHE_DSK" \
+	--size "${PDCACHE_SIZE:-200}" \
+	--zone "$ZONE" --type "${PDCACHE_TYPE:-pd-standard}"
+
+    # attach the disk & turn off auto-delete
+    gcloud compute -q instances attach-disk ${instance} \
+  --disk "$PDCACHE_DSK" \
+  --device-name repo-cache --zone "$ZONE"
+    gcloud compute -q instances set-disk-auto-delete ${instance} \
+  --no-auto-delete --device-name repo-cache --zone "$ZONE" &
+
+    # make a filesystem
+    mke2fs -t ext4 -q $CREATED_PDCACHE_DEV
+fi
+
+if ! test -e $CREATED_PDCACHE_DEV
+then
+  logger -s "Couldn't create or find the test repository cache disk!"
+  exit 1
+fi
+
+wait
+exit 0
