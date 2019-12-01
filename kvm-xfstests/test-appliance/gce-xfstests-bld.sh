@@ -196,8 +196,17 @@ apt-get -fuy autoremove
 apt-get clean
 
 PHORONIX=$(gce_attribute phoronix)
-if test -n "${PHORONIX}" ; then
-    curl -o /tmp/pts.deb "http://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_${PHORONIX}_all.deb"
+if test -z "${PHORONIX}" ; then
+    fn=$(curl -s http://phoronix-test-suite.com/releases/repo/pts.debian/files/ | grep href | grep phoronix-test-suite | sed -e 's/^.*href="//' | sed -e 's/".*$//'  | sort -u  | tail -1)
+    case "$fn" in
+	phoronix-test-suite*all.deb) ;;
+	*) fn="" ;;
+    esac
+else
+    fn="phoronix-test-suite_${PHORONIX}_all.deb"
+fi
+if test -n "$fn" ; then
+    curl -o /tmp/pts.deb "http://phoronix-test-suite.com/releases/repo/pts.debian/files/$fn"
     apt-get install -y php-cli php-xml unzip
     dpkg -i /tmp/pts.deb
     rm -f /tmp/pts.deb
