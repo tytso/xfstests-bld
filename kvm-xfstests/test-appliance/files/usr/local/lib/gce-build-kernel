@@ -1,0 +1,24 @@
+#!/bin/bash
+
+BUILDS=/repositories
+GIT_REPO=$1
+COMMIT=$2
+KERNEL_DIR=$3
+GS_BUCKET=$4
+
+# build kernel
+cd $BUILDS
+gsutil cp "gs://$GS_BUCKET/build_config" "$KERNEL_DIR/.config"
+cd $KERNEL_DIR
+git checkout $COMMIT
+make olddefconfig
+make -j$(nproc) &> build.log
+
+# copy image to gcs bucket
+# gsutil cp "$BUILDS/$KERNEL_DIR/arch/x86/boot/bzImage" "gs://$GS_BUCKET/bzImage"
+
+# delete config file
+if gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
+then
+  gsutil rm "gs://$GS_BUCKET/build_config"
+fi
