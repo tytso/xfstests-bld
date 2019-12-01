@@ -184,6 +184,29 @@ validate_config_name()
     fi
 }
 
+validate_commit_name()
+{
+    if git ls-remote $1 | grep -q "$2"; then
+      echo "Repository found"
+    else
+  		echo -e "No commit or tag with this name: $1\n"
+  		print_help
+  		exit 1
+    fi
+}
+
+copy_config()
+{
+    if test -e $1
+    then
+    gsutil cp $1 "gs://$GS_BUCKET/build_config"
+    else
+  		echo -e "Could not find: $1\n"
+  		print_help
+  		exit 1
+    fi
+}
+
 if flavor_in gce && test -n "$GCE_KERNEL" ; then
     KERNEL="$GCE_KERNEL"
 fi
@@ -202,6 +225,8 @@ archive
 blktests
 bucket-subdir:
 cache:
+commit:
+config:
 cpu-type:
 email:
 gce-network:
@@ -529,6 +554,17 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    BUCKET_SUBDIR="$1"
 	    ;;
+  --commit) shift
+	    supported_flavors gce
+	    COMMIT="$1"
+      REPO="$GIT_REPO"
+      validate_commit_name $REPO $COMMIT
+	    ;;
+  --config) shift
+	    supported_flavors gce
+	    BUILD_CONFIG="$1"
+      copy_config $BUILD_CONFIG
+	    ;;
 	--testrunid) shift
 	    supported_flavors gce
 	    TESTRUNID="$1"
@@ -762,7 +798,7 @@ then
     exit 1
 fi
 
-if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS"
+if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" -a -z "$RUN_ON_BLDSRV"
 then
     echo -e "No tests specified!\n"
     print_help
