@@ -177,13 +177,12 @@ case "$1" in
     ls|ls-instances)
 	if test "$2" = "--gce"
 	then
-	   gcloud compute --project "$GCE_PROJECT" instances list \
-		  --filter="name ~ ^xfstests.*"
+	   gcloud compute --project "$GCE_PROJECT" instances list
 	   exit 0
 	fi
 	inst_info=$(mktemp)
 	gcloud compute --project "$GCE_PROJECT" instances list \
-	       --filter="name ~ ^xfstests.*" --format="value(name,zone)" | \
+	       --format="value(name,zone)" | \
 	    while read -r i z
 	do
 	    gcloud compute --project "$GCE_PROJECT" instances describe \
@@ -246,8 +245,7 @@ case "$1" in
 	exit 0
 	;;
     ls-disks|ls-disk)
-	gcloud compute --project "$GCE_PROJECT" disks list \
-	       --filter="name~^xfstests"
+	gcloud compute --project "$GCE_PROJECT" disks list
 	exit 0
 	;;
     rm-disks|rm-disk)
