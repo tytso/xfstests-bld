@@ -3,7 +3,7 @@
 # This script is executed at the end of each multiuser runlevel
 # to kick off the test appliance commands
 
-# This script will also boot the test appliance in GCE into LTM mode.
+# This script will also boot the test appliance in GCE into LTM or build server mode.
 
 parse() {
 if grep -q " $1=" /proc/cmdline; then
@@ -51,6 +51,12 @@ then
     if gce_attribute gce_xfs_ltm
     then
 	/usr/local/lib/gce-ltm.boot
+	exit $?
+    fi
+
+    if gce_attribute gce_xfs_bldsrv
+    then
+	/usr/local/lib/gce-bldsrv.boot
 	exit $?
     fi
 
