@@ -894,14 +894,18 @@ fi
 if test -n "$RUN_ON_LTM"; then
     . "$DIR/util/gce-ltm-funcs"
     send_to_ltm $ORIG_CMDLINE_B64
+elif test -n "$RUN_ON_BLDSRV"; then
+    if ! gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
+    then
+        echo "Couldn't find build config in $GS_BUCKET"
+        echo "Using default build config for kernel build"
+        gsutil cp "$DIR/../kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
+    fi
+    . "$DIR/util/gce-bldsrv-funcs"
+    send_to_bldsrv $ORIG_CMDLINE_B64
 else
     echo "Launching $INSTANCE using $GCE_MACHTYPE..."
     # echo "Using ARG: $ARG"
-fi
-
-if test -n "$RUN_ON_BLDSRV"; then
-    . "$DIR/util/gce-bldsrv-funcs"
-    send_to_bldsrv $ORIG_CMDLINE_B64
 fi
 
 $NO_ACTION gcloud compute --project "$GCE_PROJECT" \
