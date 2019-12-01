@@ -14,6 +14,13 @@ fi
 
 /usr/local/lib/gce-logger starting build server
 
+# attach repository cache disk
+chmod +x /usr/local/lib/gce-repo-cache
+/usr/local/lib/gce-repo-cache
+mkdir /repositories
+mount /dev/sdb /repositories
+chown www-data:www-data -R /repositories
+
 # login shells dont need test env on the build sever (shouldn't be running tests
 # in the build server vm)
 echo > ~/test-env
