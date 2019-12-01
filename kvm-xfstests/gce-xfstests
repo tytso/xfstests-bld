@@ -383,6 +383,11 @@ case "$1" in
 	       --zone $(get_gce_zone "$2")
 	exit 0
 	;;
+    scp)
+	gcloud compute --project "$GCE_PROJECT" -q scp "$2" root@"$3":~ \
+               --zone $(get_gce_zone "$3")
+	exit 0
+	;;
     console)
 	gcloud compute --project "$GCE_PROJECT" -q instances \
 	       get-serial-port-output "$2" --zone $(get_gce_zone "$2")
