@@ -27,6 +27,16 @@ then
     echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance
     gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance
 fi
+if [ "$(hostname)" = "xfstests-bldsrv" ]
+then
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
+	   > $DIR/.gce_xfstests_cert.pem
+    echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.bldsrv_instance
+    echo "GCE_LTM_NAME=$(hostname)" >> $DIR/.bldsrv_instance
+    echo "GCE_LTM_EXT_IP=127.0.0.1" >> $DIR/.bldsrv_instance
+    echo -n "GCE_LTM_PWD=" >> $DIR/.bldsrv_instance
+    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.bldsrv_instance
+fi
 touch $DIR/config.common
 cp "$GCE_CONFIG_FILE" $DIR/config.gce
 
