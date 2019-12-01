@@ -1,0 +1,63 @@
+. $DIR/.bldsrv_instance
+
+# The hostname has to match the common name field of the certificate, as set
+# in util/gce-do-setup when running openssl to create a self-signed cert.
+# curl will fail otherwise, stating that the common names do not match.
+BLDSRV_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+function bldsrv_post_json() {
+    curl --cacert $GCE_BLDSRV_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$BLDSRV_HOSTNAME:443:$GCE_BLDSRV_EXT_IP" -X POST "$@"
+}
+
+function bldsrv_post_failed() {
+    if gcloud compute instances describe "xfstests-bldsrv" &> /dev/null; then
+	echo "The build server instance seems to be running. Try deleting the"
+	echo "$DIR/.bldsrv_instance file and re-running launch-bldsrv to recreate"
+	echo "the file. If the issue persists, try relaunching the build server"
+	echo "If configuration changes have been made, it may be necessary"
+	echo "to delete and re-launch the build server."
+    else
+	echo "The build server doesn't seem to be running. Try launching the build server"
+	echo "instance with launch-bldsrv. This will recreate the"
+	echo ".bldsrv_instance file."
+    fi
+
+
+}
+function send_to_bldsrv() {
+    local cmd_to_send=$1
+    shift
+
+    # just create a new login session and store it in the cookie
+    bldsrv_post_json -c $DIR/.bldsrv_cookie -d "{\"password\":\"$GCE_BLDSRV_PWD\"}" \
+        "https://$BLDSRV_HOSTNAME/login"
+
+    if [ ! $? = 0 ]; then
+	echo "Login failed."
+	bldsrv_post_failed
+	return 1
+    fi
+
+    BLDSRV_OPTS=""
+    if [ -n "$COMMIT" ]; then
+	BLDSRV_OPTS="${BLDSRV_OPTS:+$BLDSRV_OPTS, }\"commit_id\":\"$COMMIT\""
+    fi
+    if [ -n "$REPO" ]; then
+	BLDSRV_OPTS="${BLDSRV_OPTS:+$BLDSRV_OPTS, }\"git_repo\":\"$REPO\""
+    fi
+    if [ -n "$BLDSRV_OPTS" ]; then
+	BLDSRV_OPTS="\"options\": {$BLDSRV_OPTS}"
+    fi
+    # Create OPTS.
+
+    bldsrv_post_json -b $DIR/.bldsrv_cookie -d \
+	"{\"orig_cmdline\": \"$cmd_to_send\"${BLDSRV_OPTS:+, $BLDSRV_OPTS}}" \
+	"https://$BLDSRV_HOSTNAME/gce-xfstests"
+
+    if [ $? != 0 ]; then
+	echo "Request failed."
+	bldsrv_post_failed
+	return 1
+    fi
+
+}
