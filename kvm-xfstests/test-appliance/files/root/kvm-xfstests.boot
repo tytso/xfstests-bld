@@ -25,6 +25,7 @@ FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
 FSTESTSTR=$(parse fsteststr | sed -e 's/\,/ /g')
 timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
+PTS_SIZE=$(parse pts_size)
 CMD=$(parse cmd)
 FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
 FSTEST_ARCHIVE=$(parse fstestarc | sed -e 's/\./ /g')
@@ -39,6 +40,7 @@ FSTESTAPI="$FSTESTAPI"
 FSTESTSTR="$FSTESTSTR"
 timezone="$timezone"
 MNTOPTS="$MNTOPTS"
+PTS_SIZE="$PTS_SIZE"
 CMD="$CMD"
 FSTESTEXC="$FSTESTEXC"
 NFSSRV="$NFSSRV"
@@ -112,6 +114,29 @@ if test "$CMD" = "ver"
 then
 	/usr/local/sbin/ver
 	poweroff -f > /dev/null 2>&1
+fi
+
+if test "$CMD" = "pts"
+then
+    if test -n "$RUN_ON_GCE"
+    then
+	/usr/local/lib/gce-setup
+	. /run/test-env
+	exit 0
+	/root/run-pts.sh >> /results/runtests.log 2>&1
+
+	/usr/local/lib/gce-logger tests complete
+	/bin/rm -f /run/gce-finalize-wait
+    else
+	# Not yet supported on KVM...
+	/root/run-pts.sh
+	if test -b /dev/vdh -a -n "$FSTEST_ARCHIVE"
+	then
+	    tar -C /tmp -cf /dev/vdh results.tar.xz
+	fi
+	umount /results
+	poweroff -f > /dev/null 2>&1
+    fi
 fi
 
 if test -n "$DO_BLKTESTS"

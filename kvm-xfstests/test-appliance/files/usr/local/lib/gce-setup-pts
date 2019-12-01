@@ -1,0 +1,61 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+. /run/test-env
+
+logger -i "Entered pts scratch"
+
+set -vx
+PTS_DSK=pts-disk
+CREATED_PTS_DEV=/dev/disk/by-id/google-pts
+
+apt-get update > /dev/null &
+
+# Use local SSD if available
+if test -e /dev/disk/by-id/google-local-ssd-0
+then
+    CREATED_PTS_DEV=/dev/disk/by-id/google-local-ssd-0
+fi
+
+if ! test -e $CREATED_PTS_DEV
+then
+    gcloud compute -q disks create "$PTS_DSK" \
+	--size "${PTS_SIZE:-1024}" \
+	--zone "$ZONE" --type "${PTS_TYPE:-pd-ssd}"
+    gcloud compute -q instances attach-disk ${instance} \
+	--disk "$PTS_DSK" \
+	--device-name pts --zone "$ZONE"
+fi
+
+if ! test -e $CREATED_PTS_DEV
+then
+    logger -s "Couldn't create or attach the PTS disk!"
+    #    gcloud compute -q instances delete $(hostname) --zone $ZONE
+    exit 1
+fi
+
+if test "$(blkid -s TYPE -o value $CREATED_PTS_DEV)" != "$FSTESTTYP" ; then
+    "/sbin/mkfs.${FSTESTTYP}" $CREATED_PTS_DEV
+fi
+
+mkdir -p /pts
+mount $CREATED_PTS_DEV /pts
+
+if ! test -d /pts/phoronix-test-suite ; then
+    mkdir -p /pts/phoronix-test-suite
+    if gsutil cp "gs://$GS_BUCKET/pts-state.tar.xz" /tmp ; then
+	tar -C /pts -xJf /tmp/pts-state.tar.xz
+    fi
+    if gsutil cp "gs://$GS_BUCKET/pts-results.tar.xz" /tmp ; then
+	tar -C /pts/phoronix-test-suite -xJf /tmp/pts-results.tar.xz
+    fi
+fi
+
+mkdir -p /var/lib/phoronix-test-suite
+mount --bind /pts/phoronix-test-suite /var/lib/phoronix-test-suite
+
+wait
+phoronix-test-suite install pts/disk
+
+exit 0

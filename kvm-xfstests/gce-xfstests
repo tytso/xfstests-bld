@@ -551,6 +551,9 @@ fi
 INSTANCE="xfstests-$TESTRUNID"
 
 case "$ARG" in
+    cmd=pts*)
+	INSTANCE="pts"
+	;;
     cmd=maint*)
 	INSTANCE="xfstests"
 	;;

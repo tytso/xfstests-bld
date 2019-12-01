@@ -232,6 +232,7 @@ no-virtio-rng
 no-zero
 numa:
 pmem-device
+pts-size:
 preemptible
 stress-mem:
 stress-opts:
@@ -488,6 +489,10 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    PREEMPTIBLE=yes
 	    ;;
+	--pts-size) shift
+	    supported_flavors gce
+	    PTS_SIZE="$1"
+	    ;;
 	--no-preemptible|--no-preempt)
 	    supported_flavors gce
 	    PREMPTIBLE=
@@ -731,6 +736,11 @@ EOF
 		OVERRIDE_KERNEL="none"
 	    fi
 	    ;;
+	pts|phoronix)
+	    supported_flavors gce
+	    ARG="cmd=pts"
+	    DO_PTS="yes"
+	    ;;
 	ver)
 	    ARG="cmd=ver"
 	    ;;
@@ -888,6 +898,11 @@ if test -n "$PMEM_DEVICE" ; then
     fi
 fi
 
+if test -n "$DO_PTS" -a -z "$EXPLICIT_RAM" -a -z "$EXPLICIT_CPU" -a \
+	-z "$GCE_MACHTYPE" ; then
+    GCE_MACHTYPE="n1-standard-16"
+fi
+
 if test -n "$NUMA_NUM" ; then
     if test "$NUMA_NUM" -lt 2 ; then
 	echo "Invalid number of NUMA nodes ($NUMA_NUM) too small"
@@ -920,4 +935,8 @@ ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
 
 if test -n "$FSTESTSTR" ; then
     ARG="$ARG fsteststr=$FSTESTSTR"
+fi
+
+if test -n "$PTS_SIZE" ; then
+    ARG="$ARG pts_size=$PTS_SIZE"
 fi

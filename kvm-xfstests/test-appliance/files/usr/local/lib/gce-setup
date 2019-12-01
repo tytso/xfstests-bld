@@ -3,6 +3,7 @@
 . /usr/local/lib/gce-funcs
 . /root/test-config
 . /root/runtests_utils
+. /run/test-env
 
 for i in /usr/sbin/rsyslogd /usr/sbin/sshd
 do
@@ -28,7 +29,10 @@ run_hooks pre-setup
 /usr/local/lib/gce-logger disk setup
 gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
 
-if test -f "/run/do_blktests" ; then
+if test "$CMD" = "pts" ; then
+    SCRATCH_SIZE=0
+    script -c /usr/local/lib/gce-setup-pts /var/log/gce-setup-pts.log &
+elif test -f "/run/do_blktests" ; then
     SCRATCH_SIZE=50
 else
     logger -i "compute partition sizes"

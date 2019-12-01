@@ -34,9 +34,11 @@ fi
 kexec=$(gce_attribute kexec)
 
 kopt=$(gce_attribute kopt | sed -e 's/:/ /')
+cmd=$(gce_attribute cmd)
 mem=$(gce_attribute mem)
 cpus=$(gce_attribute nr_cpus)
 mount_opts=$(gce_attribute mount_opts)
+pts_size=$(gce_attribute pts_size)
 fstestcfg=$(gce_attribute fstestcfg)
 fstestset=$(gce_attribute fstestset)
 fstestexc=$(gce_attribute fstestexc)
@@ -88,6 +90,7 @@ FSTESTAPI="${fstestapi//./ }"
 FSTESTSTR="${fsteststr//,/ }"
 timezone="$fstesttz"
 MNTOPTS="$mount_opts"
+PTS_SIZE="$pts_size"
 FSTESTEXC="${fstestexc//,/ }"
 NFSSRV="${$nfssrv}"
 EOF
@@ -110,6 +113,11 @@ then
     echo $fstesttz > /etc/timezone
 fi
 
+if test -n "$cmd"
+then
+    kopt="$kopt cmd=${cmd}"
+fi
+
 if test -n "$mem"
 then
     kopt="$kopt mem=${mem}M"
@@ -123,6 +131,11 @@ fi
 if test -n "$mount_opts"
 then
     kopt="$kopt mount_opts=$mount_opts"
+fi
+
+if test -n "$pts_size"
+then
+    kopt="$kopt pts_size=$pts_size"
 fi
 
 cat > /root/do_kexec <<EOF
