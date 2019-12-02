@@ -245,7 +245,10 @@ done
 rm -rf /var/www/html /var/www/cgi-bin
 ln -s /usr/lib/cgi-bin /var/www/cgi-bin
 chown www-data:www-data -R /usr/local/lib/gce-ltm
+chown www-data:www-data -R /usr/local/lib/gce-bldsrv
 chown www-data:www-data -R /var/www
+mkdir /root/builds
+chown www-data:www-data -R /root/builds
 
 lighttpd-enable-mod ssi
 lighttpd-enable-mod ssl
@@ -335,6 +338,8 @@ then
 fi
 chmod +rx /usr/local/lib/gce-ltm/gce-xfs-ltm.fcgi
 chmod +rx /usr/local/lib/gce-ltm/app.py
+chmod +rx /usr/local/lib/gce-bldsrv/gce-xfs-bldsrv.fcgi
+chmod +rx /usr/local/lib/gce-bldsrv/app.py
 
 gcloud components -q update
 
