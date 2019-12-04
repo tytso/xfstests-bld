@@ -28,6 +28,8 @@ import flask_login
 from ltm import LTM
 from ltm_login import User
 from testrunmanager import TestRunManager
+from bldsrvmanager import BldsrvManager
+import json
 
 logging.basicConfig(
     filename=LTM.server_log_file,
@@ -109,6 +111,10 @@ def login():
   user = User.create_user()
   validated = user.validate_password(password)
 
+  #save password to local file
+  with open('pwd.json', 'w') as f:
+    json.dump(json_data, f)
+
   if validated:
     flask_login.login_user(user)
     logging.info('Login successful')
@@ -177,6 +183,17 @@ def gce_xfstests():
     opts = json_data['options']
   except KeyError:
     opts = None
+
+  if opts and 'commit_id' in opts:
+    try:
+      build_run = BldsrvManager(json_data, base64.decodestring(cmd_in_base64), opts)
+      build_run.run()
+      return flask.jsonify({'status': True,
+                             'info': 'launching build server'})
+    except:
+      logging.error('Did not successfully launch build server:')
+      logging.error(traceback.format_exc())
+      return flask.jsonify({'status': False})
 
   try:
     test_run = TestRunManager(base64.decodestring(cmd_in_base64), opts)

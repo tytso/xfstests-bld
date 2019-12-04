@@ -1,0 +1,84 @@
+import base64
+import binascii
+import logging
+import os
+import traceback
+from ltm import LTM
+from ltm_login import User
+from testrunmanager import TestRunManager
+from multiprocessing import Process
+from subprocess import call
+from time import sleep
+import gce_funcs
+import googleapiclient.discovery
+import googleapiclient.errors
+from google.cloud import storage
+import requests
+import json
+
+class BldsrvManager(object):
+
+    def __init__(self, cmd_json, orig_cmd, opts=None):
+        logging.info('Starting new Build Run')
+        launch_bldsrv_cmd = ['gce-xfstests', 'launch-bldsrv']
+        self.launch_bldsrv_cmd = launch_bldsrv_cmd
+        self.gce_proj_id = gce_funcs.get_proj_id()
+        self.gce_project = gce_funcs.get_proj_id().strip()
+        self.gce_zone = gce_funcs.get_gce_zone()
+        self.gce_region = self.gce_zone[:-2]
+        self.gs_bucket = gce_funcs.get_gs_bucket().strip()
+        self.instance_name = 'xfstests-bldsrv'
+        self.orig_cmd = orig_cmd
+        self.cmd_json = cmd_json
+        self.opts = opts
+        # end __init__
+
+    def run(self):
+        logging.info('Starting launching build server')
+        self.process = Process(target=self.__run)
+        self.process.start()
+    
+    def __run(self):
+        logging.info('Entered run()')
+        started = self.__start()
+
+        if not started:
+            logging.error('Build server failed to start')
+        else:
+            logging.info('Successfully launched build server')
+            # self.__monitor()
+            # logging.info('Exiting monitor process')
+        exit()
+
+    def __start(self):
+        logging.info('Staring subprocess to launch build server')
+        logging.info('Calling command %s', str(self.launch_bldsrv_cmd))
+        returned = call(self.launch_bldsrv_cmd)
+        logging.info('Command returned %s', returned)
+        return returned == 0
+
+    def __monitor(self):
+        # logging.info('Entered monitor')
+        # logging.info('Waiting for build server to complete...')
+        
+        # sc = storage.Client()
+        # self.bucket = sc.lookup_bucket(self.gs_bucket)
+        # self.compute = googleapiclient.discovery.build('compute','v1')
+        # wait_time = 0
+        # while True:
+        #     for _ in range(120):
+        #         sleep(1.0)
+        #     wait_time += 120
+        #     logging.info('Checking if new kernel was built')
+        #     try:
+        #         if (wait_time > 240) or self.bucket.get_blob(blob_name='bzImage'):
+        #             self.compute.instances().delete(
+        #                 project=self.gce_project, zone=self.gce_zone,
+        #                 instance=self.instance_name).execute()
+        #             break
+        #     except googleapiclient.errors.HttpError as e:
+        #         logging.info('Got error %s', e)
+        #         if 'not found' in str(e) and '404' in str(e):
+        #             logging.info('Build server no longer exists!')
+        #             break
+        return
