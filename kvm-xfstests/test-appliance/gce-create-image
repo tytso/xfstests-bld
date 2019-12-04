@@ -161,6 +161,7 @@ cp ../../kvm-xfstests/util/gce-launch-ltm	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/gce-ltm-funcs	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/gce-xfstests		$kvm_xfs_dir/
 cp ../../kvm-xfstests/get-results		$kvm_xfs_dir/
+cp ../../kvm-xfstests/util/gce-launch-bldsrv	$kvm_xfs_dir/util/
 
 # create a symlink so that util/parse_cli works properly.
 # under test-appliance/, the link "files" should refer back to the root, "/".

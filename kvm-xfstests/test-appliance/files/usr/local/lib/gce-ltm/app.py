@@ -28,6 +28,8 @@ import flask_login
 from ltm import LTM
 from ltm_login import User
 from testrunmanager import TestRunManager
+from bldsrvmanager import BldsrvManager
+import json
 
 logging.basicConfig(
     filename=LTM.server_log_file,
@@ -109,6 +111,10 @@ def login():
   user = User.create_user()
   validated = user.validate_password(password)
 
+  #save password to local file
+  with open('pwd.json', 'w') as f:
+    json.dump(json_data, f)
+
   if validated:
     flask_login.login_user(user)
     logging.info('Login successful')
@@ -163,6 +169,10 @@ def gce_xfstests():
   logging.info('Request received at /gce-xfstests')
   json_data = flask.request.json
 
+  # save cmdline to local file for debugging, should be commented out
+  # with open('cmd.json', 'w') as f:
+  #   json.dump(json_data, f)
+
   if not json_data:
     logging.warning('No json received')
     flask.abort(400)
@@ -177,6 +187,25 @@ def gce_xfstests():
     opts = json_data['options']
   except KeyError:
     opts = None
+
+  if opts and 'commit_id' in opts:
+    try:
+      build_run = BldsrvManager(json_data)
+      build_run.run()
+      return flask.jsonify({'status': True,
+                             'info': 'launching build server'})
+    except:
+      logging.error('Failed to launch build server:')
+      logging.error(traceback.format_exc())
+      return flask.jsonify({'status': False})
+
+  if opts and 'bld_done' in opts:
+    try:
+      build_run = BldsrvManager(json_data)
+      build_run.delete()
+    except:
+      logging.error('Failed to delete build server:')
+      logging.error(traceback.format_exc())
 
   try:
     test_run = TestRunManager(base64.decodestring(cmd_in_base64), opts)
