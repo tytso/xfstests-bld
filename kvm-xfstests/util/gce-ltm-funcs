@@ -51,6 +51,12 @@ function send_to_ltm() {
     if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
     fi
+    if [ -n "$COMMIT" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"commit_id\":\"$COMMIT\""
+    fi
+    if [ -n "$REPO" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"git_repo\":\"$REPO\""
+    fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
     fi
