@@ -39,11 +39,16 @@ from subprocess import call
 import sys
 from time import sleep
 from urllib2 import HTTPError
+import requests
+import json
+import base64
 
 import gce_funcs
 from bldsrv import BLDSRV
 from kbuild import Kbuild
 from google.cloud import storage
+import googleapiclient.discovery
+import googleapiclient.errors
 
 class BuildManager(object):
   """BuildManager class.
@@ -53,7 +58,7 @@ class BuildManager(object):
   buildmanager will spawn a child process in which it will manage the build.
   """
 
-  def __init__(self, orig_cmd, opts=None):
+  def __init__(self, cmd_json, orig_cmd, opts=None):
     logging.info('Launching new build')
     logging.info('Getting unique build id..')
     build_id = get_datetime_build_id()
@@ -70,6 +75,11 @@ class BuildManager(object):
     self.gs_bucket = gce_funcs.get_gs_bucket().strip()
     self.bucket_subdir = gce_funcs.get_bucket_subdir().strip()
     self.gs_kernel = None
+    self.gce_proj_id = gce_funcs.get_proj_id()
+    self.gce_project = gce_funcs.get_proj_id().strip()
+    self.gce_zone = gce_funcs.get_gce_zone()
+    self.gce_region = self.gce_zone[:-2]
+    self.cmd_json = cmd_json
 
     if opts and 'commit_id' in opts:
       self.commit = opts['commit_id'].strip()
@@ -125,6 +135,7 @@ class BuildManager(object):
     self.__wait_for_build()
     self.__finish()
     logging.info('Exiting process for build %s', self.id)
+    self.__send_to_ltm()
     exit()
 
   def __start(self):
@@ -180,6 +191,55 @@ class BuildManager(object):
     logging.info('Finished cleanup')
     return
 
+  def __send_to_ltm(self):
+    logging.info('Sending original cmd back to LTM')
+    compute = googleapiclient.discovery.build('compute','v1')
+    ltm_name = 'xfstests-ltm'
+    ltm_info = compute.instances().get(project=self.gce_project, zone=self.gce_zone,
+                    instance=ltm_name).execute()
+    ltm_ip = ltm_info['networkInterfaces'][-1]['accessConfigs'][0]['natIP']
+    logging.info('LTM server ip address: %s', ltm_ip)
+    with open('pwd.json', 'r') as f:
+        pwd = json.load(f)
+    self.__modify_cmd_json()
+    logging.info('LTM server password: %s', pwd)
+    logging.info('gce-xfstests command line: %s', self.cmd_json)
+    header = {'Content-Type': 'application/json'}
+
+    with requests.Session() as s:
+        url_login = 'https://' + ltm_ip + '//login'
+        r = s.post(url_login, json=pwd, headers=header, verify=False)
+        logging.info('log in request return: %s', r.content)
+        url_gce = 'https://' + ltm_ip + '//gce-xfstests'
+        r = s.post(url_gce, json=self.cmd_json, headers=header, verify=False)
+        logging.info('gce cmd request return: %s', r.content)
+        returned = r.content.split('"status":')[1].split('}')[0]
+    if returned == 'false': 
+        logging.info('Failed to send cmd to LTM')
+    else:
+        for _ in range(30):
+            sleep(1.0)
+        logging.error('Deleting build server')
+        compute.instances().delete(
+                project=self.gce_project, zone=self.gce_zone,
+                instance='xfstests-bldsrv').execute()
+    return 
+  
+  def __modify_cmd_json(self):
+    del self.cmd_json[u'options'][u'commit_id']
+    orig_cmd = base64.decodestring(self.cmd_json[u'orig_cmdline'])
+    orig_cmd_list = orig_cmd.split(' ')
+    if '--commit' in orig_cmd_list:
+      id = orig_cmd_list.index('--commit')
+      del orig_cmd_list[id]
+      del orig_cmd_list[id]
+    if '--config' in orig_cmd_list:
+      id = orig_cmd_list.index('--config')
+      del orig_cmd_list[id]
+      del orig_cmd_list[id]
+    orig_cmd_new = unicode(base64.encodestring(' '.join(orig_cmd_list)), 'utf-8')
+    self.cmd_json[u'orig_cmdline'] = orig_cmd_new
+    return
 
 ### end class BuildManager
 

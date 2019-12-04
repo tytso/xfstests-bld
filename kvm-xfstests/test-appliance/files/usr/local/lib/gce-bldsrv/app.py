@@ -28,6 +28,7 @@ import flask_login
 from bldsrv import BLDSRV
 from bldsrv_login import User
 from buildmanager import BuildManager
+import json
 
 logging.basicConfig(
     filename=BLDSRV.server_log_file,
@@ -109,6 +110,10 @@ def login():
   user = User.create_user()
   validated = user.validate_password(password)
 
+  #save password to local file
+  with open('pwd.json', 'w') as f:
+    json.dump(json_data, f)
+
   if validated:
     flask_login.login_user(user)
     logging.info('Login successful')
@@ -179,7 +184,7 @@ def gce_xfstests():
     opts = None
 
   try:
-    build_run = BuildManager(base64.decodestring(cmd_in_base64), opts)
+    build_run = BuildManager(json_data, base64.decodestring(cmd_in_base64), opts)
     run_info = build_run.get_info()
     build_run.run()
   except:
