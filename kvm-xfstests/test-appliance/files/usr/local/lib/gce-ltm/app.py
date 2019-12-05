@@ -169,6 +169,10 @@ def gce_xfstests():
   logging.info('Request received at /gce-xfstests')
   json_data = flask.request.json
 
+  # save cmdline to local file for debugging, should be commented out
+  # with open('cmd.json', 'w') as f:
+  #   json.dump(json_data, f)
+
   if not json_data:
     logging.warning('No json received')
     flask.abort(400)
@@ -186,14 +190,22 @@ def gce_xfstests():
 
   if opts and 'commit_id' in opts:
     try:
-      build_run = BldsrvManager(json_data, base64.decodestring(cmd_in_base64), opts)
+      build_run = BldsrvManager(json_data)
       build_run.run()
       return flask.jsonify({'status': True,
                              'info': 'launching build server'})
     except:
-      logging.error('Did not successfully launch build server:')
+      logging.error('Failed to launch build server:')
       logging.error(traceback.format_exc())
       return flask.jsonify({'status': False})
+
+  if opts and 'bld_done' in opts:
+    try:
+      build_run = BldsrvManager(json_data)
+      build_run.delete()
+    except:
+      logging.error('Failed to delete build server:')
+      logging.error(traceback.format_exc())
 
   try:
     test_run = TestRunManager(base64.decodestring(cmd_in_base64), opts)

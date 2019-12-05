@@ -18,7 +18,7 @@ import json
 
 class BldsrvManager(object):
 
-    def __init__(self, cmd_json, orig_cmd, opts=None):
+    def __init__(self, cmd_json):
         logging.info('Starting new Build Run')
         launch_bldsrv_cmd = ['gce-xfstests', 'launch-bldsrv']
         self.launch_bldsrv_cmd = launch_bldsrv_cmd
@@ -28,15 +28,21 @@ class BldsrvManager(object):
         self.gce_region = self.gce_zone[:-2]
         self.gs_bucket = gce_funcs.get_gs_bucket().strip()
         self.instance_name = 'xfstests-bldsrv'
-        self.orig_cmd = orig_cmd
         self.cmd_json = cmd_json
-        self.opts = opts
+        self.compute = googleapiclient.discovery.build('compute','v1')
         # end __init__
 
     def run(self):
         logging.info('Starting launching build server')
         self.process = Process(target=self.__run)
         self.process.start()
+
+    def delete(self):
+        logging.info('Building is done, now deleting build server')
+        self.compute.instances().delete(
+                project=self.gce_project, zone=self.gce_zone,
+                instance=self.instance_name).execute()
+        return
     
     def __run(self):
         logging.info('Entered run()')
@@ -60,14 +66,13 @@ class BldsrvManager(object):
         exit()
 
     def __start(self):
-        logging.info('Staring subprocess to launch build server')
+        logging.info('Starting subprocess to launch build server')
         logging.info('Calling command %s', str(self.launch_bldsrv_cmd))
         returned = call(self.launch_bldsrv_cmd)
         logging.info('Command returned %s', returned)
         return returned == 0
 
     def __get_bldsrv_ip(self):
-        self.compute = googleapiclient.discovery.build('compute','v1')
         bldsrv_info = self.compute.instances().get(
                 project=self.gce_project, zone=self.gce_zone,
                 instance=self.instance_name).execute()

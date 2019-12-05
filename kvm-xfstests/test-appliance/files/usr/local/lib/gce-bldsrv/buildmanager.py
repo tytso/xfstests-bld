@@ -216,13 +216,13 @@ class BuildManager(object):
         returned = r.content.split('"status":')[1].split('}')[0]
     if returned == 'false': 
         logging.info('Failed to send cmd to LTM')
-    else:
-        for _ in range(30):
-            sleep(1.0)
-        logging.error('Deleting build server')
-        compute.instances().delete(
-                project=self.gce_project, zone=self.gce_zone,
-                instance='xfstests-bldsrv').execute()
+    # else:
+    #     for _ in range(30):
+    #         sleep(1.0)
+    #     logging.info('Deleting build server')
+    #     compute.instances().delete(
+    #             project=self.gce_project, zone=self.gce_zone,
+    #             instance='xfstests-bldsrv').execute()
     return 
   
   def __modify_cmd_json(self):
@@ -239,6 +239,7 @@ class BuildManager(object):
       del orig_cmd_list[id]
     orig_cmd_new = unicode(base64.encodestring(' '.join(orig_cmd_list)), 'utf-8')
     self.cmd_json[u'orig_cmdline'] = orig_cmd_new
+    self.cmd_json[u'options'][u'bld_done'] = 'Done'
     return
 
 ### end class BuildManager
