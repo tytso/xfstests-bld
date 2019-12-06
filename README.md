@@ -136,19 +136,11 @@ Stretch goals:
 
 **Sprint 1: 9/19 – 10/3**
 
-*Sprint Goals*
+*Sprint Progress*
 
-The first sprint will focus on learning the necessary technical background information needed to proceed with the project, configuring our build environments, and familiarizing ourselves with the use of the existing gce-xfstests code.  We will also take our first steps towards our first milestone, the LTM repository monitoring and testing on an automatically generated VM.
+The first sprint focused on learning the necessary technical background information needed to proceed with the project, configuring our build environments, and familiarizing ourselves with the use of the existing gce-xfstests code.  We used basic GCE commands to run a limited set of tests ("smoke" tests) both with and without the Light GCE-XFStests Manager (LTM).  We also began building our own modified images for use on the LTM, and eventually the build server.
 
-* Technical spike: Google Compute Engine (GCE) and Light GCE-XFStests Manager (LTM).  We will learn about GCE and practice using it, particularly in conjunction with the LTM that our mentor has developed.  We will practice launching VMs with various configurations and verify our results through the emailed reports.
-
-* Begin progress towards first milestone by writing code to monitor a repository branch, detect whether there have been changes, and automatically launching a VM with the correct kernel version.
-
-*Possible User Stories*
-
-* User would like to monitor a repository, so they set an interval of one hour at which to receive a report on changes.
-
-* User wants a VM with the same kernel identified in their commit, and one is generated automatically.
+* Technical spike: Google Compute Engine (GCE) and Light GCE-XFStests Manager (LTM).  We learned about GCE and practiced using it, particularly in conjunction with the LTM that our mentor developed.
 
 *Presentation*
 
