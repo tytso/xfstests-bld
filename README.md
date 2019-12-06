@@ -72,7 +72,7 @@ As we are building on top of the gce-xfstests project, we will continue using th
 * Google Cloud Storage:  used to store kernel image under test;
 * Virtual Machine: bucket used for building the kernel and running tests;
 * Lightweight GCE-Xfstests Test Manager (LTM) server: to manage testing and the build server that we'll implement, and to monitor VMs and repositories;
-* Build server: to build test images for given kernel source code;
+* Build server: to build test images from given kernel source code;
 * Flask: a lightweight web application framework for LTM and build server to establish web services for communicating between VMs and with users
 * Git: to fetch a specific kernel, supervise new kernel commits and assist with the bisection bug finding feature;
 * JUnit-XML: library used to generate the test result report;
@@ -86,8 +86,7 @@ Relevant git commands to implement the features:
 ###### _Build server_
 This stage will be completed first and consists of three parts:
 
-+ We will use the existing web services framework to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. 
-So instead of running `gce-xfstests launch-ltm` we can instead run `gce-xfstests launch-bld`.
++ We will use the existing web services framework (Flask) to launch the build VM and communicate between it and the LTM. This will allow us to reuse a lot of the existing code to complete this part quickly and cleanly. So instead of running `gce-xfstests launch-ltm` we can instead run `gce-xfstests launch-bldsrv` to launch the build server. Although Flask is often used for synchronous communication, we will implement asynchronous communication between the build server and the LTM by using two synchronous endpoints.
 
 + The build server will need a larger VM than the micro VM used for the LTM server. The exact size and details will be worked out based on cost trade-offs.
 
@@ -118,7 +117,7 @@ The SendMail integration is a very practical and efficient way to report back te
 
 ## 5. Acceptance criteria
 
-(We modified our minimum acceptance criteria in Sprint 2 since we realized the amount of work needed to implement the build server and to enable the asynchronous communication between it and LTM)
+(We modified our minimum acceptance criteria in Sprint 2 since we realized the amount of work needed to implement the build server and to enable the asynchronous communication between it and the LTM)
 
 Minimum acceptance criteria:
 * Enhance the LTM to build a VM from a specific git commit ID. 
@@ -237,11 +236,9 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 2) How do we test repository monitoring? In particular how do we simulate new commits to a repository so that we can build and test new versions? We thought of using existing commits to simulate new commits, but the details on this are fuzzy at the moment.
 
-3) How to have two-way communication between the build server and the LTM? Two synchronous endpoints? Gunicorn? 
+3) At some point, should we move away from Flask? Moving away from it might simplify migration from python2 to python3, and allows us to go back to using a smaller VM (f1) for LTM
 
-4) Should we ditch Flask? Might simplify python3 migration
-
-5) For git bisect, how to ignore bugs that are NOT the ones we are looking for. This is a problem that comes up in practice.
+4) For git bisect, how to ignore bugs that are NOT the ones we are looking for. This is a problem that comes up in practice.
 
 
 ** **
