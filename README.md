@@ -71,8 +71,9 @@ As we are building on top of the gce-xfstests project, we will continue using th
 * Google Compute Engine: Infrastructure as a Service (IaaS) used to launch virtual machines;
 * Google Cloud Storage:  used to store kernel image under test;
 * Virtual Machine: bucket used for building the kernel and running tests;
-* Lightweight GCE-Xfstests Test Manager (LTM) server: to manage testing, monitoring VMs and repositories;
-* Build server: to build test images;
+* Lightweight GCE-Xfstests Test Manager (LTM) server: to manage testing and the build server that we'll implement, and to monitor VMs and repositories;
+* Build server: to build test images for given kernel source code;
+* Flask: a lightweight web application framework for LTM and build server to establish web services for communicating between VMs and with users
 * Git: to fetch a specific kernel, supervise new kernel commits and assist with the bisection bug finding feature;
 * JUnit-XML: library used to generate the test result report;
 * SendMail: used to send the result report by SMTP mail server;
@@ -117,16 +118,21 @@ The SendMail integration is a very practical and efficient way to report back te
 
 ## 5. Acceptance criteria
 
+(We modified our minimum acceptance criteria in Sprint 2 since we realized the amount of work needed to implement the build server and to enable the asynchronous communication between it and LTM)
+
 Minimum acceptance criteria:
 * Enhance the LTM to build a VM from a specific git commit ID. 
 This is the first milestone and can be verified by checking that the build matches the kernel version from the provided commit.
-
-* Implement the up-to-date automated kernel testing feature. 
-We can verify that this feature is completed if we are able to successfully receive automated testing reports every N minutes for the repository being watched.
-
-* Implement the bisection bug finding feature. We can verify that this feature is completed, if we are able to artificially introduce a bug in the kernel code and then identify the offending commit using git bisection testing.
+To achieve this goal, we need to implement a build server with the following basic behaviors:
+  - Lightweight Test Manager (LTM) can launch build server 
+  - Build server builds kernel from commit id passed as command line argument
+  - Build server notifies LTM that it completed using web services api
+  - LTM (optionally) shuts down build server if not needed anymore
 
 Stretch goals:
+* Implement the up-to-date automated kernel testing feature. 
+We can verify that this feature is completed if we are able to successfully receive automated testing reports every N minutes for the repository being watched.
+* Implement the bisection bug finding feature. We can verify that this feature is completed, if we are able to artificially introduce a bug in the kernel code and then identify the offending commit using git bisection testing.
 * Provide a command-line interface for users to communicate with the LTM server and request a build of a specific git commit found on a particular git repository.
 * Run regression tests and send the report to the developer if new test failures are noted.
 * Run flaky tests and send the report to the developer if flaky test failures are noted.
@@ -220,6 +226,9 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 [Sprint 5 presentation](https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing)
 
+*Final Presentation*
+
+[Final presentation](https://docs.google.com/presentation/d/1y-bZKlb2oy8LZN8qLJX1udenXNFqnqrlBj7uVAU5JZA/edit?usp=sharing)
 ** **
 
 ## 7. Open Questions & Risks
@@ -248,4 +257,4 @@ This sprint is dedicated to the completion of any goals that weren’t completed
 
 ## 9. Other notes:
 
-You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing).
+You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/1y-bZKlb2oy8LZN8qLJX1udenXNFqnqrlBj7uVAU5JZA/edit?usp=sharing).
