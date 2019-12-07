@@ -1,0 +1,32 @@
+#!/usr/bin/python
+
+import argparse
+import os
+import sys
+from junitparser import JUnitXml, TestSuite
+
+def get_test_suite(filename):
+    try:
+        ts = JUnitXml.fromfile(filename)
+    except IOError as e:
+        sys.exit("Couldn't open %s: %s" % (filename, e[1]))
+    
+    if type(ts) != TestSuite:
+        sys.exit('%s is not a xUnit report file' % filename)
+    return ts
+
+parser = argparse.ArgumentParser()
+parser.add_argument('merge_file', help='merged test results')
+parser.add_argument('input_file', help='input test result file')
+args = parser.parse_args()
+
+merge = get_test_suite(args.merge_file)
+input = get_test_suite(args.input_file)
+
+for tc in input:
+    merge.add_testcase(tc)
+
+merge.update_statistics()
+merge.write(args.merge_file + '.new')
+os.rename(args.merge_file, args.merge_file + '.bak')
+os.rename(args.merge_file + '.new' , args.merge_file)

@@ -1,0 +1,36 @@
+#
+# Default configuration for gce-xfstests
+#
+# Variables set here may be overridden in ~/.config/gce-xfstests
+#
+
+#
+# GS_BUCKET=gs_bucket.thunk.org
+# GCE_PROJECT=tytso-xfstests-project
+# GCE_ZONE=us-central1-c
+# GCE_KERNEL=/u1/ext4-64/arch/x86/boot/bzImage
+
+# List of firewall rules to create.  By default the gce-xfstests web interface
+# is made available to everyone over the public Internet.
+GCE_FIREWALL_RULES=("allow-http --allow tcp:80 --target-tags http-server" \
+		    "allow-https --allow tcp:443 --target-tags https-server")
+
+# GCE network to use
+GCE_NETWORK="default"
+
+# Use different defaults for GCE because the background ruby monitoring
+# program uses extra memory --- the n1-standard-2 machine type has 7.5 GB,
+# so use that.
+NR_CPU=2
+MEM=7680
+
+# Name of the GCE image or image family from which the test instances
+# will be created.
+# This can also be set by the -I or --image-family options.
+ROOT_FS="xfstests"
+IMAGE_FLAG="--image-family"
+
+# By default use a minimum scratch result of 100G because the disk
+# space saved isn't worth the additional VM time to run certain
+# high-IOPS tests.
+GCE_MIN_SCR_SIZE=100

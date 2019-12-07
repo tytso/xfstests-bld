@@ -1,0 +1,82 @@
+#
+# Configuration file for ext4
+#
+
+DEFAULT_MKFS_OPTIONS="-b 4096"
+
+function check_filesystem()
+{
+    local dev="$1"
+    local ret
+
+    /sbin/e2fsck -fy "$dev"
+    ret="$?"
+    echo e2fsck exited with status "$ret"
+    return "$ret"
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+    local ret
+
+    /sbin/mke2fs -F -q -t ext4 $opts "$dev"
+    ret="$?"
+    return "$ret"
+}
+
+function setup_mount_opts()
+{
+    export MKFS_OPTIONS="-q $EXT_MKFS_OPTIONS"
+    if test -n "$EXT_MOUNT_OPTIONS" ; then
+	export EXT_MOUNT_OPTIONS="-o block_validity,$EXT_MOUNT_OPTIONS"
+    else
+	export EXT_MOUNT_OPTIONS="-o block_validity"
+    fi
+    if test -n "$MNTOPTS" ; then
+	export EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
+    fi
+    if echo "$EXT_MOUNT_OPTIONS" | grep -q test_dummy_encryption; then
+        local mode='\x00\x00\x00\x00'
+        local raw="$(printf ""\\\\x%02x"" $(seq 0 63))"
+        if lscpu | grep "Byte Order" | grep -q Little ; then
+            local size='\x40\x00\x00\x00'
+        else
+            local size='\x00\x00\x00\x40'
+        fi
+        local key="${mode}${raw}${size}"
+        keyctl new_session >& /dev/null
+        echo -n -e "${key}" | keyctl padd logon ext4:4242424242424242 @s >& /dev/null
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$EXT_MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo EXT_MKFS_OPTIONS: "$EXT_MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo EXT_MOUNT_OPTIONS: "$EXT_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    case "$1" in
+	default)	echo "4k" ;;
+	*)		echo "$1" ;;
+    esac
+}
+
+function reset_vars()
+{
+    unset EXT_MOUNT_OPTIONS
+    unset EXT_MKFS_OPTIONS
+    unset MKFS_OPTIONS
+}

@@ -1,0 +1,671 @@
+#!/bin/bash
+#
+# setup-buildchroot - set up a Debian build chroot
+#
+# For details, see usage() and Documentation/building-xfstests.md
+
+set -e -u
+
+SCRIPTNAME="$(basename "$0")"
+SCRIPTDIR="$(readlink -f "$(dirname "$0")")"
+
+INTERACTIVE=true
+
+DEBIAN_RELEASE=
+DEBIAN_RELEASE_DEFAULT=buster
+DEBIAN_PORTS_RELEASE_DEFAULT=unstable
+
+DEBIAN_KEYRING=
+DEBIAN_KEYRING_DEFAULT=/usr/share/keyrings/debian-archive-keyring.gpg
+DEBIAN_PORTS_KEYRING_DEFAULT=/usr/share/keyrings/debian-ports-archive-keyring.gpg
+
+DEBIAN_ARCH=
+DEBIAN_ARCH_DEFAULT=amd64
+DEBIAN_PORTS_ARCH_DEFAULT=x32
+
+DEBIAN_MIRROR=
+DEBIAN_MIRROR_DEFAULT=http://ftp.debian.org/debian
+DEBIAN_PORTS_MIRROR_DEFAULT=http://ftp.ports.debian.org/debian-ports
+
+CHROOT_DIR=
+CHROOT_NAME=
+CHROOT_USER=
+
+DO_OVERLAY=
+DO_OVERLAY_DEFAULT=no
+
+QEMU=
+BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
+
+SCHROOT_CONFFILE=/etc/schroot/schroot.conf
+SCHROOT_CHROOT_D=/etc/schroot/chroot.d
+SCHROOT_FSTAB=xfstests-bld/fstab
+SCHROOT_FSTAB_FILE=/etc/schroot/$SCHROOT_FSTAB
+
+PROXY=
+
+select_packages()
+{
+    # Additional packages to install in the build chroot
+    BUILD_DEPENDENCIES=(
+    autoconf
+    autoconf2.64
+    automake
+    autopoint
+    bison
+    build-essential
+    ca-certificates
+    debootstrap
+    e2fslibs-dev
+    ed
+    fakechroot
+    gettext
+    git
+    libblkid-dev
+    libdbus-1-3
+    libgdbm-dev
+    libkeyutils-dev
+    libssl-dev
+    libtool-bin
+    lsb-release
+    pkg-config
+    qemu-utils
+    rsync
+    symlinks
+    uuid-dev
+    )
+    case "$DEBIAN_RELEASE" in
+	buster)
+	    BUILD_PACKAGES+=(golang-1.11-go) ;;
+	stretch)
+	    BUILD_PACKAGES+=(golang-1.8-go) ;;
+    esac
+}
+
+die()
+{
+    local msg
+
+    echo 1>&2 "ERROR: $1"
+    shift
+    for msg; do
+	echo 1>&2 "       $msg"
+    done
+    exit 1
+}
+
+log()
+{
+    local msg
+
+    echo "[INFO] $1"
+    shift
+    for msg; do
+	echo "       $msg"
+    done
+}
+
+run_cmd()
+{
+    log "Running command: $*"
+    "$@"
+}
+
+usage()
+{
+    cat <<EOF
+Usage: $SCRIPTNAME [OPTION]...
+
+Set up a Debian chroot for building xfstests tarballs and test appliances.  Both
+native and foreign chroots are supported; foreign chroots will use QEMU
+user-mode emulation.  The resulting chroot is added to $SCHROOT_CONFFILE
+so that it can be entered using the schroot program.  Run with no arguments to
+be prompted for the various options, or specify them on the command line.
+
+Options:
+    --release=RELEASE   Debian release to use.  Default: $DEBIAN_RELEASE_DEFAULT
+    --arch=ARCH         Debian architecture to use.  Default: $DEBIAN_ARCH_DEFAULT
+    --mirror=MIRROR     Debian mirror to use.  Default: $DEBIAN_MIRROR_DEFAULT
+    --keyring=KEYRING   Debian keyring to use.  Default: $DEBIAN_KEYRING_DEFAULT
+    --chroot-dir=DIR    Chroot directory.  Default: /chroots/\$RELEASE-\$ARCH
+    --chroot-name=NAME  Name of chroot.  Default: basename of \$DIR
+    --chroot-user=USER  User which will be allowed to access the chroot,
+                        ***including passwordless root access***.  Default:
+                        value of \$SUDO_USER, if any.
+    --proxy             Web proxy to use when fetching the packages.
+    --use-overlay       Use the overlay file system when creating the chroot
+    --no-overlay        Don't use the overlay file system in the chroot
+    --ports		Change the defaults for debian-ports architectures.
+    --noninteractive    Use the defaults rather than prompting
+EOF
+}
+
+check_prerequisites()
+{
+    if ! type -P debootstrap >/dev/null; then
+	die "debootstrap is not installed!" \
+	    "On Debian-based systems, run: 'sudo apt-get install debootstrap'"
+    fi
+
+    if ! type -P schroot >/dev/null; then
+	die "schroot is not installed!" \
+	    "On Debian-based systems, run: 'sudo apt-get install schroot'"
+    fi
+
+    if [ ! -f "$SCHROOT_CONFFILE" ]; then
+	die "$SCHROOT_CONFFILE does not exist!"
+    fi
+
+    if [ "$(id -u)" != 0 ]; then
+	die "this script must be run as root!"
+    fi
+}
+
+prompt_for_param()
+{
+    local prompt="$1"
+    local param_name="$2"
+    local default_value="$3"
+
+    if [ -z "${!param_name}" ] && $INTERACTIVE; then
+	echo -n "Enter $prompt (${default_value:-none}): "
+	read -r "$param_name"
+    fi
+    if [ -z "${!param_name}" ]; then
+	declare -g "$param_name=$default_value"
+    fi
+}
+
+select_debian_release()
+{
+    prompt_for_param "Debian release" DEBIAN_RELEASE "$DEBIAN_RELEASE_DEFAULT"
+}
+
+select_debian_arch()
+{
+    while true; do
+	prompt_for_param "Debian architecture" \
+		DEBIAN_ARCH "$DEBIAN_ARCH_DEFAULT"
+	local suggestion=
+	case "$DEBIAN_ARCH" in
+	x86|i686)
+	    suggestion=i386
+	    ;;
+	x86_64|x86-64|x64)
+	    suggestion=amd64
+	    ;;
+	arm|arm32|aarch32)
+	    suggestion=armhf
+	    ;;
+	aarch64)
+	    suggestion=arm64
+	    ;;
+	esac
+	if [ -z "$suggestion" ]; then
+	    break
+	fi
+	local msg="$DEBIAN_ARCH is not a valid Debian architecture name; did you mean $suggestion?"
+	if ! $INTERACTIVE; then
+	    die "$msg"
+	fi
+	echo "$msg"
+	DEBIAN_ARCH=
+    done
+}
+
+select_debian_mirror()
+{
+    prompt_for_param "Debian mirror" DEBIAN_MIRROR "$DEBIAN_MIRROR_DEFAULT"
+}
+
+select_debian_keyring()
+{
+    prompt_for_param "Debian keyring" DEBIAN_KEYRING "$DEBIAN_KEYRING_DEFAULT"
+}
+
+select_chroot_dir()
+{
+    prompt_for_param "chroot directory" \
+	    CHROOT_DIR "/chroots/${DEBIAN_RELEASE}-${DEBIAN_ARCH}"
+    if [ -e "$CHROOT_DIR" ]; then
+	die "$CHROOT_DIR already exists!"
+    fi
+}
+
+select_chroot_name()
+{
+    prompt_for_param "chroot name" CHROOT_NAME "$(basename "$CHROOT_DIR")"
+    prompt_for_param "yes to use overlay file system" DO_OVERLAY "$DO_OVERLAY_DEFAULT"
+}
+
+select_chroot_user()
+{
+    prompt_for_param "chroot user" CHROOT_USER "${SUDO_USER:-}"
+}
+
+select_proxy()
+{
+    prompt_for_param "proxy" PROXY "${PROXY}"
+}
+
+parse_options()
+{
+    local longopts="help"
+    local options
+
+    longopts+=",release:"
+    longopts+=",arch:"
+    longopts+=",mirror:"
+    longopts+=",keyring:"
+    longopts+=",chroot-dir:"
+    longopts+=",chroot-name:"
+    longopts+=",chroot-user:"
+    longopts+=",proxy:"
+    longopts+=",use-overlay"
+    longopts+=",no-overlay"
+    longopts+=",noninteractive"
+    longopts+=",ports"
+
+    if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
+	usage 1>&2
+	exit 2
+    fi
+
+    eval set -- "$options"
+    while (( $# >= 0 )); do
+	case "$1" in
+	--help)
+	    usage
+	    exit 0
+	    ;;
+	--release)
+	    DEBIAN_RELEASE="$2"
+	    shift
+	    ;;
+	--arch)
+	    DEBIAN_ARCH="$2"
+	    shift
+	    ;;
+	--mirror)
+	    DEBIAN_MIRROR="$2"
+	    shift
+	    ;;
+	--keyring)
+	    DEBIAN_KEYRING="$2"
+	    shift
+	    ;;
+	--chroot-dir)
+	    CHROOT_DIR="$2"
+	    shift
+	    ;;
+	--chroot-name)
+	    CHROOT_NAME="$2"
+	    shift
+	    ;;
+	--chroot-user)
+	    CHROOT_USER="$2"
+	    shift
+	    ;;
+	--proxy)
+	    PROXY="$2"
+	    shift
+	    ;;
+	--use-overlay)
+	    DO_OVERLAY=yes
+	    ;;
+	--no-overlay)
+	    DO_OVERLAY=no
+	    ;;
+	--ports)
+	    DEBIAN_ARCH_DEFAULT="$DEBIAN_PORTS_ARCH_DEFAULT"
+	    DEBIAN_KEYRING_DEFAULT="$DEBIAN_PORTS_KEYRING_DEFAULT"
+	    DEBIAN_MIRROR_DEFAULT="$DEBIAN_PORTS_MIRROR_DEFAULT"
+	    DEBIAN_RELEASE_DEFAULT="$DEBIAN_PORTS_RELEASE_DEFAULT"
+	    ;;
+	--noninteractive)
+	    INTERACTIVE=false
+	    ;;
+	--)
+	    shift
+	    break
+	    ;;
+	*)
+	    echo 1>&2 "Invalid option: \"$1\""
+	    usage 1>&2
+	    exit 2
+	    ;;
+	esac
+	shift
+    done
+}
+
+is_native_chroot()
+{
+    case "$(uname -m)" in
+    x86_64)	[[ $DEBIAN_ARCH = amd64 || $DEBIAN_ARCH = i386 ||
+		   $DEBIAN_ARCH = x32 ]] ;;
+    aarch64)	[[ $DEBIAN_ARCH = arm64 || $DEBIAN_ARCH = armhf ]] ;;
+    arm)	[[ $DEBIAN_ARCH = armhf ]] ;;
+    ppc64le)	[[ $DEBIAN_ARCH = ppc64el ]] ;;
+    *)		[[ $DEBIAN_ARCH = "$(uname -m)" ]] ;;
+    esac
+}
+
+# Validate that binfmt_misc support for the requested architecture is enabled
+# and lists a sufficiently new QEMU binary as the interpreter.  Then set $QEMU
+# to the path to the QEMU binary which should be used.
+validate_binfmt_misc()
+{
+    local qemu_arch binfmt binfmt_file full_version version major minor
+
+    case "$DEBIAN_ARCH" in
+    armhf)	qemu_arch=arm ;;
+    arm64)	qemu_arch=aarch64 ;;
+    ppc64el)	qemu_arch=ppc64le ;;
+    *)		qemu_arch="$DEBIAN_ARCH" ;;
+    esac
+
+    if [ ! -d "$BINFMT_MISC_MNT" ]; then
+	die "$BINFMT_MISC_MNT doesn't exist.  To set up a chroot for a" \
+	    "foreign architecture, you must enable CONFIG_BINFMT_MISC in your kernel."
+    fi
+
+    if ! mountpoint "$BINFMT_MISC_MNT" &>/dev/null; then
+	die "binfmt_misc is not mounted on $BINFMT_MISC_MNT!" \
+	    "If your init system isn't mounting binfmt_misc automatically" \
+	    "(systemd should mount it by default), you can add to your fstab:" \
+	    "" \
+	    "    binfmt_misc $BINFMT_MISC_MNT binfmt_misc defaults 0 0"
+    fi
+
+    if [ "$(<"$BINFMT_MISC_MNT/status")" = "disabled" ]; then
+	die "binfmt_misc is currently disabled!  To enable it, run:"
+	    "    sudo sh -c 'echo 1 > $BINFMT_MISC_MNT/status'"
+    fi
+
+    binfmt="qemu-$qemu_arch"
+    binfmt_file="$BINFMT_MISC_MNT/$binfmt"
+
+    if [ ! -e "$binfmt_file" ]; then
+	die "No binfmt_misc handler for $binfmt is installed!" \
+	    "Make sure you've installed both the binfmt-support and qemu-user-static" \
+	    "packages, e.g. on Debian-based systems:" \
+	    "" \
+	    "    sudo apt-get install binfmt-support qemu-user-static" \
+	    "" \
+	    "on some systems you must also explicitly enable and start the" \
+	    "binfmt-support service:" \
+	    "" \
+	    "    sudo systemctl enable --now binfmt-support.service"
+    fi
+
+    QEMU=$(awk '/^interpreter/{print $2}' "$binfmt_file")
+    full_version=$("$QEMU" -version \
+	| grep -E -m1 -o 'version +[0-9]+(\.[0-9]+)+.*' \
+	| sed -r 's/^version +//;s/, Copyright[^.]*$//')
+    version=$(echo "$full_version" | grep -E -o '^+[0-9]+(\.[0-9]+)+')
+    major=$(echo "$version" | cut -d. -f1)
+    minor=$(echo "$version" | cut -d. -f2)
+    if (( major < 2 || ( major == 2 && minor < 8 ) )); then
+	die "$QEMU is too old!" \
+	    "" \
+	    "Version: $full_version" \
+	    "" \
+	    "Due to bugs in old QEMU versions, we require at least QEMU 2.8.0.  On" \
+	    "Debian-based systems, try installing the qemu-user-static package from" \
+	    "Debian stretch:" \
+	    "" \
+	    "    https://packages.debian.org/stretch/qemu-user-static" \
+	    "" \
+	    "Note that you must update the file $QEMU, or else" \
+	    "update the binfmt entry.  (Just putting a newer $(basename "$QEMU")" \
+	    "binary somewhere else on your \$PATH isn't sufficient, since schroot" \
+	    "will take the binary listed as the binfmt interpreter, currently" \
+	    "\"$QEMU\", and bind-mount it into the chroot.)"
+    fi
+
+    log "Detected foreign chroot, using user-mode emulation with $QEMU version $full_version"
+}
+
+# Get the schroot configuration from either schroot.conf or entries in
+# the chroot.d directory
+get_schroot_config()
+{
+    cat $SCHROOT_CONFFILE
+
+    if test -d $SCHROOT_CHROOT_D
+    then
+	(cd $SCHROOT_CHROOT_D ;
+	 find . -maxdepth 1 -type f |
+	     egrep '^./[a-ZA-Z0-9_-][a-ZA-Z0-9_.-]*$' |
+	     xargs cat)
+    fi
+}
+
+# Extract the schroot.conf entry, if any, for $CHROOT_NAME
+extract_schroot_entry()
+{
+    get_schroot_config | awk '
+{
+    if ($0 ~ /^[[:space:]]*\[.*\][[:space:]]*$/) {
+	sub(/\][[:space:]]*$/, "")
+	sub(/^[[:space:]]*\[/, "")
+	section=$0
+    } else if (section == "'"$CHROOT_NAME"'" && $0 !~ /^[[:space:]]*(#.*)?$/) {
+	print
+    }
+}
+'
+}
+
+generate_schroot_entry()
+{
+    # See `man schroot.conf`
+    #
+    # Note: 'setup.nssdatabases=' prevents NSS databases, such as passwd
+    # entries, from being copied into the chroot.  They aren't needed anyway,
+    # and there could be a large number of entries on the host system which
+    # break things and/or make building things much slower.
+    cat <<EOF
+description=xfstests-bld chroot with Debian $DEBIAN_RELEASE ($DEBIAN_ARCH)
+type=directory
+directory=$CHROOT_DIR
+users=${CHROOT_USER:+$CHROOT_USER,}root
+root-users=$CHROOT_USER
+setup.fstab=$SCHROOT_FSTAB
+setup.nssdatabases=
+EOF
+    if [ "${DO_OVERLAY}" != "no" ]; then
+	cat <<EOF
+union-type=overlay
+source-users=${CHROOT_USER:+$CHROOT_USER,}root
+source-root-users=$CHROOT_USER
+EOF
+    fi
+}
+
+check_for_conflicting_schroot_entry()
+{
+    if [ -z "$(extract_schroot_entry)" ]; then
+	return
+    fi
+    if cmp -s <(extract_schroot_entry | sort) \
+	      <(generate_schroot_entry | sort)
+    then
+	return
+    fi
+    log "$SCHROOT_CONFFILE already contains a different entry for [$CHROOT_NAME]"
+    echo "--> Wanted:"
+    generate_schroot_entry
+    echo
+    echo "--> Found:"
+    extract_schroot_entry
+    echo
+    die "Please either delete the existing entry first, or fix it manually."
+}
+
+# Add an entry to schroot.conf for the chroot.
+add_schroot_conf_entry()
+{
+    local f
+    check_for_conflicting_schroot_entry
+    if [ -n "$(extract_schroot_entry)" ]; then
+	log "$CHROOT_NAME entry already exists in $SCHROOT_CONFFILE"
+	return
+    fi
+
+    if test -d $SCHROOT_CHROOT_D
+    then
+	f="$SCHROOT_CHROOT_D/$CHROOT_NAME"
+    else
+	f="$SCHROOT_CONFFILE"
+    fi
+    log "Adding new entry to $f:"
+    {
+	echo
+	echo "# entry added by $SCRIPTNAME"
+	echo "[$CHROOT_NAME]"
+	generate_schroot_entry
+    } | tee -a "$f"
+    echo
+}
+
+# Create the schroot fstab file needed by the chroot.  The fstab will contain
+# the usual entries to mount sysfs, procfs, etc., as well as an entry that
+# bind-mounts the xfstests-bld directory into the chroot.
+#
+# Note that all chroots created by this script will share the same fstab.
+create_schroot_fstab()
+{
+    if [ -e "$SCHROOT_FSTAB_FILE" ]; then
+	log "$SCHROOT_FSTAB_FILE was already created"
+	return
+    fi
+    mkdir -p "$(dirname "$SCHROOT_FSTAB_FILE")"
+
+    cat >"$SCHROOT_FSTAB_FILE" <<EOF
+/proc           /proc           none    rw,bind         0       0
+/sys            /sys            none    rw,bind         0       0
+/dev            /dev            none    rw,bind         0       0
+/dev/pts        /dev/pts        none    rw,bind         0       0
+/home           /home           none    rw,bind         0       0
+/tmp            /tmp            none    rw,bind         0       0
+$SCRIPTDIR      $SCRIPTDIR      none    rw,bind         0       0
+EOF
+    log "Created $SCHROOT_FSTAB_FILE" \
+	"(bind-mount path: $SCRIPTDIR)"
+}
+
+run_in_chroot()
+{
+    # Note: we execute the command in a login shell rather than execute it
+    # directly because this makes the $PATH get set up correctly.
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+	LC_ALL=C LANGUAGE=C LANG=C chroot "$CHROOT_DIR" /bin/sh -l -c "$1"
+}
+
+create_chroot()
+{
+    mkdir -p "$CHROOT_DIR"
+
+    test -z "${PROXY}" || export http_proxy=${PROXY}
+    if ! run_cmd debootstrap --arch "$DEBIAN_ARCH" ${QEMU:+--foreign} \
+	    --keyring "$DEBIAN_KEYRING" "$DEBIAN_RELEASE" "$CHROOT_DIR" \
+	    "$DEBIAN_MIRROR"
+    then
+	# Clean up if the first step fails since the problem may be trivial,
+	# e.g. an invalid release, arch, or mirror.  But if we fail later, leave
+	# the directory around so that the problem can be debugged.
+	rm -rf "$CHROOT_DIR"
+	exit 1
+    fi
+
+    if [ -n "$QEMU" ]; then
+	log "Installing $QEMU as $CHROOT_DIR/usr/bin/$(basename "$QEMU")"
+	cp "$QEMU" "$CHROOT_DIR/usr/bin/"
+
+	log "Entering chroot to complete the second stage of the bootstrapping process"
+	run_in_chroot "/debootstrap/debootstrap --second-stage"
+
+	log "Entering chroot to configure the installed packages"
+	run_in_chroot "dpkg --configure -a"
+
+	log "Creating $CHROOT_DIR/etc/apt/sources.list"
+	cat >"$CHROOT_DIR/etc/apt/sources.list" <<EOF
+deb     $DEBIAN_MIRROR  $DEBIAN_RELEASE         main
+deb-src $DEBIAN_MIRROR  $DEBIAN_RELEASE         main contrib non-free
+deb     $DEBIAN_MIRROR  $DEBIAN_RELEASE-updates main
+EOF
+
+	# If on the host system /dev/shm is a symlink to /run/shm, configuring
+	# the initscripts package will fail during 'gen-image'.  To work around
+	# this, explicitly create the /run/shm directory in the build chroot.
+	mkdir -p "$CHROOT_DIR/run/shm"
+	chmod 1777 "$CHROOT_DIR/run/shm"
+    fi
+    if [ -n "$CHROOT_USER" ]; then
+	getent passwd "$CHROOT_USER" >> "$CHROOT_DIR/etc/passwd"
+	getent group "$(id -g "$CHROOT_USER")" >> "$CHROOT_DIR/etc/group"
+	run_in_chroot "adduser $CHROOT_USER sudo"
+    fi
+}
+
+setup_mtab()
+{
+    log "Linking /etc/mtab to ../proc/self/mounts"
+    schroot -c "$CHROOT_NAME" -u root -- ln -sf ../proc/self/mounts /etc/mtab
+}
+
+install_build_dependencies()
+{
+    local chroot
+
+    log "Installing build dependencies: ${BUILD_DEPENDENCIES[*]}"
+    if [ "${DO_OVERLAY}" = "no" ]; then
+	chroot="${CHROOT_NAME}"
+    else
+	chroot="source:${CHROOT_NAME}"
+    fi
+    schroot -c "$chroot" -u root -- <<EOF
+test -z "${PROXY}" || export http_proxy=${PROXY}
+apt-get update
+apt-get install -y ${BUILD_DEPENDENCIES[@]}
+EOF
+}
+
+# preparation
+parse_options "$@"
+check_prerequisites
+select_debian_release
+select_debian_arch
+select_debian_mirror
+select_debian_keyring
+select_chroot_dir
+select_chroot_name
+select_chroot_user
+select_proxy
+check_for_conflicting_schroot_entry
+if ! is_native_chroot; then
+    validate_binfmt_misc
+fi
+
+# the real work
+select_packages
+create_chroot
+add_schroot_conf_entry
+create_schroot_fstab
+setup_mtab
+install_build_dependencies
+
+log "Build chroot was successfully set up.  To use it to build a test" \
+    "appliance, run './do-all --chroot=$CHROOT_NAME'; or to have do-all use" \
+    "this chroot by default, add the following to your config.custom file:" \
+    "" \
+    "    BUILD_ENV=\"schroot -c $CHROOT_NAME --\"" \
+    "    SUDO_ENV=\"schroot -c $CHROOT_NAME -u root --\"" \
+    "" \
+    "Alternatively, you may build an xfstests tarball on its own:" \
+    "    BUILD_ENV=\"schroot -c $CHROOT_NAME --\"" \
+    "    \$BUILD_ENV make clean" \
+    "    \$BUILD_ENV make" \
+    "    \$BUILD_ENV make tarball"

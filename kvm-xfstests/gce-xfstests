@@ -1,0 +1,939 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+RUN_ON_LTM=
+RUN_ON_BLDSRV=
+t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+eval DIR="\$$t"
+if test -z "$DIR"
+then
+    t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+    if test -d "$t"
+    then
+	DIR="$t"
+    fi
+fi
+if test -z "$DIR"
+then
+    DIR=$(pwd)
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
+fi
+
+. "$DIR/util/get-config"
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
+
+QUIET="quiet loglevel=0"
+
+get_local_hash()
+{
+    LOCAL_HASH=$(gsutil hash "$1" 2> /dev/null | grep "Hash (md5)" \
+			| awk '{print $3}')
+}
+
+get_remote_hash()
+{
+    REMOTE_HASH=$(gsutil stat "$1" 2> /dev/null | grep "Hash (md5)" \
+			 | awk '{print $3}')
+}
+
+verify_single_uri()
+{
+    if test -z "$URI"
+    then
+	echo "No results found with identifier: $1"
+	exit 1
+    elif [[ "$URI" =~ [[:space:]] ]]; then
+	echo "Results identifier $1 is ambiguous."
+	echo "Please clarify from the following matches:"
+	echo "$URI"
+	exit 1
+    fi
+}
+
+do_get_results_uri()
+{
+    case "$1" in
+	gs://*)
+	    URI="$1"
+	    ;;
+	*/*)
+	    # SUBDIR is everything before slash
+	    SUBDIR=$(echo $1 | sed -e "s;/.*;;")
+	    # RESULTS_NAME is everything after slash
+	    RESULTS_NAME=$(echo $1 | sed -e "s;.*/;;")
+	    URI=$(gsutil ls "gs://$GS_BUCKET/${SUBDIR:-results}/$RESULTS_NAME" \
+			 2>/dev/null)
+	    verify_single_uri $1
+	    ;;
+	results*)
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**$1" 2>/dev/null)
+	    verify_single_uri $1
+	    ;;
+	*)
+	    # try in all subdirs
+	    URI=$(gsutil ls "gs://$GS_BUCKET/**results.$1.*.tar.xz" \
+			 2>/dev/null)
+	    verify_single_uri $1
+	    ;;
+    esac
+}
+
+do_get_results()
+{
+    do_get_results_uri "$1"
+    TARBALL=/tmp/$(basename "$URI")
+    if test -n "$do_checksum"
+    then
+	get_local_hash "$TARBALL"
+	get_remote_hash "$URI"
+	if test "$LOCAL_HASH" != "$REMOTE_HASH"
+	then
+	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	fi
+    else
+	if ! test -f "$TARBALL"
+	then
+	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	fi
+    fi
+    if ! test -f "$TARBALL"
+    then
+	echo "Couldn't download $TARBALL from $URI"
+	return 1
+    fi
+    if test -n "$do_unpack"
+    then
+	DIRNAME=/tmp/$(basename "$URI" | sed -e 's/\(results.[0-9A-Za-z-]*\).*/\1/' -e s'/\./-/')
+	/bin/rm -rf "$DIRNAME" 2> /dev/null
+	mkdir -p "$DIRNAME"
+	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
+	echo "Unpacked results at $DIRNAME"
+	return 0
+    fi
+    if test -n "$get_syslog"
+    then
+	xzcat < "$TARBALL" | tar -Oxf - ./syslog
+    elif test -n "$do_summary"
+    then
+	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log | \
+	    "$DIR/get-results" "$do_summary" -
+    else
+	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log
+    fi
+}
+
+get_gce_zone()
+{
+    local z
+
+    case "$1" in
+	xfstests-ltm-*)
+	    ;;
+	xfstests-*)
+	    echo "$GCE_ZONE"
+	    return
+	    ;;
+    esac
+    z=$(gcloud compute instances list --project "$GCE_PROJECT" \
+	       --filter="name = $1" --format="value(zone)")
+    if test -z "$z" ; then
+	z="$GCE_ZONE"
+    fi
+    echo "$z"
+}
+
+get_gce_zone_disk()
+{
+    local z
+
+    case "$1" in
+	xfstests-ltm-*)
+	    ;;
+	xfstests-*)
+	    echo "$GCE_ZONE"
+	    return
+	    ;;
+    esac
+    z=$(gcloud compute disks list --project "$GCE_PROJECT" \
+	       --filter="name = $1" --format="value(zone)")
+    if test -z "$z" ; then
+	z="$GCE_ZONE"
+    fi
+    echo "$z"
+}
+
+unset TESTRUNID
+case "$1" in
+    ls|ls-instances)
+	if test "$2" = "--gce"
+	then
+	   gcloud compute --project "$GCE_PROJECT" instances list \
+		  --filter="name ~ ^xfstests.*"
+	   exit 0
+	fi
+	inst_info=$(mktemp)
+	gcloud compute --project "$GCE_PROJECT" instances list \
+	       --filter="name ~ ^xfstests.*" --format="value(name,zone)" | \
+	    while read -r i z
+	do
+	    gcloud compute --project "$GCE_PROJECT" instances describe \
+			--zone "$z" "$i" --format=json > "$inst_info"
+	    kver=$(jq < "$inst_info" 2> /dev/null \
+		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
+			sed -e 's/^"//' -e 's/"$//' \
+			    -e 's/^Linux xfstests-[0-9A-Za-z-]* //' -e 's/ .*//')
+	    gce_status=$(jq < "$inst_info" .status | \
+			    sed -e 's/^"//' -e 's/"$//')
+	    status=$(jq < "$inst_info" 2> /dev/null \
+		'.metadata.items[] | select(.key == "status") | .value' | \
+			    sed -e 's/^"//' -e 's/"$//')
+	    ip=$(jq < "$inst_info" 2> /dev/null \
+		    '.networkInterfaces[] | .accessConfigs[] | select(.name == "external-nat") | .natIP' | \
+			sed -e 's/^"//' -e 's/"$//')
+	    echo "$i $ip - $kver - $status - $gce_status"
+	done
+	rm "$inst_info"
+	exit 0
+	;;
+    rm|rm-instances|abort|abort-instances)
+	if test "$1" = "abort"
+	then
+	    deldisks="--delete-disks all"
+	fi
+	shift
+	for i in "$@"
+	do
+	    if test -n "$deldisks"
+	    then
+		reason="abort"
+	    else
+		reason="manual stop"
+	    fi
+	    gcloud compute --project "$GCE_PROJECT" -q instances \
+		   add-metadata "$i" --metadata "shutdown_reason=$reason" \
+		   --zone $(get_gce_zone "$i") > /dev/null
+	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
+		   --zone $(get_gce_zone "$i") $deldisks &
+	done
+	exit 0
+	;;
+    start|start-instance|start-instances)
+	shift
+	for i in "$@"
+	do
+	    gcloud compute --project "$GCE_PROJECT" -q instances start "$i" \
+		   --zone $(get_gce_zone "$i") &
+	done
+	exit 0
+	;;
+    stop|stop-instance|stop-instances)
+	shift
+	for i in "$@"
+	do
+	    gcloud compute --project "$GCE_PROJECT" -q instances stop "$i" \
+		   --zone $(get_gce_zone "$i") &
+	done
+	exit 0
+	;;
+    ls-disks|ls-disk)
+	gcloud compute --project "$GCE_PROJECT" disks list \
+	       --filter="name~^xfstests"
+	exit 0
+	;;
+    rm-disks|rm-disk)
+	shift
+	case "$1" in
+	    --zone) shift
+		zone=$1
+		shift ;;
+	esac
+	if test -n "$zone" ; then
+	    GCE_ZONE="$zone"
+	else
+	    GCE_ZONE=$(get_gce_zone_disk "$1")
+	fi
+	gcloud compute --project "$GCE_PROJECT" disks delete "$@" \
+	       --zone $GCE_ZONE
+	exit 0
+	;;
+    ls-images)
+	shift
+	case $1 in
+	    --project) shift
+		GCE_PROJECT=$1
+		shift ;;
+	esac
+	gcloud compute --project "$GCE_PROJECT" images list --no-standard-images
+	exit 0
+	;;
+    rm-images)
+	shift
+	case $1 in
+	    --project) shift
+		GCE_PROJECT=$1
+		shift ;;
+	esac
+	gcloud compute --project "$GCE_PROJECT" images delete "$@"
+	exit 0
+	;;
+    ls-results|ls-gcs)
+	if test "$1" = "ls-gcs"
+	then
+	    do_all=yes
+	fi
+	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
+	for i in "$@"
+	do
+	    case $i in
+		--all|-a)
+		    do_all=yes
+		    ;;
+		-*)
+		    opt="$opt $i"
+		    ;;
+		*)
+		    arg="$arg gs://$GS_BUCKET/$i"
+		    ;;
+	    esac
+	done
+	if test -z "$arg"
+	then
+	    if test -n "$do_all"
+	    then
+		arg="gs://$GS_BUCKET/**results*"
+	    else
+		arg="gs://$GS_BUCKET/results/results*"
+	    fi
+	fi
+	gsutil ls $opt "$arg"
+	exit 0
+	;;
+    rm-results|rm-gcs)
+	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
+	for i in "$@"
+	do
+	    do_get_results_uri "$i"
+	    gsutil rm "$URI"
+	    if test -n "$GCE_UPLOAD_SUMMARY"
+	    then
+		URI=$(echo $URI | sed -e "s;results\.;summary.;" | \
+		    sed -e "s;\.tar\.xz;.txt;")
+		gsutil rm "$URI" 2> /dev/null
+	    fi
+	done
+	exit 0
+	;;
+    get-results)
+	shift
+	case $1 in
+	    --bucket-subdir) shift
+		BUCKET_SUBDIR=$1
+		shift ;;
+	esac
+	for i in "$@"
+	do
+	    case $i in
+		--checksum|-c)
+		    do_checksum=yes
+		    ;;
+		--syslog)
+		    get_syslog=yes
+		    ;;
+		--unpack)
+		    do_unpack=yes
+		    ;;
+		--summary|-s)
+		    do_summary="-s"
+		    ;;
+		--failures|-F)
+		    do_summary="-F"
+		    ;;
+		*)
+		    do_get_results "$i"
+	    esac
+	done
+	exit 0
+	;;
+    setup)
+	export GCE_XFSTESTS_DIR="$DIR"
+	shift
+	"$DIR/util/gce-do-setup" "$@"
+	exit $?
+	;;
+    ssh)
+	gcloud compute --project "$GCE_PROJECT" -q ssh root@"$2" \
+	       --zone $(get_gce_zone "$2")
+	exit 0
+	;;
+    scp)
+  gcloud compute --project "$GCE_PROJECT" -q scp "$2" root@"$3":~ \
+         --zone $(get_gce_zone "$3")
+  exit 0
+  ;;
+    console)
+	gcloud compute --project "$GCE_PROJECT" -q instances \
+	       get-serial-port-output "$2" --zone $(get_gce_zone "$2")
+	exit 0
+	;;
+    serial)
+	case "$GCE_SERIAL_PORT_DEFAULT" in
+	    [1234])
+		PORT="--port $GCE_SERIAL_PORT_DEFAULT"
+		;;
+	esac
+	if test "$2" == "--port"
+	then
+	    shift
+	    PORT="--port $2"
+	    shift
+	fi
+	exec gcloud compute --project "$GCE_PROJECT" -q \
+	     connect-to-serial-port --zone $(get_gce_zone "$2") $PORT "$2"
+	;;
+    create-image)
+	shift
+	if test ! -x "$DIR/test-appliance/gce-create-image"
+	then
+	    echo "Image creation not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	"$DIR/test-appliance/gce-create-image" "$@"
+	exit $?
+	;;
+    export-image)
+	shift
+	if test ! -x "$DIR/test-appliance/gce-export-image"
+	then
+	    echo "Image export not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	"$DIR/test-appliance/gce-export-image" "$@"
+	exit $?
+	;;
+    import-image)
+	shift
+	if test ! -x "$DIR/test-appliance/gce-import-image"
+	then
+	    echo "Image import not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	"$DIR/test-appliance/gce-import-image" "$@"
+	exit $?
+	;;
+    copy-image)
+	shift
+	if test ! -x "$DIR/test-appliance/gce-copy-image"
+	then
+	    echo "Image copy not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	"$DIR/test-appliance/gce-copy-image" "$@"
+	exit $?
+	;;
+    upload-kernel)
+	shift
+	while (( $# >= 1 )); do
+	    case $1 in
+		--no-action)
+		    NO_ACTION="echo "
+		    ;;
+		--kernel) shift
+		    GCE_KERNEL="$1"
+		    ;;
+		--gs-bucket) shift
+		    GS_BUCKET="$1"
+		    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+			echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+			exit 1
+		    fi
+		    ;;
+		*)
+		    break
+		    ;;
+	    esac
+	    shift
+	done
+	if test -d "$GCE_KERNEL" ; then
+	    GCE_KERNEL="$GCE_KERNEL/arch/x86/boot/bzImage"
+	fi
+	if test -n "$1" ; then
+	    GS_KERNEL=gs://$GS_BUCKET/$1
+	else
+	    GS_KERNEL=gs://$GS_BUCKET/bzImage
+	fi
+	if ! test -f "$GCE_KERNEL" ; then
+	    echo "Can't find kernel at $GCE_KERNEL"
+	    exit 1
+	fi
+	$NO_ACTION gsutil cp $GCE_KERNEL $GS_KERNEL
+	exit $?
+	;;
+    launch-ltm)
+	shift
+	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
+	then
+	    echo "The gce-xfstests LTM requires that you build the gce-xfstests image"
+	    echo "and put it in your own project."
+	    echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
+	    echo "in your ~/.config/gce-xfstests file.\n"
+	    echo "See the instructions on building an image:"
+	    echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
+	    exit 1
+	fi
+	"$DIR/util/gce-launch-ltm"
+	exit $?
+	;;
+    launch-bldsrv)
+  shift
+  if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
+  then
+      echo "The gce-xfstests build server requires that you build the gce-xfstests image"
+      echo "and put it in your own project."
+      echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
+      echo "in your ~/.config/gce-xfstests file.\n"
+      echo "See the instructions on building an image:"
+      echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
+      exit 1
+  fi
+  "$DIR/util/gce-launch-bldsrv"
+  exit $?
+  ;;
+    ltm)
+  shift
+  if [ ! -f "$DIR/.ltm_instance" ]; then
+      echo "The .ltm_instance file is not present! Please launch the LTM before"
+      echo "using this option."
+      exit 1
+  fi
+  NO_ACTION=": "
+  RUN_ON_LTM="yes"
+  GCE_USER="ltm"
+  ;;
+    build)
+  shift
+  if [ ! -f "$DIR/.bldsrv_instance" ]; then
+      echo "The .bldsrv_instance file is not present! Please launch the build server before"
+      echo "using this option."
+      exit 1
+  fi
+  NO_ACTION=": "
+  RUN_ON_BLDSRV="yes"
+  GCE_USER="bldsrv"
+  ;;
+esac
+
+ORIG_CMDLINE="$*"
+
+. "$DIR/util/parse_cli"
+
+if test -n "$EXTRA_ARG"
+then
+    ARG="$ARG kopt=$EXTRA_ARG"
+fi
+
+SCOPES="https://www.googleapis.com/auth/cloud-platform"
+
+if test -n "$PREEMPTIBLE"
+then
+    PREEMPTIBLE="--preemptible"
+else
+    PREEMPTIBLE="--maintenance-policy MIGRATE"
+fi
+
+if [ -z ${TESTRUNID:+x} ]; then
+    TESTRUNID=$(date +%Y%m%d%H%M%S)
+    # if GCE_USER is non-empty or unset
+    # this avoids prepending the - if GCE_USER is set to empty string.
+    if [ -n "${GCE_USER-unset}" ]; then
+	# prepend GCE_USER, or the current $USER if GCE_USER is unset
+	TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
+    fi
+fi
+
+if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+then
+    echo "You must run gce-xfstests setup to upload a .config file"
+    echo "to your GCS bucket."
+    exit 1
+fi
+
+INSTANCE="xfstests-$TESTRUNID"
+
+case "$ARG" in
+    cmd=maint*)
+	INSTANCE="xfstests"
+	;;
+esac
+
+if test -n "$INSTANCE_NAME"
+then
+    INSTANCE="$INSTANCE_NAME"
+fi
+
+case "$OVERRIDE_KERNEL" in
+    gs://*)
+	GS_KERNEL="$OVERRIDE_KERNEL"
+	GCE_KERNEL=""
+	;;
+    //*)
+	GS_KERNEL=$(echo "$OVERRIDE_KERNEL" | \
+	    sed -e "s;//;gs://$GS_BUCKET/;")
+	GCE_KERNEL=""
+	;;
+    none)
+	GS_KERNEL=""
+	GCE_KERNEL=""
+	;;
+    "")
+	GS_KERNEL=gs://$GS_BUCKET/bzImage
+	GCE_KERNEL=$KERNEL
+	;;
+    *)
+	GCE_KERNEL=$OVERRIDE_KERNEL
+	if test -n "$RUN_ON_LTM"; then
+	    # every shard will have to download the image. changing the
+	    # -onetime tag is necessary to not cause the first shard to attempt
+	    # to delete the image.
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onerun"
+	else
+	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime"
+	fi
+	;;
+esac
+
+if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || \
+   [ -n "$RUN_ON_LTM" -a -n "$GCE_KERNEL" ]
+then
+    if ! test -f "$GCE_KERNEL"
+    then
+	echo "Can't find kernel at $GCE_KERNEL"
+	exit 1
+    fi
+    get_local_hash "$GCE_KERNEL"
+    get_remote_hash "$GS_KERNEL"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$GCE_KERNEL" "$GS_KERNEL"
+    fi
+fi
+
+if test -z "$NO_ACTION" -a -n "$GCE_HOOKS"
+then
+    if ! test -e "$GCE_HOOKS"
+    then
+	echo "Can't find hooks file to upload at $GCE_HOOKS"
+	exit 1
+    fi
+    if test -d "$GCE_HOOKS"
+    then
+	tmpfile=$(mktemp)
+	tar -C "$GCE_HOOKS" -cf - . | gzip -9n > "$tmpfile"
+	GCE_HOOKS=$tmpfile
+	GS_HOOKS=gs://$GS_BUCKET/hooks.tar.gz
+    else
+	GS_HOOKS=gs://$GS_BUCKET/$(basename "$GCE_HOOKS")
+    fi
+    get_local_hash "$GCE_HOOKS"
+    get_remote_hash "$GS_HOOKS"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$GCE_HOOKS" "$GS_HOOKS"
+    fi
+    if test -n "$tmpfile"
+    then
+       /bin/rm -f "$tmpfile"
+       unset tmpfile
+    fi
+    ARG="$ARG hooks=$GS_HOOKS"
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
+then
+    LOCAL_XFSTESTS="$DIR/../xfstests.tar.gz"
+    GS_XFSTESTS="gs://$GS_BUCKET/xfstests.tar.gz"
+    get_local_hash "$LOCAL_XFSTESTS"
+    get_remote_hash "$GS_XFSTESTS"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$LOCAL_XFSTESTS" "$GS_XFSTESTS"
+    fi
+    ARG="$ARG tarxfstests=$GS_XFSTESTS"
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
+then
+    LOCAL_FILES=$(mktemp /tmp/files.XXXXXXXX)
+    GS_FILES="gs://$GS_BUCKET/files.tar.gz"
+    if ! test -d "$DIR/test-appliance"
+    then
+	echo "Can't find the test-appliance directory!"
+	exit 1
+    fi
+    (cd "$DIR/test-appliance"; \
+     tar -X gce-exclude-files --exclude=etc -C files \
+		--owner=root --group=root --mode=go+u-w -cf - . | \
+	 gzip -9n > $LOCAL_FILES)
+    get_local_hash "$LOCAL_FILES"
+    get_remote_hash "$GS_FILES"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$LOCAL_FILES" "$GS_FILES"
+    fi
+    ARG="$ARG tarfiles=$GS_FILES"
+    rm -f "$LOCAL_FILES"
+fi
+
+case "$OVERRIDE_MODULES" in
+    gs://*)
+	GS_MODULES="$OVERRIDE_MODULES"
+	GCE_MODULES=""
+	;;
+    "")
+	if test -n "$MODULES" ; then
+	    GS_MODULES="gs://$GS_BUCKET/modules.tar.xz"
+	    GCE_MODULES="$MODULES";
+	fi
+	;;
+    *)
+	GCE_MODULES="$OVERRIDE_MODULES"
+	if test -z "$OVERRIDE_MODULES" ; then
+	    GS_MODULES="gs://$GS_BUCKET/modules.tar.xz"
+	elif test -n "$RUN_ON_LTM"; then
+	    # every shard will have to download the image. changing the
+	    # -onetime tag is necessary to not cause the first shard to attempt
+	    # to delete the image.
+	    GS_MODULES="gs://$GS_BUCKET/modules-$TESTRUNID-onerun"
+	else
+	    GS_MODULES="gs://$GS_BUCKET/modules-$TESTRUNID-onetime"
+	fi
+	;;
+esac
+
+if [ -z "$NO_ACTION" -a -n "$GCE_MODULES" ] || \
+   [ -n "$RUN_ON_LTM" -a -n "$GCE_MODULES" ]
+then
+    if ! test -f "$GCE_MODULES"
+    then
+	echo "Can't find modules at $GCE_MODULES"
+	exit 1
+    fi
+    get_local_hash "$GCE_MODULES"
+    get_remote_hash "$GS_MODULES"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
+	gsutil cp "$GCE_MODULES" "$GS_MODULES"
+    fi
+fi
+
+if test -n "$GS_MODULES"
+then
+    ARG="$ARG tarmodules=$GS_MODULES"
+fi
+
+if test -n "$GS_KERNEL"
+then
+    ARG="$ARG kexec=$GS_KERNEL"
+fi
+
+# MT_PRICE is in millidollars, as of 9/7/2015
+function get_machtype_stats() {
+    case "$GCE_MACHTYPE" in
+	f1-micro)	MT_PRICE=0008	; MT_CPU=1  ; MT_RAM=614 ;;
+	g1-micro)	MT_PRICE=0027	; MT_CPU=1  ; MT_RAM=1740 ;;
+	n1-standard-1)	MT_PRICE=0050	; MT_CPU=1  ; MT_RAM=3840 ;;
+	n1-standard-2)	MT_PRICE=0100	; MT_CPU=2  ; MT_RAM=7680 ;;
+	n1-highmem-2)	MT_PRICE=0126	; MT_CPU=2  ; MT_RAM=13312 ;;
+	n1-highcpu-2)	MT_PRICE=0076	; MT_CPU=2  ; MT_RAM=1843 ;;
+	n1-standard-4)	MT_PRICE=0200	; MT_CPU=4  ; MT_RAM=15360 ;;
+	n1-highmem-4)	MT_PRICE=0252	; MT_CPU=4  ; MT_RAM=26624 ;;
+	n1-highcpu-4)	MT_PRICE=0152	; MT_CPU=4  ; MT_RAM=3686 ;;
+	n1-standard-8)	MT_PRICE=0400	; MT_CPU=8  ; MT_RAM=30720 ;;
+	n1-highmem-8)	MT_PRICE=0504	; MT_CPU=8  ; MT_RAM=53248 ;;
+	n1-highcpu-8)	MT_PRICE=0304	; MT_CPU=8  ; MT_RAM=7372 ;;
+	n1-standard-16)	MT_PRICE=0800	; MT_CPU=16  ; MT_RAM=61440 ;;
+	n1-highmem-16)	MT_PRICE=1008	; MT_CPU=16  ; MT_RAM=106496 ;;
+	n1-highcpu-16)	MT_PRICE=0608	; MT_CPU=16  ; MT_RAM=14745 ;;
+	n1-standard-32)	MT_PRICE=1600	; MT_CPU=32  ; MT_RAM=122880 ;;
+	n1-highmem-32)	MT_PRICE=2016	; MT_CPU=32  ; MT_RAM=212992 ;;
+	n1-highcpu-32)	MT_PRICE=1216	; MT_CPU=32  ; MT_RAM=29491 ;;
+    esac
+}
+
+# Find what will hopefully be the cheapest MACHTYPE that satisifies
+# the requested number of CPU's and memory.  The algorithm isn't fully
+# general but it works with the current price schedule, and it's
+# simple to implement in a shell script.  If this were LISP we would
+# be filtering on a sorted list using something like remove-if, but
+# this is good enough for what we need.
+#
+function fit_machtype_resources() {
+    local TRY_TYPE=highcpu
+    local TRY_CPU=2
+
+    if test $NR_CPU -eq 1
+    then
+	GCE_MACHTYPE="n1-standard-1"
+	get_machtype_stats
+	# echo Trying $GCE_MACHTYPE with $MT_RAM ram and price $MT_PRICE
+	if test "$MT_RAM" -ge "$MEM"
+	then
+	    return
+	fi
+    fi
+    if test $NR_CPU -gt 16 ; then TRY_CPU=32
+    elif test $NR_CPU -gt 8 ; then TRY_CPU=16
+    elif test $NR_CPU -gt 4 ; then TRY_CPU=8
+    elif test $NR_CPU -gt 2 ; then TRY_CPU=4
+    elif test $NR_CPU -gt 1 ; then TRY_CPU=2
+    fi
+
+    while /bin/true
+    do
+	GCE_MACHTYPE=n1-$TRY_TYPE-$TRY_CPU
+	get_machtype_stats
+	# echo Trying $GCE_MACHTYPE with $MT_RAM ram and price $MT_PRICE
+	if test "$MT_RAM" -ge "$MEM" ; then return ; fi
+	if test $TRY_TYPE = highcpu
+	then
+	    TRY_TYPE=standard
+	elif test $TRY_TYPE = standard
+	then
+	    TRY_TYPE=highmem
+	else
+	    if test $TRY_CPU -ge 32 ; then return ; fi
+	    TRY_TYPE=highcpu
+	    (( TRY_CPU = TRY_CPU * 2 ))
+	fi
+    done
+}
+
+if test -n "$GCE_MACHTYPE"
+then
+    get_machtype_stats
+    if test -z "$EXPLICIT_RAM"
+    then
+	MT_RAM=0
+    else
+	if test $MEM -gt $MT_RAM
+	then
+	    echo "Warning: requested $MEM MB ram but only $MT_RAM available"
+	fi
+    fi
+    if test -z "$EXPLICIT_CPU"
+    then
+	MT_CPU=0
+    else
+	if test $NR_CPU -gt $MT_CPU
+	then
+	    echo "Warning: requested $NR_CPU cpus but only $MT_CPU available"
+	fi
+    fi
+else
+    fit_machtype_resources
+    if test $MEM -gt $MT_RAM
+    then
+	echo "Warning: requested $MEM MB ram but only $MT_RAM available"
+    fi
+fi
+
+if test $MEM -lt $MT_RAM
+then
+    ARG="$ARG mem=$MEM"
+fi
+
+if test $NR_CPU -lt $MT_CPU
+then
+    ARG="$ARG nr_cpus=$NR_CPU"
+fi
+
+ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
+
+if test -n "$BUCKET_SUBDIR"; then
+    ARG="$ARG bucket_subdir=$BUCKET_SUBDIR"
+fi
+
+if test -n "$GCE_REPORT_EMAIL"
+then
+    ARG="$ARG report_email=$GCE_REPORT_EMAIL"
+fi
+
+ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
+
+ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"
+
+if test -n "$DO_LOCAL_SSD"
+then
+    SSD_ARG="--local-ssd interface=SCSI"
+fi
+
+if test -n "$RUN_ON_LTM"; then
+    . "$DIR/util/gce-ltm-funcs"
+    send_to_ltm $ORIG_CMDLINE_B64
+elif test -n "$RUN_ON_BLDSRV"; then
+    if ! gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
+    then
+        echo "Couldn't find build config in $GS_BUCKET"
+        echo "Using default build config for kernel build"
+        gsutil cp "$DIR/../kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
+    fi
+    . "$DIR/util/gce-bldsrv-funcs"
+    send_to_bldsrv $ORIG_CMDLINE_B64
+else
+    echo "Launching $INSTANCE using $GCE_MACHTYPE..."
+    # echo "Using ARG: $ARG"
+fi
+
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" \
+       instances create "$INSTANCE" --zone "$GCE_ZONE" \
+       --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
+       --no-boot-disk-auto-delete \
+       $SSD_ARG $PREEMPTIBLE \
+       --scopes "$SCOPES" \
+       --metadata "^ ^$ARG" \
+       --tags http-server,https-server \
+       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
+       "$IMAGE_FLAG" "$ROOT_FS"
+
+case "$ARG" in
+    cmd=maint*)
+	if test -n "$NO_SSH"
+	then
+	    exit 0
+	fi
+	if test -z "$NO_ACTION"
+	then
+	    sleep 1
+	    if test "$OVERRIDE_KERNEL" != none
+	    then
+		# Need to give more time for the kexec
+		sleep 30
+	    fi
+	fi
+	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh "root@$INSTANCE"
+	;;
+esac

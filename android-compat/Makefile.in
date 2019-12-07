@@ -1,0 +1,86 @@
+srcdir = @srcdir@
+VPATH = @srcdir@
+top_builddir = .
+my_dir = .
+
+CC = @CC@
+RANLIB = @RANLIB@
+CFLAGS = @CFLAGS@
+
+SO_CFLAGS = -fPIC $(CFLAGS)
+
+prefix=/usr/local
+includedir=$(prefix)/include
+libdir=$(prefix)/lib
+
+OBJS_RT = 	lio_listio.o
+
+OBJS_COMPAT =	getpwent.o \
+		getgrent.o \
+		getsubopt.o \
+		hasmntopt.o \
+		quotactl.o \
+		shmget.o \
+		sighold.o \
+		sync_file_range.o \
+		telldir.o \
+		ustat.o \
+		valloc.o
+
+OBJS = $(OBJS_RT) $(OBJS_COMPAT)
+
+LIBS= libpthread.a librt.a libandroid_compat.a
+
+INCLUDES = aio.h android_compat.h
+SYS_INCLUDES = ustat.h quota.h
+
+.c.o:
+	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -fPIC -o elfshared/$*.o -c $<
+
+all: $(LIBS) aio.h
+
+librt.a: $(OBJS_RT)
+	ar cr $@ $(OBJS_RT)
+	(cd elfshared; $(CC) --shared -o librt.so.1.0 \
+		-Wl,-soname,librt.so.1 $(OBJS_RT))
+	mv elfshared/librt.so.1.0 .
+
+libandroid_compat.a: $(OBJS_COMPAT)
+	ar cr $@ $(OBJS_COMPAT)
+	(cd elfshared; $(CC) --shared -o libandroid_compat.so.1.0 \
+		-Wl,-soname,libandroid_compat.so.1 $(OBJS_RT))
+	mv elfshared/libandroid_compat.so.1.0 .
+
+libpthread.a:
+	rm -f $@
+	ar cr $@
+
+aio.h:
+	touch aio.h
+
+$(OBJS): subdir
+
+subdir:
+	mkdir -p elfshared
+
+install: all
+	for i in $(LIBS) ; do \
+		install -D -m 644 $$i $(libdir)/$$i ; \
+		$(RANLIB) $(libdir)/$$i ; \
+	done
+	for i in $(INCLUDES) ; do \
+		install -D -m 644 $$i $(includedir)/$$i ; \
+	done
+	for i in $(SYS_INCLUDES) ; do \
+		install -D -m 644 $$i $(includedir)/sys/$$i ; \
+	done
+
+clean:
+	rm -f *.so* *.a *.o aio.h
+	rm -rf elfshared
+
+Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
+	cd $(top_builddir); CONFIG_FILES=$(my_dir)/Makefile ./config.status
+
+lio_listio.o: $(srcdir)/lio_listio.c

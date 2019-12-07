@@ -1,0 +1,7 @@
+[Unit]
+Description=Stress Workload
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/lib/start-stress

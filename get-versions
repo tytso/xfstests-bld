@@ -1,0 +1,78 @@
+#!/bin/bash
+
+TMPDIR=tmp-$$
+
+mkdir $TMPDIR
+
+echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > $TMPDIR/xfstests-bld.ver
+
+if test -f e2fsprogs.ver
+then
+    cp e2fsprogs.ver $TMPDIR
+fi
+
+cd fio
+ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/fio.ver
+cd ..
+
+if test -d keyutils
+then
+    cd keyutils
+    ver=$(git describe --always --dirty); echo "keyutils	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/keyutils.ver
+    cd ..
+fi
+
+if test -d fsverity
+then
+    cd fsverity
+    ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/fsverity.ver
+    cd ..
+fi
+
+cd ima-evm-utils
+ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/ima-evm-utils.ver
+cd ..
+
+cd quota
+ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/quota.ver
+cd ..
+
+if test -d stress-ng
+then
+    cd stress-ng
+    ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/stress-ng.ver
+    cd ..
+fi
+
+if test -d blktests
+then
+    cd blktests
+    ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/blktests.ver
+    cd ..
+fi
+
+if test -d nvme-cli
+then
+    cd nvme-cli
+    ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/nvme-cli.ver
+    cd ..
+fi
+
+if test -d go/src/github.com/google/syzkaller
+then
+    cd go/src/github.com/google/syzkaller
+    ver=$(git describe --always --dirty); echo "syzkaller	$ver ($(git log -1 --pretty=%cD))" > ../../../../../$TMPDIR/syzkaller.ver
+    cd ../../../../..
+fi
+
+cd xfsprogs-dev
+ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfsprogs.ver
+cd ..
+
+cd xfstests-dev
+ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfstests.ver
+cd ..
+
+cat $TMPDIR/*.ver
+rm -rf $TMPDIR
+exit 0

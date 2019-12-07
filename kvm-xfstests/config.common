@@ -1,0 +1,7 @@
+#
+# Default configuration for all test runners (kvm-xfstests, gce-xfstests, etc.)
+#
+# Variables set here may be overridden in ~/.config/xfstests-common
+#
+
+PRIMARY_FSTYPE="ext4"

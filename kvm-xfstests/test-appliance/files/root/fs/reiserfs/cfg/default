@@ -1,0 +1,4 @@
+SIZE=small
+export MKFS_OPTIONS=""
+export REISERFS_MOUNT_OPTIONS=""
+TESTNAME="reiserfs"

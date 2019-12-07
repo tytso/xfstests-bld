@@ -1,0 +1,2 @@
+/test localhost(rw,no_subtree_check,no_root_squash)
+/scratch localhost(rw,no_subtree_check,no_root_squash,fsid=1)

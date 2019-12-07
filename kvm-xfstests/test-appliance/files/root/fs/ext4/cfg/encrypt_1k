@@ -1,0 +1,5 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-O encrypt -b 1024"
+export EXT_MOUNT_OPTIONS="test_dummy_encryption"
+REQUIRE_FEATURE=encryption
+TESTNAME="Ext4 encryption 1k block"

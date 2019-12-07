@@ -1,0 +1,16 @@
+# This tests causes reiserfs to deadlock; it appears to be related to
+# FITHAW; possibly a deadlock involving s_umount and the inode_lock
+# when modifying xattrs.
+generic/068
+
+# This test causes reiserfs to deadlock; it may be related to a
+# deadlock between reiserfs's sbi->lock and the inode_lock in
+# open_xa_dir().
+generic/083
+
+# These tests are also subject to deadlocks in reiserfs
+generic/233
+generic/269
+generic/270
+generic/390
+generic/476

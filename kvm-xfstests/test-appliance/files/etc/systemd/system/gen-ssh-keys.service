@@ -1,0 +1,13 @@
+[Unit]
+Description=Generate ssh keys for GCE
+After=local-fs.target
+Wants=local-fs.target
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/gen-ssh-keys
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target

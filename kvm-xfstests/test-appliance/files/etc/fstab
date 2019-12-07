@@ -1,0 +1,22 @@
+# /etc/fstab: static file system information.
+
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+proc            /proc           proc    defaults        0       0
+tmpfs		/tmp		tmpfs	mode=1777	0	0
+debugfs		/sys/kernel/debug debugfs defaults	0	0
+v_tmp		/vtmp	9p	trans=virtio,version=9p2000.L,nofail,x-systemd.device-timeout=1	0	0
+/dev/rootfs	/	ext4    noatime 0 1
+
+# Convenience entries for interactive mounting (e.g. 'mount /vdb')
+/dev/vdb	/vdb	auto	defaults,noauto		0	0
+/dev/vdc	/vdc	auto	defaults,noauto		0	0
+/dev/vdd	/vdd	auto	defaults,noauto		0	0
+/dev/vde	/vde	auto	defaults,noauto		0	0
+/dev/vdf	/vdf	auto	defaults,noauto		0	0
+/dev/vdg	/results auto	defaults		0	2
+
+localhost:/test	/mnt/test nfs 	defaults,noauto		0	0
+localhost:/scratch /mnt/scratch nfs defaults,noauto	0	0
+
+/vdc/scratch	/scratch none	defaults,noauto,bind	0	0
+/vdc/test	/test	 none	defaults,noauto,bind	0	0

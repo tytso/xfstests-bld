@@ -1,0 +1,139 @@
+#!/bin/bash
+
+if test -f /run/gce-xfstests-bld
+then
+    exit 0
+fi
+
+. /usr/local/lib/gce-funcs
+
+if test -f /run/self-shutdown-requested
+then
+    /sbin/shutdown -h -P now "Self shutdown requested"
+fi
+
+if ! mkdir /run/gce-shutdown.singleton
+then
+    exit 0
+fi
+
+SYSLOG_RE_FAILURE="kernel: .*(WARNING)|(BUG): "
+
+REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^END)|(^EXT4-fs error)|(WARNING)|(^Ran: )|(^Failures: )|(^Passed)|(^_check_)|(inconsistent)|(^Shutdown reason)"
+REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Failures: )|(^Passed)|(^Shutdown reason)"
+
+function gen_xfstests_summary()
+{
+    egrep "$REGEXP" < /results/runtests.log > /results/summary
+
+    egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+    printf "\n" >> /results/failures
+    sed -n -f /usr/local/lib/get-check-failures.sed < /results/runtests.log >> /results/failures
+    printf "\n" >> /results/failures
+    egrep "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
+}
+
+BLK_REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^EXT4-fs error)|(WARNING)|(^_check_)|(inconsistent)|(^Shutdown reason)"
+BLK_REGEXP_FAILURE="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^EXT4-fs error)|(WARNING)|(\[failed\])|(^_check_)|(inconsistent)|(^Shutdown reason)"
+
+function gen_blktests_summary()
+{
+    run_tests=$(egrep "(\[failed\])|(\[passed\])" < /results/runtests.log | awk '{print $1}')
+    failed_tests=$(egrep "\[failed\]" < /results/runtests.log | awk '{print $1}')
+
+    nr_run="$(echo $run_tests | wc -w)"
+    nr_failed="$(echo $failed_tests | wc -w)"
+
+    egrep "$BLK_REGEXP" < /results/runtests.log > /results/summary
+    echo "Run: $(echo $run_tests)" >> /results/summary
+    echo "Failures: $(echo $failed_tests)" >> /results/summary
+    echo "Failed $nr_failed of $nr_run tests" >> /results/summary
+    grep ^END < /results/runtests.log >> /results/summary
+
+    egrep "$BLK_REGEXP_FAILURE" < /results/runtests.log >> /results/failures
+    echo "Run: $(echo $run_tests)" >> /results/failures
+    echo "Failures: $(echo $failed_tests)" >> /results/failures
+    echo "Failed $nr_failed of $nr_run tests" >> /results/failures
+    grep ^END < /results/runtests.log >> /results/failures
+    egrep "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
+}
+
+reason=$(gce_attribute shutdown_reason)
+
+if test "$reason" != "abort" -a -f /results/runtests.log -a \
+    $(stat -c %s /results/runtests.log) -gt 0
+then
+    systemctl stop kvm-xfstests
+    if test -n "$reason"
+    then
+	echo "$reason" > /results/shutdown_reason
+    fi
+    if test -f /results/shutdown_reason
+    then
+	echo "Shutdown reason: $(cat /results/shutdown_reason)" \
+	     >> /results/runtests.log
+    fi
+
+    if test -f /run/do_blktests ; then
+	gen_blktests_summary
+	suite=blktests
+    else
+	gen_xfstests_summary
+	suite=xfstests
+    fi
+
+    if test -n "$GCE_UPLOAD_SUMMARY"
+    then
+	gsutil cp /results/summary \
+	    "gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/summary.$TESTRUNID.$(uname -r).txt"
+    fi
+
+    REPORT_EMAIL=$(gce_attribute report_email)
+    run_hooks send-email
+    if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
+    then
+	if test -f /results/report
+	then
+	    RESULTS_REPORT=/results/report
+	else
+	    RESULTS_REPORT=/results/failures
+	fi
+	subj="$suite results $TESTRUNID - $(uname -r)"
+	if test -z "$GCE_REPORT_SENDER"
+	then
+	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
+	fi
+	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
+		-s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
+    fi
+    tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
+    gsutil cp /tmp/results.tar.xz \
+	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
+fi
+
+if test -f /run/test-env ; then
+    . /run/test-env
+    if test -n "$FILESTORE_TOP" ; then
+	mount -t nfs "$FILESTORE_TOP" /mnt
+	rm -rf /mnt/$FILESTORE_SUBDIR /mnt/busy-$FILESTORE_SUBDIR
+	busy=
+	if ls /mnt/busy-* > /dev/null 2>&1 ; then
+	    busy=t
+	fi
+	umount /mnt
+	if test -z "$busy" ; then
+	    gcloud beta filestore instances delete nfstest \
+		   --quiet --async --location="$ZONE"
+	fi
+    fi
+fi
+
+run_hooks shutdown
+/usr/local/lib/gce-logger shutting down
+if test -f /run/powerbtn
+then
+    /sbin/shutdown -h -P now "Power button pressed"
+else
+    touch /run/self-shutdown-requested
+    gcloud compute -q instances delete $(hostname) --zone $ZONE --delete-disks=boot
+fi

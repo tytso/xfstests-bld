@@ -1,0 +1,4 @@
+# These tests fail with an OOM kill, even when run on a system with 8G of RAM
+generic/027
+generic/269
+generic/273

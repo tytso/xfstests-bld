@@ -1,0 +1,69 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+
+logger -i "Entered setup scratch"
+
+set -vx
+SCRATCH_DSK=$instance-scratch
+CREATED_SCRATCH_DEV=/dev/disk/by-id/google-scratch
+
+# Use local SSD if available
+if test -e /dev/disk/by-id/google-local-ssd-0
+then
+    CREATED_SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
+fi
+
+if ! test -e $CREATED_SCRATCH_DEV
+then
+    gcloud compute -q disks create "$SCRATCH_DSK" \
+	--size "${SCRATCH_SIZE:-100}" \
+	--zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"
+    gcloud compute -q instances attach-disk ${instance} \
+	--disk "$SCRATCH_DSK" \
+	--device-name scratch --zone "$ZONE"
+    gcloud compute -q instances set-disk-auto-delete ${instance} \
+	--auto-delete --device-name scratch --zone "$ZONE" &
+fi
+
+if ! test -e $CREATED_SCRATCH_DEV
+then
+    logger -s "Couldn't create or find the scratch disk!"
+    exit 1
+fi
+
+if test -f "/run/do_blktests" ; then
+    wait
+    exit 0
+fi
+
+if ! vgs xt >& /dev/null
+then
+    pvcreate $CREATED_SCRATCH_DEV
+    vgcreate xt $CREATED_SCRATCH_DEV
+
+    if [ "$VDB_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDB_SIZE:-5g}"  -n vdb xt
+	mke2fs -t ext4 -q /dev/mapper/xt-vdb
+    fi
+    if [ "$VDC_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDC_SIZE:-5g}"  -n vdc xt
+    fi
+    if [ "$VDD_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDD_SIZE:-5g}"  -n vdd xt
+    fi
+    if [ "$VDE_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDE_SIZE:-20g}"  -n vde xt
+    fi
+    if [ "$VDF_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDF_SIZE:-20g}"  -n vdf xt
+    fi
+fi
+wait
+exit 0

@@ -1,0 +1,52 @@
+#! /bin/bash
+#
+# Run a syzkaller repro 
+#
+
+seqfull=$0
+seq=`basename $0`
+seqres=$RESULT_DIR/$seq
+echo "QA output created by $seq"
+
+# get standard environment, filters and checks
+. ./common/rc
+. ./common/filter
+
+tmp=/tmp/$$
+here=`pwd`
+status=1
+done_cleanup=false
+trap "_cleanup; rm -f $tmp.*; exit \$status" 0 1 2 3 15
+
+_cleanup()
+{
+    cd /
+    rm -f $tmp.*
+}
+
+# real QA test starts here
+_supported_fs generic
+_supported_os Linux
+_require_scratch
+
+_scratch_mount
+
+cd "${SCRATCH_MNT}"
+
+if test -x $here/$seqfull.exe ; then
+    urk=$(timeout -s KILL 60 $here/$seqfull.exe >> $seqres.full 2>&1)
+    sleep 1
+elif test -f $here/$seqfull.syz ; then
+    if ! test -x /root/xfstests/bin/syz-execprog ; then
+	_notrun "Syzkaller executor not available"
+    fi
+    run-syz $here/$seqfull.syz >> $seqres.full 2>&1
+else
+    _notrun "Syzkaller repro for $seq not found"
+fi
+
+cd $here
+
+# success, all done
+status=0
+exit

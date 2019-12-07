@@ -1,0 +1,7 @@
+usr/local/lib/python2.7
+root/xfstests/local.config
+etc/hostname
+etc/lighttpd
+var/www
+gce-*
+*~

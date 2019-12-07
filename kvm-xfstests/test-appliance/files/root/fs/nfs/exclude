@@ -1,0 +1,12 @@
+# The following tests are listed as expected failures for NFSv3 and NFSv4 per
+# https://wiki.linux-nfs.org/wiki/index.php/Xfstests
+generic/035
+generic/423
+generic/465
+generic/467
+generic/477
+
+# This test is not listed as an expected failure, but it shows up as
+# failing in the expected output of the linux-nfs Wiki page.  So we'll
+# suppress this failure for now.
+generic/294

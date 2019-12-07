@@ -1,0 +1,34 @@
+ext4/004	# dump/restore doesn't handle the bigalloc feature
+
+# ext4/033 creates a special file system using dmhugedisk to test for
+# inode overflow when online resizing.  With a bigalloc config, this takes
+# too much space, so test VM will hang or abort the test run.  We
+# don't need to test this for all file system configs, so just skip it here.
+ext4/033
+
+# This test uses dioread_nolock which currently isn't supported when
+# block_size != PAGE_SIZE.
+ext4/034
+
+# This takes a *long* time and doesn't add much value to run on all
+# configurations.  So we're going to be selective where we run it.
+generic/027
+
+# This test creates too many extended attributes to fit in a 1k block
+generic/454
+
+# This test needs to know the inode size and block size for the file
+# system; for bigalloc, we need to use the cluster size instead of the
+# block size.
+generic/204
+
+# This test uses the block size to figure out how many files to
+# create; for bigalloc, we need to use the cluster size instead of the
+# block size.
+generic/273
+
+# This test creates a very small file system on a dm-thin device.
+# The file system is too small for bigalloc, so skip it.  It was
+# introduced to test a dm-thin bug combined with an XFS bug regression.
+# If it's a problem for ext4, we'll catch it in other ext4 configs.
+generic/500

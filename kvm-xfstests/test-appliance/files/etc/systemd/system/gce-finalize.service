@@ -1,0 +1,8 @@
+[Unit]
+Description=GCE finalization
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/gce-finalize-timeout
+TimeoutSec=0
+StandardOutput=tty

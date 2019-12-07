@@ -1,0 +1,104 @@
+#
+# Copyright (c) 1999, 2001-2003 Silicon Graphics, Inc.  All Rights Reserved.
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+ifndef _BUILDRULES_INCLUDED_
+_BUILDRULES_INCLUDED_ = 1
+
+include $(TOPDIR)/include/builddefs
+
+clean clobber : $(addsuffix -clean,$(SUBDIRS))
+	rm -f $(DIRT)
+	@rm -fr .libs
+
+%-clean:
+	$(MAKE) -C $* clean
+
+# Never blow away subdirs
+ifdef SUBDIRS
+.PRECIOUS: $(SUBDIRS)
+.PHONY: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
+endif
+
+#
+# Standard targets
+#
+
+ifdef LTCOMMAND
+$(LTCOMMAND) : $(SUBDIRS) $(OBJECTS) $(LTDEPENDENCIES)
+	$(LTLINK) -o $@ $(LDFLAGS) $(OBJECTS) $(LDLIBS)
+endif
+
+ifdef LTLIBRARY
+$(LTLIBRARY) : $(SUBDIRS) $(LTOBJECTS)
+	$(LTLINK) $(LTLDFLAGS) -o $(LTLIBRARY) $(LTOBJECTS) $(LTLIBS)
+
+%.lo: %.c
+	$(LTCOMPILE) -c $<
+endif
+
+ifdef POTHEAD
+%.pot: $(XGETTEXTFILES)
+	$(XGETTEXT) --language=C --keyword=_ -o $@ $(XGETTEXTFILES)
+
+# Generate temp .po files, to check whether translations need updating.
+# Not by default, due to gettext output differences between versions.
+%.po: $(POTHEAD)
+#	$(MSGMERGE) -o $@.tmpo $@ $(POTHEAD)
+#	if ! diff $@.tmpo $@ >/dev/null; then echo "$@ dated, see $@.tmpo"; fi
+
+%.mo: %.po
+	$(MSGFMT) -o $@ $<
+endif
+
+source :
+	$(SOURCE_MAKERULE)
+
+endif # _BUILDRULES_INCLUDED_
+
+$(_FORCE):
+
+.PHONY : depend
+
+DEPENDSCRIPT := $(MAKEDEPEND) $(DEPENDFLAGS) -f - -- $(CFLAGS) -- $(CFILES) | \
+	$(SED) -e 's,`pwd`,$(TOPDIR),g' \
+	    -e 's,  */[^ ]*,,g' \
+	    -e '/^[^ ]*: *$$/d' \
+	    -e '/^ *$$/d'
+
+ifdef LTLIBRARY
+DEPENDSCRIPT := $(DEPENDSCRIPT) | $(SED) -e 's,^\([^:]*\)\.o,\1.lo,'
+endif
+
+depend : $(CFILES) $(HFILES) $(addsuffix -depend,$(SUBDIRS))
+	$(DEPENDSCRIPT) > .dep
+	test -s .dep || rm -f .dep
+
+%-depend:
+	$(MAKE) -C $* depend
+
+# Include dep, but only if it exists
+ifeq ($(shell test -f .dep && echo .dep), .dep)
+include .dep
+else
+ifdef LTLIBRARY
+$(LTOBJECTS): $(HFILES)
+else
+$(OBJECTS): $(HFILES)
+endif
+endif

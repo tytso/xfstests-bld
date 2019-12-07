@@ -1,0 +1,75 @@
+#!/usr/bin/make -f
+
+package = attr
+develop = lib$(package)1-dev
+library = lib$(package)1
+
+dirme  = debian/$(package)
+dirdev = debian/$(develop)
+dirlib = debian/$(library)
+pkgme  = DIST_ROOT=`pwd`/$(dirme);  export DIST_ROOT;
+pkgdev = DIST_ROOT=`pwd`/$(dirdev); export DIST_ROOT;
+pkglib = DIST_ROOT=`pwd`/$(dirlib); export DIST_ROOT;
+stdenv = @GZIP=-q; export GZIP;
+
+options = export DEBUG=-DNDEBUG DISTRIBUTION=debian \
+	  INSTALL_USER=root INSTALL_GROUP=root ;
+checkdir = test -f debian/rules
+
+build: built
+built: config
+	@echo "== dpkg-buildpackage: build" 1>&2
+	$(MAKE) default
+	rm -f po/attr.pot
+	$(MAKE) -C po attr.pot
+	touch built
+
+config: .census
+.census:
+	@echo "== dpkg-buildpackage: configure" 1>&2
+	$(checkdir)
+	$(options) $(MAKE) configure
+	touch .census
+
+clean:
+	@echo "== dpkg-buildpackage: clean" 1>&2
+	$(checkdir)
+	-rm -f built .census
+	$(MAKE) distclean
+	-rm -rf $(dirme) $(dirdev) $(dirlib) debian/tmp
+	-rm -f debian/*substvars debian/files* debian/*.debhelper
+
+binary-indep:
+
+binary-arch: checkroot built
+	@echo "== dpkg-buildpackage: binary-arch" 1>&2
+	$(checkdir)
+	-rm -rf $(dirme) $(dirdev) $(dirlib)
+	$(pkgme)  $(MAKE) -C . install
+	$(pkgdev) $(MAKE) -C . install-dev
+	$(pkglib) $(MAKE) -C . install-lib
+	$(pkgme)  $(MAKE) -C build src-manifest
+
+	-rm -rf $(dirdev)/usr/share/doc/attr
+	-rm -rf $(dirlib)/usr/share/doc/attr
+
+	dh_installdocs
+	dh_installchangelogs
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_makeshlibs -N $(library)
+	dh_makeshlibs -p $(library) -V 'libattr1 (>= 2.4.41-1)'
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+
+checkroot:
+	test 0 -eq `id -u`
+
+.PHONY: binary binary-arch binary-indep clean checkroot

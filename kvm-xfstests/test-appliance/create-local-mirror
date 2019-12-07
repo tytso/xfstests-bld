@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Usage create-local-mirror prefix
+#
+
+prefix=$1
+
+for i in var.lib.apt.lists/${prefix}_*
+do
+	path=$(echo $i | sed -e "s;var.lib.apt.lists/${prefix}_;;" -e 's;_;/;g')
+	echo File: $path
+	mkdir -p mirror/$(dirname $path)
+	ln -f $i mirror/$path
+	if test "$(basename $path)" = Packages ; then
+	   for j in $(grep ^Filename: $i | awk '{print $2}') ; do
+	       fn=var.cache.apt.archives/$(basename $j)
+	       if test -e $fn ; then
+	       	       mkdir -p mirror/$(dirname $j)
+		       ln -f $fn mirror/$j
+		       echo $j
+   		fi
+	   done
+	fi
+done

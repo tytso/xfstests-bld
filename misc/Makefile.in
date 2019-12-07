@@ -1,0 +1,45 @@
+#
+# Makefile for local miscellaneous test/benchmark programs
+#
+
+srcdir = @srcdir@
+VPATH = @srcdir@
+top_builddir = .
+my_dir = .
+
+CC = @CC@
+CFLAGS = @CFLAGS@
+LDFLAGS = @LDFLAGS@
+
+PROGS= fname_benchmark postmark resize syncfs
+SCRIPTS= encrypt-fname-benchmark
+
+all: $(PROGS)
+
+fname_benchmark: fname_benchmark.c
+	$(CC) $(LDFLAGS) -o fname_benchmark -O2 $<
+
+resize: resize.c
+	$(CC) $(LDFLAGS) -o resize -O2 $<
+
+syncfs: syncfs.c
+	$(CC) $(LDFLAGS) -o syncfs -O2 $<
+
+install:
+	mkdir -p $(DESTDIR)/bin
+	for i in $(PROGS) $(SCRIPTS) ; do \
+		cp $$i $(DESTDIR)/bin ; \
+		chmod +x $(DESTDIR)/bin/$$i ; \
+	done
+
+postmark: postmark.c
+	$(CC) $(LDFLAGS) -o postmark -O2 $<
+
+zerofree: ../kvm-xfstests/util/zerofree.c
+	$(CC) $(LDFLAGS) -o zerofree -O2 $< -lext2fs
+
+clean:
+	rm -f $(PROGS) zerofree
+
+Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
+	cd $(top_builddir); CONFIG_FILES=$(my_dir)/Makefile ./config.status

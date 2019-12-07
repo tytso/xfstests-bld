@@ -1,0 +1,119 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+. /root/runtests_utils
+
+for i in /usr/sbin/rsyslogd /usr/sbin/sshd
+do
+    pgrep -f $i | while read PID
+    do
+	echo -1000 > /proc/$PID/oom_score_adj
+    done
+done
+
+# We've already run gce-setup from a previous boot
+if test -f /results/setup-syslog ; then
+    echo "---------" >> /results/dmesg
+    dmesg 2>&1 >> /results/dmesg
+    # We need to remount the filestore NFS server after a reboot
+    if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
+	script -a -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log
+    fi
+    exit 0
+fi
+
+run_hooks pre-setup
+
+/usr/local/lib/gce-logger disk setup
+gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
+
+if test -f "/run/do_blktests" ; then
+    SCRATCH_SIZE=50
+else
+    logger -i "compute partition sizes"
+    # pass pri_tst size as 0, so TOTAL_SIZE doesn't include it.
+    if compute_partition_sizes "/root/fs" 5 5 5 20 20; then
+	VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
+	VDC_SIZE="${REQUIRED_PARTITION_SIZE["SM_SCR"]:-0}""g"
+	VDD_SIZE="${REQUIRED_PARTITION_SIZE["SM_TST"]:-0}""g"
+	VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
+	VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
+	SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
+	if test "$SCRATCH_SIZE" -gt 0 ; then
+	    ((SCRATCH_SIZE+=1)) # Add 1gb for overhead.
+	fi
+	logger -i "Computed partition sizes successfully:"
+	logger -i "VDB: $VDB_SIZE  VDC: $VDC_SIZE  VDD: $VDD_SIZE"
+	logger -i "VDE: $VDE_SIZE  VDF: $VDF_SIZE"
+	logger -i "Total disk size: $SCRATCH_SIZE"
+	export VDB_SIZE VDC_SIZE VDD_SIZE VDE_SIZE VDF_SIZE \
+	       SCRATCH_SIZE CREATE_FILESTORE
+    fi
+
+    if test -n "$GCE_MIN_SCR_SIZE" && \
+	    (( SCRATCH_SIZE > 0 )) && \
+	    [[ $GCE_MIN_SCR_SIZE =~ [0-9]* ]] && \
+	    (( GCE_MIN_SCR_SIZE < 250 )) && \
+	    (( GCE_MIN_SCR_SIZE > SCRATCH_SIZE )); then
+	SCRATCH_SIZE=$GCE_MIN_SCR_SIZE
+    fi
+fi
+
+/usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
+
+script -c /usr/local/lib/gce-setup-results /var/log/gce-setup-results.log &
+if test "$SCRATCH_SIZE" -gt 0 ; then
+    script -c /usr/local/lib/gce-setup-scratch /var/log/gce-setup-scratch.log &
+fi
+if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
+    script -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log &
+fi
+
+cat > /var/www/varz <<EOF
+kernel_version $(uname -a)
+nr_cpus $(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
+total_mem $(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
+FSTESTCFG $FSTESTCFG
+FSTESTSET $FSTESTSET
+FSTESTOPT $FSTESTOPT
+FSTESTTYP $FSTESTTYP
+FSTESTAPI $FSTESTAPI
+FSTESTEXC $FSTESTEXC
+MNTOPTS $MNTOPTS
+EOF
+
+hostname > /var/www/hostname.inc
+for i in diskstats meminfo lockdep lock_stat slabinfo vmstat
+do
+    chmod 444 "/proc/$i"
+done
+chmod 644 /var/log/messages /var/log/syslog /var/log/kern.log
+
+kexec=$(gce_attribute kexec)
+
+case "$kexec" in
+    *-onetime)
+	gsutil rm "$kexec" &
+	;;
+esac
+
+tarmodules=$(gce_attribute tarmodules)
+
+case "$tarmodules" in
+    *-onetime)
+	gsutil rm "$tarmodules" &
+	;;
+esac
+
+wait
+
+if test ! -f /results/setup-syslog
+then
+    cp /usr/local/lib/gce-syslog.conf /etc/rsyslog.d
+    systemctl restart rsyslog.service
+    dmesg >& /results/dmesg
+    cp /var/log/syslog /results/setup-syslog
+fi
+
+run_hooks post-setup

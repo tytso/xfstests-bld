@@ -1,0 +1,13 @@
+#!/bin/sh
+
+DIR=.
+ROOT_FS=$DIR/test-appliance/root_fs.img
+RAW_ROOT_FS=$DIR/test-appliance/root_fs.raw
+COMPAT="-o compat=0.10"
+
+qemu-img convert -f qcow2 -O raw $ROOT_FS $RAW_ROOT_FS
+e2fsck -fy -E discard $RAW_ROOT_FS
+qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+rm -rf $RAW_ROOT_FS
+
+

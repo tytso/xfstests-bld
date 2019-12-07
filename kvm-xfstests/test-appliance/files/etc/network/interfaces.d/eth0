@@ -1,0 +1,6 @@
+allow-hotplug eth0
+
+iface eth0 inet static
+	address 172.20.0.10
+	netmask 255.255.0.0
+	gateway 172.20.0.2

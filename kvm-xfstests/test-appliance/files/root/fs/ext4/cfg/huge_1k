@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-b 1024"
+export EXT_MOUNT_OPTIONS="huge=always"
+TESTNAME="Ext4 1k block with huge pages"

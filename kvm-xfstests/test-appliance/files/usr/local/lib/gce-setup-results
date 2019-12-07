@@ -1,0 +1,27 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+
+mkdir -p /results
+touch /results/runtests.log
+cp /var/www/cmdline /results
+if test -d /root/hooks
+then
+    cp -rp /root/hooks /results
+fi
+if test -f /proc/config.gz
+then
+    cp /proc/config.gz /results
+fi
+
+uname -r > /results/kernel_version
+echo "$TESTRUNID" > /results/testrunid
+
+gsutil cp gs://$GS_BUCKET/check-time.tar.gz /tmp >& /dev/null
+(cd /results; tar xfz /tmp/check-time.tar.gz)
+for i in $(cd /results; echo check.time.*)
+do
+    r=$(echo $i | sed -e 's/check\.time\.//' | sed -e 's;\.;/results-;')
+    mkdir -p /results/$r
+    mv /results/$i /results/$r/check.time
+done

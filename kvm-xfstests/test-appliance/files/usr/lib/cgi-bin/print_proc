@@ -1,0 +1,10 @@
+#!/bin/bash
+fn=/proc/$(basename $0)
+
+if test -f "$fn"
+then
+    cat $fn
+else
+    echo "Can't find $fn"
+fi
+exit 0

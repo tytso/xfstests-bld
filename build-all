@@ -1,0 +1,466 @@
+#!/bin/bash
+
+set -e
+
+if type lsb_release >& /dev/null ; then
+    lsb_release -c | awk '{print $2}' > build-distro
+else
+    rm -f build-distro
+fi
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+if test -z "$GOROOT" -a -d /usr/lib/go-1.8 ; then
+    GOROOT=/usr/lib/go-1.8
+fi
+
+if test -n "$GOROOT" ; then
+    export GOROOT
+    export GOPATH=$(pwd)/go
+    PATH="$GOROOT/bin:$PATH"
+else
+    SKIP_SYZKALLER=yes
+fi
+
+if test -n "$ACCEL_BIN" -a -d "$ACCEL_BIN" ; then
+    PATH="$ACCEL_BIN:$PATH"
+    if test -x "$ACCEL_BIN/bash" ; then
+	SHELL="$ACCEL_BIN/bash"
+    fi
+fi
+
+if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
+    PATH=$TOOLCHAIN_DIR/bin:$PATH
+fi
+
+if test -n "$CROSS_COMPILE" ; then
+    cross="--build=$(e2fsprogs-libs/config/config.guess) --host=$CROSS_COMPILE"
+    crossfio="--cc=$CROSS_COMPILE-gcc"
+fi
+
+if test -z "$USE_LOCAL_E2FSLIBS" -o -d util-linux; then
+    SKIP_E2FSLIBS=yes
+fi
+
+case "$CROSS_COMPILE" in
+    *-android|*-androideabi)
+	DO_ANDROID=yes
+	SKIP_KVM_UTILS=yes
+	SKIP_QUOTA=yes
+	SKIP_FIO=yes
+	SKIP_DBENCH=yes
+	;;
+esac
+
+function build_start () {
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting build of $*"
+}
+
+function set_skip_all () {
+    SKIP_E2FSLIBS=yes
+    SKIP_ATTR=yes
+    SKIP_ACL=yes
+    SKIP_POPT=yes
+    SKIP_AIO=yes
+    SKIP_DBENCH=yes
+    SKIP_FIO=yes
+    SKIP_XFSPROGS=yes
+    SKIP_XFSTESTS=yes
+    SKIP_QUOTA=yes
+    SKIP_KVM_UTILS=yes
+    SKIP_KEYUTILS=yes
+    SKIP_FSVERITY=yes
+    SKIP_IMA_EVM_UTILS=yes
+    SKIP_STRESS_NG=yes
+    SKIP_UTIL_LINUX=yes
+    SKIP_SYZKALLER=yes
+    SKIP_BLKTESTS=yes
+    SKIP_NVME_CLI=yes
+}
+
+# Optional components
+[ -d keyutils ] || SKIP_KEYUTILS=yes
+[ -d ima-evm-utils ] || SKIP_IMA_EVM_UTILS=yes
+[ -d stress-ng ] || SKIP_STRESS_NG=yes
+[ -d util-linux ] || SKIP_UTIL_LINUX=yes
+[ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
+[ -d blktests ] || SKIP_BLKTESTS=yes
+[ -d nvme-cli ] || SKIP_NVME_CLI=yes
+
+MAKE_CLEAN=":"
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--skip-dbench)
+	    SKIP_DBENCH=yes
+	    ;;
+	--skip-quota)
+	    SKIP_QUOTA=yes
+	    ;;
+	--attr-only)
+	    set_skip_all
+	    unset SKIP_ATTR
+	    ;;
+	--acl-only)
+	    set_skip_all
+	    unset SKIP_ACL
+	    ;;
+	--popt-only)
+	    set_skip_all
+	    unset SKIP_POPT
+	    ;;
+	--aio-only)
+	    set_skip_all
+	    unset SKIP_AIO
+	    ;;
+	--e2fslibs-only)
+	    set_skip_all
+	    unset SKIP_E2FSLIBS
+	    ;;
+	--dbench-only)
+	    set_skip_all
+	    unset SKIP_DBENCH
+	    ;;
+	--fio-only)
+	    set_skip_all
+	    unset SKIP_FIO
+	    ;;
+	--keyutils-only)
+	    set_skip_all
+	    unset SKIP_KEYUTILS
+	    ;;
+	--fsverity-only)
+	    set_skip_all
+	    unset SKIP_FSVERITY
+	    ;;
+	--ima-evm-utils-only)
+	    set_skip_all
+	    unset SKIP_IMA_EVM_UTILS
+	    ;;
+	--quota-only)
+	    set_skip_all
+	    unset SKIP_QUOTA
+	    ;;
+	--stress-ng-only)
+	    set_skip_all
+	    unset SKIP_STRESS_NG
+	    ;;
+	--syzkaller-only)
+	    set_skip_all
+	    unset SKIP_SYZKALLER
+	    ;;
+	--util-linux-only)
+	    set_skip_all
+	    unset SKIP_UTIL_LINUX
+	    ;;
+	--xfsprogs-only)
+	    set_skip_all
+	    unset SKIP_XFSPROGS
+	    ;;
+	--xfstests-only)
+	    set_skip_all
+	    unset SKIP_XFSTESTS
+	    ;;
+	--kvm-utils-only)
+	    set_skip_all
+	    unset SKIP_KVM_UTILS
+	    ;;
+	--blktests-only)
+	    set_skip_all
+	    unset SKIP_BLKTESTS
+	    ;;
+	--nvme-cli-only)
+	    set_skip_all
+	    unset SKIP_NVME_CLI
+	    ;;
+	--clean-first)
+	    MAKE_CLEAN="make clean"
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+nr_cpus=$(getconf _NPROCESSORS_ONLN)
+J=-j$(expr $nr_cpus \* 1)
+
+DESTDIR=$(pwd)/bld
+
+mkdir -p $DESTDIR
+
+if test -n "$DO_ANDROID" ; then
+    build_start "Android compatibility library"
+    (cd android-compat; ./configure $cross ;  $MAKE_CLEAN ; \
+     make $J prefix=$DESTDIR install)
+    android_compat="-landroid_compat"
+    LCF="-fpie -include android_compat.h"
+    LLF="-pie"
+else
+    LCF="-g -O2"
+fi
+
+# To make the build more reproducible...
+export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+export BUILD_PATH_PREFIX_MAP="xfstests-bld=$(pwd)"
+# GCC doesn't yet understand BUILD_PATH_PREFIX_MAP
+LCF="$LCF -fdebug-prefix-map=$(pwd)=xfstests-bld -gno-record-gcc-switches"
+
+if test -z "$SKIP_E2FSLIBS" ; then
+    build_start "e2fslibs"
+    (cd e2fsprogs-libs; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     ./configure $cross --prefix=/ --disable-nls; $MAKE_CLEAN ; make $J; \
+     make DESTDIR=$DESTDIR $J install)
+fi
+
+if test -z "$SKIP_ATTR" ; then
+    build_start "extended attribute library"
+    (cd attr; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" ; \
+     make $J install-dev ; make $J install)
+fi
+
+if test -z "$SKIP_ACL" ; then
+    build_start "ACL library"
+    (cd acl; \
+     CPPFLAGS="-I$DESTDIR/include" \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" ; \
+     make $J install)
+fi
+
+if test -z "$SKIP_POPT" ; then
+    build_start "POPT library"
+    (cd popt; \
+     CPPFLAGS="-I$DESTDIR/include" \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
+     make $J LLDFLAGS=-all-static ; \
+     make $J install)
+fi
+
+if test -z "$SKIP_AIO" ; then
+    build_start "AIO library"
+    (cd libaio; ./configure $cross --disable-nls; $MAKE_CLEAN ;
+     make $J prefix=$DESTDIR install)
+    rm $DESTDIR/lib/libaio.so*
+fi
+
+if test -z "$SKIP_KEYUTILS" ; then
+    build_start "keyutils"
+    (cd keyutils ;
+     ver=$(git describe --always --dirty); echo "keyutils	$ver ($(git log -1 --pretty=%cD))" > ../keyutils.ver ;
+
+     if [ -n "$CROSS_COMPILE" ]; then
+	export CC="$CROSS_COMPILE-gcc"
+	export AR="$CROSS_COMPILE-ar"
+     fi
+
+     # Specify NO_SOLIB=1 so that libkeyutils is only built as a static
+     # library.  Then keyctl will be statically linked to it, and we won't
+     # have to install libkeyutils.so.
+     $MAKE_CLEAN ;
+     make $J NO_SOLIB=1 CFLAGS="$LCF" LDFLAGS="$EXEC_LDFLAGS" keyctl libkeyutils.a;
+
+     install -D -m 0755 keyctl $DESTDIR/bin/keyctl ;
+     install -D -m 0644 keyutils.h $DESTDIR/include/keyutils.h ;
+     install -D -m 0644 libkeyutils.a $DESTDIR/include/libkeyutils.a ;
+    )
+fi
+
+if test -z "$SKIP_FSVERITY"; then
+    build_start "fsverity"
+    (cd fsverity; \
+     ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../fsverity.ver ; \
+     $MAKE_CLEAN ; make $J all ; make install DESTDIR=$DESTDIR)
+fi
+
+if test -z "$SKIP_IMA_EVM_UTILS" ; then
+    build_start "ima-evm-utils"
+    (cd ima-evm-utils; \
+     ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../ima-evm-utils.ver ; \
+     mv INSTALL INSTALL.save ; ./autogen.sh; mv INSTALL.save INSTALL ; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR ; $MAKE_CLEAN ; \
+     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" dist_man_MANS= ; \
+     make $J install dist_man_MANS= )
+fi
+
+if test -z "$SKIP_UTIL_LINUX" ; then
+    build_start "util-linux"
+    if test -z "$UTIL_LINUX_LIBS_ONLY" ; then
+	export make_target="install"
+    else
+	export make_target="install-nodist_blkidincHEADERS \
+	       install-uuidincHEADERS install-usrlib_execLTLIBRARIES"
+    fi
+    (cd util-linux ;
+     ver=$(git describe --always --dirty); echo "util-linux	$ver ($(git log -1 --pretty=%cD))" > ../util-linux.ver ;
+     ./autogen.sh;
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     ./configure $cross --prefix=$DESTDIR \
+	--disable-makeinstall-chown \
+	--disable-makeinstall-setuid \
+	--disable-use-tty-group \
+	--disable-bash-completion \
+	--disable-nls \
+	--disable-shared \
+	--disable-wall \
+	--disable-write \
+	--without-ncurses \
+	--without-python \
+	--without-tinfo;
+     $MAKE_CLEAN ; make $J $make_target;
+
+     # Installing mkfs causes problems because xfstests assumes that mkfs.ext4
+     # is in the same directory as mkfs.  So rely on the system mkfs instead.
+     rm -f $DESTDIR/sbin/mkfs*;
+    )
+    unset make_target
+fi
+
+if test -z "$SKIP_STRESS_NG" ; then
+    build_start "stress-ng"
+    mkdir -p $DESTDIR/lib
+    mkdir -p $DESTDIR/bin
+    (cd stress-ng; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     $MAKE_CLEAN ; make makeconfig ; make $J ; make DESTDIR=$DESTDIR $J install ; \
+     ver=$(git describe --always --dirty); echo "stress-ng	$ver ($(git log -1 --pretty=%cD))" > ../stress-ng.ver ; \
+    )
+fi
+
+if test -z "$SKIP_DBENCH" ; then
+    build_start "dbench"
+    mkdir -p $DESTDIR/lib
+    mkdir -p $DESTDIR/bin
+    (cd dbench; \
+     autoheader ; autoconf ; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     CPPFLAGS="-I$DESTDIR/include" \
+     LDFLAGS="$EXEC_LDFLAGS" \
+     LIBS="$LLF -L$DESTDIR/lib" \
+     ./configure $cross --datadir=/root/xfstests/lib; \
+     $MAKE_CLEAN ; make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
+fi
+
+if test -z "$SKIP_XFSPROGS" ; then
+    build_start "xfsprogs"
+    unset disable_blkid
+    # If libblkid.a exists and util-linux is not present, then it
+    # must have come from e2fslibs, and that v1 version of libblkid doesn't
+    # have the topology functions which xfsprogs needs; hence, we have to
+    # disable xfsprogs's use of blkid.
+    if test -f $DESTDIR/lib/libblkid.a -a ! -d util-linux; then
+	 export disable_blkid="--disable-blkid"
+     fi
+    (cd xfsprogs-dev; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LIBS=-lpthread ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu $disable_blkid" ; \
+     make $J realclean ; make $J configure ; \
+     ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
+     aclocal -I m4 ; autoconf -I m4 ; \
+     ./configure $LOCAL_CONFIGURE_OPTIONS ; \
+     make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
+     DIST_ROOT=$DESTDIR make prefix=/ $J install; \
+     DIST_ROOT=$DESTDIR make prefix=/ $J install-dev)
+    unset disable_blkid
+fi
+
+find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!
+
+if test -z "$SKIP_FIO"; then
+    build_start "fio"
+    (cd fio; \
+     ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     $MAKE_CLEAN ; ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+fi
+
+if test -z "$SKIP_XFSTESTS" ; then
+    build_start "xfstests"
+    (cd xfstests-dev; \
+     ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
+     autoreconf --include=m4 ; \
+     export CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LIBS=-lpthread ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
+     libtoolize -i ; $MAKE_CLEAN ; \
+     ./configure $cross ; \
+     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" BUILD_VERBOSE=1)
+fi
+
+if test -z "$SKIP_QUOTA"; then
+    build_start "quota-tools"
+    #
+    # Hack around older quota-tools's lack of cross compilation support
+    #
+    if test -f quota/Makefile.in && ! grep -q "@CC@" quota/Makefile.in ; then
+	echo "No @CC@"
+	ed quota/Makefile.in <<EOF
+1i
+CC	      = @CC@
+.
+w
+q
+EOF
+    fi
+    (cd quota; \
+     ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
+     export CFLAGS="$LCF -I$DESTDIR/include" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
+     export CPPFLAGS="-I$DESTDIR/include" ; \
+     autoreconf -fvi ; \
+     ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
+     $MAKE_CLEAN ; make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
+fi
+
+if test -z "$SKIP_SYZKALLER"; then
+    build_start "syzkaller"
+    (cd go/src/github.com/google/syzkaller; \
+     ver=$(git describe --always --dirty); echo "syzkaller	$ver ($(git log -1 --pretty=%cD))" > ../../../../../syzkaller.ver ; \
+     $MAKE_CLEAN ; make $J execprog executor ; cp bin/*/syz-* $DESTDIR/bin)
+fi
+
+if test -z "$SKIP_BLKTESTS"; then
+    build_start "blktests"
+    (cd blktests ; $MAKE_CLEAN ; make ; \
+     ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../blktests.ver)
+fi
+
+if test -z "$SKIP_NVME_CLI"; then
+    build_start "nvme-cli"
+    (cd nvme-cli ; $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     install -D -m 0755 nvme $DESTDIR/bin/nvme ; \
+     ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../nvme-cli.ver)
+fi
+
+if test -z "$SKIP_KVM_UTILS"; then
+    build_start "misc VM utils"
+    (cd misc ; LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ./configure $cross ; \
+     $MAKE_CLEAN ; make $J ; make install DESTDIR=$DESTDIR)
+fi

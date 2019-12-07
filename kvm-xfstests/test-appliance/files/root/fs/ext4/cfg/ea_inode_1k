@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-b 1024 -O ea_inode"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="xattr values in inodes with 1k blocksize"

@@ -1,0 +1,21 @@
+# The test generic/471 tests the RWF_NOWAIT flag; however
+# how it is supposed to work with file systems is disputed,
+# and not all device drivers support it.  As a result
+# it doesn't work if an LVM device driver is in use (as is the
+# case with gce-xfstests).  So let's suppress it for now.  For
+# more details see:
+# https://lore.kernel.org/linux-block/20190723220502.GX7777@dread.disaster.area/
+generic/471
+
+# The proposed fix for generic/484, "locks: change POSIX lock
+# ownership on execve when files_struct is displaced" would break NFS
+# Jeff Layton and Eric Biederman have some ideas for how to address it
+# but fixing it is non-trivial
+generic/484
+
+# This test has false positives on all file systems that don't support
+# copy_file_range, since swap files can be read by root, and this
+# test tries to enforce that copy_file_range won't work on swap files.
+# Unfortunately, xfs_io falls back to read/write if necessary, which
+# causes generic/554 to fail.
+generic/554

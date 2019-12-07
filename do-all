@@ -1,0 +1,101 @@
+#!/bin/bash
+#
+# do-all - build or update a test appliance
+#
+# For details, see usage() and Documentation/building-rootfs.md
+
+set -e -u
+
+gen_image_args=
+OUT_TAR=
+BUILD_ENV=
+SUDO_ENV=sudo
+
+if test -f config.custom ; then
+    . config.custom
+else
+    . config
+fi
+
+usage()
+{
+    cat <<EOF
+Usage: do-all [OPTION]...
+Build or update a test appliance.
+
+Options:
+    --chroot=CHROOT Use the specified build chroot, where CHROOT is the chroot
+                    name in /etc/schroot/schroot.conf, e.g. "stretch-amd64".
+    --out-tar       Build a root_fs.tar.gz, not a root_fs.img
+    --no-out-tar    Build/update a root_fs.img, not a root_fs.tar.gz
+    --update        Update only; don't do a clean build.  (Only supported with
+                    .img output currently.)
+EOF
+}
+
+UPDATE=false
+
+longopts="help"
+longopts+=",chroot:"
+longopts+=",out-tar"
+longopts+=",no-out-tar"
+longopts+=",update"
+
+if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
+    usage 1>&2
+    exit 2
+fi
+
+eval set -- "$options"
+while (( $# >= 0 )); do
+    case "$1" in
+    --help)
+	usage
+	exit 0
+	;;
+    --chroot)
+	BUILD_ENV="schroot -c $2 --"
+	SUDO_ENV="schroot -c $2 -u root --"
+	shift
+	;;
+    --out-tar)
+	OUT_TAR=yes
+	;;
+    --no-out-tar)
+	OUT_TAR=
+	;;
+    --update)
+	UPDATE=true
+	;;
+    --)
+	shift
+	break
+	;;
+    *)
+	echo 1>&2 "Invalid option: \"$1\""
+	usage 1>&2
+	exit 2
+	;;
+    esac
+    shift
+done
+
+if $UPDATE && [ "$OUT_TAR" = "yes" ]; then
+    echo 1>&2 "--update is only supported with .img output currently!"
+    exit 1
+fi
+
+if $UPDATE; then
+    $BUILD_ENV ./update-all
+    gen_image_args+=" --update"
+else
+    $BUILD_ENV make all-clean-first
+fi
+$BUILD_ENV ./gen-tarball
+
+if [ "$OUT_TAR" = "yes" ]; then
+    gen_image_args+=" --out-tar"
+fi
+
+cd kvm-xfstests/test-appliance
+$SUDO_ENV ./gen-image $gen_image_args

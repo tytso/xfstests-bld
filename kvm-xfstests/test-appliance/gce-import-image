@@ -1,0 +1,78 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=..
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+. "$DIR/util/get-config"
+. "$DIR/util/image-utils"
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
+
+if test -n "$GCE_IMAGE_PROJECT_RELEASE" ; then
+    IMAGE_PROJECT="$GCE_IMAGE_PROJECT_RELEASE"
+elif test -n "$GCE_IMAGE_PROJECT" ; then
+    IMAGE_PROJECT="$GCE_IMAGE_PROJECT"
+else
+    IMAGE_PROJECT="$GCE_PROJECT"
+fi
+
+DESC="Linux Kernel File System Test Appliance"
+SRC_URI="gs://$GS_BUCKET/xfstests.image.tar.gz"
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	-p) shift
+	    IMAGE_PROJECT="$1"
+	    ;;
+	-s) shift
+	    SRC_URI="$1"
+	    ;;
+	-d) shift
+	    DESC="$1"
+	    ;;
+	--git-versions) shift
+	    GIT_VERSIONS="$1"
+	    ;;
+	--no-action)
+	    NOACTION=echo
+	    ;;
+	*)
+	    break
+	    ;;
+	-*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if test -n "$1" ; then
+    IMAGE_NAME="$1"
+fi
+
+if test -z "$IMAGE_NAME" ; then
+    echo "usage: gce-import-image [-p project] [-s src-uri] [-d description] <image-name>"
+    exit 1
+fi
+
+if test -n "$GIT_VERSIONS" ; then
+    LABELS="--labels $(get_labels < "$GIT_VERSIONS")"
+fi
+
+echo "Importing from $SRC_URI to $IMAGE_PROJECT/$IMAGE_NAME"
+echo -ne "\n"
+
+$NOACTION gcloud compute --project $IMAGE_PROJECT images create "$IMAGE_NAME" \
+       --family xfstests --description "$DESC" $LABELS --source-uri "$SRC_URI"
+
+$NOACTION gcloud compute --project $IMAGE_PROJECT images list --no-standard-images

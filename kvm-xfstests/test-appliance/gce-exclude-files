@@ -1,0 +1,4 @@
+etc/fstab
+etc/network
+etc/hostname
+*~

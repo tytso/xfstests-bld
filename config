@@ -1,0 +1,50 @@
+#
+# Configuration file for building xfstests and root filesystem images
+#
+
+XFSTESTS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
+FIO_GIT=http://git.kernel.dk/fio.git
+QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
+FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
+BLKTESTS_GIT=https://github.com/osandov/blktests.git
+
+# Optional repositories, uncomment only if needed
+#
+# IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
+# KEYUTILS_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
+# STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
+# UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
+# SYZKALLER_GIT=https://github.com/google/syzkaller
+# NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
+
+FIO_COMMIT=fio-3.15
+QUOTA_COMMIT=6e631074330a
+XFSPROGS_COMMIT=v5.2.0
+
+# TOOLCHAIN_DIR=/u1/arm64-toolchain
+# CROSS_COMPILE=aarch64-linux-android
+
+EXEC_LDFLAGS=
+EXEC_LLDFLAGS=
+# Uncomment these to statically link the binaries to the system libraries
+#EXEC_LDFLAGS=-static
+#EXEC_LLDFLAGS=-all-static
+
+BUILD_ENV=
+SUDO_ENV=sudo
+# Uncomment these to make the do-all script use the specified
+# Debian chroot by default
+#
+#BUILD_ENV="schroot -c buster-amd64 --"
+#SUDO_ENV="schroot -c buster-amd64 -u root --"
+
+# Uncomment this to make the do-all script build a
+# root_fs.tar.gz by default rather than a root_fs.img
+#
+# OUT_TAR=yes
+
+# Uncomment this to make a kvm-xfstests VM appliance with networking
+# support enabled.
+#
+gen_image_args="--networking"

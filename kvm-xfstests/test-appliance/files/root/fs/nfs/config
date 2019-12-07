@@ -1,0 +1,114 @@
+#
+# Configuration file for nfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function __fsck()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/e2fsck -fy "$dev"
+		;;
+	    xfs)
+		xfs_repair "$dev"
+		;;
+	    *)
+	        btrfs check --repair "$dev"
+		;;
+	esac
+}
+
+function check_filesystem()
+{
+    case "$TC" in
+	loopback*)
+	    systemctl stop nfs-kernel-server
+	    sleep 0.5
+	    umount /test
+	    umount /scratch
+	    umount "$SM_TST_MNT"
+	    systemctl start nfs-kernel-server
+	    __fsck "$SM_TST_DEV"
+	    ;;
+    esac
+    return 0
+}
+
+function __mkfs()
+{
+	local dev="$1"
+
+	case "$FSTESTTYP" in
+	    ext4)
+		/sbin/mke2fs -F -q -t ext4 "$dev"
+		;;
+	    xfs)
+		mkfs.xfs -f -m rmapbt=1,reflink=1 "$dev"
+		;;
+	    *)
+		mkfs.$FSTESTTYP "$dev"
+		;;
+	esac
+}
+
+function format_filesystem()
+{
+    case "$TC" in
+	loopback*)
+	    systemctl stop nfs-kernel-server
+	    sleep 0.5
+	    umount /test >& /dev/null
+	    umount /scratch >& /dev/null
+	    umount "$SM_TST_DEV" >& /dev/null
+	    systemctl start nfs-kernel-server
+	    __mkfs "$SM_TST_DEV"
+	    mount -t $FSTESTTYP "$SM_TST_DEV" "$SM_TST_MNT"
+	    mkdir "$SM_TST_MNT"/test
+	    mkdir "$SM_TST_MNT"/scratch
+	    mount --bind "$SM_TST_MNT"/test /test
+	    mount --bind "$SM_TST_MNT"/scratch /scratch
+	    ;;
+    esac
+    return 0
+}
+
+function setup_mount_opts()
+{
+	if test -z "NFS_MOUNT_OPTIONS" ; then
+		export NFS_MOUNT_OPTIONS="-o rw,relatime"
+	fi
+	if test -n "$MNTOPTS" ; then
+		export NFS_MOUNT_OPTIONS="NFS_MOUNT_OPTIONS,$MNTOPTS"
+	fi
+}
+
+function get_mkfs_opts()
+{
+	return 0
+}
+
+function show_mkfs_opts()
+{
+	return 0
+}
+
+function show_mount_opts()
+{
+	echo NFS_MOUNT_OPTIONS: "$NFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    case "$1" in
+	default)	echo "loopback" ;;
+	*)		echo "$1" ;;
+    esac
+}
+
+function reset_vars()
+{
+	unset NFS_MOUNT_OPTIONS USE_FILESTORE
+}

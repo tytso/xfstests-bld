@@ -1,0 +1,88 @@
+#!/bin/bash
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+if test -n "$ACCEL_BIN" -a -d "$ACCEL_BIN" ; then
+    PATH="$ACCEL_BIN:$PATH"
+    if test -x "$ACCEL_BIN/bash" ; then
+	SHELL="$ACCEL_BIN/bash"
+    fi
+fi
+
+if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
+    PATH=$TOOLCHAIN_DIR/bin:$PATH
+fi
+
+if test -n "$CROSS_COMPILE" ; then
+    STRIP=$CROSS_COMPILE-strip
+else
+    STRIP=strip
+fi
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	--fast)
+	    fast=yes
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if type -P pigz >/dev/null; then
+    GZIP="pigz -9nT"
+else
+    GZIP="gzip -9n"
+fi
+
+if test -z "$SOURCE_DATE_EPOCH" ; then
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+fi
+
+echo "GEN xfstests"
+rm -rf xfstests
+if test "$fast" = "yes"
+then
+    cp -r xfstests-dev xfstests
+    rm -rf xfstests/.git xfstests/autom4te.cache
+else
+    (D=$(pwd) ; cd xfstests-dev ; make install PKG_LIB_DIR=$D/xfstests \
+				       INSTALL=install SHELL=$SHELL)
+    cp xfstests-dev/README* xfstests
+fi
+echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
+debs_vers=$(find kvm-xfstests/test-appliance/debs -name "*.ver" -print 2>/dev/null)
+cat *.ver $debs_vers | sort > xfstests/git-versions
+if test -f build-distro ; then
+    cp build-distro xfstests/build-distro
+else
+    rm -f xfstests/build-distro
+fi
+mkdir -p xfstests/bin xfstests/lib
+cp bld/bin/* bld/sbin/* xfstests/bin
+if test -d bld/usr/bin ; then
+    cp bld/usr/bin/* xfstests/bin
+fi
+cp bld/lib/client.txt xfstests/lib
+cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
+ln -s libimaevm.so.0.0.0 xfstests/lib/libimaevm.so.0
+rm -f xfstests/bin/compile_et xfstests/bin/mk_cmds
+for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
+do
+    ln -s ../$i xfstests/bin
+done
+echo "STRIP xfstests/*"
+find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
+echo "TAR xfstests"
+find xfstests blktests -path blktests/.git -prune -o -print0 | \
+    LC_ALL=C sort -z | \
+    tar c --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" \
+    --mode=go+u-w --null --no-recursion -T - | $GZIP > xfstests.tar.gz

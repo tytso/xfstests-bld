@@ -1,0 +1,4 @@
+SIZE=small
+export JFS_MKFS_OPTIONS=""
+export MOUNT_OPTIONS=""
+TESTNAME="jfs"

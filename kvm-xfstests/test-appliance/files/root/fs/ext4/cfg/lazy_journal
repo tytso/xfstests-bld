@@ -1,0 +1,4 @@
+SIZE=large
+export EXT_MKFS_OPTIONS="-J size=8192 -E lazy_journal_init"
+export EXT_MOUNT_OPTIONS="journal_lazy"
+TESTNAME="Ext4 Lazy Journal"

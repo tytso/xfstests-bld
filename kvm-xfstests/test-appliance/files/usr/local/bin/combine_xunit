@@ -1,0 +1,27 @@
+#!/usr/bin/python
+
+from junitparser import JUnitXml
+import argparse
+
+def combine_xunit(suites_fn, report_fn, name='Aggregated test results'):
+    try:
+        testsuites = JUnitXml.fromfile(suites_fn)
+    except IOError:
+        testsuites = JUnitXml(name)
+
+    testsuites.add_testsuite(JUnitXml.fromfile(report_fn))
+    for tc in testsuites:
+        for ts in tc:
+            print ts.name
+    testsuites.write(suites_fn, pretty=True)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('output_file', help='aggregated test results')
+parser.add_argument('report_file', help='test result file')
+parser.add_argument('--name', help='name used for new aggregated test file')
+args = parser.parse_args()
+
+if args.name is None:
+    args.name = 'Combined test results'
+
+combine_xunit(args.output_file, args.report_file, args.name)

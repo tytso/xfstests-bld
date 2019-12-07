@@ -1,0 +1,25 @@
+# generic/042 and generic/392 are failing because ext4 forces the
+# resolution of all delayed allocation writes before allowing the
+# punch operation to proceed.  We probably want to see if we can avoid
+# this for the future, but what ext4 is doing is legal, so just skip
+# the test for now
+generic/042
+generic/392
+
+# generic/04[456] tests how truncate and delayed allocation works
+# ext4 uses the data=ordered to avoid exposing stale data, and
+# so it uses a different mechanism than xfs.  So these tests will fail
+generic/044
+generic/045
+generic/046
+
+# generic/223 tests file alignment, which works on ext4 only by
+# accident because we're not RAID stripe aware yet, and works at all
+# because we have bias towards aligning on power-of-two block numbers.
+# It is a flaky test for some configurations, so skip it.
+generic/223
+
+# The shutdown ioctl will sometimes result in a corrupted file systems
+# it really shouldn't, but we probably won't have it fixed for a while.
+# So exclude it for now.
+generic/388

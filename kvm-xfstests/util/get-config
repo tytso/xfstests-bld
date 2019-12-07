@@ -1,0 +1,53 @@
+#
+# Read the config files used for kvm-xfstests, gce-xfstests, etc.
+#
+# Shell scripts should use this file as follows:
+#
+# XFSTESTS_FLAVOR=kvm # (or gce, etc.)
+# t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+# eval DIR="\$$t"
+# if test -z "$DIR"
+# then
+#     t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+#     if test -d "$t"
+#     then
+# 	DIR="$t"
+#     fi
+# fi
+# if test -z "$DIR"
+# then
+#     DIR=$(pwd)
+# fi
+# if test ! -f "$DIR/util/get-config"
+# then
+#     echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+#     exit 1
+# fi
+#
+# . "$DIR/util/get-config"
+
+# Source the default configs
+. $DIR/config.common
+. $DIR/config.${XFSTESTS_FLAVOR}
+
+# Source custom configs in ~/.config/ if present
+[ -f "$HOME/.config/xfstests-common" ] && . "$HOME/.config/xfstests-common"
+[ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ] && \
+	. "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests"
+
+# For gce-xfstests, source the config for the active account if present
+if test "$XFSTESTS_FLAVOR" = "gce" -a -z "$GCE_ACCOUNT" -a \
+   -n "$(ls $DIR/config-* 2> /dev/null)"
+then
+   # We aren't just using GCE_ACCOUNT=$(...) to work around a performance
+   # bug in gcloud.  This will hopefully be fixed soon.  :-)
+   tmpfile=$(mktemp)
+   gcloud config list --format='value(core.account)' core/account \
+	2>/dev/null > "$tmpfile"
+	GCE_ACCOUNT="$(cat $tmpfile)"
+	rm "$tmpfile"
+	unset tmpfile
+fi
+if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
+    . "$DIR/config-$GCE_ACCOUNT"
+fi

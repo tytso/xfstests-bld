@@ -1,0 +1,166 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=..
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+. "$DIR/util/get-config"
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
+
+cd "$DIR/test-appliance"
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+GS_RO=https://www.googleapis.com/auth/devstorage.read_only
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+DATECODE=$(date +%Y%m%d%H%M)
+
+SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
+
+DATECODE=$(date +%Y%m%d%H%M)
+ROOT_FS=xfstests
+IMAGE_FLAG="--image-family"
+EXP_INST="xfstests-exp-$DATECODE"
+EXP_DISK="xfstests-exp-$DATECODE"
+IMG_DISK="xfstests-img-$DATECODE"
+TMP_DISK="xfstests-tmp-$DATECODE"
+DEB_IMAGE_FAMILY=debian-9
+DEB_IMAGE_PROJECT=debian-cloud
+NO_ACTION=
+
+if ! test -f $TARBALL ; then
+   echo $TARBALL does not exist!
+   exit 1
+fi
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	-F) shift
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image"
+	    ;;
+	-D) shift
+	    IMG_DISK="$1";
+	    ROOT_FS=""
+	    IMAGE_FLAG=""
+	    ;;
+	-o) shift
+	    GS_TAR="$1";
+	    ;;
+	--project) shift
+		   GCE_IMAGE_PROJECT="$1"
+		   ;;
+	--skip-uuid) SKIP_UUID="yes" ;;
+	--debug) DO_DEBUG="yes" ;;
+	--no-action) NO_ACTION="echo" ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+GS_SCRIPT=gs://$GS_BUCKET/gce-export.sh
+METADATA="startup-script-url=$GS_SCRIPT"
+GCE_MACHTYPE=n1-highmem-4
+
+if test -z "$GCE_IMAGE_PROJECT" ; then
+    if test -z "$ROOT_FS" ; then
+	GCE_IMAGE_PROJECT="$GCE_PROJECT"
+    else
+	GCE_IMAGE_PROJECT="xfstests-cloud"
+    fi
+fi
+
+format="--format=flattened(name,creationTimestamp,archiveSizeBytes)"
+
+echo "Exporting from project $GCE_IMAGE_PROJECT:"
+
+if test "$IMAGE_FLAG" = "--image-family" ; then
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+	   describe-from-family "$ROOT_FS" $format
+elif test "$IMAGE_FLAG" = "--image" ; then
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+	   describe "$ROOT_FS" $format
+else
+    GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$IMG_DISK.image.tar.gz}"
+    gcloud compute --project "$GCE_IMAGE_PROJECT" disks \
+	   describe "$IMG_DISK" $format
+fi
+
+if test "$?" -gt 0 ; then
+    exit 1
+fi
+
+t=$(mktemp /tmp/gce-export.XXXXXXXX)
+
+sed -e "s/@BUCKET@/$GS_BUCKET/" \
+    -e "s;@GS_TAR@;$GS_TAR;" \
+    -e "s;@GCE_ZONE@;$GCE_ZONE;" \
+    -e "s;@GCE_IMAGE_PROJECT@;$GCE_IMAGE_PROJECT;" \
+    -e "s;@GCE_PROJECT@;$GCE_PROJECT;" \
+    -e "s;@IMAGE_FLAG@;$IMAGE_FLAG;" \
+    -e "s;@ROOT_FS@;$ROOT_FS;" \
+    -e "s;@SKIP_UUID@;$SKIP_UUID;" \
+    -e "s;@IMG_DISK@;$IMG_DISK;" \
+    -e "s/@EXP_INST@/$EXP_INST/" < gce-export.sh > $t
+
+if test -n "$DO_DEBUG" ; then
+    echo "Script file left in $t"
+    exit 0
+fi
+
+gsutil cp $t $GS_SCRIPT
+/bin/rm -f $t
+
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
+       --zone "$GCE_ZONE" 2> /dev/null
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
+       --zone "$GCE_ZONE" 2> /dev/null
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
+       --zone "$GCE_ZONE" 2> /dev/null
+
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
+       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "$GCE_NETWORK" \
+       --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
+       --metadata "^ ^$METADATA" \
+       --image-family "$DEB_IMAGE_FAMILY" --image-project "$DEB_IMAGE_PROJECT" \
+       --boot-disk-type "pd-standard" --boot-disk-device-name "$EXP_DISK"
+
+echo "Image export will be to: $GS_TAR"
+
+if test -n "$NO_ACTION" ; then
+    exit 0
+fi
+
+echo -n "Waiting for creation image export"
+
+cnt=0
+while gcloud compute --project "$GCE_PROJECT" instances \
+	     describe "$EXP_INST" --zone $GCE_ZONE >& /dev/null
+do
+    let cnt=$cnt+1
+    if test $cnt -ge 10
+    then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
+done
+echo " Done!"

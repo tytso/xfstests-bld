@@ -1,0 +1,10 @@
+#!/bin/bash
+mke2fs -t ext4 -O encrypt -b 4096 -Fq /dev/ram0
+mount -t ext4 /dev/ram0 /mnt
+mkdir /mnt/a
+echo foobar | e4crypt add_key /mnt/a
+cd /mnt/a
+fname_benchmark
+cd /
+umount /mnt
+

@@ -1,0 +1,32 @@
+export TEST_DEV=local:/test
+export TEST_DIR=/mnt/test
+export SCRATCH_DEV=local:/scratch
+export SCRATCH_MNT=/mnt/scratch
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="tmpfs"
+mkdir -p "$TEST_DIR" "$SCRATCH_MNT"
+
+_real_dev()
+{
+	local _dev=$1
+	if [ -b "$_dev" ] && [ -L "$_dev" ]; then
+		_dev=`readlink -f "$_dev"`
+	fi
+	echo $_dev
+}
+
+# basename of a device
+_short_dev()
+{
+	echo `basename $(_real_dev $1)`
+}
+
+if [ -b $SM_TST_DEV ]; then
+   mkfs.ext4 -Fq $SM_TST_DEV
+   mount -t ext4 $SM_TST_DEV $TEST_DIR
+   echo 0 >/sys/fs/ext4/$(_short_dev $SM_TST_DEV)/extent_max_zeroout_kb
+fi
+if [ -b $SM_SCR_DEV ]; then
+   mkfs.ext4 -Fq $SM_SCR_DEV
+   mount -t ext4 $SM_SCR_DEV $SCRATCH_MNT
+fi

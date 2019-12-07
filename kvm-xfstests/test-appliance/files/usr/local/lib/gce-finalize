@@ -1,0 +1,9 @@
+#!/bin/bash
+
+killall gce-finalize-wait
+
+. /usr/local/lib/gce-funcs
+
+run_hooks finalize
+
+exec /usr/local/sbin/gce-shutdown

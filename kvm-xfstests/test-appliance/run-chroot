@@ -1,0 +1,13 @@
+#!/bin/sh
+
+ROOTDIR=$(pwd)/rootdir
+
+mount -t proc proc $ROOTDIR/proc
+mount -t sysfs sysfs $ROOTDIR/sys
+cp /proc/mounts $ROOTDIR/etc/mtab
+cd $ROOTDIR
+
+chroot $ROOTDIR /bin/bash
+
+umount $ROOTDIR/proc
+umount $ROOTDIR/sys

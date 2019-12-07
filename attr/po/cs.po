@@ -1,0 +1,241 @@
+# Copyright (C) 2008  Petr Pisar <petr.pisar@atlas.cz>
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Czech translation for attr.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: attr 2.4.41\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2008-02-11 17:34+1100\n"
+"PO-Revision-Date: 2008-04-09 16:30+0200\n"
+"Last-Translator: Petr Pisar <petr.pisar@atlas.cz>\n"
+"Language-Team: Czech <translation-team-cs@lists.sourceforge.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../attr/attr.c:46
+#, c-format
+msgid ""
+"Usage: %s [-LRSq] -s attrname [-V attrvalue] pathname  # set value\n"
+"       %s [-LRSq] -g attrname pathname                 # get value\n"
+"       %s [-LRSq] -r attrname pathname                 # remove attr\n"
+"       %s [-LRq]  -l pathname                          # list attrs \n"
+"      -s reads a value from stdin and -g writes a value to stdout\n"
+msgstr ""
+"Užití: %s [-LRSq] -s název_atributu [-V hodnota] cesta  # nastaví hodnotu\n"
+"       %s [-LRSq] -g název_atributu cesta               # zjistí hodnotu\n"
+"       %s [-LRSq] -r název_atributu cesta               # odstraní atribut\n"
+"       %s [-LRq]  -l cesta                              # vypíše atributy\n"
+"  -s čte hodnotu ze standardního vstupu a -g ji vypisuje na standardní "
+"výstup.\n"
+
+#: ../attr/attr.c:83 ../attr/attr.c:100 ../attr/attr.c:109 ../attr/attr.c:118
+#, c-format
+msgid "Only one of -s, -g, -r, or -l allowed\n"
+msgstr "Povolen je právě jeden z přepínačů -s, -g, -r nebo -l\n"
+
+#: ../attr/attr.c:91
+#, c-format
+msgid "-V only allowed with -s\n"
+msgstr "-V je povoleno sej s -s\n"
+
+#: ../attr/attr.c:136
+#, c-format
+msgid "Unrecognized option: %c\n"
+msgstr "Nerozpoznaný přepínač: %c\n"
+
+#: ../attr/attr.c:143
+#, c-format
+msgid "A filename to operate on is required\n"
+msgstr "Jméno souboru, se kterým se bude pracovat, je vyžadováno.\n"
+
+#: ../attr/attr.c:171
+#, c-format
+msgid "Could not set \"%s\" for %s\n"
+msgstr "Souboru %2$s nelze nastavit atribut „%1$s“\n"
+
+#: ../attr/attr.c:176
+#, c-format
+msgid "Attribute \"%s\" set to a %d byte value for %s:\n"
+msgstr "Atributu „%1$s“ souboru %3$s nastavena %2$dbajtová hodnota:\n"
+
+#: ../attr/attr.c:194
+#, c-format
+msgid "Could not get \"%s\" for %s\n"
+msgstr "Ze souboru %2$s nelze získat atribut „%1$s“\n"
+
+#: ../attr/attr.c:199
+#, c-format
+msgid "Attribute \"%s\" had a %d byte value for %s:\n"
+msgstr "Atribut „%1$s“ souboru %3$s měl %2$dbajtovou hodnotu:\n"
+
+#: ../attr/attr.c:212
+#, c-format
+msgid "Could not remove \"%s\" for %s\n"
+msgstr "Ze souboru %2$s nelze odstranit atribut „%1$s“\n"
+
+#: ../attr/attr.c:230
+#, c-format
+msgid "Could not list \"%s\" for %s\n"
+msgstr "Ze souboru %2$s nelze vypsat atribut „%1$s“\n"
+
+#: ../attr/attr.c:240
+#, c-format
+msgid "Attribute \"%s\" has a %d byte value for %s\n"
+msgstr "Atribut „%1$s“ souboru %3$s má %2$dbajtovou hodnotu\n"
+
+#: ../attr/attr.c:252
+#, c-format
+msgid "At least one of -s, -g, -r, or -l is required\n"
+msgstr "Alespoň jeden z přepínačů -s, -g, -r nebo -l je vyžadován\n"
+
+#: ../getfattr/getfattr.c:97 ../setfattr/setfattr.c:70
+msgid "No such attribute"
+msgstr "Takový atribut neexistuje"
+
+#: ../getfattr/getfattr.c:255
+#, c-format
+msgid "%s: Removing leading '/' from absolute path names\n"
+msgstr "%s: Odstraňuji úvodní „/“ z absolutní cesty\n"
+
+#: ../getfattr/getfattr.c:372
+#, c-format
+msgid "%s %s -- get extended attributes\n"
+msgstr "%s %s – získá rozšířené atributy\n"
+
+#: ../getfattr/getfattr.c:374 ../setfattr/setfattr.c:175
+#, c-format
+msgid "Usage: %s %s\n"
+msgstr "Použití: %s %s\n"
+
+#: ../getfattr/getfattr.c:377
+#, c-format
+msgid ""
+"  -n, --name=name         get the named extended attribute value\n"
+"  -d, --dump              get all extended attribute values\n"
+"  -e, --encoding=...      encode values (as 'text', 'hex' or 'base64')\n"
+"      --match=pattern     only get attributes with names matching pattern\n"
+"      --only-values       print the bare values only\n"
+"  -h, --no-dereference    do not dereference symbolic links\n"
+"      --absolute-names    don't strip leading '/' in pathnames\n"
+"  -R, --recursive         recurse into subdirectories\n"
+"  -L, --logical           logical walk, follow symbolic links\n"
+"  -P  --physical          physical walk, do not follow symbolic links\n"
+"      --version           print version and exit\n"
+"      --help              this help text\n"
+msgstr ""
+"  -n, --name=název        zjistí hodnotu jmenovaného rozšířeného atributu\n"
+"  -d, --dump              zjistí hodnoty všech rozšířených atributů\n"
+"  -e, --encoding=…        zakóduje hodnotu (jako „text“, „hex“ nebo "
+"„base64“)\n"
+"      --match=vzor        získá jen atributy, jejichž jména vyhovují vzoru\n"
+"      --only-values       vypíše čistě jenom hodnoty\n"
+"  -h, --no-dereference    nenásleduje symbolické odkazy\n"
+"      --absolute-names    neodstraňuje úvodní „/“ z cest k souborům\n"
+"  -R, --recursive         sestupuje do podadresářů\n"
+"  -L, --logical           logický průchod, následuje symbolické odkazy\n"
+"  -P  --physical          fyzický průchod, symbolické odkazy nenásleduje\n"
+"      --version           vypíše verzi a skončí\n"
+"      --help              text této nápovědy\n"
+
+#: ../getfattr/getfattr.c:473
+#, c-format
+msgid "%s: invalid regular expression \"%s\"\n"
+msgstr "%s: chybný regulární výraz „%s“\n"
+
+#: ../getfattr/getfattr.c:487
+#, c-format
+msgid ""
+"Usage: %s %s\n"
+"Try `%s --help' for more information.\n"
+msgstr ""
+"Použití: %s %s\n"
+"Pro více informací zkuste „%s --help“.\n"
+
+#: ../setfattr/setfattr.c:123
+#, c-format
+msgid "%s: %s: No filename found in line %d, aborting\n"
+msgstr "%s: %s: Žádné jméno souboru nenalezeno na řádku %d, končím.\n"
+
+#: ../setfattr/setfattr.c:127
+#, c-format
+msgid "%s: No filename found in line %d of standard input, aborting\n"
+msgstr ""
+"%s: Žádné jméno souboru nenalezeno na řádku %d standardního vstupu, končím\n"
+
+#: ../setfattr/setfattr.c:174
+#, c-format
+msgid "%s %s -- set extended attributes\n"
+msgstr "%s %s – nastaví rozšířené atributy\n"
+
+#: ../setfattr/setfattr.c:176
+#, c-format
+msgid "       %s %s\n"
+msgstr "       %s %s\n"
+
+#: ../setfattr/setfattr.c:178
+#, c-format
+msgid ""
+"  -n, --name=name         set the value of the named extended attribute\n"
+"  -x, --remove=name       remove the named extended attribute\n"
+"  -v, --value=value       use value as the attribute value\n"
+"  -h, --no-dereference    do not dereference symbolic links\n"
+"      --restore=file      restore extended attributes\n"
+"      --version           print version and exit\n"
+"      --help              this help text\n"
+msgstr ""
+"  -n, --name=název        nastaví hodnotu jmenovaného rozšířeného atributu\n"
+"  -x, --remove=název      odstraní jmenovaný rozšířený atribut\n"
+"  -v, --value=hodnota     jako hodnotu atributu použije hodnotu\n"
+"  -h, --no-dereference    do not dereference symbolic links\n"
+"      --restore=soubor    obnoví rozšířené atributy\n"
+"      --version           vypíše verzi a skončí\n"
+"      --help              text této nápovědy\n"
+
+#: ../setfattr/setfattr.c:253
+#, c-format
+msgid ""
+"Usage: %s %s\n"
+"       %s %s\n"
+"Try `%s --help' for more information.\n"
+msgstr ""
+"Použití: %s %s\n"
+"         %s %s\n"
+"Pro více informací zkuste „%s --help“.\n"
+
+#: ../libattr/attr_copy_fd.c:82 ../libattr/attr_copy_fd.c:97
+#: ../libattr/attr_copy_file.c:80 ../libattr/attr_copy_file.c:95
+#, c-format
+msgid "listing attributes of %s"
+msgstr "vypisuji atribut souboru %s"
+
+#: ../libattr/attr_copy_fd.c:117 ../libattr/attr_copy_fd.c:134
+#: ../libattr/attr_copy_file.c:115 ../libattr/attr_copy_file.c:132
+#, c-format
+msgid "getting attribute %s of %s"
+msgstr "získávám atribut %s souboru %s"
+
+#: ../libattr/attr_copy_fd.c:147 ../libattr/attr_copy_fd.c:165
+#: ../libattr/attr_copy_file.c:144 ../libattr/attr_copy_file.c:163
+#, c-format
+msgid "setting attributes for %s"
+msgstr "nastavuji atributy souboru %s"
+
+#: ../libattr/attr_copy_fd.c:153 ../libattr/attr_copy_file.c:151
+#, c-format
+msgid "setting attribute %s for %s"
+msgstr "nastavuji atribut %s souboru %s"

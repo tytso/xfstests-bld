@@ -1,0 +1,110 @@
+#
+# Copyright (c) 2002-2006 Silicon Graphics, Inc.  All Rights Reserved.
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# @configure_input@
+#
+
+ifndef _BUILDDEFS_INCLUDED_
+_BUILDDEFS_INCLUDED_ = 1
+
+DEBUG = @debug_build@
+OPTIMIZER = @opt_build@
+MALLOCLIB = @malloc_lib@
+LOADERFLAGS = @LDFLAGS@
+
+LIBATTR = $(TOPDIR)/libattr/libattr.la
+LIBMISC = $(TOPDIR)/libmisc/libmisc.la
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+top_builddir = @top_builddir@
+datarootdir = @datarootdir@
+
+PKG_NAME	= @pkg_name@
+PKG_USER	= @pkg_user@
+PKG_GROUP	= @pkg_group@
+PKG_RELEASE	= @pkg_release@
+PKG_VERSION	= @pkg_version@
+PKG_PLATFORM	= @pkg_platform@
+PKG_DISTRIBUTION= @pkg_distribution@
+PKG_BIN_DIR	= @bindir@
+PKG_SBIN_DIR	= @sbindir@
+PKG_LIB_DIR	= @libdir@@libdirsuffix@
+PKG_DEVLIB_DIR	= @libdir@@libdirsuffix@
+PKG_INC_DIR	= @includedir@/attr
+PKG_MAN_DIR	= @mandir@
+PKG_DOC_DIR	= @datadir@/doc/@pkg_name@
+PKG_LOCALE_DIR	= @datadir@/locale
+
+CC		= @cc@
+AWK		= @awk@
+SED		= @sed@
+TAR		= @tar@
+ZIP		= @zip@
+MAKE		= @make@
+ECHO		= @echo@
+SORT		= @sort@
+LN_S		= @LN_S@
+SHELL		= @SHELL@
+LIBTOOL		= @LIBTOOL@
+MAKEDEPEND	= @makedepend@
+
+MSGFMT		= @msgfmt@
+MSGMERGE	= @msgmerge@
+XGETTEXT	= @xgettext@
+
+RPM		= @rpm@
+RPMBUILD	= @rpmbuild@
+RPM_VERSION	= @rpm_version@
+
+ENABLE_SHARED	= @enable_shared@
+ENABLE_GETTEXT	= @enable_gettext@
+
+HAVE_ZIPPED_MANPAGES = @have_zipped_manpages@
+
+ifneq "$(findstring $(PKG_PLATFORM), linux gnu gnu/kfreebsd gnu/knetbsd)" ""
+PCFLAGS = -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+endif
+
+ifeq ($(PKG_PLATFORM),linux)
+DEPENDFLAGS = -D__linux__
+endif
+ifeq ($(PKG_PLATFORM),darwin)
+DEPENDFLAGS = -D__APPLE__
+endif
+ifeq ($(PKG_PLATFORM),irix)
+DEPENDFLAGS = -D__sgi__
+endif
+ifeq ($(PKG_PLATFORM),freebsd)
+DEPENDFLAGS = -D__FreeBSD__
+endif
+
+GCFLAGS = $(OPTIMIZER) $(DEBUG) -funsigned-char -fno-strict-aliasing -Wall \
+	  -DVERSION=\"$(PKG_VERSION)\" -DLOCALEDIR=\"$(PKG_LOCALE_DIR)\"  \
+	  -DPACKAGE=\"$(PKG_NAME)\" -I$(TOPDIR)/include
+
+# Global, Platform, Local CFLAGS
+CFLAGS += $(GCFLAGS) $(PCFLAGS) $(LCFLAGS)
+
+include $(TOPDIR)/include/buildmacros
+
+endif
+
+#
+# For targets that should always be rebuilt,
+# define a target that is never up-to-date.
+# Targets needing this should depend on $(_FORCE)
+_FORCE = __force_build

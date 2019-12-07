@@ -1,0 +1,147 @@
+#!/bin/bash
+
+set -e
+
+if test -f config.custom ; then
+	. config.custom
+else
+	. config
+fi
+
+have_commit()
+{
+    git rev-parse --verify --quiet "$1^{commit}" >/dev/null
+}
+
+checkout_commit()
+{
+    local repo_name="$1"
+    local repo_url="$2"
+    local commit_variable="$3"
+    local commit="${!3}"
+    local old_url
+
+    # Make sure there are no uncommitted changes.
+    git status -s >& /dev/null
+    if ! git diff-index --quiet HEAD --; then
+	cat 1>&2 <<EOF
+ERROR: $repo_name has uncommitted changes.
+
+If you want to build from the (dirty) working tree of $repo_name,
+remove $commit_variable from config.custom.
+EOF
+	exit 1
+    fi
+
+    # If we don't have the needed commit, try fetching from the remote.
+    if ! have_commit "$commit"; then
+	old_url="$(git remote get-url origin)"
+	if [ "$old_url" != "$repo_url" ]; then
+	    echo "$repo_name URL changed to $repo_url (previously was $old_url)"
+	    git remote set-url origin "$repo_url"
+	fi
+	if ! git fetch origin; then
+	    echo 1>&2 "ERROR: unable to fetch from $repo_url"
+	    exit 1
+	fi
+	if ! have_commit "$commit"; then
+	    echo 1>&2 "ERROR: commit $commit does not exist in $repo_url"
+	    exit 1
+	fi
+    fi
+
+    # Check out the commit.
+    if [ "$(git rev-parse HEAD)" != "$(git rev-parse "$commit^{commit}")" ]
+    then
+	echo "Checking out $repo_name $commit (previously was $(git describe --always HEAD))"
+    fi
+    if [ -z "$NO_ACTION" ]; then
+	git checkout --quiet "$commit"
+    fi
+}
+
+setup_repo()
+{
+    local repo_name="$1"
+    local repo_url_variable="$2"
+    local repo_url="${!2}"
+    local commit_variable="$3"
+    local commit="${!3}"
+    local required="$4"
+
+    # Clone the repository if needed.
+    if [ ! -d "$repo_name" ]; then
+	if [ -z "$repo_url" ]; then
+	    if ! $required; then
+		return
+	    fi
+	    echo 1>&2 "$repo_url_variable not set; check your config file!"
+	    exit 1
+	fi
+
+	echo
+	if [ -n "$NO_ACTION" ]; then
+	    echo "Clone $repo_url into $repo_name"
+	    if [ -n "$commit" ]; then
+		echo "Checkout commit $commit into $repo_name"
+		return
+	    fi
+	else
+	    mkdir -p $(dirname "$repo_name")
+	    if ! git clone "$repo_url" "$repo_name"; then
+		echo 1>&2 "Failed to clone $repo_name from $repo_url"
+		exit 1
+	    fi
+	fi
+    fi
+
+    if [ -z "$repo_url" ] && ! $required; then
+	cat 1>&2 <<EOF
+ERROR: $repo_url_variable has been removed from the config file,
+but the $repo_name directory still exists.  Remove it if you don't
+want it to be built.
+EOF
+	exit 1
+    fi
+
+    # If a specific commit was specified, check it out.
+    if [ -n "$commit" ]; then
+	( cd "$repo_name";
+	  checkout_commit "$repo_name" "$repo_url" "$commit_variable";
+	)
+    fi
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+	-n|--no-action)
+	    NO_ACTION=echo
+	    ;;
+	*)
+	    echo "usage: get-all [--no-action]"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+
+# required repositories
+setup_repo fio			FIO_GIT		FIO_COMMIT		true
+setup_repo quota		QUOTA_GIT	QUOTA_COMMIT		true
+setup_repo xfsprogs-dev		XFSPROGS_GIT	XFSPROGS_COMMIT		true
+setup_repo xfstests-dev		XFSTESTS_GIT	XFSTESTS_COMMIT		true
+setup_repo fsverity		FSVERITY_GIT	FSVERITY_COMMIT		true
+setup_repo blktests 		BLKTESTS_GIT	BLKTESTS_COMMIT		true
+
+# optional repositories
+setup_repo ima-evm-utils	IMA_EVM_UTILS_GIT IMA_EVM_UTILS_COMMIT	false
+setup_repo keyutils		KEYUTILS_GIT	KEYUTILS_COMMIT		false
+setup_repo stress-ng		STRESS_NG_GIT	STRESS_NG_COMMIT	false
+setup_repo util-linux		UTIL_LINUX_GIT	UTIL_LINUX_COMMIT	false
+setup_repo go/src/github.com/google/syzkaller SYZKALLER_GIT SYZKALLER_COMMIT false
+setup_repo nvme-cli		NVME_CLI_GIT	NVME_CLI_COMMIT		false
+
+# Make sure acl doesn't try regenerate these files because of the
+# vagrancies of the timestamps when they were checked out
+touch acl/aclocal.m4 acl/configure acl/Makefile.in

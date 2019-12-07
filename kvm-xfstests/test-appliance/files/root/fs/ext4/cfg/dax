@@ -1,0 +1,7 @@
+export TEST_DEV=/dev/pmem0
+export TEST_DIR=$SM_TST_MNT
+export SCRATCH_DEV=/dev/pmem1
+export SCRATCH_MNT=$SM_SCR_MNT
+export EXT_MKFS_OPTIONS="-b 4096"
+export EXT_MOUNT_OPTIONS="dax"
+TESTNAME="Ext4 4k block using DAX"

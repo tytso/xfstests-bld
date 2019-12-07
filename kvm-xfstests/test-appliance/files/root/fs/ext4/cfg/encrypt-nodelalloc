@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-O encrypt -b $(getconf PAGE_SIZE)"
+export EXT_MOUNT_OPTIONS="dummy_encryption,nodelalloc"
+TESTNAME="Ext4 encryption w/nodelalloc"

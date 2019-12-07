@@ -1,0 +1,89 @@
+#!/bin/sh
+set -e
+
+# Taken from a very cut down of debootstrap version 1.0.87
+
+unset TMP TEMP TMPDIR || true
+
+MIRROR=https://mirrors.kernel.org/debian
+
+if test -r config.custom ; then
+   . $(pwd)/config.custom
+fi
+
+DEBOOTSTRAP_DIR=/usr/share/debootstrap
+SUITE="$1-backports"
+MIRRORS="$MIRROR"
+SCRIPT="$DEBOOTSTRAP_DIR/scripts/$1"
+TARGET="$2"
+mkdir -p "$TARGET"
+ARCH=$(/usr/bin/dpkg --print-architecture)
+HOST_OS="$ARCH"
+
+LANG=C
+USE_COMPONENTS=main
+DEF_MIRROR="http://deb.debian.org/debian"
+DEF_HTTPS_MIRROR="https://deb.debian.org/debian"
+all_debs=$(cat backport-packages-$1)
+
+###########################################################################
+
+. $DEBOOTSTRAP_DIR/functions
+exec 4>&1
+
+
+export LANG USE_COMPONENTS
+umask 022
+
+###########################################################################
+
+if [ -z "$PKGDETAILS" ]; then
+	error 1 NO_PKGDETAILS "No pkgdetails available; either install perl, or build pkgdetails.c from the base-installer source package"
+fi
+
+###########################################################################
+
+CHROOT_CMD=""
+
+if [ -z "$SHA_SIZE" ]; then
+	SHA_SIZE=256
+fi
+if ! in_path "sha${SHA_SIZE}sum" && ! in_path "sha${SHA_SIZE}"; then
+	SHA_SIZE=1
+fi
+DEBOOTSTRAP_CHECKSUM_FIELD="SHA$SHA_SIZE"
+
+export ARCH SUITE TARGET CHROOT_CMD SHA_SIZE DEBOOTSTRAP_CHECKSUM_FIELD
+
+###########################################################################
+
+if [ "$TARGET" != "" ]; then
+	mkdir -p "$TARGET/debootstrap"
+fi
+
+###########################################################################
+
+# Use of fd's by functions/scripts:
+#
+#    stdin/stdout/stderr: used normally
+#    fd 4: I:/W:/etc information
+#    fd 5,6: spare for functions
+#    fd 7,8: spare for scripts
+
+#    stderr: used in exceptional circumstances only
+#    stdout: I:/W:/etc information
+#    $TARGET/debootstrap/debootstrap.log: full log of debootstrap run
+exec 4>&1
+exec >>"$TARGET/debootstrap/debootstrap.log"
+exec 2>&1
+
+###########################################################################
+
+. "$SCRIPT"
+
+export MIRRORS
+
+###########################################################################
+
+download_indices
+download $all_debs

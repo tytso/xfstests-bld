@@ -1,0 +1,75 @@
+. $DIR/.ltm_instance
+
+# The hostname has to match the common name field of the certificate, as set
+# in util/gce-do-setup when running openssl to create a self-signed cert.
+# curl will fail otherwise, stating that the common names do not match.
+LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+function ltm_post_json() {
+    curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@"
+}
+
+function ltm_post_failed() {
+    if gcloud compute instances describe "xfstests-ltm" &> /dev/null; then
+	echo "The ltm instance seems to be running. Try deleting the"
+	echo "$DIR/.ltm_instance file and re-running launch-ltm to recreate"
+	echo "the file. If the issue persists, try relaunching the LTM"
+	echo "If configuration changes have been made, it may be necessary"
+	echo "to delete and re-launch the LTM."
+    else
+	echo "The ltm doesn't seem to be running. Try launching the ltm"
+	echo "instance with launch-ltm. This will recreate the"
+	echo ".ltm_instance file."
+    fi
+
+
+}
+function send_to_ltm() {
+    local cmd_to_send=$1
+    shift
+
+    # just create a new login session and store it in the cookie
+    ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
+        "https://$LTM_HOSTNAME/login"
+
+    if [ ! $? = 0 ]; then
+	echo "Login failed."
+	ltm_post_failed
+	return 1
+    fi
+
+    LTM_OPTS=""
+    if [ -n "$NO_REGION_SHARD" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":\"yes\""
+    fi
+    if [ -n "$BUCKET_SUBDIR" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bucket_subdir\":\"$BUCKET_SUBDIR\""
+    fi
+    if [ -n "$GS_KERNEL" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"gs_kernel\":\"$GS_KERNEL\""
+    fi
+    if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
+    fi
+    if [ -n "$COMMIT" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"commit_id\":\"$COMMIT\""
+    fi
+    if [ -n "$REPO" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"git_repo\":\"$REPO\""
+    fi
+    if [ -n "$LTM_OPTS" ]; then
+	LTM_OPTS="\"options\": {$LTM_OPTS}"
+    fi
+    # Create OPTS.
+
+    ltm_post_json -b $DIR/.ltm_cookie -d \
+	"{\"orig_cmdline\": \"$cmd_to_send\"${LTM_OPTS:+, $LTM_OPTS}}" \
+	"https://$LTM_HOSTNAME/gce-xfstests"
+
+    if [ $? != 0 ]; then
+	echo "Request failed."
+	ltm_post_failed
+	return 1
+    fi
+
+}

@@ -1,0 +1,959 @@
+#!/bin/bash
+
+FSTESTCFG=""
+SNAPSHOT=",snapshot=on"
+DO_AEX="yes"
+API="1.5"
+
+ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
+done_cleanup=false
+
+trap '_cleanup; exit 0' 0
+trap '_cleanup; exit 1' 1 2 3 15
+
+_cleanup()
+{
+    if $done_cleanup
+    then
+	:
+    else
+	rm -rf "$ourtmp"
+	done_cleanup=true
+    fi
+}
+
+# Is the invoked interface (kvm-xfstests, gce-xfstests, etc.) in the given list?
+flavor_in ()
+{
+    local flavor
+    for flavor ; do
+	if test "$XFSTESTS_FLAVOR" = "$flavor" ; then
+	    return 0
+	fi
+    done
+    return 1
+}
+
+supported_flavors ()
+{
+    flavor_in "$@" || print_help
+}
+
+print_help ()
+{
+    PROG=$(basename "$0")
+    echo "Usage: $PROG [<OPTIONS>] smoke|full"
+    echo "Usage: $PROG [<OPTIONS>] <test> ..."
+    echo "Usage: $PROG [<OPTIONS>] -g <group> ..."
+    echo "Usage: $PROG [<OPTIONS>] shell|maint"
+    echo "Usage: $PROG [<OPTIONS>] syz <repro>"
+    echo ""
+    echo "Common options are:"
+    echo "	-a		- Disable auto-exclude; run all tests"
+    echo "	-c config	- Specify a file system configuration"
+    echo "	-C count	- Run the specified tests multiple times"
+    echo "	-I image	- Use this test appliance image"
+    echo "	-m mountopts	- Append mount options to fs config"
+    if flavor_in kvm gce ; then
+	echo "	-n nr_cpus	- Specify the number of cpu's"
+    fi
+    if flavor_in kvm ; then
+	echo "	-numa num	- Ask KVM to create <num> NUMA nodes"
+	echo "	-N		- Enable networking (requires root)"
+    fi
+    if flavor_in kvm gce ; then
+	echo "	-o opts		- Extra kernel command line options"
+    fi
+    echo "	-O opts		- Extra options for test runner"
+    if flavor_in kvm gce ; then
+	echo "	-r ram		- Specify memory to be used in megabytes"
+    fi
+    echo "	-x group	- Exclude group of tests from running"
+    echo "	-X test		- Exclude test from running"
+    echo "	--kernel file	- Boot the specified kernel"
+    if flavor_in kvm ; then
+	echo "	--initrd initrd	- Boot with the specified initrd"
+    elif flavor_in gce ; then
+	echo "	--pmem-device	- Set up persistent memory devices for DAX"
+    fi
+    if flavor_in kvm android ; then
+	echo "	--no-log	- Don't save the log file for this run"
+    fi
+    if flavor_in kvm gce ; then
+	echo "	--no-action	- Print the command to start the VM"
+    fi
+    if flavor_in gce ; then
+	echo "	--email email	- Specify the email address to send a report to"
+	echo "	--no-email	- Do not send an email"
+    fi
+    echo ""
+    echo "Common file system configurations are:"
+    echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
+    echo "	data_journal bigalloc bigalloc_1k inline"
+    echo ""
+    echo "xfstest names have the form: ext4/NNN generic/NNN shared/NNN"
+    echo ""
+    if flavor_in gce ; then
+	echo "Common gce-xfstests commands:"
+	echo "	ls		- List running xfstests instances"
+	echo "	abort		- Abort a xfstests instance"
+	echo "	ls-results	- List saved test results"
+	echo "	get-results	- Get and display a specified test result"
+	echo "	setup		- Set up gce-xfstests (only needs to be run once)"
+	echo "	ssh		- Login to a running test instance"
+	echo "	console		- Get the console messages from a test instance"
+	echo "	serial		- Attach to the serial port of a test instance"
+	echo "	launch-ltm	- Launch an LTM instance. Running the LTM"
+	echo "			  requires that you build a gce-xfstests image"
+	echo "			  yourself, and set GCE_IMAGE_PROJECT to your own project."
+	echo "			  See documentation for details."
+	echo "	ltm		- Send the command to the LTM."
+	echo "			  Note: NR_CPU and MEM must be their default values."
+	echo "			  The dax config is not supported by the LTM"
+	echo "	--no-region-shard"
+	echo "			- Don't shard test VMs into other GCE zones"
+	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
+    fi
+    exit 1
+}
+
+validate_test_name()
+{
+    if test -z "$DO_BLKTESTS" ; then
+	case "$1" in
+	    btrfs*|cifs*|ext4*|f2fs*|generic*|shared*|udf*|xfs*|overlay*) ;;
+	    *)
+		echo -e "Invalid xfstests test name: $1\n"
+		print_help
+		exit 1
+		;;
+	esac
+    else
+	case "$1" in
+	    block*|loop*|meta*|nbd*|nvme*|nvmeof-mp*|scsi*|srp*) ;;
+	    *)
+		echo -e "Invalid blktests test name: $1\n"
+		print_help
+		exit 1
+		;;
+	esac
+    fi
+}
+
+validate_config_name()
+{
+    local arg="$1"
+    local fs
+    local cfg
+
+    CONFDIR="$DIR/test-appliance/files/root/fs"
+    if test -d "$CONFDIR"
+    then
+	case "$arg" in
+	    */*)
+		fs="${arg%%/*}"
+		cfg="${arg#*/}"
+		;;
+	    *)
+		if test -d "$CONFDIR/$arg"
+		then
+		    fs="$arg"
+		    cfg=default
+		else
+		    fs="$PRIMARY_FSTYPE"
+		    cfg="$arg"
+		fi
+		;;
+	esac
+	if test ! -d "$CONFDIR/$fs" ; then
+	    echo -e "Invalid file system type: $fs\n"
+	    print_help
+	    exit 1
+	fi
+	. "$CONFDIR/$fs/config"
+	cfg=$(test_name_alias $cfg)
+	if test -f "$CONFDIR/$fs/cfg/$cfg" -o \
+		-f "$CONFDIR/$fs/cfg/$cfg.list"
+	then
+	    return
+	else
+	    echo -e "Invalid config name: $arg\n"
+	    print_help
+	    exit 1
+	fi
+    fi
+}
+
+validate_commit_name()
+{
+    if git ls-remote $1 | grep -q "$2"; then
+      echo "Repository found"
+    else
+  		echo -e "No commit or tag with this name: $1\n"
+  		print_help
+  		exit 1
+    fi
+}
+
+copy_config()
+{
+    if test -e $1
+    then
+    gsutil cp $1 "gs://$GS_BUCKET/build_config"
+    else
+  		echo -e "Could not find: $1\n"
+  		print_help
+  		exit 1
+    fi
+}
+
+if flavor_in gce && test -n "$GCE_KERNEL" ; then
+    KERNEL="$GCE_KERNEL"
+fi
+
+if test -d "$KERNEL" ; then
+    if test -f "$KERNEL/modules.tar.xz" ; then
+	MODULES="$KERNEL/modules.tar.xz"
+    fi
+    KERNEL="$KERNEL/arch/x86/boot/bzImage"
+fi
+
+shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
+longopts=(
+aio:
+archive
+blktests
+bucket-subdir:
+cache:
+commit:
+config:
+cpu-type:
+email:
+gce-network:
+gce-zone:
+gs-bucket:
+help
+hooks:
+image-family:
+image-project:
+initrd:
+instance-name:
+kernel:
+local-ssd
+log
+machtype:
+modules:
+nfssrv:
+no-action
+no-archive
+no-collapse
+no-email
+no-insert
+no-log
+no-preemptible
+no-punch
+no-region-shard
+no-virtio-rng
+no-zero
+numa:
+pmem-device
+preemptible
+stress-mem:
+stress-opts:
+testrunid:
+update-files
+update-xfstests
+update-xfstests-tar
+virtfs-model:
+virtfs-scratch:
+virtfs-test:
+virtfs:
+)
+longopts=$(echo "${longopts[*]}" | tr ' ' ,)
+
+if ! options=$(getopt -o "$shortopts" -l "$longopts" -- "$@"); then
+    print_help
+fi
+
+eval set -- "$options"
+while (( $# >= 1 )); do
+    case "$1" in
+	-a)
+	    DO_AEX=""
+	    ;;
+	-c) shift
+	    if test -n "$FSTESTCFG" ; then
+		echo "The '-c' option (or 'smoke') can only be specified once. "
+		echo "If you want to run tests in multiple configurations," \
+			"use -c CFG1,CFG2,..."
+		exit 1
+	    fi
+	    for i in ${1//,/ }
+	    do
+		validate_config_name "$i"
+	    done
+	    FSTESTCFG="$1"
+	    ;;
+	-C) shift
+	    FSTESTOPT="$FSTESTOPT,count,$1"
+	    ;;
+	-m) shift
+	    MNTOPTS="$1"
+	    ;;
+	-r) shift
+	    supported_flavors kvm gce
+	    case "$1" in
+		*[mM])
+		    MEM=$(echo "$1" | sed -e 's/[mM]$//')
+		    ;;
+		*[gG])
+		    temparg=$(echo "$1" | sed -e 's/[gG]$//')
+		    MEM=$(expr "$temparg" \* 1024)
+		    unset temparg
+		    ;;
+		*)
+		    MEM="$1"
+		    ;;
+	    esac
+	    EXPLICIT_RAM=yes
+	    ;;
+	-g) shift
+	    FSTESTSET="$FSTESTSET,-g,$1"
+	    ;;
+	-x) shift
+	    FSTESTSET="$FSTESTSET,-x,$1"
+	    ;;
+	-h|--help|help)
+	    print_help
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    if flavor_in gce ; then
+		IMAGE_FLAG="--image"
+	    fi
+	    ;;
+	-n) shift
+	    supported_flavors kvm gce
+	    NR_CPU="$1"
+	    EXPLICIT_CPU=yes
+	    ;;
+	-o) shift
+	    supported_flavors kvm gce
+	    EXTRA_ARG=$(echo "$1" | sed -e 's/ /:/g')
+	    ;;
+	-v)
+	    supported_flavors kvm gce
+	    if test "$V" = "1" ; then
+		QUIET=""
+		V=2
+	    else
+		QUIET="systemd.show_status=auto systemd.log_level=crit"
+		V=1
+	    fi
+	    ;;
+	-N)
+	    supported_flavors kvm
+	    DO_NET=yes
+	    ;;
+	-O) shift
+	    FSTESTOPT="$FSTESTOPT,extra_opt,$1"
+	    ;;
+	-X) shift
+	    if test -n "$FSTESTEXC" ; then
+		FSTESTEXC="$FSTESTEXC,$1"
+	    else
+		FSTESTEXC="$1"
+	    fi
+	    ;;
+	--blktests)
+	    supported_flavors kvm gce
+	    FSTESTOPT="$FSTESTOPT,blktests"
+	    DO_BLKTESTS=yes
+	    ;;
+	--hooks) shift
+	    supported_flavors gce
+	    GCE_HOOKS="$1"
+	    ;;
+	--image-family) shift
+	    supported_flavors gce
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
+	    ;;
+	--update-xfstests-tar)
+	    supported_flavors kvm gce
+	    UPDATE_XFSTESTS_TAR=yes
+	    UPDATE_XFSTESTS=yes
+	    UPDATE_XFSTESTS_DIR="$DIR/.."
+	    ;;
+	--update-xfstests)
+	    supported_flavors kvm gce
+	    if ! test -f "$DIR/../xfstests.tar.gz"
+	    then
+		echo "The xfstests.tar.gz file has not been built!"
+		exit 1
+	    fi
+	    UPDATE_XFSTESTS=yes
+	    UPDATE_XFSTESTS_DIR="$DIR/.."
+	    ;;
+	--update-files)
+	    supported_flavors kvm gce
+	    UPDATE_FILES=yes
+	    ;;
+	--nfssrv) shift
+	    NFSSRV="$1"
+	    ;;
+	--numa) shift
+	    supported_flavors kvm
+	    NUMA_NUM="$1"
+	    case "$NUMA_NUM" in
+		''|*[!0-9]*)
+		    echo "Invalid number of NUMA nodes: $NUMA_NUM"
+		    exit 1
+	    esac
+	    ;;
+	--cpu-type) shift
+	    supported_flavors kvm
+	    CPU_TYPE="$1"
+	    ;;
+	--no-action)
+	    supported_flavors kvm gce
+	    NO_ACTION="echo -e Would execute:\n\t"
+	    SKIP_LOG=yes
+	    ;;
+	--no-punch)
+	    NO_PUNCH=yes
+	    ;;
+	--no-collapse)
+	    NO_COLLAPSE=yes
+	    ;;
+	--no-insert)
+	    NO_INSERT=yes
+	    ;;
+	--no-zero)
+	    NO_ZERO=yes
+	    ;;
+	--no-log)
+	    supported_flavors kvm android
+	    SKIP_LOG=yes
+	    ;;
+	--log)
+	    supported_flavors kvm android
+	    SKIP_LOG=no
+	    ;;
+	--kernel) shift
+	    KERNEL="$1"
+	    if test -d "$KERNEL" ; then
+		if test -z "$OVERRIDE_MODULES" ; then
+		    if test -f "$KERNEL/modules.tar.xz" ; then
+			MODULES="$KERNEL/modules.tar.xz"
+			OVERRIDE_MODULES="$MODULES"
+		    else
+			MODULES=""
+		    fi
+		fi
+		KERNEL="$KERNEL/arch/x86/boot/bzImage"
+	    fi
+	    OVERRIDE_KERNEL="$KERNEL"
+	    ;;
+	--modules) shift
+	    supported_flavors kvm gce
+	    case "$1" in
+		gs://*)
+		    MODULES="$1"
+		    ;;
+		//*)
+		    MODULES=$(echo "$1" | sed -e "s;//;gs://$GS_BUCKET/;")
+		    ;;
+		none)
+		    MODULES=""
+		    ;;
+		*)
+		    if test -f "$1" ; then
+			MODULES="$1"
+		    else
+			echo "Can't find modules at $1"
+			exit 1
+		    fi
+		    ;;
+	    esac
+	    OVERRIDE_MODULES="$MODULES";
+	    ;;
+	--initrd) shift
+	    supported_flavors kvm
+	    INITRD="$1"
+	    if test ! -f "$INITRD" ; then
+		print_help
+	    fi
+	    ;;
+	--local-ssd)
+	    supported_flavors gce
+	    DO_LOCAL_SSD=yes
+	    ;;
+	--pmem-device)
+	    supported_flavors gce
+	    PMEM_DEVICE=yes
+	    ;;
+	--machtype) shift
+	    supported_flavors gce
+	    GCE_MACHTYPE="$1"
+	    ;;
+	--image-project) shift
+	    supported_flavors gce
+	    GCE_IMAGE_PROJECT="$1"
+	    ;;
+	--instance-name) shift
+	    supported_flavors gce
+	    INSTANCE_NAME="$1"
+	    ;;
+	--no-virtio-rng)
+	    supported_flavors kvm
+	    NO_VIRTIO_RNG=yes
+	    ;;
+	--preemptible|--preempt)
+	    supported_flavors gce
+	    PREEMPTIBLE=yes
+	    ;;
+	--no-preemptible|--no-preempt)
+	    supported_flavors gce
+	    PREMPTIBLE=
+	    ;;
+	--gce-network) shift
+	    supported_flavors gce
+	    GCE_NETWORK="$1"
+	    if ! gcloud compute networks describe "$GCE_NETWORK" > /dev/null ; then
+		echo -e "Invalid GCE network: $GCE_NETWORK"
+		echo -e "To see a list of valid zones, run"
+		echo -e "\tgcloud compute networks list\n"
+		exit 1
+	    fi
+	    ;;
+	--gce-zone) shift
+	    supported_flavors gce
+	    GCE_ZONE="$1"
+	    if ! gcloud compute zones describe "$GCE_ZONE" > /dev/null ; then
+		echo -e "Invalid GCE zone: $GCE_ZONE"
+		echo -e "To see a list of valid zones, run"
+		echo -e "\tgcloud compute zones list\n"
+		exit 1
+	    fi
+	    ;;
+	--gs-bucket) shift
+	    supported_flavors gce
+	    GS_BUCKET="$1"
+	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
+		exit 1
+	    fi
+	    ;;
+	--bucket-subdir) shift
+	    supported_flavors gce
+	    BUCKET_SUBDIR="$1"
+	    ;;
+  --commit) shift
+	    supported_flavors gce
+	    COMMIT="$1"
+      REPO="$GIT_REPO"
+      validate_commit_name $REPO $COMMIT
+	    ;;
+  --config) shift
+	    supported_flavors gce
+	    BUILD_CONFIG="$1"
+      copy_config $BUILD_CONFIG
+	    ;;
+	--testrunid) shift
+	    supported_flavors gce
+	    TESTRUNID="$1"
+	    ;;
+	--email) shift
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL="$1"
+	    ;;
+	--no-email)
+	    supported_flavors gce
+	    GCE_REPORT_EMAIL=""
+	    ;;
+	--no-region-shard)
+	    supported_flavors gce
+	    if test -z "$RUN_ON_LTM"; then
+		echo -e "The --no-region-shard option does not do anything if\n"
+		echo -e "not run on the ltm!\n"
+		echo -e "Use \"gce-xfstests ltm\" to send a command to the ltm\n"
+		exit 1
+	    fi
+	    NO_REGION_SHARD="yes"
+	    ;;
+	--aio) shift
+	    supported_flavors kvm
+	    AIO=",aio=$1"
+	    ;;
+	--cache) shift
+	    supported_flavors kvm
+	    CACHE="$1"
+	    ;;
+	--virtfs) shift
+	    supported_flavors kvm
+	    VIRTFS_PATH="$1"
+	    ;;
+	--virtfs-test) shift
+	    supported_flavors kvm
+	    VIRTFS_TEST_PATH="$1"
+	    ;;
+	--virtfs-scratch) shift
+	    supported_flavors kvm
+	    VIRTFS_SCRATCH_PATH="$1"
+	    ;;
+	--virtfs-model) shift
+	    supported_flavors kvm
+	    VIRTFS_MODEL="$1"
+	    ;;
+	--archive)
+	    supported_flavors kvm
+	    DO_ARCHIVE=1
+	    ;;
+	--no-archive)
+	    supported_flavors kvm
+	    unset DO_ARCHIVE
+	    ;;
+	--stress-opts) shift
+	    supported_flavors kvm gce
+	    stress_opts=$(echo "$1" | sed -e 's/ /,/g')
+	    if test -n "$FSTESTSTR" ; then
+		FSTESTSTR="$FSTESTSTR $stress_opts"
+	    else
+		FSTESTSTR="$stress_opts"
+	    fi
+	    unset stress_opts
+	    ;;
+	--stress-mem) shift
+	    supported_flavors kvm gce
+	    stress_opts="-m,1,--vm-bytes,$1"
+	    if test -n "$FSTESTSTR" ; then
+		FSTESTSTR="$FSTESTSTR $stress_opts"
+	    else
+		FSTESTSTR="$stress_opts"
+	    fi
+	    unset stress_opts
+	    ;;
+	--)
+	    shift
+	    break
+	    ;;
+	*)
+	    echo 1>&2 "Invalid option: \"$1\""
+	    print_help
+	    ;;
+    esac
+    shift
+done
+
+while (( $# >= 1 )); do
+    case "$1" in
+	smoke)
+	    if test -n "$FSTESTCFG" ; then
+		echo "You can use either '-c' or 'smoke', not both! " \
+			"'smoke' means '-c 4k -g quick'."
+		exit 1
+	    fi
+	    FSTESTCFG=4k
+	    FSTESTSET="$FSTESTSET,-g,quick"
+	    ;;
+	quick)
+	    FSTESTSET="$FSTESTSET,-g,quick"
+	    ;;
+	full)
+	    FSTESTSET="$FSTESTSET,-g,auto"
+	    ;;
+	syz)
+	    supported_flavors kvm
+	    shift
+	    if test "$1"x = "x" ; then
+		echo "Missing syzkaller repro"
+		print_help
+		exit 1
+	    fi
+	    mkdir -p "$ourtmp/xfstests/tests"
+	    cp -r "$DIR/test-appliance/syz" "$ourtmp/xfstests/tests"
+	    repro="$1"
+	    case "$repro" in
+		https://syzkaller*repro.syz*)
+		    curl -o "$ourtmp/repro.syz" "$repro"
+		    ed "$ourtmp/repro.syz" >& /dev/null <<EOF
+1i
+# Downloaded from $repro
+.
+w
+q
+EOF
+		    repro="$ourtmp/repro.syz"
+		    save_copy="/tmp/$USER-downloaded-repro.syz"
+		    cp $repro "$save_copy"
+		    echo "Saved downloaded copy at $save_copy"
+		    ;;
+		https://syzkaller*repro.c*)
+		    curl -o "$ourtmp/repro.c" "$repro"
+		    ed "$ourtmp/repro.c" >& /dev/null <<EOF
+1i
+// Downloaded from $repro
+.
+w
+q
+EOF
+		    repro="$ourtmp/repro.c"
+		    save_copy="/tmp/$USER-downloaded-repro.c"
+		    cp $repro "$save_copy"
+		    echo "Saved downloaded copy at $save_copy"
+		    ;;
+		https://*)
+		    echo "Unknown URL: $repro"
+		    exit 1
+		    ;;
+	    esac
+	    case "$repro" in
+		*.c)
+		    if test -f "$repro" ; then
+			exe="$ourtmp/xfstests/tests/syz/001.exe"
+			if ! gcc -o $exe -static $repro -lpthread ; then
+			    echo "Failed to build $repro"
+			    exit 1;
+			fi
+		    else
+			echo "Reproduction file $repro not found"
+			exit 1
+		    fi
+		    ;;
+		*.syz)
+		    if ! test -f "$repro" ; then
+			echo "Reproduction file $repro not found"
+			exit 1
+		    fi
+		    cp "$repro" "$ourtmp/xfstests/tests/syz/001.syz"
+		    ;;
+		*)
+		    if ! test -f "$repro" ; then
+			echo "Reproduction file $repro not found"
+			exit 1
+		    fi
+		    if ! test -x "$repro" ; then
+			echo "Reproduction file $repro not executable"
+			exit 1
+		    fi
+		    cp "$repro" "$ourtmp/xfstests/tests/syz/001.exe"
+		    ;;
+	    esac
+	    tar -C "$ourtmp" -cvz -f "$ourtmp/extra-tests.tar.gz" xfstests \
+		>& /dev/null
+	    UPDATE_EXTRA_TESTS=yes
+	    FSTESTSET="$FSTESTSET,syz/001"
+	    ;;
+	launch)
+	    supported_flavors gce
+	    ARG="cmd=maint"
+	    NO_SSH=yes
+	    ;;
+	shell)
+	    ARG="cmd=maint"
+	    ;;
+	maint)
+	    if ! flavor_in gce ; then
+		ARG="cmd=maint"
+		EPH="-root_ephemeral=no"
+		SNAPSHOT=""
+	    else
+		ARG="cmd=maint"
+		if test -z "$GCE_MACHTYPE"
+		then
+		    GCE_MACHTYPE="f1-micro"
+		fi
+		OVERRIDE_KERNEL="none"
+	    fi
+	    ;;
+	ver)
+	    ARG="cmd=ver"
+	    ;;
+	*)
+	    validate_test_name "$1"
+	    FSTESTSET="$FSTESTSET,$1"
+	    ;;
+    esac
+    shift
+done
+
+if test -z "$FSTESTCFG" ; then
+    FSTESTCFG=all
+fi
+
+if test -n "$RUN_ON_LTM" -a -n "$DO_BLKTESTS"
+then
+    echo "Block tests can not be using LTM"
+    exit 1
+fi
+
+if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" -a -z "$RUN_ON_BLDSRV"
+then
+    echo -e "No tests specified!\n"
+    print_help
+    exit 1
+fi
+
+if test "$ARG" = "cmd=maint" -a -z "$SKIP_LOG" ; then
+  SKIP_LOG=yes
+fi
+
+if test "$ARG" = "cmd=ver" -a -z "$SKIP_LOG" ; then
+  SKIP_LOG=yes
+fi
+
+if test "$DO_AEX" = yes ; then
+    FSTESTOPT="$FSTESTOPT,aex"
+fi
+
+if test "$NO_PUNCH" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_punch"
+fi
+
+if test "$NO_COLLAPSE" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_collapse"
+fi
+
+if test "$NO_INSERT" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_insert"
+fi
+
+if test "$NO_ZERO" = yes ; then
+    FSTESTOPT="$FSTESTOPT,no_zero"
+fi
+
+FSTESTOPT=${FSTESTOPT/#,/}
+
+case "$FSTESTCFG" in
+    dax|dax,*|*,dax,*|*,dax)
+	PMEM_DEVICE=yes
+	;;
+    nfs|nfs,*|*,nfs,*|*,nfs)
+	if test -z "$NFSSRV" ; then
+	    NFSSRV=filestore
+	fi
+esac
+
+if test "$SKIP_LOG" = no ; then
+   unset SKIP_LOG
+fi
+
+if test -n "$ARG" ; then
+    :
+elif test -n "$DO_BLKTESTS" ; then
+    ARG="fstestopt=$FSTESTOPT"
+    if test -n "$FSTESTSET" ; then
+     FSTESTSET=${FSTESTSET/#,/}
+     ARG="$ARG fstestset=$FSTESTSET"
+    fi
+elif test -n "$FSTESTSET"; then
+     FSTESTSET=${FSTESTSET/#,/}
+     ARG="fstestcfg=$FSTESTCFG fstestset=$FSTESTSET fstestopt=$FSTESTOPT"
+fi
+if test -n "$FSTESTEXC" ; then
+    ARG="$ARG fstestexc=$FSTESTEXC"
+fi
+
+if test -n "$MNTOPTS" ; then
+    ARG="$ARG mount_opts=$MNTOPTS"
+fi
+
+if test -n "$NFSSRV" ; then
+    ARG="$ARG nfssrv=$NFSSRV"
+fi
+
+if test -n "$TZ" ; then
+    ARG="$ARG fstesttz=$TZ"
+fi
+
+if test -n "$DO_ARCHIVE" ; then
+    ARG="$ARG fstestarc=$DO_ARCHIVE"
+fi
+
+if test -z "$OVERRIDE_KERNEL" ; then
+    if test -f .git/kbuild/config ; then
+	t=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
+	if test -n "$t" -a "$KERNEL" != "$t" -a \
+		"$KERNEL" != "$t/arch/x86/boot/bzImage" ; then
+	    echo "Detected kbuild config; using $t for kernel"
+	    KERNEL=$t
+	    OVERRIDE_KERNEL=$t
+	    if test -z "$OVERRIDE_MODULES" ; then
+		MODULES=
+	    fi
+	fi
+    elif test -f "./arch/x86/boot/bzImage" ; then
+	t=$(pwd)
+	if test "$KERNEL" != "$t" -a "$KERNEL" != "$t/arch/x86/boot/bzImage"
+	then
+	    echo "Current directory appears to be a kernel tree; using it"
+	    KERNEL=$t
+	    OVERRIDE_KERNEL=$t
+	    if test -z "$OVERRIDE_MODULES" ; then
+		MODULES=
+	    fi
+	fi
+    fi
+    if test -d "$KERNEL" ; then
+	if test -f "$KERNEL/modules.tar.xz" -a -z "$OVERRIDE_MODULES"; then
+	    MODULES="$KERNEL/modules.tar.xz"
+	    OVERRIDE_MODULES="$KERNEL/modules.tar.xz"
+	fi
+	KERNEL="$KERNEL/arch/x86/boot/bzImage"
+	OVERRIDE_KERNEL="$KERNEL"
+    fi
+fi
+
+if test -n "$UPDATE_XFSTESTS_TAR" ; then
+    (cd $DIR/.. ; ./gen-tarball --fast)
+fi
+
+if test -n "$PMEM_DEVICE" ; then
+    if test -n "$EXTRA_ARG" ; then
+	EXTRA_ARG="$EXTRA_ARG:"
+    fi
+    EXTRA_ARG="${EXTRA_ARG}"'memmap=4G!9G:memmap=9G!14G'
+    if test -z "$EXPLICIT_RAM" -a -z "$GCE_MACHTYPE"; then
+	MEM=26624
+	NR_CPU=4
+	EXPLICIT_RAM=yes
+	EXPLICIT_CPU=yes
+    elif test "$MEM" -lt 14436 ; then
+	MEM=14436
+    fi
+fi
+
+if test -n "$NUMA_NUM" ; then
+    if test "$NUMA_NUM" -lt 2 ; then
+	echo "Invalid number of NUMA nodes ($NUMA_NUM) too small"
+	exit 1
+    fi
+    if test "$NUMA_NUM" -gt "$NR_CPU" ; then
+	echo "Can't have more NUMA nodes than CPUs"
+	exit 1
+    fi
+    NUMA="-numa node"
+    for i in $(seq 2 "$NUMA_NUM") ; do
+	NUMA="$NUMA -numa node"
+    done
+fi
+
+if test -n "$CPU_TYPE" ; then
+    if test "$CPU_TYPE" = none ; then
+	CPU_TYPE=
+    else
+	CPU_TYPE="-cpu $CPU_TYPE"
+    fi
+fi
+
+if test -z "$NO_VIRTIO_RNG" ; then
+    VIRTIO_RNG="-object rng-random,filename=/dev/urandom,id=rng0 \
+	-device virtio-rng-pci,rng=rng0"
+fi
+
+ARG="$ARG fstesttyp=$PRIMARY_FSTYPE fstestapi=$API"
+
+if test -n "$FSTESTSTR" ; then
+    ARG="$ARG fsteststr=$FSTESTSTR"
+fi

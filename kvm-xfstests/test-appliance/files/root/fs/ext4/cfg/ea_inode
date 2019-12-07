@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-O ea_inode"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="xattr values in inodes"

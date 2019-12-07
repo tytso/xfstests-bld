@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-O large_dir"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Large directories"

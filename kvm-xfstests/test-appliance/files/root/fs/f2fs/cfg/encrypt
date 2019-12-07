@@ -1,0 +1,5 @@
+SIZE=small
+export MKFS_OPTIONS="-O encrypt"
+export F2FS_MOUNT_OPTIONS="test_dummy_encryption"
+REQUIRE_FEATURE=encryption
+TESTNAME="F2FS encryption"

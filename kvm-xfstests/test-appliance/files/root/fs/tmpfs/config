@@ -1,0 +1,52 @@
+#
+# Configuration file for tmpfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	 return 0
+}
+
+function format_filesystem()
+{
+	 return 0
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$TMPFS_MOUNT_OPTIONS" ; then
+            export TMPFS_MOUNT_OPTIONS="$TMPFS_MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    export TMPFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    :
+}
+
+
+function show_mkfs_opts()
+{
+    :
+}
+
+function show_mount_opts()
+{
+    echo TMPFS_MOUNT_OPTIONS: "$TMPFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset TMPFS_MOUNT_OPTIONS
+}

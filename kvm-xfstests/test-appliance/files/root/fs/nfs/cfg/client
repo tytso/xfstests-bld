@@ -1,0 +1,34 @@
+if test -n "$RUN_ON_GCE" -a "$NFSSRV" = "filestore" ; then
+    TEST_DEV="$FILESTORE_TOP/$FILESTORE_SUBDIR/test"
+    SCRATCH_DEV="$FILESTORE_TOP/$FILESTORE_SUBDIR/scratch"
+else
+    case "$NFSSRV" in
+	*:|*:/*)
+	    TEST_DEV="$NFSSRV/test"
+	    SCRATCH_DEV="$NFSSRV/scratch"
+	    ;;
+	*)
+	    TEST_DEV="$NFSSRV:/test"
+	    SCRATCH_DEV="$NFSSRV:/scratch"
+	    ;;
+    esac
+fi
+export TEST_DEV SCRATCH_DEV
+
+export TEST_DIR=/mnt/test
+export SCRATCH_MNT=/mnt/scratch
+case "$TC" in
+     *v4)
+	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=4"
+	 ;;
+     *v3)
+	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=3"
+	 ;;
+     *v2)
+	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=2"
+	 ;;
+     *)
+	 export NFS_MOUNT_OPTIONS="-o rw,relatime"
+	 ;;
+esac
+TESTNAME="nfs client-only"

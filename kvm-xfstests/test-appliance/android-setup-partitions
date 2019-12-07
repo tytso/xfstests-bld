@@ -1,0 +1,395 @@
+#!/bin/bash
+#
+# This script runs inside the Debian chroot on Android and sets up the xfstests
+# partitions.  We create the xfstests partitions in the area that is part of the
+# userdata partition on-disk but becomes unused by the userdata filesystem after
+# it is reformatted with a smaller size.  We number the xfstests partitions
+# starting at 100 (arbitrary), so they'll show up as /dev/block/sda100,
+# /dev/block/sda101, etc.  We also create symlinks like
+# /dev/block/xfstests/PRI_TST_DEV => /dev/block/sda100.
+#
+# We set up the partitions transiently, by changing the kernel's view of the
+# partitions.  The on-disk partition table is untouched.  Therefore, the
+# partitions will revert to normal after a reboot, and android-xfstests will
+# have to set them up again.  This has two main advantages: (1) it makes it
+# harder to mess things up and easier to revert the device to its original
+# state, and (2) it works even on devices that don't reserve enough extra
+# entries in their partition tables.  (While GPT partition tables normally have
+# space for 128 partitions, one Android device I tested had 35 partitions with
+# just 36 entries in the GPT, so only one more partition could be created!)
+#
+
+set -e -u -o pipefail
+RESULT_FILE=/setup-partitions-result
+rm -f $RESULT_FILE
+
+# Partitions to create: their names, their sizes in GiB, and whether they are
+# required or not.  If a partition is not required, then we create it only if
+# there is enough space.
+PARTITION_NAMES=(PRI_TST_DEV SM_TST_DEV SM_SCR_DEV LG_TST_DEV LG_SCR_DEV)
+PARTITION_SIZES=(5 5 5 20 20)
+PARTITION_REQUIRED=(true true true false false)
+
+BYTES_PER_GIB=$(( 1 << 30 ))
+START_PARTITION_NUMBER=100
+USERDATA_SHRUNKEN_SIZE=$(( 4 * BYTES_PER_GIB ))
+
+finished()
+{
+    echo "$*" > $RESULT_FILE
+    exit 0
+}
+
+die()
+{
+    echo 1>&2 "[ERROR] android-setup-partitions: $*"
+    exit 1
+}
+
+# Pretty-print a byte count
+pprint_bytes()
+{
+    local bytes=$1
+    echo "$(( bytes / BYTES_PER_GIB )) GiB ($bytes bytes)"
+}
+
+# Get the number of the given partition
+get_partition_number()
+{
+    local dev=$1
+    echo $dev | egrep -o '[0-9]+$'
+}
+
+# Get the size in bytes of the given partition, as stored in the partition table
+get_partition_disk_size()
+{
+    local dev=$1
+    local sectors=$(partx --output SECTORS --noheadings $dev)
+    echo $(( sectors * 512 ))
+}
+
+# Get the size in bytes of the given partition, as viewed by the kernel
+get_partition_size()
+{
+    local dev=$1
+    local sectors=$(< /sys/class/block/$(basename $dev)/size)
+    echo $(( sectors * 512 ))
+}
+
+# Get the start offset in bytes of the given partition, as viewed by the kernel.
+# (If the partition is also in the partition table, the start offset should be
+# the same, at least based on what this script does.)
+get_partition_start()
+{
+    local dev=$1
+    local start_sector=$(< /sys/class/block/$(basename $dev)/start)
+    echo $(( start_sector * 512 ))
+}
+
+# Find the device node for the raw userdata partition, e.g. /dev/block/sda35
+find_userdata_partition()
+{
+    local link=/dev/block/bootdevice/by-name/userdata
+    if [ ! -L $link ]; then
+	die "There's no symlink to the userdata partition at $link. " \
+	    "Please update this script to support your device!"
+    fi
+    local dev=$(readlink $link)
+    if [ ! -b $dev ]; then
+	die "Unable to find the userdata partition"
+    fi
+    if ! echo $dev | egrep -q '[0-9]+$'; then
+	die "Name of userdata device node has an unexpected format: \"$dev\""
+    fi
+    echo $dev
+}
+
+# If the named device-mapper device exists, then find its device node.
+find_dm_device_by_name()
+{
+    local dm_device_name=$1
+    if ls /sys/class/block/ | egrep -q 'dm-[0-9]+$'; then
+	for dir in /sys/class/block/dm-*; do
+	    if [ $dm_device_name = $(< $dir/dm/name) ]; then
+		local dev=/dev/block/$(basename $dir)
+		if [ ! -b $dev ]; then
+		    die "Device-mapper device \"$dm_device_name\" exists," \
+		        "but couldn't find its device node.  Expected $dev"
+		fi
+		echo $dev
+		return
+	    fi
+	done
+    fi
+}
+
+# Validate that the given device-mapper device uses only a single target, and
+# that the target is backed by the given underlying ("raw") device, starting
+# from the beginning of the device.
+validate_dm_device()
+{
+    local dm_dev=$1
+    local expected_raw_dev=$2
+
+    local dm_devname=$(< /sys/class/block/$(basename $dm_dev)/dm/name)
+    local num_targets=$(dmsetup table $dm_devname | wc -l)
+    case $num_targets in
+    0)
+	die "device-mapper device \"$dm_devname\" does not exist," \
+	    "or we were unable to display its table."
+	;;
+    1)
+	;;
+    *)
+	die "device-mapper device \"$dm_devname\" contains multiple targets," \
+	    "which is not yet supported."
+	;;
+    esac
+    local table=($(dmsetup table $dm_devname))
+
+    local target_type=${table[2]}
+    case $target_type in
+    crypt)
+	local raw_devno=${table[6]}
+	local start_sector=${table[7]}
+	;;
+    default-key)
+	local raw_devno=${table[5]}
+	local start_sector=${table[6]}
+	;;
+    *)
+	die "device-mapper device \"$dm_devname\" uses target type" \
+	    "\"$target_type\", which is not yet supported."
+	;;
+    esac
+
+    if ! echo "$start_sector" | egrep -q '^[0-9]+$' ||
+       ! echo "$raw_devno" | egrep -q '^[0-9]+:[0-9]+$'; then
+	die "device-mapper device \"$dm_devname\" uses target with" \
+	    "unsupported table format: ${table[@]}"
+    fi
+
+    local expected_raw_major=$(( 0x$(stat -c %t $expected_raw_dev) ))
+    local expected_raw_minor=$(( 0x$(stat -c %T $expected_raw_dev) ))
+    if [ $raw_devno != $expected_raw_major:$expected_raw_minor ]; then
+	die "device-mapper device \"$dm_devname\" is backed by device" \
+	    "$raw_devno, not by $expected_raw_dev as was expected."
+    fi
+    local raw_dev=$expected_raw_dev
+
+    if (( start_sector != 0 )); then
+	die "device-mapper device \"$dm_devname\" is backed by $raw_dev" \
+	    "starting at sector $start_sector, but only a start sector of 0" \
+	    "is supported currently."
+    fi
+
+    if (( $(get_partition_size $dm_dev) > $(get_partition_disk_size $raw_dev) ))
+    then
+	die "device-mapper device \"$dm_devname\" is larger than its" \
+	    "underlying on-disk partition $raw_dev!  This is not expected."
+    fi
+}
+
+# Check whether all the needed partitions are present and are large enough
+all_partitions_present()
+{
+    local i
+    for i in ${!PARTITION_NAMES[@]}; do
+	local link=/dev/block/xfstests/${PARTITION_NAMES[$i]}
+	if [ ! -L $link ]; then
+	    return 1
+	fi
+	local dev=$(readlink $link)
+	local wanted_size=$(( ${PARTITION_SIZES[$i]} * BYTES_PER_GIB ))
+	local actual_size=$(get_partition_size $dev)
+	if [ -z "$actual_size" ] || (( actual_size < wanted_size )); then
+	    return 1
+	fi
+    done
+    return 0
+}
+
+# Extract a little-endian binary field from a file or device.
+extract_binval()
+{
+    local file="$1"
+    local offset="$2"
+    local size="$3"
+
+    od "$file" -j $offset -N $size -t x$size -A none --endian=little \
+	| sed 's/^[[:space:]]*/0x/'
+}
+
+# Get the size of the filesystem on the specified device.
+get_fs_size()
+{
+    local device="$1" fstype="$2"
+
+    case "$fstype" in
+    ext4)
+	dumpe2fs -h "$device" 2>/dev/null | \
+	    awk '/^Block count:/{blockcount=$3}
+		 /^Block size:/{blocksize=$3}
+		  END { print blockcount * blocksize }'
+	;;
+    f2fs)
+	local super_offset=1024
+	local magic log_blocksize block_count
+
+	# see 'struct f2fs_super_block'
+	magic=$(extract_binval "$device" $super_offset 4)
+	log_blocksize=$(extract_binval "$device" $(( super_offset + 16 )) 4)
+	block_count=$(extract_binval "$device" $(( super_offset + 36 )) 8)
+
+	if (( magic != 0xF2F52010 )); then
+	    die "f2fs superblock not found on \"$device\""
+	fi
+	echo $(( block_count * (1 << log_blocksize) ))
+	;;
+    *)
+	die "unsupported filesystem type \"$fstype\" on \"$device\""
+	;;
+    esac
+}
+
+# Transiently shrink the userdata partition, as viewed by the kernel, if it's
+# not fully used by the filesystem on it.
+#
+# We don't currently bother to shrink the dm device, if any, that's above the
+# userdata partition.  That isn't necessary, since resizing the underlying
+# partition to a size smaller than the dm device just causes I/O requests to the
+# truncated region to fail, and normally there should be no I/O occurring beyond
+# the end of the filesystem.  Exception: this makes 'blkid' stop reporting
+# information about the device, unless blkid's -p and -S options are used.
+shrink_userdata_partition()
+{
+    local fs_size part_size
+
+    fs_size=$(get_fs_size "$USERDATA_FS_DEV" "$USERDATA_FS_TYPE")
+    part_size=$(get_partition_size "$USERDATA_RAW_DEV")
+
+    if (( fs_size <= 0 )); then
+	die "unable to determine size of userdata filesystem"
+    fi
+    if (( fs_size % 512 != 0 )); then
+	die "Weird: the userdata filesystem takes up $fs_size bytes," \"
+	    "which is not a whole number of 512-byte sectors!"
+    fi
+    if (( part_size < fs_size )); then
+	die "Weird: the userdata partition is only $part_size bytes," \
+	    "but the filesystem on it is $fs_size bytes!"
+    fi
+    if (( part_size == fs_size )); then
+	return 0
+    fi
+    echo "Shrinking userdata partition..."
+    echo "    Old size: $(pprint_bytes $part_size)"
+    echo "    New size: $(pprint_bytes $fs_size)"
+    resizepart $DISK_DEV $(get_partition_number $USERDATA_RAW_DEV) \
+		$(( fs_size / 512 ))
+}
+
+# Delete the existing xfstests partitions, if any.
+delete_xfstests_partitions()
+{
+    if [ -d /dev/block/xfstests ] && \
+      (( $(ls /dev/block/xfstests | wc -l) != 0 )); then
+	local link
+	for link in /dev/block/xfstests/*; do
+	    local dev=$(readlink $link)
+	    umount $dev &> /dev/null || true
+	    local partno=$(get_partition_number $dev)
+	    delpart $DISK_DEV $partno
+	    rm $link
+	done
+    fi
+}
+
+create_xfstests_partitions()
+{
+    local userdata_start=$(get_partition_start $USERDATA_RAW_DEV)
+
+    # Start allocating after the end of the userdata partition as viewed by the
+    # kernel, which may be smaller than the partition on-disk.
+    local start=$(( userdata_start + $(get_partition_size $USERDATA_RAW_DEV) ))
+
+    if [ $USERDATA_FS_DEV = $USERDATA_RAW_DEV ]; then
+	# Raw partition: we can allocate until the end of the partition on-disk.
+	local end=$(( userdata_start +
+		      $(get_partition_disk_size $USERDATA_RAW_DEV) ))
+    else
+	# DM device: we can allocate only until the end of the dm target.  This
+	# ensures we don't overwrite anything extra like a crypto footer which
+	# may be present on the partition after the dm target.
+	local end=$(( userdata_start +
+		      $(get_partition_size $USERDATA_FS_DEV) ))
+    fi
+    local orig_start=$start
+    local alignment=$(( 1 << 20 )) # 1 MiB alignment, for good measure
+    local i
+
+    local total_size_required=0
+    for i in ${!PARTITION_NAMES[@]}; do
+	if ${PARTITION_REQUIRED[$i]}; then
+	    total_size_required=$(( total_size_required +
+				    BYTES_PER_GIB * ${PARTITION_SIZES[$i]} ))
+	fi
+    done
+
+    mkdir -p /dev/block/xfstests
+    for i in ${!PARTITION_NAMES[@]}; do
+	start=$(( start + (alignment - start % alignment) % alignment ))
+	local name=${PARTITION_NAMES[$i]}
+	local size=$(( BYTES_PER_GIB * ${PARTITION_SIZES[$i]} ))
+	local remaining=$(( end - start ))
+	local partno=$(( START_PARTITION_NUMBER + i ))
+	if (( size > remaining )); then
+	    if ! ${PARTITION_REQUIRED[$i]}; then
+		echo "Not enough space to create the $name partition."
+		continue
+	    fi
+	    # Not enough space!  Check whether we should shrink userdata or not.
+	    local shrunken_start=$(( userdata_start + USERDATA_SHRUNKEN_SIZE ))
+	    if (( orig_start > shrunken_start &&
+		  shrunken_start + total_size_required <= end )); then
+		finished "shrink_userdata"
+	    else
+		finished "insufficient_space"
+	    fi
+	fi
+	echo "$name is ${DISK_DEV}${partno}: $(pprint_bytes $size) at offset $start"
+	addpart $DISK_DEV $partno $(( start / 512)) $(( size / 512 ))
+	ln -s ${DISK_DEV}${partno} /dev/block/xfstests/$name
+	start=$(( start + size ))
+    done
+}
+
+# Device node for the raw userdata partition, e.g. /dev/block/sda35
+USERDATA_RAW_DEV=$(find_userdata_partition)
+
+# Device node for disk containing userdata partition, e.g. /dev/block/sda.
+# This is the Android device's internal storage.
+DISK_DEV=${USERDATA_RAW_DEV%%[0-9]*}
+
+# Block device containing the userdata filesystem.  This can be either
+# USERDATA_RAW_DEV or a device-mapper device above USERDATA_RAW_DEV.
+USERDATA_FS_DEV=$(find_dm_device_by_name "userdata")
+if [ -n "$USERDATA_FS_DEV" ]; then
+    validate_dm_device $USERDATA_FS_DEV $USERDATA_RAW_DEV
+else
+    USERDATA_FS_DEV=$USERDATA_RAW_DEV
+fi
+
+# Type of the userdata filesystem, e.g. ext4 or f2fs
+USERDATA_FS_TYPE=$(blkid -s TYPE -o value \
+		   -p -S $(get_partition_size "$USERDATA_RAW_DEV") \
+		   "$USERDATA_FS_DEV")
+
+if ! all_partitions_present ; then
+    # Free up as much space as we can, then create the partitions.
+    shrink_userdata_partition
+    delete_xfstests_partitions
+    create_xfstests_partitions
+fi
+
+finished "ready"

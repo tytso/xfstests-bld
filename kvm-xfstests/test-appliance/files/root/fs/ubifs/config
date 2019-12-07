@@ -1,0 +1,180 @@
+#
+# Configuration file for ubifs
+#
+# UBIFS is a filesystem for unmanaged flash memory devices, so it needs an
+# emulation layer to use block devices.  Currently we use 'blockmtd' to emulate
+# MTD devices on top of the xfstests partitions, then make UBI devices and UBI
+# volumes on top of them.  This approach has some limitations (it takes a long
+# time to 'ubiformat' the emulated MTD devices, and the partitions cannot be
+# reused to test other filesystems until the VM is rebooted), but it's better
+# than nothing.
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    # there is no fsck.ubifs yet
+    :
+}
+
+# Find the MTD device which is backed by the specified block device
+function __mtd_find()
+{
+    local blkdev=$1 mtd_dir
+
+    for mtd_dir in /sys/class/mtd/*; do
+	if [[ $mtd_dir =~ ^.*/mtd[0-9]+$ ]] &&
+	   [[ $(awk '/^block2mtd:/{print $2}' $mtd_dir/name) == $blkdev ]]
+	then
+	    echo /dev/$(basename $mtd_dir)
+	    return
+	fi
+    done
+}
+
+# Find or create the MTD device which is backed by the specified block device
+function __mtd_find_or_create()
+{
+    local blkdev=$1 mtd
+
+    if [ ! -e /sys/module/block2mtd ]; then
+	echo 1>&2 "Error: CONFIG_MTD_BLOCK2MTD=y is required to emulate flash device for ubifs!"
+	return
+    fi
+
+    mtd=$(__mtd_find $blkdev)
+    if [ ! -c "$mtd" ]; then
+	# Create a new block2mtd device.  For now choose an eraseblock size of
+	# 128 KiB.  I'm not sure if that's the best value or not.
+	echo "$blkdev,131072" > /sys/module/block2mtd/parameters/block2mtd
+	mtd=$(__mtd_find $blkdev)
+    fi
+    echo $mtd
+}
+
+# Find the UBI device which has the specified mtd device attached
+function __ubi_find()
+{
+    local mtd_num="${1#/dev/mtd}" ubi_dir
+
+    for ubi_dir in /sys/class/ubi/*; do
+	if [[ $ubi_dir =~ ^.*/ubi[0-9]+$ ]] &&
+	   [[ $(<$ubi_dir/mtd_num) == $mtd_num ]]
+	then
+	    echo /dev/$(basename $ubi_dir)
+	    return
+	fi
+    done
+}
+
+# Find or create the UBI device which has the specified mtd device attached
+function __ubi_find_or_create()
+{
+    local mtd="$1" ubi
+
+    ubi=$(__ubi_find $mtd)
+    if [ ! -c "$ubi" ]; then
+	if ! ubiattach -p $mtd &> /dev/null; then
+	    # ubiattach didn't work; try formatting the MTD device first.
+	    # Note: since this requires writing to the entire device, it may be
+	    # *very* slow...
+	    echo 1>&2 "Formatting $mtd with ubiformat (this may take a while!)..."
+	    ubiformat -e 0 -y $mtd > /dev/null
+	    ubiattach -p $mtd > /dev/null
+	fi
+	ubi=$(__ubi_find $mtd)
+    fi
+    echo $ubi
+}
+
+
+#
+# Find or create the UBI volume backed by the specified block device.
+#
+# There are four types of devices in play here.  Here's an example:
+#
+#	/dev/vdb     --- Block device
+#	/dev/mtd0    --- MTD device backed by /dev/vdb using block2mtd
+#	/dev/ubi0    --- UBI device to which /dev/mtd0 is attached
+#	/dev/ubi0_0  --- UBI volume within /dev/ubi0
+#
+# In this example, this function would take in /dev/vdb as $1 and echo back
+# /dev/ubi0_0, creating it and the two intermediary devices if needed.
+#
+function __blkdev_to_ubi_volume()
+{
+    local blkdev=$1 mtd ubi ubivol
+
+    if [ ! -b "$blkdev" ]; then
+	echo 1>&2 "Error: block device \"$blkdev\" not found!"
+	return
+    fi
+
+    mtd=$(__mtd_find_or_create $blkdev)
+    if [ ! -c "$mtd" ]; then
+	echo 1>&2 "Error: Failed to create MTD device from $blkdev!"
+	return
+    fi
+
+    ubi=$(__ubi_find_or_create $mtd)
+    if [ ! -c "$ubi" ]; then
+	echo 1>&2 "Error: Failed create UBI device from $mtd!"
+	return
+    fi
+
+    ubivol=${ubi}_0
+    if [ ! -c "$ubivol" ]; then
+	ubimkvol $ubi -N vol -m > /dev/null
+	if [ ! -c "$ubivol" ]; then
+	    echo 1>&2 "Error: Failed to create UBI volume $ubivol from $ubi"
+	    return
+	fi
+    fi
+    echo $ubivol
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+
+    mkfs.ubifs -y $opts "$dev"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$UBIFS_MOUNT_OPTIONS" ; then
+	    UBIFS_MOUNT_OPTIONS="$UBIFS_MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    UBIFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo MKFS_OPTIONS: "$MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo UBIFS_MOUNT_OPTIONS: "$UBIFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset UBIFS_MOUNT_OPTIONS
+    unset MKFS_OPTIONS
+}

@@ -1,0 +1,146 @@
+#!/bin/bash
+# vars used:
+# util/get-config: GS_BUCKET, GCE_ZONE, GCE_PROJECT
+
+XFSTESTS_FLAVOR=gce
+t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+eval DIR="\$$t"
+if test -z "$DIR"
+then
+    t="$(dirname "$(dirname "$0")")/lib/xfstests-appliance"
+    if test -d "$t"
+    then
+	DIR="$t"
+    fi
+fi
+if test -z "$DIR"
+then
+    DIR=$(pwd)
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
+fi
+
+. "$DIR/util/get-config"
+
+INSTANCE="xfstests-bldsrv"
+
+NO_ACTION=""
+if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
+    $INSTANCE >& /dev/null
+then
+    if [ -f $DIR/.bldsrv_instance ]
+    then
+	echo "The build server instance already exists!"
+	exit 1
+    else
+	echo "The build server instance already exists, but .bldsrv_instance is not present."
+	echo "Re-creating .bldsrv_instance..."
+	NO_ACTION=": "
+    fi
+fi
+if ! gsutil -q stat "gs://$GS_BUCKET/ltm-pass" &> /dev/null
+then
+    echo "There is no password in your GS bucket $GS_BUCKET"
+    echo "for the build server to authenticate requests with."
+    echo "You can generate a password by running gce-xfstests setup, or by"
+    echo "uploading a password of your choice (a string) to your bucket at"
+    echo "gs://$GS_BUCKET/ltm-pass"
+    echo "The password will automatically be used by the bld command line"
+    echo "option."
+    exit 1
+fi
+
+GCE_BLDSRV_MACHTYPE="n2-standard-4"
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
+
+PREEMPTIBLE="--maintenance-policy MIGRATE"
+ROOT_FS="xfstests"
+IMAGE_FLAG="--image-family"
+
+ARG="gs_bucket=$GS_BUCKET serial-port-enable=true"
+ARG="$ARG gce_xfs_bldsrv=YES"
+if test -n "$TZ" ; then
+    ARG="$ARG fstesttz=$TZ"
+fi
+
+if ! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
+then
+    echo "You do not have a generated SSL certificate in your GCS bucket."
+    echo "It is not possible to communicate with the build server."
+    echo "Please run gce-xfstests setup and then restart the build server."
+    exit 1
+fi
+
+if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+then
+    echo "You must run gce-xfstests setup to upload a .config file"
+    echo "to your GCS bucket."
+    exit 1
+fi
+
+echo "Launching build server..."
+touch $DIR/.bldsrv_instance
+LAUNCH_BLDSRV_EXIT_STATUS=1
+trap 'if [ $LAUNCH_BLDSRV_EXIT_STATUS != 0 ]; then rm $DIR/.bldsrv_instance; fi' EXIT
+
+$NO_ACTION gcloud compute --project "$GCE_PROJECT" \
+    instances create "$INSTANCE" --zone "$GCE_ZONE" \
+    --machine-type "$GCE_BLDSRV_MACHTYPE" --network "$GCE_NETWORK" \
+    --boot-disk-size 50GB \
+    $PREEMPTIBLE \
+    --scopes "$SCOPES" \
+    --metadata "^ ^$ARG" \
+    --tags http-server,https-server \
+    --image-project "${GCE_IMAGE_PROJECT}" \
+    "$IMAGE_FLAG" "$ROOT_FS"
+
+if [ $? != 0 ]
+then
+    echo "Could not start the build server."
+    exit 1
+fi
+
+if [ ! -f $DIR/.gce_xfstests_cert.pem ]
+then
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert.pem
+fi
+
+echo "GCE_BLDSRV_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.bldsrv_instance
+echo "GCE_BLDSRV_NAME=$INSTANCE" >> $DIR/.bldsrv_instance
+echo -n "GCE_BLDSRV_EXT_IP=" >> $DIR/.bldsrv_instance
+echo -n "Waiting for VM to boot to grab external IP..."
+
+function wait_for_command() {
+    local my_cmd=$1
+    local cnt=0
+    until $my_cmd &> /dev/null
+    do
+	(( cnt += 1 ))
+	if (( cnt >= 5 )); then
+	    echo -n "."
+	    cnt=0
+	fi
+	sleep 1
+    done
+}
+wait_for_command "gcloud compute instances describe \
+    --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE"
+echo " Done!"
+
+gcloud compute instances describe "$INSTANCE" \
+       --project "$GCE_PROJECT" --zone "$GCE_ZONE" | \
+    grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.bldsrv_instance
+
+echo -n "Fetching password..."
+wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
+echo -n "GCE_BLDSRV_PWD=" >> $DIR/.bldsrv_instance
+gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.bldsrv_instance
+LAUNCH_BLDSRV_EXIT_STATUS=0
+echo "Done!"

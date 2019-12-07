@@ -1,0 +1,91 @@
+Summary: Utilities for managing filesystem extended attributes.
+Name: @pkg_name@
+Version: @pkg_version@
+Release: @pkg_release@
+Packager: Silicon Graphics, Inc. <http://www.sgi.com/>
+BuildRoot: @build_root@
+Prereq: /sbin/ldconfig
+Conflicts: xfsdump < 2.0.0
+Source: @pkg_name@-@pkg_version@.src.tar.gz
+License: GPL
+Vendor: Silicon Graphics, Inc.
+URL: http://oss.sgi.com/projects/xfs/
+Group: System Environment/Base
+
+%description
+A set of tools for manipulating extended attributes on filesystem
+objects, in particular getfattr(1) and setfattr(1).
+An attr(1) command is also provided which is largely compatible
+with the SGI IRIX tool of the same name.
+
+%package -n libattr
+Summary: Dynamic library for extended attribute support.
+Group: Development/Libraries
+Prereq: /sbin/ldconfig
+
+%description -n libattr
+This package contains the libattr.so dynamic library which contains
+the extended attribute system calls and library functions.
+
+%package -n libattr-devel
+Summary: Extended attribute static libraries and headers.
+Group: Development/Libraries
+Requires: libattr
+Obsoletes: attr-devel
+
+%description -n libattr-devel
+This package contains the libraries and header files needed to
+develop programs which make use of extended attributes.
+For Linux programs, the documented system call API is the
+recommended interface, but an SGI IRIX compatibility interface
+is also provided.
+
+Currently only ext2, ext3, JFS and XFS support extended attributes.
+The SGI IRIX compatibility API built above the Linux system calls is
+used by programs such as xfsdump(8), xfsrestore(8) and xfs_fsr(8).
+
+You should install libattr-devel if you want to develop programs
+which make use of extended attributes.  If you install libattr-devel
+then you'll also want to install attr.
+
+%prep
+if [ -f .census ] ; then
+   if [ ! -d ${RPM_PACKAGE_NAME}-${RPM_PACKAGE_VERSION} ] ; then
+      ln -s . ${RPM_PACKAGE_NAME}-${RPM_PACKAGE_VERSION}
+   fi
+else
+%setup
+INSTALL_USER=root
+INSTALL_GROUP=root
+export INSTALL_USER INSTALL_GROUP
+@make@ configure
+fi
+
+%build
+@make@
+
+%install
+DIST_ROOT="$RPM_BUILD_ROOT"
+DIST_INSTALL=`pwd`/install.manifest
+DIST_INSTALL_DEV=`pwd`/install-dev.manifest
+DIST_INSTALL_LIB=`pwd`/install-lib.manifest
+export DIST_ROOT DIST_INSTALL DIST_INSTALL_DEV DIST_INSTALL_LIB
+@make@ install DIST_MANIFEST="$DIST_INSTALL"
+@make@ -C build/rpm rpmfiles DIST_MANIFEST="$DIST_INSTALL"
+@make@ install-dev DIST_MANIFEST="$DIST_INSTALL_DEV"
+@make@ -C build/rpm rpmfiles-dev DIST_MANIFEST="$DIST_INSTALL_DEV"
+@make@ install-lib DIST_MANIFEST="$DIST_INSTALL_LIB"
+@make@ -C build/rpm rpmfiles-lib DIST_MANIFEST="$DIST_INSTALL_LIB"
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%post -n libattr -p /sbin/ldconfig
+
+%postun -n libattr -p /sbin/ldconfig
+
+%files -f build/rpm/rpmfiles
+
+%files -n libattr-devel -f build/rpm/rpmfiles-dev
+
+%files -n libattr -f build/rpm/rpmfiles-lib
