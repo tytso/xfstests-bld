@@ -2,6 +2,8 @@
 
 ## Gce-xfstests Project Proposal
 
+[Final Project Video](https://drive.google.com/a/bu.edu/file/d/1pEB52B2JkwzMZB8FWW2yZZhaW3Ai7dZH/view?usp=sharing)
+
 ** **
 
 ## 1.   Vision and Goals of The Project:
