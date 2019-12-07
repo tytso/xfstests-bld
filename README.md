@@ -236,10 +236,129 @@ In Sprint 4, we made the following accomplishments:
 
 4) For git bisect, how to ignore bugs that are NOT the ones we are looking for. This is a problem that comes up in practice.
 
-
 ** **
 
-## 8.  Contributors:
+## 8. Instructions for installing and deploying gce-xfstests
+
+Firstly, clone our repository:
+
+    $ git clone https://github.com/BU-NU-CLOUD-F19/gce-xfstests.git
+    
+While our code for the gce-xfstests project can be found in the /project-code folder in **master** branch, we strongly recommend to run it on our **demo** branch to avoid unexpected problems:
+
+    $ git checkout demo
+
+A Google Compute Engine (GCE) project and a Google Cloud Storage (GS) bucket are needed to run our project. You can set them up following our instructions, or if you are a professor or TA for BU EC528, you have access to our GCE project on which you can run our code directly (if you have problems with the permission, please contact us).
+
+**1) Set up your own GCE project**
+
+Following this documentation ([gce-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/gce-xfstests.md)) to complete the following steps:
+
+
+1. Get a Google Compute Engine account. This step will also get you through creating your own GCE project and GS bucket.
+
+2. Install the gce-xfstests script. In this step, you don't need to clone the xfstests-bld git repository, instead, you will install the gce-xfstests script from our **demo** branch.
+  
+3. Install the software needed by gce-xfstests.
+
+4. Configure gce-xfstests. In the config file, you need to sepcify a local kernel to be uploaded and tested, which is not required by our implementation but is necessary for gce-xfstests setup. To build the kernel to be tested, you need to use kernel config files from [the kernel-configs folder](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/tree/demo/kernel-configs). When our code runs, you will notice that a new kernel is uploaded to your GS bucket after it is built by the build server. Also, you need to specify the repository from which you want our build server to build kernels, for example, add the following to the config file
+
+       $ GIT_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/
+
+5. Get access to the File system test appliance.
+
+6. Run "gce-xfstests setup".
+
+A guide to the commands of gce-xfstests can also be found in the above page.
+
+After setting up gce-xfstests on your computer, the next step is to create the image for the LTM and the build server from our code. Please follwing this documentation ([building-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/building-xfstests.md)) starting from the section "choosing a build type". In the end, you will find a new file "xfstests.tar.gz".
+
+Next, the following additional environment variable needs to be added to your configuration file in `~/.config/gce-xfstests`
+
+    $ GCE_IMAGE_PROJECT="$GCE_PROJECT"
+
+Run `gce-xfstests create-image` to let your GCE project ready to use the newly built image for the LTM and the build server.
+
+**2) Use our GCE project**
+
+Instead of setting up your own GCE project, a more convenient way is to run gce-xfstests using our GCE project. We have added professors and TAs of BU EC528 to our GCE project. In this way, you only need to follow documentation in [gce-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/gce-xfstests.md) to:
+
+1. Get a Google Compute Engine account. Only having an account is enough.
+
+2. Install the gce-xfstests script. Again, install the gce-xfstests script from our **demo** branch.
+  
+3. Install the software needed by gce-xfstests. When running `gcloud init` to initiating the Google Cloud SDK, set the project as `gce-xfstests-253215`, and configure the default compute region and zone as `us-central1-c` so that our GCE project can be used.
+
+4. Configure gce-xfstests. A sample config file that we recommend to use is
+
+        GS_BUCKET=ec528-xfstests
+
+        GCE_PROJECT=gce-xfstests-253215
+
+        GCE_ZONE=us-central1-c
+
+        GCE_KERNEL=
+
+        GCE_IMAGE_PROJECT="$GCE_PROJECT"
+
+        GIT_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/
+
+Now, you are ready to start using gce-xfstests for kernel building and testing. 
+
+**Build server as a standalone feature**
+
+The build server is a standalone feature, which means you can just launch a build server and let it build the kernel without testing. To launch a build server, run
+
+    $ gce-xfstests launch-bldsrv
+        
+If you run the command `gce-xfstests ls`, it will show a new VM called `xfstests-bldsrv` is running. Then, start a build with
+
+    $ gce-xfstests build [--commit <commit ID or branch name>] [--config <kernel-config file>]
+        
+The kernel config file can be found in [the kernel-configs folder](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/tree/demo/kernel-configs). If you are in our project folder and on demo branch, and want to build a kernel with Linux version 5.4, an example command of building the kernel is:
+
+    $ gce-xfstests build --commit master --config "./kernel-configs/x86_64-config-5.4"
+
+When a new kernel is built by the build server, it will uploaded the kernel (bzImage) to the GS bucket of our GCE project. To see the files in the GS bucket, you can go to Google Cloud Console [bucket details page](https://console.cloud.google.com/storage/browser/ec528-xfstests?project=gce-xfstests-253215) or use command `gsutil ls`, for example
+
+    $ gsutil ls -l gs://ec528-xfstests/
+    
+Note that the build server will not shut down itself, we let LTM decide whether a build server should be shut down, and if the user directly use the build server, then it's decided by the user. To shut down the build server, run 
+
+    $ gce-xfstests rm-instances xfstests-bldsrv
+    
+**Use LTM to complete kernel building and testing**
+
+Next, we will show how to use an LTM start building a kernel by launching the build server, and then start kernel testing after kernel is uploaded to GS bucket, all done automatically with a single command from user.
+
+To launch an LTM, run
+
+    $ gce-xfstests launch-ltm
+    
+To test a kernel built from the repository specified in the config file, type the following command 
+
+    $ gce-xfstests ltm [--commit <commit ID or branch name>] [--config <kernel-config file>] [test options]
+    
+An example is
+
+    $ gce-xfstests ltm --commit master --config "./kernel-configs/x86_64-config-5.4" smoke
+
+The detailed explanation of test options can be found in [kvm-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/kvm-xfstests.md). The option "smoke" in the command above is short hand for "-c 4k -g quick".
+
+The LTM will first launch a build server, wait for it to set up, then send the build requests to build server for it to start bulding. After the kernel is built and uploaded, the build server will send the modified requests without commit and config options back to LTM, so that LTM can start testing by launching test VMs and shut down the build server. If you have set the `GCE_SG_API` and `GCE_REPORT_EMAIL` in your config file, you may receive the results as an email, if not, the testing results can be found in the /results folder in GS bucket, go to [Google Cloud Console](https://console.cloud.google.com/storage/browser/ec528-xfstests?project=gce-xfstests-253215) to download them.
+
+**Checking the log files of LTM and build server**
+
+When the LTM and the build server is running, you can ssh into them to see the log information, to do so, run
+
+    $ gce-xfstests ssh xfstests-ltm
+    $ gce-xfstests ssh xfstests-bldsrv
+    
+When you are in those VMs, type the command `cd /var/log/lgtm/` or `cd /var/log/bldsrv/` to locate the log files for our project in LTM and build server, respectively.
+    
+** **
+
+## 9.  Contributors:
 
 * [Gordon Wallace](https://github.com/GordonWallace)
 * [Jing Li](https://github.com/jingli18)
@@ -248,6 +367,6 @@ In Sprint 4, we made the following accomplishments:
 
 ** **
 
-## 9. Other notes:
+## 10. Other notes:
 
 You can find the presentations for each sprint at the end of the sprint's details in the release planning. Or [here]( https://docs.google.com/presentation/d/1y-bZKlb2oy8LZN8qLJX1udenXNFqnqrlBj7uVAU5JZA/edit?usp=sharing).
