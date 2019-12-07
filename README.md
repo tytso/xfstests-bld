@@ -141,7 +141,7 @@ We can verify that this feature is completed if we are able to successfully rece
 
 ## 6.  Release Planning:
 
-**Sprint 1: 9/19 – 10/3**
+**Sprint 1: 9/10 – 9/26**
 
 *Sprint Progress*
 
@@ -153,79 +153,73 @@ The first sprint focused on learning the necessary technical background informat
 
 [Sprint 1 presentation](https://docs.google.com/presentation/d/10n1Gsa0CnHEb0iCrL7Uecdb7gwPbQwc_KQGtDD6IkX0/edit?usp=sharing)
 
-**Sprint 2: 10/3 – 10/17**
+**Sprint 2: 9/26 – 10/10**
 
-*Sprint Goals*
+*Sprint Progress*
 
-In Sprint 2, we’d like to move close to completion on our first milestone and begin work on our second.  Particularly, we’d like to finish the following features:
+In Sprint 2, we made the following accomplishments:
 
-*	Implement desired filesystem tests on automatically generated VMs.
-
-*	This will allow us to begin working on bisection bug testing since our system will be identifying bad commits.  Accordingly, we’ll begin work on milestone two.
-
-*Possible User Stories*
-
-*	User wants to run a series of tests on a repository at the desired interval.  The user is able to implement those tests and run them automatically at that interval.
+* Add build tools to Debian image (use by LTM & build server)
+* Use Flask to communicate between two GCE machines
+* Launch & kill build server that does nothing
+* Wrapper for gcloud compute scp to make testing easier
 
 *Presentation*
 
 [Sprint 2 presentation](https://docs.google.com/presentation/d/1wt8tg2oTK2Bcez4L0uwRLAbNVBEXQibzkAu_S9qRJSg/edit?usp=sharing)
 
-**Sprint 3: 10/17 – 10/31**
+**Sprint 3: 10/10 – 10/24**
 
-*Sprint Goals*
+*Sprint Progress*
 
-We’d like to reach the first milestone towards our minimum acceptance criteria in Sprint 3:
+In Sprint 3, we made the following accomplishments:
 
-*	New LTM feature completed, which monitors a repository, and at an interval, builds a VM with the correct kernel based on the commit ID and runs tests on the kernel.
-
-*	Verify completion of this by receiving accurate emailed results.
-
-*	Continue bisection bug testing work.
-
-*Possible User Stories*
-
-*	User receives emailed reports on new commits to a repository and the results of the test on automatically generated VMs at a designated interval.
+* Use build server to build kernel
+* Use build server to build kernel from git commit
+* Start two-way communication between LTM & build server 
+*	User story: User wants to run tests without using resources on their local machine to build the kernel.  User is able to build the kernel using the build server, and specify the commit.
 
 *Presentation*
 
 [Sprint 3 presentation](https://docs.google.com/presentation/d/1H4hqiuCrjCaMHDIxIzGvnmgX5nTJR4KF1Rgc1sRTMUI/edit?usp=sharing)
 
-**Sprint 4: 10/31 – 11/14**
+**Sprint 4: 10/24 – 11/07**
 
-*Sprint Goals*
+*Sprint Progress*
 
-In Sprint 4, we aim to complete the minimum acceptance criteria for the project.  This means that in addition to the LTM improvements from Sprint 3, we will finish the following:
+In Sprint 4, we made the following accomplishments:
 
-*	Automated kernel testing (accurate reports being generated at a specified interval)
-
-*	Correct identification of bad commits using bisection bug testing
-
-*Possible User Stories*
-
-*	Bisection bug testing allows the user to see which commit caused the failure in their emailed test results.
+* Use ltm to launch build server
+* Added error handling, logging, and testing to existing code
+* Continue two-way communication between LTM & build server 
 
 *Presentation*
 
 [Sprint 4 presentation](https://docs.google.com/presentation/d/13IO25TCbVnzGfY53VFzKXKWx0aUPtIrSCe5YqINw8Ng/edit?usp=sharing)
 
-**Sprint 5: 11/14 – 11/28**
+**Sprint 5: 11/07 – 11/26**
 
-*Sprint Goals*
+*Sprint Progress*
 
-This sprint is dedicated to the completion of any goals that weren’t completed on time in previous sprints, and to reaching stretch goals.  Specifically, these goals include:
-
-*	Checking for test failures by regression and flaky tests (and notifying the developer)
-
-*	Finding the first good commit by reverse bisection bug testing
-
-*Possible User Stories*
-
-*	The user receives emailed reports on the results of these new features.
+* Added a persistent disk to serve as a repository cache and improve build time
+* Enabled LTM to shut down build server when it is not needed
+* Created prototype repository monitoring feature
+* More testing
 
 *Presentation*
 
 [Sprint 5 presentation](https://docs.google.com/presentation/d/1LJvQpJTaI5IJ3jw9fr9J-mAuzBIP9QsBF1XzyLehLkw/edit?usp=sharing)
+
+**Final Push: 11/26 - 12/5**
+
+*Sprint Progress*
+
+* Automated communication between build server and LTM
+    * Previously, manual intervention at key moments required
+         * LTM forwards build request to build server
+         * Build server sends OK + original request back to LTM
+* Submit patches to mentor for review
+* User story: a developer uses the LTM to automatically launch the build server, which builds the kernel from the commit ID provided by the developer, which is then tested using test VMs launched by the LTM.
 
 *Final Presentation*
 
