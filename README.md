@@ -361,9 +361,9 @@ To test a kernel built from the repository specified in the gce-xfstests config 
 
 An example is
 
-    $ gce-xfstests ltm smoke --commit master --config "./kernel-configs/x86_64-config-5.4"
+    $ gce-xfstests ltm --commit master --config "./kernel-configs/x86_64-config-5.4" smoke
 
-The detailed explanation of test options can be found in [kvm-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/kvm-xfstests.md). The option "smoke" in the command above is short hand for "-c 4k -g quick".
+The detailed explanation of test options can be found in [kvm-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/kvm-xfstests.md). The option "smoke" in the command above is short hand for "-c 4k -g quick". Note that if you want to use short hand such as "smoke" or "full", make sure to place it at the end of the command to avoid errors.
 
 The LTM will first launch a build server, wait for it to set up, then send the build requests to the build server for it to start building. After the kernel is built and uploaded, the build server will send the modified requests without commit and config options back to LTM, so that LTM can start testing by launching test VMs and shut down the build server. If you have set the `GCE_SG_API` and `GCE_REPORT_EMAIL` in your config file, you may receive the results as an email, if not, the testing results can be found in the /results folder in GS bucket, go to [Google Cloud Console](https://console.cloud.google.com/storage/browser/ec528-xfstests?project=gce-xfstests-253215) to download them.
 
