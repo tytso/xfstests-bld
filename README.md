@@ -331,7 +331,7 @@ The build server is a standalone feature, which means you can just launch a buil
 
     $ gce-xfstests launch-bldsrv
 
-If you run the command `gce-xfstests ls`, it will show a new VM called `xfstests-bldsrv` is running. Then, start a build with
+If you run the command `gce-xfstests ls`, it will show a new VM called `xfstests-bldsrv` is running. Wait three minutes for build server to set up, then start a build with
 
     $ gce-xfstests build [--commit <commit ID or branch name>] [--config <path to defconfig>]
 
@@ -355,7 +355,7 @@ To launch an LTM, run
 
     $ gce-xfstests launch-ltm
 
-To test a kernel built from the repository specified in the gce-xfstests config file, type the following command
+Wait three minutes for LTM to set up. To test a kernel built from the repository specified in the gce-xfstests config file, type the following command
 
     $ gce-xfstests ltm [--commit <commit ID or branch name>] [--config <kernel-defconfig file>] [test options]
 
@@ -365,7 +365,7 @@ An example is
 
 The detailed explanation of test options can be found in [kvm-xfstests](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/blob/master/project-code/Documentation/kvm-xfstests.md). The option "smoke" in the command above is short hand for "-c 4k -g quick". Note that if you want to use short hand such as "smoke" or "full", make sure to place it at the end of the command to avoid errors.
 
-The LTM will first launch a build server, wait for it to set up, then send the build requests to the build server for it to start building. After the kernel is built and uploaded, the build server will send the modified requests without commit and config options back to LTM, so that LTM can start testing by launching test VMs and shut down the build server. If you have set the `GCE_SG_API` and `GCE_REPORT_EMAIL` in your config file, you may receive the results as an email, if not, the testing results can be found in the /results folder in GS bucket, go to [Google Cloud Console](https://console.cloud.google.com/storage/browser/ec528-xfstests?project=gce-xfstests-253215) to download them.
+The LTM will first launch a build server, wait for it to set up, then send the build requests to the build server for it to start building. After the kernel is built and uploaded, the build server will send the modified requests without commit and config options back to LTM, so that LTM can start testing by launching test VMs and shut down the build server. If you have set the `GCE_SG_API` and `GCE_REPORT_EMAIL` in your config file, you may receive the results as an email, if not, the testing results can be found in the /results folder in GS bucket, go to [Google Cloud Console](https://console.cloud.google.com/storage/browser/ec528-xfstests?project=gce-xfstests-253215) or run `gce-xfstests ls-results` and `gce-xfstests get-results [--unpack | --summary | --failures ] RESULT_FILE` to get the results manually.
 
 **Checking the log files of LTM and build server**
 
