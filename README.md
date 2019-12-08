@@ -321,7 +321,7 @@ Instead of setting up your own GCE project, a more convenient way is to run gce-
 
        GCE_IMAGE_PROJECT="$GCE_PROJECT"
 
-       GIT_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/
+       GIT_REPO=https://github.com/torvalds/linux.git
 
 Now, you are ready to start using gce-xfstests for kernel building and testing.
 
@@ -333,7 +333,7 @@ The build server is a standalone feature, which means you can just launch a buil
 
 If you run the command `gce-xfstests ls`, it will show a new VM called `xfstests-bldsrv` is running. Wait three minutes for build server to set up, then start a build with
 
-    $ gce-xfstests build [--commit <commit ID or branch name>] [--config <path to defconfig>]
+    $ gce-xfstests build [--commit <branch name or tag name or commit ID>] [--config <path to defconfig>]
 
 The kernel config file can be found in [the kernel-configs folder](https://github.com/BU-NU-CLOUD-F19/gce-xfstests/tree/demo/kernel-configs). If you are in our project folder and on demo branch, and want to build a kernel with Linux version 5.4, an example command of building the kernel is:
 
@@ -357,7 +357,7 @@ To launch an LTM, run
 
 Wait three minutes for LTM to set up. To test a kernel built from the repository specified in the gce-xfstests config file, type the following command
 
-    $ gce-xfstests ltm [--commit <commit ID or branch name>] [--config <kernel-defconfig file>] [test options]
+    $ gce-xfstests ltm [--commit <branch name or tag name or commit ID>] [--config <path to kernel-defconfig file>] [test options]
 
 An example is
 
