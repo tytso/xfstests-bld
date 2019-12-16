@@ -13,7 +13,10 @@ do
     done
 done
 
-# We've already run gce-setup from a previous boot
+if ! test -f "$GCE_CONFIG_FILE" ; then
+    gsutil cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
+fi
+
 if test -f /results/setup-syslog ; then
     echo "---------" >> /results/dmesg
     dmesg 2>&1 >> /results/dmesg

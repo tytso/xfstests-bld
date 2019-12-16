@@ -6,10 +6,8 @@
 gsutil cp gs://$GS_BUCKET/gce-xfstests-server.pem /etc/lighttpd/server.pem
 /usr/local/lib/gce-logger "fetching cert completed, gsutil returned $?"
 
-if gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config &> /dev/null ; then
-  gsutil cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
-  /usr/local/lib/gce-logger "fetching config completed, gsutil returned $?"
-fi
+gsutil cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
+/usr/local/lib/gce-logger "fetching config completed, gsutil returned $?"
 
 chmod 0400 /etc/lighttpd/server.pem
 

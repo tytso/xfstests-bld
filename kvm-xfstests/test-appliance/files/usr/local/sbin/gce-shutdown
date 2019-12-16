@@ -103,6 +103,7 @@ then
 	then
 	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	fi
+	export SENDGRID_API_KEY
 	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
 		-s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
     fi
