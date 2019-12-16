@@ -108,9 +108,9 @@ using the following command:
     $ sudo apt-get install autoconf autoconf2.64 \
 		automake autopoint bison build-essential ca-certificates \
 		debootstrap e2fslibs-dev ed fakechroot gettext git \
-		libdbus-1-3 libgdbm-dev libkeyutils-dev libssl-dev \
-		libblkid-dev libtool-bin pkg-config qemu-utils uuid-dev \
-		rsync symlinks lsb-release golang-1.8-go
+		golang-1.11-go libblkid-dev libdbus-1-3 libgdbm-dev \
+		libkeyutils-dev libssl-dev libsystemd-dev libtool-bin \
+		lsb-release pkg-config rsync symlinks qemu-utils uuid-dev
 
 It is also possible to use a cross compiler rather than the native
 compiler.  To do this, set the shell variables `CROSS_COMPILE` and

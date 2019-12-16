@@ -66,6 +66,7 @@ select_packages()
     libgdbm-dev
     libkeyutils-dev
     libssl-dev
+    libsystemd-dev
     libtool-bin
     lsb-release
     pkg-config
