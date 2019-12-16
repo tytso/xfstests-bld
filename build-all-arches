@@ -64,7 +64,7 @@ for i in "${ARCH_LIST[@]}" ; do
     fi
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting $i"
     date
-    echo "CHROOT=stretch-$i" > $BUILD_DIR/config.custom
+    echo "CHROOT=buster-$i" > $BUILD_DIR/config.custom
     sed -e '1,/^#BEGIN CONFIG.CUSTOM/d' < build_config.sh \
 	>> $BUILD_DIR/config.custom
     case $i in
