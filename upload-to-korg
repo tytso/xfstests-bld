@@ -2,10 +2,12 @@
 
 DEST=/pub/linux/kernel/people/tytso/kvm-xfstests
 FILES=( README \
-	   root_fs.img.amd64 \
-	   root_fs.img.i386 \
-	   root_fs.arm64.tar.gz \
-	   root_fs.armhf.tar.gz )
+	root_fs.img.amd64 \
+	root_fs.img.i386 \
+	root_fs.arm64.tar.gz \
+	xfstests-amd64.tar.gz \
+	xfstests-i386.tar.gz \
+	xfstests-arm64.tar.gz )
 	   
 function usage()
 {
