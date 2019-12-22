@@ -248,7 +248,10 @@ class Sharder(object):
         logging.info('could not find region %s in project %s', region,
                      self.gce_proj_id)
         return
-    zone_names = [x.split('/')[-1] for x in region_info['zones']]
+    try:
+      zone_names = [x.split('/')[-1] for x in region_info['zones']]
+    except KeyError:
+      raise ValueError('GCE region %s has no available zones' % region)
     zone = None
     for z in zone_names:
       zone_info = self.compute.zones().get(project=self.gce_proj_id,
