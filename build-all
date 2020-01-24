@@ -209,8 +209,12 @@ fi
 # To make the build more reproducible...
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 export BUILD_PATH_PREFIX_MAP="xfstests-bld=$(pwd)"
+# Allow the parent process of build-all to specify CPU/arch-specific
+# CFLAGS via an environment variable
+LCF="$LCF $CPU_CFLAGS"
 # GCC doesn't yet understand BUILD_PATH_PREFIX_MAP
 LCF="$LCF -fdebug-prefix-map=$(pwd)=xfstests-bld -gno-record-gcc-switches"
+
 
 if test -z "$SKIP_E2FSLIBS" ; then
     build_start "e2fslibs"
@@ -376,7 +380,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu $disable_blkid" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu --without-systemd --without-selinux $disable_blkid" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
@@ -395,7 +399,7 @@ if test -z "$SKIP_FIO"; then
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
-     $MAKE_CLEAN ; ./configure $crossfio --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
+     $MAKE_CLEAN ; ./configure $crossfio --disable-native --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
 if test -z "$SKIP_XFSTESTS" ; then
