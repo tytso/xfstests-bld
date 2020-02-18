@@ -329,6 +329,7 @@ if test -z "$SKIP_UTIL_LINUX" ; then
 	--disable-write \
 	--without-ncurses \
 	--without-python \
+	--without-systemd \
 	--without-tinfo;
      $MAKE_CLEAN ; make $J $make_target;
 
@@ -380,7 +381,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu --without-systemd --without-selinux $disable_blkid" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu --without-selinux $disable_blkid" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
