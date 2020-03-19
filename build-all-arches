@@ -69,7 +69,6 @@ for i in "${ARCH_LIST[@]}" ; do
 	>> $BUILD_DIR/config.custom
     case $i in
 	arm*)
-	    echo OUT_TAR=yes >> $BUILD_DIR/config.custom
 	    echo export ACCEL_BIN=/usr/local/bin-accel \
 		 >> $BUILD_DIR/config.custom
 	    ;;
@@ -80,17 +79,8 @@ for i in "${ARCH_LIST[@]}" ; do
 	echo "Build of $i failed!"
 	exit 1
     fi
-    case $i in
-	arm*)
-	    fn=root_fs.tar.gz
-	    artifact=root_fs.$i.tar.gz
-	    ;;
-	*)
-	    fn=root_fs.img
-	    artifact=root_fs.img.$i
-	    ;;
-    esac
-    cp $BUILD_DIR/kvm-xfstests/test-appliance/$fn out_dir/$artifact
+    cp $BUILD_DIR/kvm-xfstests/test-appliance/root_fs.tar.gz out_dir/root_fs.$i.tar.gz
+    cp $BUILD_DIR/kvm-xfstests/test-appliance/root_fs.img out_dir/root_fs.img.$i
     cp $BUILD_DIR/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
     cp $BUILD_DIR/xfstests/git-versions out_dir/git-versions-$i
     if test ! -f out_dir/README ; then
