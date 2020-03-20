@@ -4,7 +4,7 @@ MIRROR=http://snapshot.debian.org/archive/debian/20190826T092742Z/
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=6334dfdaaf8d7682e7e2a93f6f5850c40b604059 # 2020-02-02 release
+XFSTESTS_COMMIT=b15701bcefccc59b519b5a8d26c0bcf07751cb22 # 2020-03-19 release
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 XFSPROGS_COMMIT=0cfb2952319d237f1d079097810546f24e3883bf # v5.4.0
