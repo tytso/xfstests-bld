@@ -93,17 +93,10 @@ else
 fi
 $BUILD_ENV ./gen-tarball
 
-if [ "$OUT_TAR" = "both" ]; then
-    pushd kvm-xfstests/test-appliance
-    $SUDO_ENV ./gen-image $gen_image_args
-    popd
-    gen_image_args+=" --out-tar"
-fi
-
-
-if [ "$OUT_TAR" = "yes" ]; then
-    gen_image_args+=" --out-tar"
-fi
+case "$OUT_TAR" in
+    both) gen_image_args+=" --both" ;;
+    yes)  gen_image_args+=" --out-tar" ;;
+esac
 
 cd kvm-xfstests/test-appliance
 $SUDO_ENV ./gen-image $gen_image_args

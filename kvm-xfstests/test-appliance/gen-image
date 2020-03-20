@@ -15,6 +15,7 @@ SAVE_RAW_ROOT=no
 DO_GCE=no
 DO_UPDATE=no
 DO_NETWORKING=no
+DO_IMAGE=no
 RESUME=0
 
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
@@ -52,6 +53,12 @@ while [ "$1" != "" ]; do
     --mirror) shift
       MIRROR=$1
       ;;
+    --both)
+      DO_IMAGE=yes;
+      if test -z "$OUT_TAR" ; then
+	  OUT_TAR="$DIR/root_fs.tar.gz"
+      fi
+      ;;
     --networking)
       DO_NETWORKING=yes;
       ;;
@@ -85,6 +92,10 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+if test -z "$OUT_TAR" ; then
+    DO_IMAGE=yes
+fi
 
 function stage_start () {
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): gen-image: Starting $*"
@@ -167,20 +178,53 @@ finalize_rootfs()
     qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
 }
 
-cleanup_rootdir()
+cleanup_package_dirs()
 {
-    stage_start "to clean up rootdir"
-    if test -z "$DO_FAKECHROOT"; then
-	if test -d $ROOTDIR ; then
-	    umount $ROOTDIR/var/cache/apt/archives
-	    umount $ROOTDIR/var/lib/apt/lists
-	    for i in debs imgdir ;
-	    do
-		umount $ROOTDIR/$i
-		rmdir $ROOTDIR/$i
-	    done
-	    umount $ROOTDIR
-	    rmdir $ROOTDIR
+    if test -z "$DO_FAKECHROOT" ; then
+	umount $ROOTDIR/var/cache/apt/archives
+	umount $ROOTDIR/var/lib/apt/lists
+	for i in debs imgdir ;
+	do
+	    umount $ROOTDIR/$i
+	    rmdir $ROOTDIR/$i
+	done
+    else
+	(cd $ROOTDIR/var/cache/apt/archives ; \
+	 for i in * ; do \
+	     if test ! -f $DIR/var.cache.apt.archives/$i ; then \
+		 echo caching $i ; \
+		 ln $i $DIR/var.cache.apt.archives/ ; \
+	     fi ; \
+	 done)
+	(cd $ROOTDIR/var/lib/apt/lists ; \
+	 for i in * ; do \
+	     if test ! -f $DIR/var.lib.apt.lists/$i ; then \
+		 echo caching $i ; \
+		 ln $i $DIR/var.lib.apt.lists/ ; \
+	     fi ; \
+	 done)
+	find $ROOTDIR/var/cache/apt/archives $ROOTDIR/var/lib/apt/lists \
+	     $ROOTDIR/debs -type f | xargs rm
+	rmdir $ROOTDIR/debs
+	rmdir $ROOTDIR/imgdir
+    fi
+}
+
+unmount_rootdir()
+{
+    if test -z "$DO_FAKECHROOT" ; then
+	umount $ROOTDIR
+	rmdir $ROOTDIR
+    fi
+}
+
+delete_rootdir()
+{
+    if test -z "$DO_FAKECHROOT" ; then
+	if test "$SAVE_RAW_ROOT" = "yes" ; then
+	    echo "Raw root image has been saved at" $RAW_ROOT_FS
+	else
+	    rm -f $RAW_ROOT_FS
 	fi
     else
 	if test "$SAVE_RAW_ROOT" = "yes" ; then
@@ -202,8 +246,9 @@ run_in_chroot()
 
 cleanup_on_abort()
 {
-    cleanup_rootdir
-    rm -f "$RAW_ROOT_FS"
+    cleanup_package_dirs
+    unmount_rootdir
+    delete_rootdir
     trap - INT TERM
 }
 
@@ -233,6 +278,10 @@ detect_foreign_chroot()
 
     if [ ! -d "$BINFMT_MISC_MNT" ]; then
 	# binfmt_misc disabled in kernel
+	return
+    fi
+
+    if test -n "$DO_FAKECHROOT" ; then
 	return
     fi
 
@@ -444,35 +493,10 @@ fi
 
 rm -rf $ROOTDIR/var/cache/apt/archives/partial \
 	$ROOTDIR/var/lib/apt/lists/partial
+trap - INT TERM
+cleanup_package_dirs
+
 if test -n "$OUT_TAR"; then
-    if test -z "$DO_FAKECHROOT" ; then
-	umount $ROOTDIR/var/cache/apt/archives
-	umount $ROOTDIR/var/lib/apt/lists
-	for i in debs imgdir ;
-	do
-	    umount $ROOTDIR/$i
-	    rmdir $ROOTDIR/$i
-	done
-    else
-	(cd $ROOTDIR/var/cache/apt/archives ; \
-	 for i in * ; do \
-	     if test ! -f $DIR/var.cache.apt.archives/$i ; then \
-		 echo caching $i ; \
-		 ln $i $DIR/var.cache.apt.archives/ ; \
-	     fi ; \
-	 done)
-	(cd $ROOTDIR/var/lib/apt/lists ; \
-	 for i in * ; do \
-	     if test ! -f $DIR/var.lib.apt.lists/$i ; then \
-		 echo caching $i ; \
-		 ln $i $DIR/var.lib.apt.lists/ ; \
-	     fi ; \
-	 done)
-	find $ROOTDIR/var/cache/apt/archives $ROOTDIR/var/lib/apt/lists \
-	     $ROOTDIR/debs -type f | xargs rm
-	rmdir $ROOTDIR/debs
-	rmdir $ROOTDIR/imgdir
-    fi
     case "$OUT_TAR" in
 	*.gz)	ZCMD="gzip -9n" ;;
 	*)	ZCMD="cat" ;
@@ -482,32 +506,10 @@ if test -n "$OUT_TAR"; then
     (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
 	 tar -c --null --no-recursion -T - --numeric-owner \
 	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
-    if test -z "$DO_FAKECHROOT" ; then
-	umount $ROOTDIR
-	rmdir $ROOTDIR
-	if test "$SAVE_RAW_ROOT" = "yes" ; then
-	    echo "Raw root image has been saved at" $RAW_ROOT_FS
-	else
-	    rm -f $RAW_ROOT_FS
-	fi
-    else
-	if test "$SAVE_RAW_ROOT" = "yes" ; then
-	    echo "Raw root directory has been saved at" $ROOTDIR
-	else
-	    rm -rf $ROOTDIR
-	fi
-    fi
-    exit 0
 fi
-
-trap - INT TERM
-cleanup_rootdir
-#tune2fs -O has_journal $RAW_ROOT_FS
-finalize_rootfs
-
-if test "$SAVE_RAW_ROOT" = "yes" ; then
-  echo "Raw root image has been saved at" $RAW_ROOT_FS
-else
-  rm -f $RAW_ROOT_FS
+unmount_rootdir
+if test "$DO_IMAGE" = "yes" ; then
+    finalize_rootfs
 fi
+delete_rootdir
 stage_start "gen-image complete"
