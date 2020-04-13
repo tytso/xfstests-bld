@@ -7,6 +7,9 @@ ext4/004	# dump/restore doesn't handle quotas
 ext4/022
 ext4/026
 
+# file systems with encryption enabled can't be mounted with ext3
+ext4/044
+
 # encryption doesn't play well with quota
 generic/082
 generic/219
@@ -16,8 +19,12 @@ generic/232
 generic/233
 generic/235
 generic/270
+generic/381
 generic/382
 generic/566
+
+# encryption doesn't play well with casefold (at least not yet)
+generic/556
 
 # generic/204 tests ENOSPC handling; it doesn't correctly
 # anticipate the external extended attribute required when

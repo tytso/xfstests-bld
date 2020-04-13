@@ -2,6 +2,10 @@
 # block_size != PAGE_SIZE.
 ext4/034
 
+# This test tries to create 65536 directories, and with 1k blocks,
+# and long names, we run out of htree depth
+ext4/045
+
 # This test creates too many inodes on when the block size is 1k
 # without using special mkfs.ext4 options to change the inode size.
 # This test is a bit bogus anyway, and uses a bunch of magic calculations

@@ -1,7 +1,10 @@
-#
 # ext4/023 tests the populate function which needs to require files with
 # extents.  This doesn't work with ext3, naturally.
 ext4/023
+
+# ext4/044 tries to mount the file system as ext3 explicitly, but
+# since we pass nodelalloc, this test will fail.
+ext4/044
 
 # ext4/033 creates a special file system using dmhugedisk to test for
 # inode overflow when online resizing.  With an ext3 config, this takes

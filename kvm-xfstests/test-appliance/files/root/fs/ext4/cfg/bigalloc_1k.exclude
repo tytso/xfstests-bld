@@ -10,6 +10,10 @@ ext4/033
 # block_size != PAGE_SIZE.
 ext4/034
 
+# This test tries to create 65536 directories, and with 1k blocks,
+# and long names, we run out of htree depth
+ext4/045
+
 # This takes a *long* time and doesn't add much value to run on all
 # configurations.  So we're going to be selective where we run it.
 generic/027
