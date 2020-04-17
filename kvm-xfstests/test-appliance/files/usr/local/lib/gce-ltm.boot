@@ -29,7 +29,7 @@ logger -i "Disabled gce-finalize timer"
 # Configure swap space so that we have some extra elbow room; otherwise
 # some monitoring threads for ltm shards can end up dying due to memory
 # allocation failures
-fallocate -l 2G /swapfile
+fallocate -l 4G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
