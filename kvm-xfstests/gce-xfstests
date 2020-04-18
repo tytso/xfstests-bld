@@ -732,24 +732,42 @@ fi
 # MT_PRICE is in millidollars, as of 9/7/2015
 function get_machtype_stats() {
     case "$GCE_MACHTYPE" in
-	f1-micro)	MT_PRICE=0008	; MT_CPU=1  ; MT_RAM=614 ;;
-	g1-micro)	MT_PRICE=0027	; MT_CPU=1  ; MT_RAM=1740 ;;
-	n1-standard-1)	MT_PRICE=0050	; MT_CPU=1  ; MT_RAM=3840 ;;
-	n1-standard-2)	MT_PRICE=0100	; MT_CPU=2  ; MT_RAM=7680 ;;
-	n1-highmem-2)	MT_PRICE=0126	; MT_CPU=2  ; MT_RAM=13312 ;;
-	n1-highcpu-2)	MT_PRICE=0076	; MT_CPU=2  ; MT_RAM=1843 ;;
-	n1-standard-4)	MT_PRICE=0200	; MT_CPU=4  ; MT_RAM=15360 ;;
-	n1-highmem-4)	MT_PRICE=0252	; MT_CPU=4  ; MT_RAM=26624 ;;
-	n1-highcpu-4)	MT_PRICE=0152	; MT_CPU=4  ; MT_RAM=3686 ;;
-	n1-standard-8)	MT_PRICE=0400	; MT_CPU=8  ; MT_RAM=30720 ;;
-	n1-highmem-8)	MT_PRICE=0504	; MT_CPU=8  ; MT_RAM=53248 ;;
-	n1-highcpu-8)	MT_PRICE=0304	; MT_CPU=8  ; MT_RAM=7372 ;;
-	n1-standard-16)	MT_PRICE=0800	; MT_CPU=16  ; MT_RAM=61440 ;;
-	n1-highmem-16)	MT_PRICE=1008	; MT_CPU=16  ; MT_RAM=106496 ;;
-	n1-highcpu-16)	MT_PRICE=0608	; MT_CPU=16  ; MT_RAM=14745 ;;
-	n1-standard-32)	MT_PRICE=1600	; MT_CPU=32  ; MT_RAM=122880 ;;
-	n1-highmem-32)	MT_PRICE=2016	; MT_CPU=32  ; MT_RAM=212992 ;;
-	n1-highcpu-32)	MT_PRICE=1216	; MT_CPU=32  ; MT_RAM=29491 ;;
+	f1-micro)	MT_PRICE=0008	; MT_CPU=1   ; MT_RAM=614 ;;
+	e2-micro)	MT_PRICE=0008	; MT_CPU=1   ; MT_RAM=1024 ;;
+	e2-small)	MT_PRICE=0017	; MT_CPU=1   ; MT_RAM=2048 ;;
+	g1-micro)	MT_PRICE=0026	; MT_CPU=1   ; MT_RAM=1740 ;;
+	e2-medium)	MT_PRICE=0034	; MT_CPU=1   ; MT_RAM=4096 ;;
+	n1-standard-1)	MT_PRICE=0048	; MT_CPU=1   ; MT_RAM=3840 ;;
+	e2-standard-2)  MT_PRICE=0067	; MT_CPU=2   ; MT_RAM=8192 ;;
+	n1-standard-2)	MT_PRICE=0095	; MT_CPU=2   ; MT_RAM=7680 ;;
+	e2-highmem-2)   MT_PRICE=0090	; MT_CPU=2   ; MT_RAM=16384 ;;
+	n1-highmem-2)	MT_PRICE=0118	; MT_CPU=2   ; MT_RAM=13312 ;;
+	e2-highcpu-2)   MT_PRICE=0049	; MT_CPU=2   ; MT_RAM=2048 ;;
+	n1-highcpu-2)	MT_PRICE=0071	; MT_CPU=2   ; MT_RAM=1843 ;;
+	e2-standard-4)  MT_PRICE=0134	; MT_CPU=4   ; MT_RAM=16384 ;;
+	n1-standard-4)	MT_PRICE=0190	; MT_CPU=4   ; MT_RAM=15360 ;;
+	e2-highmem-4)   MT_PRICE=0181	; MT_CPU=4   ; MT_RAM=32768 ;;
+	n1-highmem-4)	MT_PRICE=0237	; MT_CPU=4   ; MT_RAM=26624 ;;
+	e2-highcpu-4)   MT_PRICE=0099	; MT_CPU=4   ; MT_RAM=4096 ;;
+	n1-highcpu-4)	MT_PRICE=0142	; MT_CPU=4   ; MT_RAM=3686 ;;
+	e2-standard-8)  MT_PRICE=0268	; MT_CPU=8   ; MT_RAM=32768 ;;
+	n1-standard-8)	MT_PRICE=0380	; MT_CPU=8   ; MT_RAM=30720 ;;
+	e2-highmem-8)   MT_PRICE=0362	; MT_CPU=8   ; MT_RAM=65536 ;;
+	n1-highmem-8)	MT_PRICE=0474	; MT_CPU=8   ; MT_RAM=53248 ;;
+	e2-highcpu-8)   MT_PRICE=0198	; MT_CPU=8   ; MT_RAM=8192 ;;
+	n1-highcpu-8)	MT_PRICE=0284	; MT_CPU=8   ; MT_RAM=7372 ;;
+	e2-standard-16) MT_PRICE=0536	; MT_CPU=16  ; MT_RAM=65536 ;;
+	n1-standard-16)	MT_PRICE=0760	; MT_CPU=16  ; MT_RAM=61440 ;;
+	e2-highmem-16)  MT_PRICE=0723	; MT_CPU=16  ; MT_RAM=131072 ;;
+	n1-highmem-16)	MT_PRICE=0947	; MT_CPU=16  ; MT_RAM=106496 ;;
+	n1-highcpu-16)	MT_PRICE=0567	; MT_CPU=16  ; MT_RAM=14745 ;;
+	n1-standard-32)	MT_PRICE=1520	; MT_CPU=32  ; MT_RAM=122880 ;;
+	n1-highmem-32)	MT_PRICE=1894	; MT_CPU=32  ; MT_RAM=212992 ;;
+	e2-highcpu-16)  MT_PRICE=0396	; MT_CPU=16  ; MT_RAM=16384 ;;
+	n1-highcpu-32)	MT_PRICE=1134	; MT_CPU=32  ; MT_RAM=29491 ;;
+	n1-standard-64)	MT_PRICE=3040	; MT_CPU=64  ; MT_RAM=245760 ;;
+	n1-highmem-64)	MT_PRICE=3789	; MT_CPU=64  ; MT_RAM=425984 ;;
+	n1-highcpu-64)	MT_PRICE=2269	; MT_CPU=64  ; MT_RAM=58982 ;;
     esac
 }
 
