@@ -731,7 +731,8 @@ fi
 
 # MT_PRICE is in millidollars, as of 9/7/2015
 function get_machtype_stats() {
-    case "$GCE_MACHTYPE" in
+    local mt=$1
+    case "$mt" in
 	f1-micro)	MT_PRICE=0008	; MT_CPU=1   ; MT_RAM=614 ;;
 	e2-micro)	MT_PRICE=0008	; MT_CPU=1   ; MT_RAM=1024 ;;
 	e2-small)	MT_PRICE=0017	; MT_CPU=1   ; MT_RAM=2048 ;;
@@ -768,60 +769,69 @@ function get_machtype_stats() {
 	n1-standard-64)	MT_PRICE=3040	; MT_CPU=64  ; MT_RAM=245760 ;;
 	n1-highmem-64)	MT_PRICE=3789	; MT_CPU=64  ; MT_RAM=425984 ;;
 	n1-highcpu-64)	MT_PRICE=2269	; MT_CPU=64  ; MT_RAM=58982 ;;
+	*) MT_PRICE=0	; MT_CPU=0  ; MT_RAM=0 ;;
     esac
 }
 
-# Find what will hopefully be the cheapest MACHTYPE that satisifies
-# the requested number of CPU's and memory.  The algorithm isn't fully
-# general but it works with the current price schedule, and it's
-# simple to implement in a shell script.  If this were LISP we would
-# be filtering on a sorted list using something like remove-if, but
-# this is good enough for what we need.
-#
-function fit_machtype_resources() {
-    local TRY_TYPE=highcpu
-    local TRY_CPU=2
-
-    if test $NR_CPU -eq 1
-    then
-	GCE_MACHTYPE="n1-standard-1"
-	get_machtype_stats
-	# echo Trying $GCE_MACHTYPE with $MT_RAM ram and price $MT_PRICE
-	if test "$MT_RAM" -ge "$MEM"
-	then
+function get_cache_dir() {
+    for i in $HOME/.cache /tmp/$USER-cache ; do
+	GCE_CACHE_DIR=$i/gce-xfstests
+	mkdir -p $GCE_CACHE_DIR 2> /dev/null
+	if test -d $GCE_CACHE_DIR -a -w $GCE_CACHE_DIR ; then
 	    return
 	fi
-    fi
-    if test $NR_CPU -gt 16 ; then TRY_CPU=32
-    elif test $NR_CPU -gt 8 ; then TRY_CPU=16
-    elif test $NR_CPU -gt 4 ; then TRY_CPU=8
-    elif test $NR_CPU -gt 2 ; then TRY_CPU=4
-    elif test $NR_CPU -gt 1 ; then TRY_CPU=2
-    fi
-
-    while /bin/true
-    do
-	GCE_MACHTYPE=n1-$TRY_TYPE-$TRY_CPU
-	get_machtype_stats
-	# echo Trying $GCE_MACHTYPE with $MT_RAM ram and price $MT_PRICE
-	if test "$MT_RAM" -ge "$MEM" ; then return ; fi
-	if test $TRY_TYPE = highcpu
-	then
-	    TRY_TYPE=standard
-	elif test $TRY_TYPE = standard
-	then
-	    TRY_TYPE=highmem
-	else
-	    if test $TRY_CPU -ge 32 ; then return ; fi
-	    TRY_TYPE=highcpu
-	    (( TRY_CPU = TRY_CPU * 2 ))
-	fi
     done
+    GCE_CACHE_DIR=/tmp
+}
+
+function get_machtype_file() {
+    get_cache_dir
+    GCE_MACHTYPE_FILE=$GCE_CACHE_DIR/machtype_file
+    if [[ $(find "$GCE_MACHTYPE_FILE" -mtime +28 -print 2> /dev/null) ]]; then
+	rm -f $GCE_MACHTYPE_FILE
+    fi
+    if test ! -r $GCE_MACHTYPE_FILE ; then
+	gcloud compute machine-types list | sed -e 1d | \
+	  awk '{print $1, $2, $3, int(0.5 + ($4 * 1024))}' > $GCE_MACHTYPE_FILE
+    fi
+}
+
+# Find what will the cheapest MACHTYPE that satisifies the requested
+# number of CPU's and memory.
+#
+function fit_machtype_resources() {
+    local cur_price cur_machtype f_machtype f_zone f_cpus f_memory
+
+    cur_price=99999
+    get_machtype_file
+    while read f_machtype  f_zone f_cpus f_memory
+    do
+	case "$f_machtype" in
+	    n2-*|c2-*) continue ;;
+	esac
+	if test "$GCE_ZONE" != "$f_zone" ; then
+	    continue
+	fi
+	if test "$NR_CPU" -gt "$f_cpus" -o "$MEM" -gt "$f_memory"; then
+	    continue
+	fi
+	get_machtype_stats "$f_machtype"
+	if test "$MT_PRICE" -eq 0 ; then
+            continue
+	fi
+	if test "$cur_price" -gt "$MT_PRICE" ; then
+	    cur_price="$MT_PRICE"
+	    cur_machtype="$f_machtype"
+#	    echo $cur_price $f_machtype $f_cpus $f_memory
+	fi
+    done < $GCE_MACHTYPE_FILE
+    GCE_MACHTYPE="$cur_machtype"
+    get_machtype_stats "$GCE_MACHTYPE"
 }
 
 if test -n "$GCE_MACHTYPE"
 then
-    get_machtype_stats
+    get_machtype_stats "$GCE_MACHTYPE"
     if test -z "$EXPLICIT_RAM"
     then
 	MT_RAM=0
