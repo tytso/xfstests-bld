@@ -4,40 +4,6 @@ instance=$(hostname)
 
 GCE_STATE_DIR=/var/lib/gce-xfstests
 
-mkdir -p $GCE_STATE_DIR
-
-if test -f $GCE_STATE_DIR/gce_zone
-then
-    ZONE=$(cat $GCE_STATE_DIR/gce_zone)
-else
-    ZONE=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google" 2> /dev/null)
-    ZONE=$(basename $ZONE)
-    echo $ZONE > $GCE_STATE_DIR/gce_zone
-fi
-
-if test -f $GCE_STATE_DIR/gce_id
-then
-    GCE_ID=$(cat $GCE_STATE_DIR/gce_id)
-else
-    GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
-    echo $GCE_ID > $GCE_STATE_DIR/gce_id
-fi
-
-if test -f $GCE_STATE_DIR/testrunid
-then
-    TESTRUNID=$(cat $GCE_STATE_DIR/testrunid)
-else
-    case "$HOSTNAME" in
-	xfstests-*)
-	    TESTRUNID=$(echo $HOSTNAME | sed -e 's/xfstests-//')
-	    ;;
-	*)
-	    TESTRUNID=$(date +%Y%m%d%H%M%S)
-	    ;;
-    esac
-    echo $TESTRUNID > $GCE_STATE_DIR/testrunid
-fi
-
 if test -z "$MDS_PREFIX"
 then
     declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1
@@ -104,6 +70,40 @@ GCE_CONFIG_FILE="/usr/local/lib/gce_xfstests.config"
 if test -f "$GCE_CONFIG_FILE"
 then
     . "$GCE_CONFIG_FILE"
+fi
+
+mkdir -p $GCE_STATE_DIR
+
+if test -f $GCE_STATE_DIR/gce_zone
+then
+    ZONE=$(cat $GCE_STATE_DIR/gce_zone)
+else
+    ZONE=$(get_metadata_value_with_retries zone)
+    ZONE=$(basename $ZONE)
+    echo $ZONE > $GCE_STATE_DIR/gce_zone
+fi
+
+if test -f $GCE_STATE_DIR/gce_id
+then
+    GCE_ID=$(cat $GCE_STATE_DIR/gce_id)
+else
+    GCE_ID=$(get_metadata_value_with_retries id)
+    echo $GCE_ID > $GCE_STATE_DIR/gce_id
+fi
+
+if test -f $GCE_STATE_DIR/testrunid
+then
+    TESTRUNID=$(cat $GCE_STATE_DIR/testrunid)
+else
+    case "$HOSTNAME" in
+	xfstests-*)
+	    TESTRUNID=$(echo $HOSTNAME | sed -e 's/xfstests-//')
+	    ;;
+	*)
+	    TESTRUNID=$(date +%Y%m%d%H%M%S)
+	    ;;
+    esac
+    echo $TESTRUNID > $GCE_STATE_DIR/testrunid
 fi
 
 if test -f $GCE_STATE_DIR/gs_bucket

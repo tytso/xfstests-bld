@@ -210,8 +210,9 @@ then
     then
 	echo "PARAM_MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
     fi
-    GCE_ID=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/id" -H "Metadata-Flavor: Google" 2> /dev/null)
     echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
+    MACHTYPE=$(basename $(get_metadata_value_with_retries machine-type))
+    echo MACHINE TYPE: \"$MACHTYPE\" >> "$RUNSTATS"
     echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
 fi
 
