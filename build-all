@@ -290,7 +290,7 @@ if test -z "$SKIP_FSVERITY"; then
     build_start "fsverity"
     (cd fsverity; \
      ver=$(git describe --always --dirty); echo "fsverity	$ver ($(git log -1 --pretty=%cD))" > ../fsverity.ver ; \
-     $MAKE_CLEAN ; make $J all ; make install DESTDIR=$DESTDIR)
+     $MAKE_CLEAN ; make $J install DESTDIR=$DESTDIR PREFIX=/usr)
 fi
 
 if test -z "$SKIP_IMA_EVM_UTILS" ; then
