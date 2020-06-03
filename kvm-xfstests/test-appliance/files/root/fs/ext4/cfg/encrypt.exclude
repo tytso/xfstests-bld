@@ -5,7 +5,9 @@ ext4/004	# dump/restore doesn't handle quotas
 # xattr size.  This causes problems with encryption
 # which requires its own xattrs which take space.
 ext4/022
+ext4/023
 ext4/026
+ext4/028
 
 # file systems with encryption enabled can't be mounted with ext3
 ext4/044
