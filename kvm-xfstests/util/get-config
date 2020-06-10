@@ -51,3 +51,11 @@ fi
 if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
     . "$DIR/config-$GCE_ACCOUNT"
 fi
+
+# check whether this machine runs in the same GCE project
+INT_IP=$(hostname -I)
+if gcloud compute instances list \
+   --project "$GCE_PROJECT" \
+   --filter="networkInterfaces[0].networkIP:$INT_IP" &> /dev/null; then
+   RUN_INTERNAL="--internal-ip"
+fi

@@ -380,7 +380,12 @@ case "$1" in
 	;;
     ssh)
 	gcloud compute --project "$GCE_PROJECT" -q ssh root@"$2" \
-	       --zone $(get_gce_zone "$2")
+	    --zone $(get_gce_zone "$2") $RUN_INTERNAL
+	exit 0
+	;;
+	scp)
+	gcloud compute --project "$GCE_PROJECT" -q scp "$3" root@"$2":~ \
+        --zone $(get_gce_zone "$2") $RUN_INTERNAL
 	exit 0
 	;;
     console)

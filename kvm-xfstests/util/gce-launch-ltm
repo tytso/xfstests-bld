@@ -1,6 +1,6 @@
 #!/bin/bash
 # vars used:
-# util/get-config: GS_BUCKET, GCE_ZONE, GCE_PROJECT
+# util/get-config: GS_BUCKET, GCE_ZONE, GCE_PROJECT, RUN_INTERNAL
 
 XFSTESTS_FLAVOR=gce
 t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
@@ -136,8 +136,18 @@ wait_for_command "gcloud compute instances describe \
 echo " Done!"
 
 gcloud compute instances describe "$INSTANCE" \
-       --project "$GCE_PROJECT" --zone "$GCE_ZONE" | \
-    grep "natIP" | sed -e "s/\s*natIP:\s*//" >> $DIR/.ltm_instance
+    --project "$GCE_PROJECT" --zone "$GCE_ZONE" \
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance
+
+# use internal ip if this machine is in the same GCE project
+if test -n "$RUN_INTERNAL"; then
+    echo "Runs on same GCE project so grab internal IP"
+    echo -n "GCE_LTM_INT_IP=" >> $DIR/.ltm_instance
+
+    gcloud compute instances describe "$INSTANCE" \
+        --project "$GCE_PROJECT" --zone "$GCE_ZONE" \
+        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.ltm_instance
+fi
 
 echo -n "Fetching password..."
 wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
