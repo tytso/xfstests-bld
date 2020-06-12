@@ -53,9 +53,22 @@ if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
 fi
 
 # check whether this machine runs in the same GCE project
-INT_IP=$(hostname -I)
-if gcloud compute instances list \
-   --project "$GCE_PROJECT" \
-   --filter="networkInterfaces[0].networkIP:$INT_IP" &> /dev/null; then
-   RUN_INTERNAL="--internal-ip"
+if test "$XFSTESTS_FLAVOR" = "gce" && \
+    ping -c 1 -q metadata.google.internal >& /dev/null ; then
+    # We must be running on an GCE VM since a DNS resolution of
+    # metadata.google.internal succeeded.
+    if test -f /usr/local/lib/gce-funcs ; then
+        . /usr/local/lib/gce-funcs
+        if test "$(get_metadata_value project-id)" = "$GCE_PROJECT" ; then
+            RUN_INTERNAL="--internal-ip"
+        fi
+    else
+        # fall back to check with internal ip
+        INT_IP=$(hostname -I)
+        if gcloud compute instances list \
+            --project "$GCE_PROJECT" \
+            --filter="networkInterfaces[0].networkIP:$INT_IP" &> /dev/null; then
+            RUN_INTERNAL="--internal-ip"
+        fi
+    fi
 fi
