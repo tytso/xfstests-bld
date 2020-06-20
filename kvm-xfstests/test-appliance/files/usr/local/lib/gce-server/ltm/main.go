@@ -13,7 +13,7 @@ import (
 
 const (
 	ServerLogPath = "/var/log/lgtm/lgtm.log"
-	TestLogPath   = "/var/log"
+	TestLogPath   = "/var/log/lgtm/ltm_logs"
 	SecretPath    = "/etc/lighttpd/server.pem"
 	CertPath      = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
 )
@@ -53,6 +53,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 	log.Println("log in here", string(js))
 }
 
+// end point for launching a gce-xfstests test run
+// orig_cmdline is expected in the request content
 func runTests(w http.ResponseWriter, r *http.Request) {
 	var c LTMRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
@@ -60,13 +62,29 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	data, _ := base64.StdEncoding.DecodeString(c.CmdLine)
-	log.Printf("receive test request: %+v\n%s", c.Options, string(data))
+	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
+	util.Check(err)
+	c.CmdLine = string(data)
+	log.Printf("receive test request: %+v\n", c)
 
-	status := LTMRespond{true}
+	tester := newTestManager(c)
+	status := tester.run()
+
 	js, _ := json.Marshal(status)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+func main() {
+	test1()
+	return
+	http.HandleFunc("/", index)
+	http.HandleFunc("/login", login)
+	http.HandleFunc("/gce-xfstests", runTests)
+	err := http.ListenAndServeTLS(":443", CertPath, SecretPath, nil)
+	if err != nil {
+		log.Fatal("ListenandServer: ", err)
+	}
 }
 
 var repo util.Repository
@@ -89,12 +107,12 @@ func test() {
 	}
 }
 
-func main() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/gce-xfstests", runTests)
-	err := http.ListenAndServeTLS(":443", CertPath, SecretPath, nil)
-	if err != nil {
-		log.Fatal("ListenandServer: ", err)
+func test1() {
+	reader := bufio.NewReader(os.Stdin)
+	for true {
+		arg, _ := reader.ReadString('\n')
+
+		validArg, configs := util.ParseCmd(arg[:len(arg)-1])
+		log.Printf("%s; %+v\n", validArg, configs)
 	}
 }
