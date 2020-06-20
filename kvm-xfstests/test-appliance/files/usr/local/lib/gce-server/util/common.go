@@ -1,9 +1,12 @@
 package util
 
 import (
+	"errors"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 var EmptyEnv = map[string]string{}
@@ -42,4 +45,64 @@ func parseEnv(env map[string]string) []string {
 		newEnv = append(newEnv, key+"="+value)
 	}
 	return newEnv
+}
+
+func CreateDir(path string) {
+	err := os.MkdirAll(path, 0755)
+	Check(err)
+}
+
+func MinInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func MaxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func MaxIntSlice(slice []int) (int, error) {
+	if len(slice) == 0 {
+		return 0, errors.New("MaxIntSlice: empty slice")
+	}
+	max := slice[0]
+	for _, i := range slice[1:] {
+		max = MaxInt(max, i)
+	}
+	return max, nil
+}
+
+func MinIntSlice(slice []int) (int, error) {
+	if len(slice) == 0 {
+		return 0, errors.New("MaxIntSlice: empty slice")
+	}
+	max := slice[0]
+	for _, i := range slice[1:] {
+		max = MinInt(max, i)
+	}
+	return max, nil
+}
+
+// read a whole file into a slice of strings split by lines
+// remove '\n' and empty lines
+func ReadLines(filename string) ([]string, error) {
+	lines := []string{}
+
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return lines, err
+	}
+	lines = strings.Split(string(content), "\n")
+	nonEmptyLines := lines[:0]
+	for i, line := range lines {
+		if line != "" {
+			nonEmptyLines = append(nonEmptyLines, lines[i:i+1]...)
+		}
+	}
+	return nonEmptyLines, nil
 }
