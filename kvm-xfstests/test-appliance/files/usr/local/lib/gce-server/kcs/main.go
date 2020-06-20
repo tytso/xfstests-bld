@@ -62,7 +62,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
 	util.Check(err)
 	c.CmdLine = string(data)
-	log.Printf("receive test request: %+v\n%s", c.Options, string(data))
+	log.Printf("receive compile request: %+v\n", c)
 
 	status := buildKernel(c)
 
