@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,26 +18,29 @@ func Check(err error) {
 	}
 }
 
-func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string) {
+func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) bool {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	err := cmd.Run()
 	if err != nil {
 		log.Fatalf("%s failed with error: %s\n", cmd.String(), err)
+		return false
 	}
+	return true
 }
 
-func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string) string {
+func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, bool) {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = stderr
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("%s failed with error: %s\n", cmd.String(), err)
+		return "", false
 	}
-	return string(out)
+	return string(out), true
 }
 
 func parseEnv(env map[string]string) []string {
@@ -105,4 +109,10 @@ func ReadLines(filename string) ([]string, error) {
 		}
 	}
 	return nonEmptyLines, nil
+}
+
+func Close(file *os.File) {
+	if err := file.Close(); err != nil {
+		log.Fatal(err)
+	}
 }
