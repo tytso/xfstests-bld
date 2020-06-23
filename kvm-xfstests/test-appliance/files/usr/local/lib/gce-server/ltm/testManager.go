@@ -18,22 +18,22 @@ type testManager struct {
 	aggPath        string
 	aggFile        string
 	kernelVersion  string
-	sharder        shardSchedular
+	sharder        *shardSchedular
 	gsBucket       string
 	bucketSubdir   string
 	gsKernel       string
 	reportReceiver string
 }
 
-func newTestManager(c LTMRequest) *testManager {
+func NewTestManager(c LTMRequest) *testManager {
 	tester := new(testManager)
 	tester.id = getTimeStamp()
 	tester.origCmd = strings.TrimSpace(c.CmdLine)
 
-	logDir := TestLogPath + "/" + tester.id
-	tester.logFile = logDir + "/run.log"
-	tester.aggPath = logDir + "/results-ltm-" + tester.id
-	tester.aggFile = logDir + "results.ltm-" + tester.id
+	logDir := TestLogDir + tester.id + "/"
+	tester.logFile = logDir + "run.log"
+	tester.aggPath = fmt.Sprintf("%sresults-%s-%s/", logDir, LTMUserName, tester.id)
+	tester.aggFile = fmt.Sprintf("%sresults.%s-%s", logDir, LTMUserName, tester.id)
 	tester.kernelVersion = "unknown_kernel_version"
 
 	util.CreateDir(logDir)
@@ -42,18 +42,26 @@ func newTestManager(c LTMRequest) *testManager {
 	tester.bucketSubdir = config.Get("BUCKET_SUBDIR")
 
 	regionShard := !c.Options.NoRegionShard
-	tester.bucketSubdir = c.Options.BucketSubdir
-	tester.gsKernel = c.Options.GsKernel
-	tester.reportReceiver = c.Options.ReportEmail
+	if c.Options.BucketSubdir != "" {
+		tester.bucketSubdir = c.Options.BucketSubdir
+	}
+	if c.Options.GsKernel != "" {
+		tester.gsKernel = c.Options.GsKernel
+	}
+	if c.Options.ReportEmail != "" {
+		tester.reportReceiver = c.Options.ReportEmail
+	}
 
-	tester.sharder = newShardSchedular(tester.origCmd, tester.id, logDir,
-		tester.gsKernel, regionShard, 0)
+	tester.sharder = NewShardSchedular(tester.origCmd, tester.id, logDir,
+		tester.bucketSubdir, tester.gsKernel, regionShard, 0)
 
 	return tester
 }
 
-func (tester *testManager) run() LTMRespond {
-	return LTMRespond{true}
+func (tester *testManager) Run() SharderInfo {
+	go tester.sharder.Run()
+
+	return tester.sharder.Info()
 }
 
 func getTimeStamp() string {
