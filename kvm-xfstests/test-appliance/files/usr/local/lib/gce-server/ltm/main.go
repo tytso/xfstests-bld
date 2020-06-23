@@ -9,13 +9,15 @@ import (
 	"os"
 
 	"example.com/gce-server/util"
+	"google.golang.org/api/compute/v1"
 )
 
 const (
 	ServerLogPath = "/var/log/lgtm/lgtm.log"
-	TestLogPath   = "/var/log/lgtm/ltm_logs"
+	TestLogDir    = "/var/log/lgtm/ltm_logs/"
 	SecretPath    = "/etc/lighttpd/server.pem"
 	CertPath      = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
+	LTMUserName   = "ltm"
 )
 
 type Options struct {
@@ -32,8 +34,13 @@ type LTMRequest struct {
 	Options Options `json:"options"`
 }
 
-type LTMRespond struct {
+type LTMResponse struct {
 	Status bool `json:"status"`
+}
+
+type TestResponse struct {
+	Status bool        `json:"status"`
+	Info   SharderInfo `json:"info"`
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -43,14 +50,14 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
-	stat := LTMRespond{true}
+	stat := LTMResponse{true}
 	js, err := json.Marshal(stat)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
-	log.Println("log in here", string(js))
+	log.Println("received login request", string(js))
 }
 
 // end point for launching a gce-xfstests test run
@@ -65,19 +72,22 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
 	util.Check(err)
 	c.CmdLine = string(data)
-	log.Printf("receive test request: %+v\n", c)
+	log.Printf("receive test request: %+v\n", &c)
 
-	tester := newTestManager(c)
-	status := tester.run()
+	tester := NewTestManager(c)
+	log.Printf("create test manager: %+v", &tester)
+	sharderInfo := tester.Run()
 
-	js, _ := json.Marshal(status)
+	response := TestResponse{
+		Status: true,
+		Info:   sharderInfo,
+	}
+	js, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
 
 func main() {
-	test1()
-	return
 	http.HandleFunc("/", index)
 	http.HandleFunc("/login", login)
 	http.HandleFunc("/gce-xfstests", runTests)
@@ -115,4 +125,26 @@ func test1() {
 		validArg, configs := util.ParseCmd(arg[:len(arg)-1])
 		log.Printf("%s; %+v\n", validArg, configs)
 	}
+}
+
+func test2() {
+	gce := util.NewGceService()
+	info, err := gce.GetInstanceInfo("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm")
+	util.Check(err)
+	log.Printf("%+v", info.Metadata)
+	for _, item := range info.Metadata.Items {
+		log.Printf("%+v", item)
+	}
+
+	val := "ahaah"
+	newMetadata := compute.Metadata{
+		Fingerprint: info.Metadata.Fingerprint,
+		Items: []*compute.MetadataItems{
+			{
+				Key:   "shutdown_reason",
+				Value: &val,
+			},
+		},
+	}
+	gce.SetMetadata("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm", &newMetadata)
 }
