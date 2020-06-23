@@ -2,6 +2,7 @@ package util
 
 import (
 	"log"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 )
 
 const (
@@ -26,7 +28,7 @@ type GceService struct {
 }
 
 type GceQuota struct {
-	zone     string
+	Zone     string
 	cpuLimit int
 	ipLimit  int
 	ssdLimit int
@@ -65,6 +67,28 @@ func NewGceService() GceService {
 	Check(err)
 	gce.service = s
 	return gce
+}
+
+func (gce *GceService) GetSerialPortOutput(projID string, zone string, instance string, start int64) *compute.SerialPortOutput {
+	call := gce.service.Instances.GetSerialPortOutput(projID, zone, instance)
+	call = call.Start(start)
+	resp, err := call.Context(gce.ctx).Do()
+	Check(err)
+	return resp
+}
+
+func (gce *GceService) GetInstanceInfo(projID string, zone string, instance string) (*compute.Instance, error) {
+	return gce.service.Instances.Get(projID, zone, instance).Context(gce.ctx).Do()
+}
+
+func (gce *GceService) SetMetadata(projID string, zone string, instance string, metadata *compute.Metadata) {
+	_, err := gce.service.Instances.SetMetadata(projID, zone, instance, metadata).Context(gce.ctx).Do()
+	Check(err)
+}
+
+func (gce *GceService) DeleteInstance(projID string, zone string, instance string) {
+	_, err := gce.service.Instances.Delete(projID, zone, instance).Context(gce.ctx).Do()
+	Check(err)
 }
 
 func (gce *GceService) getRegionInfo(projID string, region string) *compute.Region {
@@ -124,7 +148,7 @@ func (gce *GceService) GetRegionQuota(projID string, region string) *GceQuota {
 	ssdLimit := ssdNum / MaxInt(50, ssdMin)
 
 	return &GceQuota{
-		zone:     pickedZone,
+		Zone:     pickedZone,
 		cpuLimit: cpuNum / 2,
 		ipLimit:  ipNum,
 		ssdLimit: ssdLimit,
@@ -149,4 +173,13 @@ func (quota *GceQuota) GetMaxShard() int {
 	maxShard, err := MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
 	Check(err)
 	return maxShard
+}
+
+func IsNotFound(err error) bool {
+	if err != nil {
+		if e, ok := err.(*googleapi.Error); ok && e.Code == http.StatusNotFound {
+			return true
+		}
+	}
+	return false
 }

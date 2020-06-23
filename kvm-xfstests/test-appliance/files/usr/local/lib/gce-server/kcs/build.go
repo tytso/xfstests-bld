@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 
 	"example.com/gce-server/util"
@@ -21,5 +22,5 @@ func runBuild(url string, commit string) {
 		"GS_BUCKET":    config.Get("GS_BUCKET"),
 		"BUILD_KERNEL": "yes",
 	}
-	util.CheckRun(cmd, util.Rootdir, env)
+	util.CheckRun(cmd, util.Rootdir, env, os.Stdout, os.Stderr)
 }
