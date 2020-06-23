@@ -36,7 +36,7 @@ func Clone(url string, commit string) Repository {
 		"REPO_ID":  id.String(),
 		"COMMIT":   commit,
 	}
-	CheckRun(cmd, Rootdir, env)
+	CheckRun(cmd, Rootdir, env, os.Stdout, os.Stderr)
 
 	r := Repository{"", "", "", "", false}
 	r.url = url
@@ -44,7 +44,7 @@ func Clone(url string, commit string) Repository {
 
 	// check whether we have a detached head
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	branch := CheckOutput(cmd, r.GetDir(), EmptyEnv)
+	branch, _ := CheckOutput(cmd, r.GetDir(), EmptyEnv, os.Stderr)
 	branch = branch[:len(branch)-1]
 
 	if branch == "HEAD" {
@@ -66,10 +66,10 @@ func (r *Repository) GetCommit() string {
 		log.Fatalf("directory %s does not exist!", dir)
 	}
 	cmd := exec.Command("git", "checkout", r.branch)
-	CheckRun(cmd, dir, EmptyEnv)
+	CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
 
 	cmd = exec.Command("git", "rev-parse", "@")
-	commit := CheckOutput(cmd, dir, EmptyEnv)
+	commit, _ := CheckOutput(cmd, dir, EmptyEnv, os.Stderr)
 	return commit[:len(commit)-1]
 }
 
@@ -81,7 +81,7 @@ func (r *Repository) Pull() {
 		log.Fatalf("directory %s does not exist!", dir)
 	}
 	cmd := exec.Command("git", "pull")
-	CheckRun(cmd, dir, EmptyEnv)
+	CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
 }
 
 // watch a specified branch in a repo
