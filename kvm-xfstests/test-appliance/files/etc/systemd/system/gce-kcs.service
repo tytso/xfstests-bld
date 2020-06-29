@@ -1,0 +1,15 @@
+[Unit]
+Description=GCE LTM server
+ConditionPathExists=/usr/local/lib/bin/kcs
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+WorkingDirectory=/usr/local/lib/bin
+ExecStart=/usr/local/lib/bin/kcs
+
+[Install]
+WantedBy=multi-user.target

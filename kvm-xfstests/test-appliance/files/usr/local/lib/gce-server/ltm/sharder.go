@@ -35,6 +35,10 @@ type ShardSchedular struct {
 	projID  string
 	origCmd string
 
+	gitRepo  string
+	commitID string
+	callKCS  bool
+
 	zone           string
 	region         string
 	gsBucket       string
@@ -61,6 +65,7 @@ type SharderInfo struct {
 	NumShards int         `json:"num_shards"`
 	ShardInfo []ShardInfo `json:"shard_info"`
 	ID        string      `json:"id"`
+	Msg       string      `json:"message"`
 }
 
 // NewShardSchedular constructs a new sharder from user request.
@@ -81,6 +86,10 @@ func NewShardSchedular(c util.UserRequest) *ShardSchedular {
 		testID:  testID,
 		projID:  config.Get("GCE_PROJECT"),
 		origCmd: strings.TrimSpace(c.CmdLine),
+
+		gitRepo:  c.Options.GitRepo,
+		commitID: c.Options.CommitID,
+		callKCS:  false,
 
 		zone:           zone,
 		region:         region,
@@ -107,7 +116,13 @@ func NewShardSchedular(c util.UserRequest) *ShardSchedular {
 	if sharder.bucketSubdir == "" {
 		sharder.bucketSubdir = "results"
 	}
-	sharder.gsKernel = c.Options.GsKernel
+	if sharder.gitRepo != "" && sharder.commitID != "" {
+		// overwrite gsKernel when calling kcs to build the kernel
+		sharder.callKCS = true
+		sharder.gsKernel = fmt.Sprintf("gs://%s/kernels/bzImage-%s", sharder.gsBucket, sharder.testID)
+	} else {
+		sharder.gsKernel = c.Options.GsKernel
+	}
 
 	if c.Options.ReportEmail != "" {
 		sharder.reportReceiver = c.Options.ReportEmail
@@ -239,6 +254,10 @@ func (sharder *ShardSchedular) StartTests() SharderInfo {
 func (sharder *ShardSchedular) run() {
 	var wg sync.WaitGroup
 
+	if sharder.callKCS {
+		go sharder.runBuild(&wg)
+	}
+
 	for _, shard := range sharder.shards {
 		wg.Add(1)
 		log.Printf("run shard %+v\n", shard)
@@ -251,8 +270,38 @@ func (sharder *ShardSchedular) run() {
 	sharder.finish()
 }
 
+func (sharder *ShardSchedular) runBuild(wg *sync.WaitGroup) {
+	log.Printf("launching kcs server")
+	cmd := exec.Command("gce-xfstests", "launch-kcs")
+	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	if !status {
+		log.Fatalf("KCS failed to start")
+	}
+
+	args1 := util.UserOptions{
+		GitRepo:  sharder.gitRepo,
+		CommitID: sharder.commitID,
+	}
+	args2 := util.LTMOptions{
+		TestID: sharder.testID,
+	}
+	request := util.UserRequest{
+		Options:      &args1,
+		ExtraOptions: &args2,
+	}
+	log.Printf("%+v", request)
+}
+
 // Info returns structured sharder infomation to send back to user.
 func (sharder *ShardSchedular) Info() SharderInfo {
+	if sharder.callKCS {
+		info := SharderInfo{
+			ID:  sharder.testID,
+			Msg: "calling KCS to build kernel image",
+		}
+		return info
+	}
+
 	info := SharderInfo{
 		NumShards: len(sharder.shards),
 		ID:        sharder.testID,
@@ -399,7 +448,7 @@ func genResultsSummary(resultsDir string, outputFile string) {
 }
 
 func (sharder *ShardSchedular) emailReport() {
-
+	log.Printf("Generating email report")
 }
 
 func (sharder *ShardSchedular) packResults() {
