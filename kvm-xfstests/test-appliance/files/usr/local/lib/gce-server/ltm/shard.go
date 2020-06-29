@@ -233,10 +233,10 @@ func (shard *ShardWorker) finish(success bool) {
 		util.Check(err)
 	}
 
-	// prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	// shard.sharder.gce.DeleteFiles(prefix)
-	// prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	// shard.sharder.gce.DeleteFiles(prefix)
+	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	shard.sharder.gce.DeleteFiles(prefix)
+	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	shard.sharder.gce.DeleteFiles(prefix)
 
 }
 
