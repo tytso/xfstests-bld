@@ -1,3 +1,16 @@
+/*
+Webserver endpoints for the gce-xfstests KCS (kernel compile server).
+
+This stand-alone server handles requests to build a kernel image from the
+client-side bash scripts or the LTM server.
+The endpoints are:
+	/login (deprecated) - to authenticate a user session, enforced by the flask
+	webserver in the previoud implementation.
+
+	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
+	tests.
+
+*/
 package main
 
 import (
@@ -9,51 +22,12 @@ import (
 	"example.com/gce-server/util"
 )
 
-const (
-	ServerLogPath = "/var/log/lgtm/lgtm.log"
-	TestLogPath   = "/var/log"
-	SecretPath    = "/etc/lighttpd/server.pem"
-	CertPath      = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
-)
+/*
+runCompile is the end point for launching a kernel compile task.
 
-type Options struct {
-	NoRegionShard bool   `json:"no_region_shard"`
-	BucketSubdir  string `json:"bucket_subdir"`
-	GsKernel      string `json:"gs_kernel"`
-	ReportEmail   string `json:"report_email"`
-	CommitID      string `json:"commit_id"`
-	GitRepo       string `json:"git_repo"`
-}
-
-type LTMRequest struct {
-	CmdLine string  `json:"orig_cmdline"`
-	Options Options `json:"options"`
-}
-
-type LTMRespond struct {
-	Status bool   `json:"status"`
-	Msg    string `json:"message"`
-}
-
-func index(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("KCS test page"))
-	log.Println("Hello World")
-}
-
-func login(w http.ResponseWriter, r *http.Request) {
-	stat := LTMRespond{true, ""}
-	js, err := json.Marshal(stat)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
-	log.Println("log in here", string(js))
-}
-
+*/
 func runCompile(w http.ResponseWriter, r *http.Request) {
-	var c LTMRequest
+	var c util.UserRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -64,7 +38,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 	c.CmdLine = string(data)
 	log.Printf("receive compile request: %+v\n", c)
 
-	status := buildKernel(c)
+	status := BuildKernel(c)
 
 	js, err := json.Marshal(status)
 	util.Check(err)
@@ -73,9 +47,9 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/login", login)
+	http.HandleFunc("/", util.Index)
+	http.HandleFunc("/login", util.Login)
 	http.HandleFunc("/gce-xfstests", runCompile)
-	err := http.ListenAndServeTLS(":443", CertPath, SecretPath, nil)
+	err := http.ListenAndServeTLS(":443", util.CertPath, util.SecretPath, nil)
 	util.Check(err)
 }
