@@ -809,6 +809,12 @@ then
     exit 1
 fi
 
+if test -n "$RUN_ON_KCS" -a -z "$COMMIT"
+then
+    echo "No commit id specified for KCS to build"
+    exit 1
+fi
+
 if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" \
     -a -z "$RUN_ON_KCS"
 then

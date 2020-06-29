@@ -19,7 +19,6 @@ mkdir /root/repositories
 # chmod +x /usr/local/lib/gce-repo-cache
 # /usr/local/lib/gce-repo-cache
 # mount /dev/sdb /repositories
-# chown www-data:www-data -R /repositories
 
 # login shells dont need test env on the compile sever (shouldn't be running tests
 # in the compile server vm)
@@ -32,8 +31,8 @@ systemctl disable gce-finalize.timer
 
 logger -i "Disabled gce-finalize timer"
 
-systemctl stop lighttpd
-systemctl disable lighttpd
+systemctl stop lighttpd.service
+systemctl disable lighttpd.service
 
 if test ! -d "/var/log/kcs"
 then
@@ -41,4 +40,6 @@ then
     # (e.g. if the compile server instance was stopped and restarted, this should
     # not get executed)
     mkdir -p /var/log/kcs
+    systemctl enable gce-kcs.service
+    systemctl start gce-kcs.service
 fi
