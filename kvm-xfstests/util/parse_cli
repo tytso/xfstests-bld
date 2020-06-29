@@ -186,12 +186,13 @@ validate_config_name()
 
 validate_commit_name()
 {
-    # if ! git ls-remote $1 | grep "$2" > /dev/null; then
     if ! git ls-remote $1 > /dev/null; then
-  		echo -e "$1 has no commit or tag called $2\n"
+  		echo -e "Repo not found: $1\n"
   		print_help
   		exit 1
-    fi
+    elif ! git ls-remote $1 | grep "$2" > /dev/null; then
+  		echo "Warning: $2 is not a valid branch or tag of $1"
+	fi
 }
 
 copy_config()

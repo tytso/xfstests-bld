@@ -2,13 +2,12 @@ package util
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 )
 
 const (
-	defaultFS = "ext4"
+	primaryFS = "ext4"
 	xfsPath   = "/root"
 )
 
@@ -31,6 +30,17 @@ var invalidOpts = []string{
 	"--kernel",
 }
 
+/*
+ParseCmd parses a gce-xfstests command line to distribute tests among
+multiple shards.
+Returns:
+	validArgs - a slice of cmd args not related to test configurations.
+	Parser removes arguments from the original cmd that don't make sense
+	for LTM (e.g. ltm, --instance-name).
+
+	configs - a map from filesystem names to a slice of corresponding
+	configurations.  Duplicates are removed from the original cmd configs.
+*/
 func ParseCmd(cmdLine string) ([]string, map[string][]string) {
 	args := strings.Fields(cmdLine)
 	validArgs, _ := sanitizeCmd(args)
@@ -39,6 +49,7 @@ func ParseCmd(cmdLine string) ([]string, map[string][]string) {
 	return validArgs, configs
 }
 
+// sanitizeCmd removes invalid args from input cmdline.
 func sanitizeCmd(args []string) ([]string, []string) {
 	boolDict := NewSet(invalidBools)
 	optDict := NewSet(invalidOpts)
@@ -65,6 +76,9 @@ func sanitizeCmd(args []string) ([]string, []string) {
 	return validArgs, invalidArgs
 }
 
+// expandAliases expands some explicit aliases of test options.
+// It converts "smoke" to "-c 4k -g quick" only, since other aliases
+// ("full", "quick") have no affects on -c configs.
 func expandAliases(args []string) []string {
 	prefixArgs := []string{}
 	expandedArgs := []string{}
@@ -83,6 +97,9 @@ func expandAliases(args []string) []string {
 	return expandedArgs
 }
 
+// processConfigs finds the configuration args following "-c" and parses
+// them. If no "-c" option is specified (or aliases like "smoke"), it uses
+// primaryFS as the filesystem and "all" as the config.
 func processConfigs(args []string) ([]string, map[string][]string) {
 	newArgs := make([]string, len(args))
 	copy(newArgs, args)
@@ -116,26 +133,35 @@ func processConfigs(args []string) ([]string, map[string][]string) {
 }
 
 func defaultConfigs(configs map[string][]string) {
-	configFile := fmt.Sprintf("%s/fs/%s/cfg/all.list", xfsPath, defaultFS)
+	configFile := fmt.Sprintf("%s/fs/%s/cfg/all.list", xfsPath, primaryFS)
 	lines, err := ReadLines(configFile)
 	Check(err)
 
 	for _, line := range lines {
-		configs[defaultFS] = append(configs[defaultFS], line)
+		configs[primaryFS] = append(configs[primaryFS], line)
 	}
 }
 
+/*
+singleConfig parses a single configuration and adds it to the map.
+Possible pattern of configs:
+	<fs>/<cfg> (e.g. ext4/4k) - checks /root/fs/<fs>/cfg/<cfg>.list
+	for a list of configurations, and read config lines from each file.
+
+	<fs> (e.g. ext4) - uses default config for <fs> if it exists.
+	<cfg> (e.g. quick) - uses primaryFS and <cfg> as the configuration.
+*/
 func singleConfig(configs map[string][]string, configArg string) {
 	configLines := []string{}
 	var fs, cfg string
 
 	arg := strings.Split(configArg, "/")
 	if len(arg) == 1 {
-		if _, err := os.Stat(fmt.Sprintf("%s/fs/%s", xfsPath, configArg)); err == nil {
+		if FileExists(fmt.Sprintf("%s/fs/%s", xfsPath, configArg)) {
 			fs = configArg
 			configLines = []string{"default"}
 		} else {
-			fs = defaultFS
+			fs = primaryFS
 			cfg = configArg
 		}
 	} else {
@@ -146,14 +172,14 @@ func singleConfig(configs map[string][]string, configArg string) {
 	if len(configLines) == 0 {
 		configFile := fmt.Sprintf("%s/fs/%s/cfg/%s.list", xfsPath, fs, cfg)
 
-		if _, err := os.Stat(configFile); err == nil {
+		if FileExists(configFile) {
 			lines, err := ReadLines(configFile)
 			Check(err)
 			configLines = lines
 		} else {
 			configFile = configFile[:len(configFile)-5]
 
-			if _, err := os.Stat(configFile); err == nil {
+			if FileExists(configFile) {
 				configLines = []string{cfg}
 			} else {
 				return
