@@ -6,6 +6,7 @@ type set struct {
 	m map[string]struct{}
 }
 
+// NewSet constructs a new set based on map implementation
 func NewSet(elements []string) *set {
 	s := set{}
 	s.m = make(map[string]struct{})

@@ -1,3 +1,12 @@
+/*
+ShardWorker launches, monitors and collects results from a single gce-xfstests run.
+
+A shard is created and configured by a sharder only. It make a call to the gce-xfstests
+scripts on start, and then waits for the test to finish by checking the VM status every
+60 seconds. After the VM is deleted, the shard calls the scripts again to fetch the test
+result files from GS and unpacks them to a local directory.
+
+*/
 package main
 
 import (
@@ -12,8 +21,9 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
-type shardWorker struct {
-	sharder            *shardSchedular
+// ShardWorker manages a single test VM.
+type ShardWorker struct {
+	sharder            *ShardSchedular
 	shardID            string
 	name               string
 	zone               string
@@ -28,6 +38,7 @@ type shardWorker struct {
 	vmTimeout          bool
 }
 
+// ShardInfo exports shard info to be sent back to user.
 type ShardInfo struct {
 	Index   int    `json:"index"`
 	ShardID string `json:"shard_id"`
@@ -35,8 +46,9 @@ type ShardInfo struct {
 	Zone    string `json:"zone"`
 }
 
-func NewShardWorker(sharder *shardSchedular, shardID string, config string, zone string, validArgs []string) *shardWorker {
-	shard := shardWorker{
+// NewShardWorker constructs a new shard, requested by the sharder
+func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone string, validArgs []string) *ShardWorker {
+	shard := ShardWorker{
 		sharder: sharder,
 		shardID: shardID,
 		zone:    zone,
@@ -48,14 +60,10 @@ func NewShardWorker(sharder *shardSchedular, shardID string, config string, zone
 		"--gce-zone", zone,
 		"--gs-bucket", sharder.gsBucket,
 		"--image-project", sharder.projID,
+		"--kernel", sharder.gsKernel,
+		"--bucket-subdir", sharder.bucketSubdir,
 		"--no-email",
 		"-c", config,
-	}
-	if sharder.gsKernel != "" {
-		shard.args = append(shard.args, "--kernel", sharder.gsKernel)
-	}
-	if sharder.bucketSubdir != "" {
-		shard.args = append(shard.args, "--bucket-subdir", sharder.bucketSubdir)
 	}
 	shard.args = append(shard.args, validArgs...)
 	shard.setupLogging()
@@ -63,7 +71,7 @@ func NewShardWorker(sharder *shardSchedular, shardID string, config string, zone
 	return &shard
 }
 
-func (shard *shardWorker) setupLogging() {
+func (shard *ShardWorker) setupLogging() {
 	shard.logPath = shard.sharder.logDir + shard.shardID
 	shard.cmdLogPath = shard.logPath + ".cmdlog"
 	shard.serialOutputPath = shard.logPath + ".serial"
@@ -72,24 +80,31 @@ func (shard *shardWorker) setupLogging() {
 	shard.unpackedResultsDir = fmt.Sprintf("%sresults-%s-%s-%s", shard.sharder.logDir, LTMUserName, shard.sharder.testID, shard.shardID)
 }
 
-func (shard *shardWorker) Run(wg *sync.WaitGroup) {
+// Run issues the gce-xfstests command to launch a test vm and monitor its running status
+func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	file, err := os.Create(shard.cmdLogPath)
 	util.Check(err)
-	defer util.Close(file)
 	cmd := exec.Command("gce-xfstests", shard.args...)
 	log.Printf("%+v", cmd)
-	status := util.CheckRun(cmd, util.Rootdir, util.EmptyEnv, file, file)
+	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
+	util.Close(file)
+
 	if !status {
-		log.Printf("Shard %s failed to start, args was:\n%s\n", shard.shardID, shard.args)
+		log.Printf("Shard failed to start, cmd: %+v\n", cmd)
 	} else {
 		returnVal := shard.monitor()
-		shard.cleanup(returnVal)
+		shard.finish(returnVal)
 	}
 	log.Printf("Existing monitor process for shard %s", shard.shardID)
 }
 
-func (shard *shardWorker) monitor() bool {
+// monitor queries the GCE api every minute and logs the serial console output
+// to a local file. If the vm no longer exists or the status hasn't changed for
+// more than an hour, the monitor kills the test vm.
+// Returns true if the test vm exits normally.
+func (shard *ShardWorker) monitor() bool {
 	var (
 		waitTime       int
 		timePrevStatus int
@@ -98,8 +113,8 @@ func (shard *shardWorker) monitor() bool {
 	)
 
 	for true {
-		time.Sleep(5 * time.Second)
-		waitTime += 5
+		time.Sleep(60 * time.Second)
+		waitTime += 60
 
 		instanceInfo, err := shard.sharder.gce.GetInstanceInfo(shard.sharder.projID, shard.zone, shard.name)
 
@@ -118,12 +133,13 @@ func (shard *shardWorker) monitor() bool {
 		if instanceInfo.Status != prevStatus {
 			timePrevStatus = waitTime
 			prevStatus = instanceInfo.Status
-		} else if waitTime > timePrevStatus+10 {
+		} else if waitTime > timePrevStatus+3600 {
 			log.Printf("Instance seems to have wedged, no status update for > 1 hour.\n")
 			log.Printf("Wait time: %d stayed at status %s since time: %d", waitTime, prevStatus, timePrevStatus)
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
 			} else {
+				//TODO: improve the return logic here
 				return false
 			}
 		}
@@ -132,9 +148,13 @@ func (shard *shardWorker) monitor() bool {
 
 }
 
-func (shard *shardWorker) updateSerialData(prevStart int64) int64 {
-	output := shard.sharder.gce.GetSerialPortOutput(
+// updateSerialData writes the serial port output from the test vm to local log file.
+func (shard *ShardWorker) updateSerialData(prevStart int64) int64 {
+	output, err := shard.sharder.gce.GetSerialPortOutput(
 		shard.sharder.projID, shard.zone, shard.name, prevStart)
+	if err != nil {
+		return prevStart
+	}
 
 	file, err := os.OpenFile(shard.serialOutputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	util.Check(err)
@@ -151,12 +171,10 @@ func (shard *shardWorker) updateSerialData(prevStart int64) int64 {
 	return output.Next
 }
 
-func (shard *shardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
+func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 	shard.vmTimeout = true
-	log.Printf("metadata: %+v", metadata)
 
 	for _, item := range metadata.Items {
-		log.Printf("metadata item: %+v", item)
 		if item.Key == "shutdown_reason" {
 			return
 		}
@@ -174,15 +192,84 @@ func (shard *shardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 	shard.sharder.gce.DeleteInstance(shard.sharder.projID, shard.zone, shard.name)
 }
 
-func (shard *shardWorker) cleanup(success bool) {
+// finish calls gce-xfstests scripts to fetch and unpack test result files.
+// It deletes the results in gs bucket and local serial port output on success.
+func (shard *ShardWorker) finish(success bool) {
+	if !success {
+		shard.exit()
+		return
+	}
+	url := shard.getResults()
+	if url == "" {
+		log.Printf("cannot find result file")
+		shard.exit()
+		return
+	}
+	file, err := os.OpenFile(shard.cmdLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	util.Check(err)
+	defer util.Close(file)
+
+	cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+	log.Printf("%+v", cmd)
+	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
+	if !status {
+		log.Printf("Get results failed, args was: %+v\n", cmd)
+		shard.exit()
+		return
+	}
+
+	if util.DirExists(shard.tmpResultsDir) {
+		util.RemoveDir(shard.unpackedResultsDir)
+		err = os.Rename(shard.tmpResultsDir, shard.unpackedResultsDir)
+		util.Check(err)
+	} else {
+		log.Printf("results not found")
+		shard.exit()
+		return
+	}
+
+	if util.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
+		err = os.Remove(shard.serialOutputPath)
+		util.Check(err)
+	}
+
+	// prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	// shard.sharder.gce.DeleteFiles(prefix)
+	// prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	// shard.sharder.gce.DeleteFiles(prefix)
 
 }
 
-func (shard *shardWorker) Info(index int) ShardInfo {
+func (shard *ShardWorker) getResults() string {
+	attempts := 5
+	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	for attempts > 0 {
+		resultFiles := shard.sharder.gce.GetFileNames(prefix)
+		if len(resultFiles) == 1 {
+			log.Printf("Found result file url: %v", resultFiles)
+			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
+		}
+		time.Sleep(5 * time.Second)
+		attempts--
+	}
+	return ""
+}
+
+// Info returns structured shard infomation to send back to user
+func (shard *ShardWorker) Info(index int) ShardInfo {
 	return ShardInfo{
 		Index:   index,
 		ShardID: shard.shardID,
 		Config:  shard.config,
 		Zone:    shard.zone,
+	}
+}
+
+func (shard *ShardWorker) exit() {
+	log.Printf("Existing shard gracefully with errors")
+	if util.FileExists(shard.serialOutputPath) {
+		log.Printf("Serial port output in results")
+	} else {
+		log.Printf("No results available")
 	}
 }

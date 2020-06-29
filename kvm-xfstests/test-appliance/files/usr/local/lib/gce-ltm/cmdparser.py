@@ -97,12 +97,12 @@ import os
 class LTMParser(object):
   """Main gce-xfstests parsing class for the LTM."""
 
-  def __init__(self, orig_cmd, default_fstype='ext4', xfs_path='/root'):
+  def __init__(self, orig_cmd, default_fstype='ext4', xfs_path='/root/'):
     if not isinstance(orig_cmd, basestring):
       raise TypeError(orig_cmd)
-    if not os.path.isdir(xfs_path + '/fs'):
+    if not os.path.isdir(xfs_path + 'fs'):
       raise ValueError
-    if not os.path.isdir(xfs_path + '/fs/' + default_fstype):
+    if not os.path.isdir(xfs_path + 'fs/' + default_fstype):
       raise ValueError
     logging.debug('LTMParser init entered.')
     logging.info('orig_cmd: %s', orig_cmd)
