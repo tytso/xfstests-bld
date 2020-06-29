@@ -172,7 +172,7 @@ func ReadLines(filename string) ([]string, error) {
 	return nonEmptyLines, nil
 }
 
-// Closes a file handler and checks error
+// Close a file handler and checks error
 func Close(file *os.File) {
 	if err := file.Close(); err != nil {
 		log.Fatal(err)
