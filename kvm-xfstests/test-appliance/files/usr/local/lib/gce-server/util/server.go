@@ -11,8 +11,8 @@ import (
 
 const sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
 
-// Options contains configs for web requests in the json POST body.
-type Options struct {
+// UserOptions contains configs user sends to LTM or KCS.
+type UserOptions struct {
 	NoRegionShard bool   `json:"no_region_shard"`
 	BucketSubdir  string `json:"bucket_subdir"`
 	GsKernel      string `json:"gs_kernel"`
@@ -21,15 +21,22 @@ type Options struct {
 	GitRepo       string `json:"git_repo"`
 }
 
+// LTMOptions contains configs LTM sends to KCS.
+type LTMOptions struct {
+	TestID string `json:"test_id"`
+}
+
 // LoginRequest contains a password for user authentication
 type LoginRequest struct {
 	Password string `json:"password"`
 }
 
 // UserRequest contains the full cmd from user in base 64 and some configs.
+// LTM can send a UserRequest to KCS with an additional field ExtraOptions.
 type UserRequest struct {
-	CmdLine string  `json:"orig_cmdline"`
-	Options Options `json:"options"`
+	CmdLine      string       `json:"orig_cmdline"`
+	Options      *UserOptions `json:"options"`
+	ExtraOptions *LTMOptions  `json:"extra_options"`
 }
 
 // SimpleResponse returns whether a web request succeeds.
@@ -37,10 +44,10 @@ type SimpleResponse struct {
 	Status bool `json:"status"`
 }
 
-// MsgResponse returns the request status and a string message.
-type MsgResponse struct {
+// BuildResponse returns the request status and gs path for the kernel image.
+type BuildResponse struct {
 	Status bool   `json:"status"`
-	Msg    string `json:"message"`
+	GSPath string `json:"gs_path"`
 }
 
 var (

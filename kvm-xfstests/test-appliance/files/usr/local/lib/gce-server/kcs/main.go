@@ -38,9 +38,13 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 	c.CmdLine = string(data)
 	log.Printf("receive compile request: %+v\n", c)
 
-	status := BuildKernel(c)
+	gsPath := StartBuild(c)
+	respond := util.BuildResponse{
+		Status: true,
+		GSPath: gsPath,
+	}
 
-	js, err := json.Marshal(status)
+	js, err := json.Marshal(respond)
 	util.Check(err)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
