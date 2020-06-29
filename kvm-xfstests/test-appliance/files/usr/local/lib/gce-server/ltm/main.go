@@ -4,7 +4,7 @@ Webserver endpoints for the gce-xfstests LTM (lightweight test manager).
 This stand-alone server handles requests sent by the client-side scripts.
 The endpoints are:
 	/login (deprecated) - to authenticate a user session, enforced by the flask
-	webserver in the previoud implementation.
+	webserver in the previous implementation.
 
 	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
 	tests.
