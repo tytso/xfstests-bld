@@ -17,12 +17,16 @@ if test -z "$REPO_ID"; then
 fi
 
 if test -z "$COMMIT"; then
-    COMMIT=master
+    COMMIT="master"
 fi
 
 if test -z "$GS_BUCKET" -a -n "$BUILD_KERNEL"; then
     echo -e "GS_BUCKET is not set"
     exit 1
+fi
+
+if test -z "$GS_PATH"; then
+    GS_PATH="gs://$GS_BUCKET/bzImage"
 fi
 
 # create reference repository if not exists
@@ -46,5 +50,5 @@ if test -n "$BUILD_KERNEL"; then
     make olddefconfig
     make -j$(nproc)
     # copy image to gcs bucket
-    gsutil cp "$REPO_DIR/arch/x86/boot/bzImage" "gs://$GS_BUCKET/bzImage"
+    gsutil cp "$REPO_DIR/arch/x86/boot/bzImage" $GS_PATH
 fi

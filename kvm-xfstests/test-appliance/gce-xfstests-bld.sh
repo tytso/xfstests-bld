@@ -268,17 +268,23 @@ mv /tmp/test-config /root/test-config
 rm -f /root/*~
 chown root:root /root
 
-# fetch source code for go
+# build go server
 GO_TEMP=$(mktemp -d)
 curl -o "$GO_TEMP/go.tar.gz" https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz
-
 if [ $? -ne 0 ]; then
     echo "Go download failed! Exiting."
     exit 1
 fi
-
 tar -C /usr/local/lib  -xzf $GO_TEMP/go.tar.gz
 rm -rf $GO_TEMP
+
+export GOPATH=/usr/local/lib
+export GOCACHE=/tmp/.cache/go-build
+mkdir /usr/local/lib/src
+cp -r /usr/local/lib/gce-server /usr/local/lib/src/
+/usr/local/lib/go/bin/go get gce-server/...
+/usr/local/lib/go/bin/go build gce-server/kcs
+/usr/local/lib/go/bin/go build gce-server/ltm
 
 . /root/test-config
 
