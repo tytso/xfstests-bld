@@ -7,9 +7,12 @@ import (
 	"example.com/gce-server/util"
 )
 
-func buildKernel(c LTMRequest) LTMRespond {
+func BuildKernel(c util.UserRequest) util.MsgResponse {
 	go runBuild(c.Options.GitRepo, c.Options.CommitID)
-	respond := LTMRespond{true, "started"}
+	respond := util.MsgResponse{
+		Status: true,
+		Msg:    "started",
+	}
 	return respond
 }
 
@@ -22,5 +25,5 @@ func runBuild(url string, commit string) {
 		"GS_BUCKET":    config.Get("GS_BUCKET"),
 		"BUILD_KERNEL": "yes",
 	}
-	util.CheckRun(cmd, util.Rootdir, env, os.Stdout, os.Stderr)
+	util.CheckRun(cmd, util.RootDir, env, os.Stdout, os.Stderr)
 }

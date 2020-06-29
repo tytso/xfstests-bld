@@ -9,12 +9,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// configurable constants for git utility functions
 const (
-	Rootdir          = "/root/repositories"
+	RepoRootDir      = "/root/repositories"
 	FetchBuildScript = "/usr/local/lib/gce-fetch-build-kernel"
 	checkInterval    = 10
 )
 
+// Repository represents a git repository and its current states
 type Repository struct {
 	url        string
 	id         string
@@ -23,11 +25,14 @@ type Repository struct {
 	watching   bool
 }
 
-// clone a repository into a unique directory with reference to linux
-// base repository and checkout to a certain commit, branch or tag name
-// return struct Repository
-// only public repos are supported
+/*
+Clone a repository into a unique directory with reference to the linux
+base repository. It then checkout to a certain commit, branch or tag name
+and returns a Repository struct.
+Only public repos are supported for now.
+*/
 func Clone(url string, commit string) Repository {
+	CreateDir(RepoRootDir)
 	id, _ := uuid.NewRandom()
 
 	cmd := exec.Command(FetchBuildScript)
@@ -36,7 +41,7 @@ func Clone(url string, commit string) Repository {
 		"REPO_ID":  id.String(),
 		"COMMIT":   commit,
 	}
-	CheckRun(cmd, Rootdir, env, os.Stdout, os.Stderr)
+	CheckRun(cmd, RepoRootDir, env, os.Stdout, os.Stderr)
 
 	r := Repository{"", "", "", "", false}
 	r.url = url
@@ -44,7 +49,7 @@ func Clone(url string, commit string) Repository {
 
 	// check whether we have a detached head
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	branch, _ := CheckOutput(cmd, r.GetDir(), EmptyEnv, os.Stderr)
+	branch, _ := CheckOutput(cmd, r.getDir(), EmptyEnv, os.Stderr)
 	branch = branch[:len(branch)-1]
 
 	if branch == "HEAD" {
@@ -57,12 +62,12 @@ func Clone(url string, commit string) Repository {
 	return r
 }
 
-// get the newest commit id on a local branch
-// return the current commit if at a detached HEAD
+// GetCommit returns the newest commit id on a local branch without
+// fetching from remote upstream.
+// It returns the current commit if the repo is at a detached HEAD
 func (r *Repository) GetCommit() string {
-	dir := r.GetDir()
-	stat, err := os.Stat(dir)
-	if err != nil || !stat.IsDir() {
+	dir := r.getDir()
+	if !DirExists(dir) {
 		log.Fatalf("directory %s does not exist!", dir)
 	}
 	cmd := exec.Command("git", "checkout", r.branch)
@@ -73,20 +78,20 @@ func (r *Repository) GetCommit() string {
 	return commit[:len(commit)-1]
 }
 
-// pull the newest code from upstream
+// Pull the newest code from upstream.
 func (r *Repository) Pull() {
-	dir := r.GetDir()
-	stat, err := os.Stat(dir)
-	if err != nil || !stat.IsDir() {
+	dir := r.getDir()
+	if !DirExists(dir) {
 		log.Fatalf("directory %s does not exist!", dir)
 	}
 	cmd := exec.Command("git", "pull")
 	CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
 }
 
-// watch a specified branch in a repo
-// print newest commit id when upstream changes
-// throw error if at a detached HEAD, i.e. r.branch is empty
+// Watch a specified branch and print the newest commit id when it
+// detects code changes from upstream.
+// Watch throws error if the repo is at a detached HEAD, indicated by
+// r.branch == ""
 func (r *Repository) Watch() {
 	if r.watching {
 		return
@@ -106,10 +111,11 @@ func (r *Repository) Watch() {
 	}
 }
 
-func (r *Repository) GetDir() string {
-	return Rootdir + "/" + r.id
+func (r *Repository) getDir() string {
+	return RepoRootDir + "/" + r.id
 }
 
-// func FakeRepo(url string, id string, branch string, currCommit string, watching bool) Repository {
-// 	return Repository{url, id, branch, currCommit, watching}
-// }
+// MockRepo constructs a mock Repository struct without proper initialization.
+func MockRepo(url string, id string, branch string, currCommit string, watching bool) Repository {
+	return Repository{url, id, branch, currCommit, watching}
+}
