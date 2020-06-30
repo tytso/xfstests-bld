@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
 )
 
 type MockSharder struct {
 	TestID  string
 	ProjID  string
 	OrigCmd string
+
+	GitRepo  string
+	CommitID string
+	CallKCS  bool
 
 	Zone           string
 	Region         string
@@ -52,6 +56,10 @@ func (sharder *ShardSchedular) Dump(filename string) {
 		TestID:  sharder.testID,
 		ProjID:  sharder.projID,
 		OrigCmd: sharder.origCmd,
+
+		GitRepo:  sharder.gitRepo,
+		CommitID: sharder.commitID,
+		CallKCS:  sharder.callKCS,
 
 		Zone:           sharder.zone,
 		Region:         sharder.region,
@@ -128,6 +136,10 @@ func ReadSharder(filename string) *ShardSchedular {
 		testID:  mock.TestID,
 		projID:  mock.ProjID,
 		origCmd: mock.OrigCmd,
+
+		gitRepo:  mock.GitRepo,
+		commitID: mock.CommitID,
+		callKCS:  mock.CallKCS,
 
 		zone:           mock.Zone,
 		region:         mock.Region,
