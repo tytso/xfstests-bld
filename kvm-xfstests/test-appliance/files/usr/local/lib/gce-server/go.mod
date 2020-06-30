@@ -1,4 +1,4 @@
-module example.com/gce-server
+module gce-server
 
 go 1.14
 
