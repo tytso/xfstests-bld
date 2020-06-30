@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
 )
 
 var buildLock sync.Mutex
@@ -19,7 +19,7 @@ func StartBuild(c util.UserRequest) string {
 	if c.ExtraOptions != nil {
 		testID = c.ExtraOptions.TestID
 	}
-	config := util.GetConfig()
+	config := util.GetConfig(util.GceConfigFile)
 	gsBucket := config.Get("GS_BUCKET")
 	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s", gsBucket, testID)
 
@@ -39,5 +39,7 @@ func runBuild(url string, commit string, gsBucket string, gsPath string) {
 		"GS_PATH":      gsPath,
 		"BUILD_KERNEL": "yes",
 	}
-	util.CheckRun(cmd, util.RootDir, env, os.Stdout, os.Stderr)
+	err := util.CheckRun(cmd, util.RootDir, env, os.Stdout, os.Stderr)
+	util.Check(err)
+
 }

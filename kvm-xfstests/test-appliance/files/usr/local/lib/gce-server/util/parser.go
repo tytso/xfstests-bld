@@ -28,6 +28,7 @@ var invalidOpts = []string{
 	"-r",
 	"--machtype",
 	"--kernel",
+	"--commit",
 }
 
 /*
@@ -72,7 +73,6 @@ func sanitizeCmd(args []string) ([]string, []string) {
 			}
 		}
 	}
-
 	return validArgs, invalidArgs
 }
 

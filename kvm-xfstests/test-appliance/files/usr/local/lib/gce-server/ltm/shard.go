@@ -17,7 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
+
 	"google.golang.org/api/compute/v1"
 )
 
@@ -88,11 +89,11 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	util.Check(err)
 	cmd := exec.Command("gce-xfstests", shard.args...)
 	log.Printf("%+v", cmd)
-	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
+	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
 	util.Close(file)
 
-	if !status {
-		log.Printf("Shard failed to start, cmd: %+v\n", cmd)
+	if err != nil {
+		log.Printf("Shard failed to start with error: %s. cmd: %s", err, cmd.String())
 	} else {
 		returnVal := shard.monitor()
 		shard.finish(returnVal)
@@ -120,15 +121,18 @@ func (shard *ShardWorker) monitor() bool {
 
 		if err != nil {
 			if util.IsNotFound(err) {
-				log.Printf("Test VM no longer exists\n")
+				// If prevStatus is empty, it's likely the VM never launched
+				if prevStatus == "" {
+					log.Printf("Test VM failed to launch")
+				} else {
+					log.Printf("Test VM no longer exists")
+				}
 				break
 			}
 			log.Fatal(err)
 		}
 
 		prevStart = shard.updateSerialData(prevStart)
-
-		log.Printf("waitTime: %d status: %s\n", waitTime, prevStatus)
 
 		if instanceInfo.Status != prevStatus {
 			timePrevStatus = waitTime
@@ -143,6 +147,8 @@ func (shard *ShardWorker) monitor() bool {
 				return false
 			}
 		}
+
+		log.Printf("wait time: %d status: %s\n", waitTime, prevStatus)
 	}
 	return true
 
@@ -211,9 +217,9 @@ func (shard *ShardWorker) finish(success bool) {
 
 	cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
 	log.Printf("%+v", cmd)
-	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
-	if !status {
-		log.Printf("Get results failed, args was: %+v\n", cmd)
+	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
+	if err != nil {
+		log.Printf("Get results failed with error: , args was: %s\n", err, cmd.String())
 		shard.exit()
 		return
 	}
@@ -249,8 +255,8 @@ func (shard *ShardWorker) getResults() string {
 			log.Printf("Found result file url: %v", resultFiles)
 			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
 		}
-		time.Sleep(5 * time.Second)
 		attempts--
+		time.Sleep(5 * time.Second)
 	}
 	return ""
 }

@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,15 +16,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const (
-	gceStateDir   = "/var/lib/gce-xfstests/"
-	gceConfigFile = "/usr/local/lib/gce_xfstests.config"
-)
-
-// Config dictionary retrieved from gce_xfstests.config.
-type Config struct {
-	kv map[string]string
-}
+const gceStateDir = "/var/lib/gce-xfstests/"
 
 // GceService holds the API clients for Google Cloud Platform.
 type GceService struct {
@@ -42,35 +33,8 @@ type GceQuota struct {
 	ssdLimit int
 }
 
-// GetConfig reads from the config file and returns a struct Config.
-func GetConfig() Config {
-	c := Config{make(map[string]string)}
-	re := regexp.MustCompile(`declare -- (.*?)="(.*?)"`)
-
-	lines, err := ReadLines(gceConfigFile)
-	Check(err)
-
-	for _, line := range lines {
-		tokens := re.FindStringSubmatch(line)
-		if len(tokens) == 3 {
-			c.kv[tokens[1]] = tokens[2]
-		}
-	}
-
-	return c
-}
-
-// Get a certain config value according to key.
-// Returns empty string if key is not present in config.
-func (c *Config) Get(key string) string {
-	if val, ok := c.kv[key]; ok {
-		return val
-	}
-	return ""
-}
-
 // NewGceService launches a new GceService Client.
-func NewGceService(gsBucket string) GceService {
+func NewGceService(gsBucket string) *GceService {
 	gce := GceService{}
 	gce.ctx = context.Background()
 	client, err := google.DefaultClient(gce.ctx, compute.CloudPlatformScope)
@@ -84,7 +48,7 @@ func NewGceService(gsBucket string) GceService {
 	gce.bucket = gsclient.Bucket(gsBucket)
 	_, err = gce.bucket.Attrs(gce.ctx)
 	Check(err)
-	return gce
+	return &gce
 }
 
 // GetSerialPortOutput returns the serial port output for an instance.
@@ -156,7 +120,7 @@ func (gce *GceService) GetRegionQuota(projID string, region string) *GceQuota {
 		return nil
 	}
 	var cpuNum, ipNum, ssdNum int
-	config := GetConfig()
+	config := GetConfig(GceConfigFile)
 	for _, quota := range regionInfo.Quotas {
 		switch quota.Metric {
 		case "CPUS":

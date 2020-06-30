@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
 )
 
 const genResultsSummaryPath = "/usr/local/bin/gen_results_summary"
@@ -56,7 +56,7 @@ type ShardSchedular struct {
 
 	validArgs []string
 	configs   []string
-	gce       util.GceService
+	gce       *util.GceService
 	shards    []*ShardWorker
 }
 
@@ -73,10 +73,10 @@ type SharderInfo struct {
 // except for bucketSubdir.
 func NewShardSchedular(c util.UserRequest) *ShardSchedular {
 	testID := util.GetTimeStamp()
-	logDir := util.TestLogDir + testID + "/"
+	logDir := util.LTMLogDir + testID + "/"
 	util.CreateDir(logDir)
 
-	config := util.GetConfig()
+	config := util.GetConfig(util.GceConfigFile)
 	// assume a zone looks like us-central1-f and a region looks like us-central1
 	// syntax might change in the future so should add support to query for it
 	zone := config.Get("GCE_ZONE")
@@ -117,7 +117,7 @@ func NewShardSchedular(c util.UserRequest) *ShardSchedular {
 		sharder.bucketSubdir = "results"
 	}
 	if sharder.gitRepo != "" && sharder.commitID != "" {
-		// overwrite gsKernel when calling kcs to build the kernel
+		// override gsKernel when launching the shards
 		sharder.callKCS = true
 		sharder.gsKernel = fmt.Sprintf("gs://%s/kernels/bzImage-%s", sharder.gsBucket, sharder.testID)
 	} else {
@@ -255,7 +255,7 @@ func (sharder *ShardSchedular) run() {
 	var wg sync.WaitGroup
 
 	if sharder.callKCS {
-		go sharder.runBuild(&wg)
+		RunBuild(sharder.gitRepo, sharder.commitID, sharder.testID, sharder.gce)
 	}
 
 	for _, shard := range sharder.shards {
@@ -268,28 +268,6 @@ func (sharder *ShardSchedular) run() {
 
 	log.Printf("all shards finished")
 	sharder.finish()
-}
-
-func (sharder *ShardSchedular) runBuild(wg *sync.WaitGroup) {
-	log.Printf("launching kcs server")
-	cmd := exec.Command("gce-xfstests", "launch-kcs")
-	status := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
-	if !status {
-		log.Fatalf("KCS failed to start")
-	}
-
-	args1 := util.UserOptions{
-		GitRepo:  sharder.gitRepo,
-		CommitID: sharder.commitID,
-	}
-	args2 := util.LTMOptions{
-		TestID: sharder.testID,
-	}
-	request := util.UserRequest{
-		Options:      &args1,
-		ExtraOptions: &args2,
-	}
-	log.Printf("%+v", request)
 }
 
 // Info returns structured sharder infomation to send back to user.
@@ -444,7 +422,8 @@ func (sharder *ShardSchedular) createRunStats() {
 func genResultsSummary(resultsDir string, outputFile string) {
 	cmd := exec.Command(genResultsSummaryPath, resultsDir, "--output_file", outputFile)
 	log.Printf("%+v", cmd)
-	util.CheckRun(cmd, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	err := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	util.Check(err)
 }
 
 func (sharder *ShardSchedular) emailReport() {
@@ -455,17 +434,19 @@ func (sharder *ShardSchedular) packResults() {
 	log.Printf("Packing aggregated files")
 
 	cmd1 := exec.Command("tar", "-cf", sharder.aggFile+".tar", "-C", sharder.aggDir, ".")
-	util.CheckRun(cmd1, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	err := util.CheckRun(cmd1, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	util.Check(err)
 
 	cmd2 := exec.Command("xz", "-6ef", sharder.aggFile+".tar")
-	util.CheckRun(cmd2, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	err = util.CheckRun(cmd2, util.RootDir, util.EmptyEnv, os.Stdout, os.Stderr)
+	util.Check(err)
 
 	log.Printf("Uploading repacked results tarball")
 
 	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
 	sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
 
-	config := util.GetConfig()
+	config := util.GetConfig(util.GceConfigFile)
 	if config.Get("GCE_UPLOAD_SUMMARY") != "" {
 		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
 		sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
