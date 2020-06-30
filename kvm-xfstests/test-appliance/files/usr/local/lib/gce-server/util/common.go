@@ -27,10 +27,9 @@ import (
 // configurable constants shared between LTM and KCS
 const (
 	RootDir       = "/usr/local/lib/gce-server"
-	ServerLogPath = "/var/log/lgtm/lgtm.log"
-	TestLogDir    = "/var/log/lgtm/ltm_logs/"
-	SecretPath    = "/etc/lighttpd/server.pem"
-	CertPath      = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
+	ServerLogPath = "/var/log/go/go.log"
+	LTMLogDir     = "/var/log/go/ltm_logs/"
+	KCSLogDir     = "/var/log/go/kcs/logs"
 )
 
 // EmptyEnv provides a placeholder for default exec environment.
@@ -46,31 +45,23 @@ func Check(err error) {
 
 // CheckRun executes an external command and checks the return status.
 // Returns true on success and false otherwise.
-func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) bool {
+func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("%s failed with error: %s\n", cmd.String(), err)
-		return false
-	}
-	return true
+	return err
 }
 
 // CheckOutput executes an external command, checks the return status, and
 // returns the command stdout.
-func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, bool) {
+func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
 	cmd.Stderr = stderr
 	out, err := cmd.Output()
-	if err != nil {
-		log.Fatalf("%s failed with error: %s\n", cmd.String(), err)
-		return "", false
-	}
-	return string(out), true
+	return string(out), err
 }
 
 // parseEnv adds user specified environment to os.Environ.

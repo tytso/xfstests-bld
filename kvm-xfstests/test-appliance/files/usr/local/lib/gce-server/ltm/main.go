@@ -20,7 +20,8 @@ import (
 	"net/http"
 	"os"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
+
 	"google.golang.org/api/compute/v1"
 )
 
@@ -55,10 +56,12 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 	c.CmdLine = string(data)
 	log.Printf("receive test request: %+v\n", &c)
 
-	tester := NewShardSchedular(c)
-	tester.Dump("/root/mock_sharder.json")
-	log.Printf("create test schedular: %+v", &tester)
-	sharderInfo := tester.StartTests()
+	sharder := NewShardSchedular(c)
+	sharder.Dump("/root/mock_sharder.json")
+	// sharder := ReadSharder("/root/mock_sharder.json")
+
+	log.Printf("create test schedular: %+v", &sharder)
+	sharderInfo := sharder.StartTests()
 
 	response := TestResponse{
 		Status: true,
@@ -70,6 +73,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.Printf("launching LTM server")
 	http.HandleFunc("/", util.Index)
 	http.HandleFunc("/login", util.Login)
 	http.HandleFunc("/gce-xfstests", runTests)
@@ -132,9 +136,17 @@ func test2() {
 }
 
 func test3() {
-	tester := ReadSharder("/root/mock_sharder.json")
-	for _, shard := range tester.shards {
+	sharder := ReadSharder("/root/mock_sharder.json")
+	for _, shard := range sharder.shards {
 		shard.finish(true)
 	}
-	tester.finish()
+	sharder.finish()
+}
+
+func test4() {
+	config := util.GetConfig(util.KcsConfigFile)
+	log.Printf("%+v", config)
+
+	config = util.GetConfig(util.GceConfigFile)
+	log.Printf("%+v", config)
 }

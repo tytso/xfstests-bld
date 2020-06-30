@@ -9,7 +9,11 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-const sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
+const (
+	SecretPath      = "/etc/lighttpd/server.pem"
+	CertPath        = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
+	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
+)
 
 // UserOptions contains configs user sends to LTM or KCS.
 type UserOptions struct {
