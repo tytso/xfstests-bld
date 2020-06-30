@@ -19,7 +19,7 @@ import (
 	"log"
 	"net/http"
 
-	"example.com/gce-server/util"
+	"gce-server/util"
 )
 
 /*
@@ -51,6 +51,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.Printf("launching KCS server")
 	http.HandleFunc("/", util.Index)
 	http.HandleFunc("/login", util.Login)
 	http.HandleFunc("/gce-xfstests", runCompile)
