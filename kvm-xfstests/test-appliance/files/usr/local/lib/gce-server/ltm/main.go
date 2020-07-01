@@ -60,7 +60,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 	sharder.Dump("/root/mock_sharder.json")
 	// sharder := ReadSharder("/root/mock_sharder.json")
 
-	log.Printf("create test schedular: %+v", &sharder)
+	log.Printf("create test schedular")
 	sharderInfo := sharder.StartTests()
 
 	response := TestResponse{
@@ -149,4 +149,8 @@ func test4() {
 
 	config = util.GetConfig(util.GceConfigFile)
 	log.Printf("%+v", config)
+}
+
+func test5() {
+	util.SendEmail("test email", "xyshen@google.com", util.GceConfigFile)
 }
