@@ -427,7 +427,10 @@ func genResultsSummary(resultsDir string, outputFile string) {
 }
 
 func (sharder *ShardSchedular) emailReport() {
-	log.Printf("Generating email report")
+	log.Printf("Sending email report")
+	subject := fmt.Sprintf("xfstests results %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
+	reportPath := sharder.aggDir + "report"
+	util.SendEmail(subject, sharder.reportReceiver, reportPath)
 }
 
 func (sharder *ShardSchedular) packResults() {
