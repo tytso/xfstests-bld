@@ -219,7 +219,7 @@ func (shard *ShardWorker) finish(success bool) {
 	log.Printf("%+v", cmd)
 	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
 	if err != nil {
-		log.Printf("Get results failed with error: , args was: %s\n", err, cmd.String())
+		log.Printf("Get results failed with error: %s, args was: %s\n", err, cmd.String())
 		shard.exit()
 		return
 	}

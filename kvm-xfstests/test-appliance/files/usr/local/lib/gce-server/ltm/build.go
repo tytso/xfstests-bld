@@ -98,7 +98,7 @@ func sendRequest(gitRepo string, commitID string, testID string) (*http.Response
 			return resp, err
 		}
 		attempts--
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		log.Printf(err.Error())
 	}
 	return resp, err
@@ -109,8 +109,8 @@ func waitKernel(gce *util.GceService, prefix string) bool {
 	waitTime := 0
 
 	for true {
-		time.Sleep(30 * time.Second)
-		waitTime += 30
+		time.Sleep(60 * time.Second)
+		waitTime += 60
 		log.Printf("wait time: %d", waitTime)
 
 		if names := gce.GetFileNames(prefix); len(names) > 0 {
