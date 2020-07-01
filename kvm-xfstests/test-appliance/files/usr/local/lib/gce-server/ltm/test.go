@@ -130,7 +130,7 @@ func ReadSharder(filename string) *ShardSchedular {
 	util.Check(err)
 
 	var mock MockSharder
-	json.Unmarshal([]byte(file), &mock)
+	json.Unmarshal(file, &mock)
 
 	sharder := ShardSchedular{
 		testID:  mock.TestID,
