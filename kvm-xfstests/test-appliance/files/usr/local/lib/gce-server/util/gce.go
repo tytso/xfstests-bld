@@ -1,8 +1,8 @@
 package util
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,21 +34,29 @@ type GceQuota struct {
 }
 
 // NewGceService launches a new GceService Client.
-func NewGceService(gsBucket string) *GceService {
+func NewGceService(gsBucket string) (*GceService, error) {
 	gce := GceService{}
 	gce.ctx = context.Background()
 	client, err := google.DefaultClient(gce.ctx, compute.CloudPlatformScope)
-	Check(err)
+	if err != nil {
+		return nil, err
+	}
 	s, err := compute.New(client)
-	Check(err)
+	if err != nil {
+		return nil, err
+	}
 	gce.service = s
 
 	gsclient, err := storage.NewClient(gce.ctx)
-	Check(err)
+	if err != nil {
+		return nil, err
+	}
 	gce.bucket = gsclient.Bucket(gsBucket)
 	_, err = gce.bucket.Attrs(gce.ctx)
-	Check(err)
-	return &gce
+	if err != nil {
+		return nil, err
+	}
+	return &gce, nil
 }
 
 // GetSerialPortOutput returns the serial port output for an instance.
@@ -65,62 +73,65 @@ func (gce *GceService) GetInstanceInfo(projID string, zone string, instance stri
 }
 
 // SetMetadata sets the metadata for an instance.
-func (gce *GceService) SetMetadata(projID string, zone string, instance string, metadata *compute.Metadata) {
+func (gce *GceService) SetMetadata(projID string, zone string, instance string, metadata *compute.Metadata) error {
 	_, err := gce.service.Instances.SetMetadata(projID, zone, instance, metadata).Context(gce.ctx).Do()
-	Check(err)
+	return err
 }
 
 // DeleteInstance deletes an instance.
-func (gce *GceService) DeleteInstance(projID string, zone string, instance string) {
+func (gce *GceService) DeleteInstance(projID string, zone string, instance string) error {
 	_, err := gce.service.Instances.Delete(projID, zone, instance).Context(gce.ctx).Do()
-	Check(err)
+	return err
 }
 
-func (gce *GceService) getRegionInfo(projID string, region string) *compute.Region {
-	resp, err := gce.service.Regions.Get(projID, region).Context(gce.ctx).Do()
-	Check(err)
-	return resp
+func (gce *GceService) getRegionInfo(projID string, region string) (*compute.Region, error) {
+	return gce.service.Regions.Get(projID, region).Context(gce.ctx).Do()
 }
 
-func (gce *GceService) getAllRegionsInfo(projID string) []*compute.Region {
+func (gce *GceService) getAllRegionsInfo(projID string) ([]*compute.Region, error) {
 	allRegions := []*compute.Region{}
 	req := gce.service.Regions.List(projID)
 	err := req.Pages(gce.ctx, func(page *compute.RegionList) error {
 		allRegions = append(allRegions, page.Items...)
 		return nil
 	})
-	Check(err)
-	return allRegions
+	return allRegions, err
 }
 
-func (gce *GceService) getZoneInfo(projID string, zone string) *compute.Zone {
-	resp, err := gce.service.Zones.Get(projID, zone).Context(gce.ctx).Do()
-	Check(err)
-	return resp
+func (gce *GceService) getZoneInfo(projID string, zone string) (*compute.Zone, error) {
+	return gce.service.Zones.Get(projID, zone).Context(gce.ctx).Do()
 }
 
 // GetRegionQuota picks the first available zone in a region and returns the
 // quota limits on it.
 // Every shard needs 2 vCPUs and SSD space of GCE_MIN_SCR_SIZE.
 // SSD space is no less than 50 GB.
-func (gce *GceService) GetRegionQuota(projID string, region string) *GceQuota {
-	regionInfo := gce.getRegionInfo(projID, region)
+func (gce *GceService) GetRegionQuota(projID string, region string) (*GceQuota, error) {
+	regionInfo, err := gce.getRegionInfo(projID, region)
+	if err != nil {
+		return nil, err
+	}
 	var pickedZone string
 	for _, zone := range regionInfo.Zones {
 		slice := strings.Split(zone, "/")
 		zone := slice[len(slice)-1]
-		zoneInfo := gce.getZoneInfo(projID, zone)
+		zoneInfo, err := gce.getZoneInfo(projID, zone)
+		if err != nil {
+			return nil, err
+		}
 		if zoneInfo.Status == "UP" {
 			pickedZone = zoneInfo.Name
 			break
 		}
 	}
 	if pickedZone == "" {
-		log.Printf("GCE region %s has no available zones\n", region)
-		return nil
+		return nil, fmt.Errorf("GCE region %s has no available zones", region)
 	}
 	var cpuNum, ipNum, ssdNum int
-	config := GetConfig(GceConfigFile)
+	config, err := GetConfig(GceConfigFile)
+	if err != nil {
+		return nil, err
+	}
 	for _, quota := range regionInfo.Quotas {
 		switch quota.Metric {
 		case "CPUS":
@@ -142,29 +153,30 @@ func (gce *GceService) GetRegionQuota(projID string, region string) *GceQuota {
 		cpuLimit: cpuNum / 2,
 		ipLimit:  ipNum,
 		ssdLimit: ssdLimit,
-	}
+	}, nil
 }
 
 // GetAllRegionsQuota returns quota limits for every available region.
-func (gce *GceService) GetAllRegionsQuota(projID string) []*GceQuota {
-	allRegions := gce.getAllRegionsInfo(projID)
+func (gce *GceService) GetAllRegionsQuota(projID string) ([]*GceQuota, error) {
+	allRegions, err := gce.getAllRegionsInfo(projID)
+	if err != nil {
+		return []*GceQuota{}, err
+	}
 	quotas := []*GceQuota{}
 	for _, region := range allRegions {
 		if region.Status == "UP" {
-			quota := gce.GetRegionQuota(projID, region.Name)
-			if quota != nil {
+			quota, err := gce.GetRegionQuota(projID, region.Name)
+			if quota != nil && err == nil {
 				quotas = append(quotas, quota)
 			}
 		}
 	}
-	return quotas
+	return quotas, nil
 }
 
 // GetMaxShard return the max possible number of shards according to the quota limits
-func (quota *GceQuota) GetMaxShard() int {
-	maxShard, err := MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
-	Check(err)
-	return maxShard
+func (quota *GceQuota) GetMaxShard() (int, error) {
+	return MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
 }
 
 // GetFiles returns an iterator for all files with a matching path prefix on GS.
@@ -175,7 +187,7 @@ func (gce *GceService) GetFiles(prefix string) *storage.ObjectIterator {
 }
 
 // DeleteFiles removes all files with a matching path prefix on GS.
-func (gce *GceService) DeleteFiles(prefix string) int {
+func (gce *GceService) DeleteFiles(prefix string) (int, error) {
 	it := gce.GetFiles(prefix)
 	count := 0
 	for {
@@ -183,18 +195,21 @@ func (gce *GceService) DeleteFiles(prefix string) int {
 		if err != nil {
 			if err == iterator.Done {
 				break
+			} else {
+				return 0, err
 			}
-			Check(err)
 		}
 		err = gce.bucket.Object(objAttrs.Name).Delete(gce.ctx)
-		Check(err)
+		if err != nil {
+			return 0, err
+		}
 		count++
 	}
-	return count
+	return count, nil
 }
 
 // GetFileNames returns a slice of file names with a matching path prefix on GS.
-func (gce *GceService) GetFileNames(prefix string) []string {
+func (gce *GceService) GetFileNames(prefix string) ([]string, error) {
 	it := gce.GetFiles(prefix)
 	names := []string{}
 	for {
@@ -202,30 +217,35 @@ func (gce *GceService) GetFileNames(prefix string) []string {
 		if err != nil {
 			if err == iterator.Done {
 				break
+			} else {
+				return names, err
 			}
-			Check(err)
 		}
 		names = append(names, objAttrs.Name)
 	}
-	return names
+	return names, nil
 }
 
 // UploadFile uploads a local file or directory to GS.
-func (gce *GceService) UploadFile(localPath string, gsPath string) {
+func (gce *GceService) UploadFile(localPath string, gsPath string) error {
 	obj := gce.bucket.Object(gsPath)
 	w := obj.NewWriter(gce.ctx)
+	defer w.Close()
 	file, err := os.Open(localPath)
-	Check(err)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-	defer Close(file)
 	_, err = io.Copy(w, file)
-	Check(err)
+	if err != nil {
+		return err
+	}
 
-	err = w.Close()
-	Check(err)
+	return nil
 }
 
-// IsNotFound returns true if err is a 404 not found error.
+// IsNotFound returns true if err is 404 not found.
 func IsNotFound(err error) bool {
 	if err != nil {
 		if e, ok := err.(*googleapi.Error); ok && e.Code == http.StatusNotFound {

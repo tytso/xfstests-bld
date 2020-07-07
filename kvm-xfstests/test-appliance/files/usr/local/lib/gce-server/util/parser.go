@@ -42,12 +42,11 @@ Returns:
 	configs - a map from filesystem names to a slice of corresponding
 	configurations.  Duplicates are removed from the original cmd configs.
 */
-func ParseCmd(cmdLine string) ([]string, map[string][]string) {
+func ParseCmd(cmdLine string) ([]string, map[string][]string, error) {
 	args := strings.Fields(cmdLine)
 	validArgs, _ := sanitizeCmd(args)
 	validArgs = expandAliases(validArgs)
-	validArgs, configs := processConfigs(validArgs)
-	return validArgs, configs
+	return processConfigs(validArgs)
 }
 
 // sanitizeCmd removes invalid args from input cmdline.
@@ -100,7 +99,7 @@ func expandAliases(args []string) []string {
 // processConfigs finds the configuration args following "-c" and parses
 // them. If no "-c" option is specified (or aliases like "smoke"), it uses
 // primaryFS as the filesystem and "all" as the config.
-func processConfigs(args []string) ([]string, map[string][]string) {
+func processConfigs(args []string) ([]string, map[string][]string, error) {
 	newArgs := make([]string, len(args))
 	copy(newArgs, args)
 	configArg := ""
@@ -115,10 +114,16 @@ func processConfigs(args []string) ([]string, map[string][]string) {
 	}
 
 	if configArg == "" {
-		defaultConfigs(configs)
+		err := defaultConfigs(configs)
+		if err != nil {
+			return newArgs, configs, err
+		}
 	} else {
 		for _, c := range strings.Split(configArg, ",") {
-			singleConfig(configs, c)
+			err := singleConfig(configs, c)
+			if err != nil {
+				return newArgs, configs, err
+			}
 		}
 	}
 
@@ -129,17 +134,20 @@ func processConfigs(args []string) ([]string, map[string][]string) {
 		sort.Strings(configs[key])
 	}
 
-	return newArgs, configs
+	return newArgs, configs, nil
 }
 
-func defaultConfigs(configs map[string][]string) {
+func defaultConfigs(configs map[string][]string) error {
 	configFile := fmt.Sprintf("%s/fs/%s/cfg/all.list", xfsPath, primaryFS)
 	lines, err := ReadLines(configFile)
-	Check(err)
+	if err != nil {
+		return err
+	}
 
 	for _, line := range lines {
 		configs[primaryFS] = append(configs[primaryFS], line)
 	}
+	return nil
 }
 
 /*
@@ -151,7 +159,7 @@ Possible pattern of configs:
 	<fs> (e.g. ext4) - uses default config for <fs> if it exists.
 	<cfg> (e.g. quick) - uses primaryFS and <cfg> as the configuration.
 */
-func singleConfig(configs map[string][]string, configArg string) {
+func singleConfig(configs map[string][]string, configArg string) error {
 	configLines := []string{}
 	var fs, cfg string
 
@@ -174,7 +182,9 @@ func singleConfig(configs map[string][]string, configArg string) {
 
 		if FileExists(configFile) {
 			lines, err := ReadLines(configFile)
-			Check(err)
+			if err != nil {
+				return err
+			}
 			configLines = lines
 		} else {
 			configFile = configFile[:len(configFile)-5]
@@ -182,7 +192,7 @@ func singleConfig(configs map[string][]string, configArg string) {
 			if FileExists(configFile) {
 				configLines = []string{cfg}
 			} else {
-				return
+				return nil
 			}
 		}
 	}
@@ -192,4 +202,5 @@ func singleConfig(configs map[string][]string, configArg string) {
 	} else {
 		configs[fs] = configLines
 	}
+	return nil
 }

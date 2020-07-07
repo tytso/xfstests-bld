@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"io/ioutil"
+	"log"
+	"os"
 
 	"gce-server/util"
+
+	"google.golang.org/api/compute/v1"
 )
 
 type MockSharder struct {
@@ -83,10 +88,8 @@ func (sharder *ShardSchedular) Dump(filename string) {
 		mock.Shards = append(mock.Shards, shard.Dump())
 	}
 
-	file, err := json.MarshalIndent(mock, "", "\t")
-	util.Check(err)
-	err = ioutil.WriteFile(filename, file, 0644)
-	util.Check(err)
+	file, _ := json.MarshalIndent(mock, "", "\t")
+	ioutil.WriteFile(filename, file, 0644)
 }
 
 func (shard *ShardWorker) Dump() MockShard {
@@ -126,8 +129,7 @@ func (mock MockShard) Read(sharder *ShardSchedular) *ShardWorker {
 }
 
 func ReadSharder(filename string) *ShardSchedular {
-	file, err := ioutil.ReadFile(filename)
-	util.Check(err)
+	file, _ := ioutil.ReadFile(filename)
 
 	var mock MockSharder
 	json.Unmarshal(file, &mock)
@@ -160,9 +162,87 @@ func ReadSharder(filename string) *ShardSchedular {
 		configs:   mock.Configs,
 	}
 
-	sharder.gce = util.NewGceService(sharder.gsBucket)
+	sharder.gce, _ = util.NewGceService(sharder.gsBucket)
 	for _, mockShard := range mock.Shards {
 		sharder.shards = append(sharder.shards, mockShard.Read(&sharder))
 	}
 	return &sharder
+}
+
+var repo *util.Repository
+
+func test() {
+	reader := bufio.NewReader(os.Stdin)
+	for true {
+		arg, _ := reader.ReadString('\n')
+		switch arg[:len(arg)-1] {
+		case "clone":
+			repo, _ = util.Clone("https://github.com/XiaoyangShen/spinner_test.git", "master")
+		case "commit":
+			id, _ := repo.GetCommit()
+			log.Println(id)
+		case "pull":
+			repo.Pull()
+		case "watch":
+			repo.Watch()
+		}
+	}
+}
+
+func test1() {
+	reader := bufio.NewReader(os.Stdin)
+	for true {
+		arg, _ := reader.ReadString('\n')
+
+		validArg, configs, _ := util.ParseCmd(arg[:len(arg)-1])
+		log.Printf("%s; %+v\n", validArg, configs)
+	}
+}
+
+func test2() {
+	gce, _ := util.NewGceService("xfstests-xyshen")
+	info, _ := gce.GetInstanceInfo("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm")
+	log.Printf("%+v", info.Metadata)
+	for _, item := range info.Metadata.Items {
+		log.Printf("%+v", item)
+	}
+
+	val := "ahaah"
+	newMetadata := compute.Metadata{
+		Fingerprint: info.Metadata.Fingerprint,
+		Items: []*compute.MetadataItems{
+			{
+				Key:   "shutdown_reason",
+				Value: &val,
+			},
+		},
+	}
+	gce.SetMetadata("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm", &newMetadata)
+}
+
+func test3() {
+	sharder := ReadSharder("/root/mock_sharder.json")
+	for _, shard := range sharder.shards {
+		shard.finish()
+	}
+	sharder.finish()
+}
+
+func test4() {
+	config, _ := util.GetConfig(util.KcsConfigFile)
+	log.Printf("%+v", config)
+
+	config, _ = util.GetConfig(util.GceConfigFile)
+	log.Printf("%+v", config)
+}
+
+func test5() {
+	util.SendEmail("test email", "xyshen@google.com", util.GceConfigFile)
+}
+
+func test6() {
+	msg := "random msg"
+	content, _ := ioutil.ReadFile("/var/log/go/go.log")
+	msg = msg + "\n" + string(content)
+	util.SendEmail("test", msg, "xyshen@google.com")
 }

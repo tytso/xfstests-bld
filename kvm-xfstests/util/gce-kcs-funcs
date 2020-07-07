@@ -44,6 +44,9 @@ function send_to_kcs() {
     fi
 
     KCS_OPTS=""
+    if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
+	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
+    fi
     if [ -n "$COMMIT" ]; then
 	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"commit_id\":\"$COMMIT\""
     fi
