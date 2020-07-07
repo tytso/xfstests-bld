@@ -1,7 +1,7 @@
 package util
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -31,9 +31,15 @@ base repository. It then checkout to a certain commit, branch or tag name
 and returns a Repository struct.
 Only public repos are supported for now.
 */
-func Clone(url string, commit string) Repository {
-	CreateDir(RepoRootDir)
-	id, _ := uuid.NewRandom()
+func Clone(url string, commit string) (*Repository, error) {
+	err := CreateDir(RepoRootDir)
+	if err != nil {
+		return nil, err
+	}
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
 
 	cmd := exec.Command(FetchBuildScript)
 	env := map[string]string{
@@ -41,77 +47,94 @@ func Clone(url string, commit string) Repository {
 		"REPO_ID":  id.String(),
 		"COMMIT":   commit,
 	}
-	err := CheckRun(cmd, RepoRootDir, env, os.Stdout, os.Stderr)
-	Check(err)
+	err = CheckRun(cmd, RepoRootDir, env, os.Stdout, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
 
-	r := Repository{"", "", "", "", false}
-	r.url = url
-	r.id = id.String()
+	r := Repository{
+		url:      url,
+		id:       id.String(),
+		watching: false,
+	}
 
 	// check whether we have a detached head
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	branch, err := CheckOutput(cmd, r.getDir(), EmptyEnv, os.Stderr)
-	Check(err)
-	branch = branch[:len(branch)-1]
+	if err != nil {
+		return nil, err
+	}
 
+	branch = branch[:len(branch)-1]
 	if branch == "HEAD" {
 		r.currCommit = commit
 	} else {
-		r.currCommit = r.GetCommit()
+		r.currCommit, err = r.GetCommit()
+		if err != nil {
+			return nil, err
+		}
 		r.branch = branch
 	}
 
-	return r
+	return &r, nil
 }
 
 // GetCommit returns the newest commit id on a local branch without
 // fetching from remote upstream.
 // It returns the current commit if the repo is at a detached HEAD
-func (r *Repository) GetCommit() string {
+func (r *Repository) GetCommit() (string, error) {
 	dir := r.getDir()
 	if !DirExists(dir) {
-		log.Fatalf("directory %s does not exist!", dir)
+		return "", fmt.Errorf("directory %s does not exist", dir)
 	}
 	cmd := exec.Command("git", "checkout", r.branch)
 	err := CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
-	Check(err)
+	if err != nil {
+		return "", err
+	}
 
 	cmd = exec.Command("git", "rev-parse", "@")
 	commit, err := CheckOutput(cmd, dir, EmptyEnv, os.Stderr)
-	Check(err)
-	return commit[:len(commit)-1]
+	if err != nil {
+		return "", err
+	}
+
+	return commit[:len(commit)-1], nil
 }
 
 // Pull the newest code from upstream.
-func (r *Repository) Pull() {
+func (r *Repository) Pull() error {
 	dir := r.getDir()
 	if !DirExists(dir) {
-		log.Fatalf("directory %s does not exist!", dir)
+		return fmt.Errorf("directory %s does not exist", dir)
 	}
 	cmd := exec.Command("git", "pull")
 	err := CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
-	Check(err)
+	return err
 }
 
 // Watch a specified branch and print the newest commit id when it
 // detects code changes from upstream.
 // Watch throws error if the repo is at a detached HEAD, indicated by
 // r.branch == ""
-func (r *Repository) Watch() {
+func (r *Repository) Watch() error {
 	if r.watching {
-		return
+		return nil
 	}
 	if r.branch == "" {
-		log.Fatalf("repo has a detached HEAD %s\n", r.currCommit)
+		fmt.Errorf("repo has a detached HEAD %s", r.currCommit)
 	}
 	r.watching = true
 	for {
 		time.Sleep(checkInterval * time.Second)
 		r.Pull()
-		newCommit := r.GetCommit()
+		newCommit, err := r.GetCommit()
+		if err != nil {
+			return err
+		}
 		if newCommit != r.currCommit {
 			r.currCommit = newCommit
-			log.Println("new commit detected")
+			fmt.Println("new commit detected")
 		}
 	}
 }

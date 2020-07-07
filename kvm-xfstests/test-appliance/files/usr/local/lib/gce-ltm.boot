@@ -38,25 +38,31 @@ swapon /swapfile
 # relaunch lighttpd with the new configuration.
 # essentially create a webserver right here.
 
-if test ! -d "/var/log/lgtm"
-then
-    # we only want to do this if the server isn't set up already.
-    # (e.g. if the ltm server instance was stopped and restarted, this should
-    # not get executed)
-    rm -r /var/www/*
-    mkdir -p /var/log/lgtm
-    chown www-data:www-data -R /var/log/lgtm
-    lighttpd-enable-mod fastcgi
-    cat /usr/local/lib/gce-ltm/ltm-lighttpd.conf >> /etc/lighttpd/lighttpd.conf
-    # Webserver static files should go in static
-    mv /usr/local/lib/gce-ltm/static /var/www/
-    systemctl restart lighttpd.service
-    # Restart to allow conf changes to take effect.
-fi
+# if test ! -d "/var/log/lgtm"
+# then
+#     # we only want to do this if the server isn't set up already.
+#     # (e.g. if the ltm server instance was stopped and restarted, this should
+#     # not get executed)
+#     rm -r /var/www/*
+#     mkdir -p /var/log/lgtm
+#     chown www-data:www-data -R /var/log/lgtm
+#     lighttpd-enable-mod fastcgi
+#     cat /usr/local/lib/gce-ltm/ltm-lighttpd.conf >> /etc/lighttpd/lighttpd.conf
+#     # Webserver static files should go in static
+#     mv /usr/local/lib/gce-ltm/static /var/www/
+#     systemctl restart lighttpd.service
+#     # Restart to allow conf changes to take effect.
+# fi
 
-# launch the go server here
+systemctl stop lighttpd.service
+systemctl disable lighttpd.service
 
 if test ! -d "/var/log/go"
 then
+    # we only want to do this if the server isn't set up already.
+    # (e.g. if the compile server instance was stopped and restarted, this should
+    # not get executed)
     mkdir -p /var/log/go
+    systemctl enable gce-ltm.service
+    systemctl start gce-ltm.service
 fi

@@ -11,54 +11,71 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
 	"time"
 
+	"gce-server/logging"
 	"gce-server/util"
 
+	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
 )
 
 // ShardWorker manages a single test VM.
 type ShardWorker struct {
-	sharder            *ShardSchedular
-	shardID            string
-	name               string
-	zone               string
-	config             string
-	args               []string
+	sharder   *ShardSchedular
+	shardID   string
+	name      string
+	zone      string
+	config    string
+	args      []string
+	vmTimeout bool
+
+	log                *logrus.Entry
 	logPath            string
 	cmdLogPath         string
 	serialOutputPath   string
 	resultsName        string
 	tmpResultsDir      string
 	unpackedResultsDir string
-	vmTimeout          bool
 }
 
 // ShardInfo exports shard info to be sent back to user.
 type ShardInfo struct {
-	Index   int    `json:"index"`
 	ShardID string `json:"shard_id"`
 	Config  string `json:"cfg"`
 	Zone    string `json:"zone"`
 }
 
 // NewShardWorker constructs a new shard, requested by the sharder
-func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone string, validArgs []string) *ShardWorker {
+func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone string) *ShardWorker {
+	logPath := sharder.logDir + shardID
 	shard := ShardWorker{
-		sharder: sharder,
-		shardID: shardID,
-		zone:    zone,
-		config:  config,
+		sharder:   sharder,
+		shardID:   shardID,
+		name:      fmt.Sprintf("xfstests-ltm-%s-%s", sharder.testID, shardID),
+		zone:      zone,
+		config:    config,
+		args:      []string{},
+		vmTimeout: false,
+
+		log:                sharder.log.WithField("shardID", shardID),
+		logPath:            logPath,
+		cmdLogPath:         logPath + ".cmdlog",
+		serialOutputPath:   logPath + ".serial",
+		resultsName:        fmt.Sprintf("%s-%s-%s", LTMUserName, sharder.testID, shardID),
+		tmpResultsDir:      fmt.Sprintf("/tmp/results-%s-%s-%s", LTMUserName, sharder.testID, shardID),
+		unpackedResultsDir: fmt.Sprintf("%sresults-%s-%s-%s", sharder.logDir, LTMUserName, sharder.testID, shardID),
 	}
-	shard.name = fmt.Sprintf("xfstests-ltm-%s-%s", sharder.testID, shardID)
+
+	shard.log.Info("Initializing test shard")
+
 	shard.args = []string{
+		"gce-xfstests",
 		"--instance-name", shard.name,
-		"--gce-zone", zone,
+		"--gce-zone", shard.zone,
 		"--gs-bucket", sharder.gsBucket,
 		"--image-project", sharder.projID,
 		"--kernel", sharder.gsKernel,
@@ -66,70 +83,67 @@ func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone
 		"--no-email",
 		"-c", config,
 	}
-	shard.args = append(shard.args, validArgs...)
-	shard.setupLogging()
+	shard.args = append(shard.args, sharder.validArgs...)
 
 	return &shard
-}
-
-func (shard *ShardWorker) setupLogging() {
-	shard.logPath = shard.sharder.logDir + shard.shardID
-	shard.cmdLogPath = shard.logPath + ".cmdlog"
-	shard.serialOutputPath = shard.logPath + ".serial"
-	shard.resultsName = fmt.Sprintf("%s-%s-%s", LTMUserName, shard.sharder.testID, shard.shardID)
-	shard.tmpResultsDir = fmt.Sprintf("/tmp/results-%s-%s-%s", LTMUserName, shard.sharder.testID, shard.shardID)
-	shard.unpackedResultsDir = fmt.Sprintf("%sresults-%s-%s-%s", shard.sharder.logDir, LTMUserName, shard.sharder.testID, shard.shardID)
 }
 
 // Run issues the gce-xfstests command to launch a test vm and monitor its running status
 func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	// handle exceptions (panic) here
+	defer shard.exit()
+
+	shard.log.WithField("shardInfo", shard.Info()).Debug("Starting shard")
+
 	file, err := os.Create(shard.cmdLogPath)
-	util.Check(err)
-	cmd := exec.Command("gce-xfstests", shard.args...)
-	log.Printf("%+v", cmd)
+	logging.CheckPanic(err, shard.log, "Failed to create file")
+
+	cmd := exec.Command(shard.args[0], shard.args[1:]...)
+	shard.log.WithField("cmd", cmd.String()).Info("Launching test VM")
 	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
-	util.Close(file)
+	file.Close()
 
 	if err != nil {
-		log.Printf("Shard failed to start with error: %s. cmd: %s", err, cmd.String())
+		shard.log.WithError(err).WithField("cmd", cmd.String()).Error("Failed to start test VM")
 	} else {
-		returnVal := shard.monitor()
-		shard.finish(returnVal)
+		shard.monitor()
+		shard.finish()
 	}
-	log.Printf("Existing monitor process for shard %s", shard.shardID)
+	shard.log.Info("Existing shard process")
 }
 
 // monitor queries the GCE api every minute and logs the serial console output
 // to a local file. If the vm no longer exists or the status hasn't changed for
 // more than an hour, the monitor kills the test vm.
-// Returns true if the test vm exits normally.
-func (shard *ShardWorker) monitor() bool {
+// panic if VM doesn't finish within 1 hour
+func (shard *ShardWorker) monitor() {
 	var (
 		waitTime       int
 		timePrevStatus int
 		prevStart      int64
 		prevStatus     string
 	)
+	shard.log.Info("Waiting for test VM to finish")
 
 	for true {
 		time.Sleep(60 * time.Second)
 		waitTime += 60
-
+		log := shard.log.WithField("waited", waitTime)
 		instanceInfo, err := shard.sharder.gce.GetInstanceInfo(shard.sharder.projID, shard.zone, shard.name)
 
 		if err != nil {
 			if util.IsNotFound(err) {
 				// If prevStatus is empty, it's likely the VM never launched
 				if prevStatus == "" {
-					log.Printf("Test VM failed to launch")
+					log.Panic("Test VM failed to launch")
 				} else {
-					log.Printf("Test VM no longer exists")
+					log.Info("Test VM no longer exists")
 				}
 				break
 			}
-			log.Fatal(err)
+			log.WithError(err).Panic("Failed to get instance info")
 		}
 
 		prevStart = shard.updateSerialData(prevStart)
@@ -138,46 +152,58 @@ func (shard *ShardWorker) monitor() bool {
 			timePrevStatus = waitTime
 			prevStatus = instanceInfo.Status
 		} else if waitTime > timePrevStatus+3600 {
-			log.Printf("Instance seems to have wedged, no status update for > 1 hour.\n")
-			log.Printf("Wait time: %d stayed at status %s since time: %d", waitTime, prevStatus, timePrevStatus)
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
-			} else {
-				//TODO: improve the return logic here
-				return false
 			}
+			// TODO: validate this step (i.e. whether we wait fot the VM to be deleted)
+			log.WithFields(logrus.Fields{
+				"prevStatus":     prevStatus,
+				"timePrevStatus": timePrevStatus,
+			}).Panic("Instance seems to have wedged, no status update for 1 hour")
 		}
 
-		log.Printf("wait time: %d status: %s\n", waitTime, prevStatus)
+		log.WithFields(logrus.Fields{
+			"prevStatus":     prevStatus,
+			"timePrevStatus": timePrevStatus,
+		}).Debug("Keep waiting")
 	}
-	return true
-
 }
 
 // updateSerialData writes the serial port output from the test vm to local log file.
 func (shard *ShardWorker) updateSerialData(prevStart int64) int64 {
+	log := shard.log.WithField("prevStart", prevStart)
 	output, err := shard.sharder.gce.GetSerialPortOutput(
 		shard.sharder.projID, shard.zone, shard.name, prevStart)
 	if err != nil {
+		log.Debug("Unable to get serial output, VM might be down")
 		return prevStart
 	}
 
-	file, err := os.OpenFile(shard.serialOutputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	util.Check(err)
-	defer util.Close(file)
+	file, err := os.OpenFile(shard.serialOutputPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if !logging.CheckNoError(err, log, "Failed to open file") {
+		return prevStart
+	}
+	defer file.Close()
 
 	if output.Start > prevStart {
+		log.WithField("newStart", output.Start).Info("Missing some serial port output")
 		_, err := file.WriteString(fmt.Sprintf(
 			"\n!=====Missing data from %d to %d=====!\n", prevStart, output.Start))
-		util.Check(err)
+		if !logging.CheckNoError(err, log, "Failed to write file") {
+			return prevStart
+		}
 	}
+	log.Debug("Writing serial port output to file")
 	_, err = file.WriteString(output.Contents)
-	util.Check(err)
+	if !logging.CheckNoError(err, log, "Failed to write file") {
+		return prevStart
+	}
 
 	return output.Next
 }
 
 func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
+	shard.log.Info("Shutting down")
 	shard.vmTimeout = true
 
 	for _, item := range metadata.Items {
@@ -192,90 +218,90 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 		Value: &val,
 	})
 
-	shard.sharder.gce.SetMetadata(shard.sharder.projID, shard.zone, shard.name, metadata)
+	err := shard.sharder.gce.SetMetadata(shard.sharder.projID, shard.zone, shard.name, metadata)
+	logging.CheckNoError(err, shard.log, "Failed to set VM metadata")
 	// allow some time for metadata to be set
 	time.Sleep(1 * time.Second)
-	shard.sharder.gce.DeleteInstance(shard.sharder.projID, shard.zone, shard.name)
+	err = shard.sharder.gce.DeleteInstance(shard.sharder.projID, shard.zone, shard.name)
+	logging.CheckNoError(err, shard.log, "Failed to delete VM")
 }
 
 // finish calls gce-xfstests scripts to fetch and unpack test result files.
-// It deletes the results in gs bucket and local serial port output on success.
-func (shard *ShardWorker) finish(success bool) {
-	if !success {
-		shard.exit()
-		return
-	}
+// It deletes the results in gs bucket and local serial port output.
+func (shard *ShardWorker) finish() {
+	shard.log.Info("Finishing shard")
+
 	url := shard.getResults()
 	if url == "" {
-		log.Printf("cannot find result file")
-		shard.exit()
-		return
+		shard.log.Panic("Failed to find result file")
 	}
-	file, err := os.OpenFile(shard.cmdLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	util.Check(err)
-	defer util.Close(file)
 
 	cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
-	log.Printf("%+v", cmd)
-	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
-	if err != nil {
-		log.Printf("Get results failed with error: %s, args was: %s\n", err, cmd.String())
-		shard.exit()
-		return
-	}
+	cmdLog := shard.log.WithField("cmd", cmd.String())
+	w := cmdLog.Writer()
+	defer w.Close()
+	err := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, w, w)
+	logging.CheckPanic(err, cmdLog, "Failed to run get-results")
 
 	if util.DirExists(shard.tmpResultsDir) {
 		util.RemoveDir(shard.unpackedResultsDir)
 		err = os.Rename(shard.tmpResultsDir, shard.unpackedResultsDir)
-		util.Check(err)
+		logging.CheckPanic(err, shard.log, "Failed to move dir")
 	} else {
-		log.Printf("results not found")
-		shard.exit()
-		return
+		shard.log.Panic("Failed to find unpacked result files")
 	}
 
 	if util.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
 		err = os.Remove(shard.serialOutputPath)
-		util.Check(err)
+		logging.CheckNoError(err, shard.log, "Failed to remove dir")
 	}
 
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	shard.sharder.gce.DeleteFiles(prefix)
-	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	shard.sharder.gce.DeleteFiles(prefix)
+	_, err = shard.sharder.gce.DeleteFiles(prefix)
+	logging.CheckNoError(err, shard.log, "Failed to delete file")
 
+	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
+	_, err = shard.sharder.gce.DeleteFiles(prefix)
+	logging.CheckNoError(err, shard.log, "Failed to delete file")
 }
 
+// getResults fetches the test result files.
+// return "" if cannot find the result file in 5 attempts
 func (shard *ShardWorker) getResults() string {
+	shard.log.Info("Fetching test results")
 	attempts := 5
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	for attempts > 0 {
-		resultFiles := shard.sharder.gce.GetFileNames(prefix)
-		if len(resultFiles) == 1 {
-			log.Printf("Found result file url: %v", resultFiles)
+		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
+		logging.CheckNoError(err, shard.log, "Failed to get GS filenames")
+		if err == nil && len(resultFiles) == 1 {
+			shard.log.WithField("resultURL", resultFiles[0]).Info("Found result file url")
 			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
 		}
 		attempts--
+		shard.log.WithField("attemptsLeft", attempts).Debug("No GS file with matching url")
 		time.Sleep(5 * time.Second)
 	}
 	return ""
 }
 
 // Info returns structured shard information to send back to user
-func (shard *ShardWorker) Info(index int) ShardInfo {
+func (shard *ShardWorker) Info() ShardInfo {
 	return ShardInfo{
-		Index:   index,
 		ShardID: shard.shardID,
 		Config:  shard.config,
 		Zone:    shard.zone,
 	}
 }
 
+// exit handles panic from shard run.
 func (shard *ShardWorker) exit() {
-	log.Printf("Existing shard gracefully with errors")
-	if util.FileExists(shard.serialOutputPath) {
-		log.Printf("Serial port output in results")
-	} else {
-		log.Printf("No results available")
+	if r := recover(); r != nil {
+		shard.log.WithField("panic", r).Warn("Shard finishes with errors, regular result files are not available")
+		if util.FileExists(shard.serialOutputPath) {
+			shard.log.Warn("Serial port output is found")
+		} else {
+			shard.log.Warn("Serial port output is not found")
+		}
 	}
 }

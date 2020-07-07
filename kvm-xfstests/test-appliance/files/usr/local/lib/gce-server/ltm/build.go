@@ -5,79 +5,96 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"time"
 
+	"gce-server/logging"
+	"gce-server/server"
 	"gce-server/util"
+
+	"github.com/sirupsen/logrus"
 )
 
+// Timeout defines the time out threshold for a kernel build
+const Timeout = 1800
+
 // RunBuild launches the KCS server to build a kernel image.
-func RunBuild(gitRepo string, commitID string, testID string, gce *util.GceService) {
+func RunBuild(gitRepo string, commitID string, reportEmail string, testID string, gce *util.GceService, sharderLog *logrus.Entry) {
+	log := sharderLog.WithFields(logrus.Fields{
+		"gitRepo":  gitRepo,
+		"commitID": commitID,
+	})
 	prefix := fmt.Sprintf("kernels/bzImage-%s", testID)
-	if names := gce.GetFileNames(prefix); len(names) > 0 {
-		log.Printf("kernel image file already exists on gs, skip building")
+	names, err := gce.GetFileNames(prefix)
+	logging.CheckPanic(err, log, "Failed to search for files")
+
+	if len(names) > 0 {
+		log.WithField("filename", names[0]).Info("kernel image file already exists on gs, skip building")
 		return
 	}
 
-	launchKCS()
+	launchKCS(log)
 
-	resp, err := sendRequest(gitRepo, commitID, testID)
-	util.Check(err)
-
+	resp := sendRequest(gitRepo, commitID, reportEmail, testID, log)
 	defer resp.Body.Close()
 
-	var c util.BuildResponse
+	var c server.SimpleResponse
 
 	err = json.NewDecoder(resp.Body).Decode(&c)
-	util.Check(err)
-	log.Printf("%+v", c)
+	logging.CheckPanic(err, log, "Failed to parse json response")
 
-	status := waitKernel(gce, prefix)
-	if !status {
-		log.Fatal("wait for KCS build timed out")
-	}
+	log.WithField("rep", c).Debug("Received response from KCS")
+
+	waitKernel(gce, prefix, log)
 }
 
-func launchKCS() {
-	log.Printf("launching KCS server")
+func launchKCS(log *logrus.Entry) {
+	log.Info("Launching KCS server")
+
 	cmd := exec.Command("gce-xfstests", "launch-kcs")
-	// exit status 1 if kcs already exists
-	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, os.Stderr)
+	cmdLog := log.WithField("cmd", cmd.String())
+	w := cmdLog.Writer()
+	defer w.Close()
+	// exit status is 1 if kcs already exists
+	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
 	if err != nil && output != "The KCS instance already exists!\n" {
-		log.Printf(output)
-		log.Fatal(err)
+		cmdLog.WithField("output", output).WithError(err).Panic("Failed to launch KCS")
 	}
 }
 
-func sendRequest(gitRepo string, commitID string, testID string) (*http.Response, error) {
+func sendRequest(gitRepo string, commitID string, reportEmail string, testID string, log *logrus.Entry) *http.Response {
 
-	config := util.GetConfig(util.KcsConfigFile)
+	config, err := util.GetConfig(util.KcsConfigFile)
+	logging.CheckPanic(err, log, "Failed to get kcs config")
+
 	ip := config.Get("GCE_KCS_INT_IP")
 	// pwd := config.Get("GCE_KCS_PWD")
+	// TODO: add login step
+
 	url := fmt.Sprintf("https://%s/gce-xfstests", ip)
 
-	args1 := util.UserOptions{
-		GitRepo:  gitRepo,
-		CommitID: commitID,
+	args1 := server.UserOptions{
+		GitRepo:     gitRepo,
+		CommitID:    commitID,
+		ReportEmail: reportEmail,
 	}
-	args2 := util.LTMOptions{
+	args2 := server.LTMOptions{
 		TestID: testID,
 	}
-	request := util.UserRequest{
+	request := server.UserRequest{
 		Options:      &args1,
 		ExtraOptions: &args2,
 	}
 
 	js, _ := json.Marshal(request)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
-	util.Check(err)
+	logging.CheckPanic(err, log.WithField("js", js), "Failed to format request")
+
 	req.Header.Set("Content-Type", "application/json")
 
-	cert, err := tls.LoadX509KeyPair(util.CertPath, util.SecretPath)
-	util.Check(err)
+	cert, err := tls.LoadX509KeyPair(server.CertPath, server.SecretPath)
+	logging.CheckPanic(err, log, "Failed to load key pair")
 
 	tlsConfig := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
@@ -91,33 +108,33 @@ func sendRequest(gitRepo string, commitID string, testID string) (*http.Response
 	}
 
 	var resp *http.Response
-	attempts := 5
+	attempts := 10
 	for attempts > 0 {
 		resp, err = client.Do(req)
 		if err == nil {
-			return resp, err
+			return resp
 		}
 		attempts--
+		log.WithError(err).WithField("attemptsLeft", attempts).Debug("Failed to connect to KCS")
 		time.Sleep(10 * time.Second)
-		log.Printf(err.Error())
 	}
-	return resp, err
-
+	logging.CheckPanic(err, log, "Failed to talk to KCS in acceptable time")
+	return nil
 }
 
-func waitKernel(gce *util.GceService, prefix string) bool {
+func waitKernel(gce *util.GceService, prefix string, log *logrus.Entry) bool {
+	log.Info("Waiting for kernel image")
 	waitTime := 0
 
-	for true {
+	for waitTime < Timeout {
 		time.Sleep(60 * time.Second)
 		waitTime += 60
-		log.Printf("wait time: %d", waitTime)
+		log.WithField("waited", waitTime).Debug("Keep waiting")
 
-		if names := gce.GetFileNames(prefix); len(names) > 0 {
+		if names, err := gce.GetFileNames(prefix); err == nil && len(names) > 0 {
 			return true
-		} else if waitTime > 1800 {
-			break
 		}
 	}
+	log.WithField("waited", waitTime).Panic("Failed to find kernel image in acceptable time")
 	return false
 }
