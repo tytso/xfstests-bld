@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e -x
 # This script is used by the kernel compile server
 # Environment variables can be set:
 # GIT_REPO REPO_ID COMMIT GS_BUCKET BUILD_KERNEL
