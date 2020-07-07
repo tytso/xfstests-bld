@@ -18,7 +18,7 @@ type Config struct {
 
 // GetConfig reads from the config file and returns a struct Config.
 // It attempts to match each line with two possible config patterns.
-func GetConfig(configFile string) Config {
+func GetConfig(configFile string) (Config, error) {
 	c := Config{make(map[string]string)}
 	var re *regexp.Regexp
 	if configFile == GceConfigFile {
@@ -28,7 +28,9 @@ func GetConfig(configFile string) Config {
 	}
 
 	lines, err := ReadLines(configFile)
-	Check(err)
+	if err != nil {
+		return c, err
+	}
 
 	for _, line := range lines {
 		tokens := re.FindStringSubmatch(line)
@@ -37,7 +39,7 @@ func GetConfig(configFile string) Config {
 		}
 	}
 
-	return c
+	return c, nil
 }
 
 // Get a certain config value according to key.

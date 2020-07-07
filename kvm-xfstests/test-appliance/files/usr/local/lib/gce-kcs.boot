@@ -34,12 +34,12 @@ logger -i "Disabled gce-finalize timer"
 systemctl stop lighttpd.service
 systemctl disable lighttpd.service
 
-if test ! -d "/var/log/kcs"
+if test ! -d "/var/log/go"
 then
     # we only want to do this if the server isn't set up already.
     # (e.g. if the compile server instance was stopped and restarted, this should
     # not get executed)
-    mkdir -p /var/log/kcs
+    mkdir -p /var/log/go
     systemctl enable gce-kcs.service
     systemctl start gce-kcs.service
 fi
