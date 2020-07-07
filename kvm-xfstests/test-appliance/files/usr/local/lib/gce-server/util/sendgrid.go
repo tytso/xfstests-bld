@@ -1,27 +1,27 @@
 package util
 
 import (
-	"io/ioutil"
-	"log"
+	"fmt"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-// SendEmail sends the contents in filePath to receiver.
-// return true on success and false otherwise.
-func SendEmail(subject string, receiver string, filePath string) bool {
+// SendEmail sends an email with subject and content to the receiver.
+func SendEmail(subject string, content string, receiver string) error {
 	if receiver == "" {
-		log.Printf("No destination for report to be sent to")
-		return false
+		return fmt.Errorf("No destination for report to be sent to")
 	}
 
-	config := GetConfig(GceConfigFile)
+	config, err := GetConfig(GceConfigFile)
+	if err != nil {
+		return err
+	}
 	apiKey := config.Get("SENDGRID_API_KEY")
 	if apiKey == "" {
-		log.Printf("No sendgrid api key found")
-		return false
+		return fmt.Errorf("No sendgrid api key found")
 	}
+
 	sender := config.Get("GCE_REPORT_SENDER")
 	if sender == "" {
 		sender = receiver
@@ -37,27 +37,18 @@ func SendEmail(subject string, receiver string, filePath string) bool {
 	p.AddTos(to)
 	m.AddPersonalizations(p)
 
-	file, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Printf("Unable to read file %s", filePath)
-		return false
-	}
-	c := mail.NewContent("text/plain", string(file))
+	c := mail.NewContent("text/plain", content)
 	m.AddContent(c)
 
 	client := sendgrid.NewSendClient(apiKey)
 	response, err := client.Send(m)
 
 	if err != nil {
-		log.Printf("Send email failed with error: %s", err)
-		return false
+		return err
 	}
 
 	if response.StatusCode >= 200 && response.StatusCode <= 299 {
-		log.Printf("Send email succeeded with code %d", response.StatusCode)
-		return true
+		return nil
 	}
-	log.Printf("Send email failed with code %d", response.StatusCode)
-	log.Printf("response: %s", response.Body)
-	return false
+	return fmt.Errorf("Send failed with code %d, response: %s", response.StatusCode, response.Body)
 }

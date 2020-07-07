@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -24,24 +23,13 @@ import (
 	"time"
 )
 
-// configurable constants shared between LTM and KCS
-const (
-	RootDir       = "/usr/local/lib/gce-server"
-	ServerLogPath = "/var/log/go/go.log"
-	LTMLogDir     = "/var/log/go/ltm_logs/"
-	KCSLogDir     = "/var/log/go/kcs/logs"
-)
+// RootDir points to the root of go server source code
+// The compiled go executables are located in GOPATH/bin
+const RootDir = "/usr/local/lib/gce-server"
 
 // EmptyEnv provides a placeholder for default exec enviroment.
 var EmptyEnv = map[string]string{}
 var idMutex sync.Mutex
-
-// Check whether an error is not nil
-func Check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
 
 // CheckRun executes an external command and checks the return status.
 // Returns true on success and false otherwise.
@@ -64,6 +52,15 @@ func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io
 	return string(out), err
 }
 
+// CheckCombinedOutput executes an external command, checks the return status, and
+// returns the combined stdout and stderr.
+func CheckCombinedOutput(cmd *exec.Cmd, workDir string, env map[string]string) (string, error) {
+	cmd.Dir = workDir
+	cmd.Env = parseEnv(env)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 // parseEnv adds user specified environment to os.Environ.
 func parseEnv(env map[string]string) []string {
 	newEnv := os.Environ()
@@ -74,16 +71,16 @@ func parseEnv(env map[string]string) []string {
 }
 
 // CreateDir creates a directory with default permissions.
-func CreateDir(path string) {
+func CreateDir(path string) error {
 	err := os.MkdirAll(path, 0755)
-	Check(err)
+	return err
 }
 
 // RemoveDir removes a directory and all contents in it.
 // Do nothing if the target path doesn't exist.
-func RemoveDir(path string) {
+func RemoveDir(path string) error {
 	err := os.RemoveAll(path)
-	Check(err)
+	return err
 }
 
 // FileExists returns true if a file exists.
@@ -163,11 +160,26 @@ func ReadLines(filename string) ([]string, error) {
 	return nonEmptyLines, nil
 }
 
-// Close a file handler and checks error
-func Close(file *os.File) {
-	if err := file.Close(); err != nil {
-		log.Fatal(err)
+// CopyFile copies the content of file src to file dst
+// Overwrites dst if it already exists
+func CopyFile(dst string, src string) error {
+	from, err := os.Open(src)
+	if err != nil {
+		return err
 	}
+	defer from.Close()
+
+	to, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer to.Close()
+
+	_, err = io.Copy(to, from)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetTimeStamp returns the current timestamp
