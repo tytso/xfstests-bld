@@ -186,10 +186,9 @@ validate_config_name()
 
 validate_commit_name()
 {
-    if git ls-remote $1 | grep -q "$2"; then
-      echo "Repository found"
-    else
-  		echo -e "No commit or tag with this name: $1\n"
+    # if ! git ls-remote $1 | grep "$2" > /dev/null; then
+    if ! git ls-remote $1 > /dev/null; then
+  		echo -e "$1 has no commit or tag called $2\n"
   		print_help
   		exit 1
     fi
@@ -259,6 +258,7 @@ numa:
 pmem-device
 pts-size:
 preemptible
+repo
 stress-mem:
 stress-opts:
 testrunid:
@@ -554,16 +554,20 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    BUCKET_SUBDIR="$1"
 	    ;;
-  --commit) shift
+    --commit) shift
 	    supported_flavors gce
 	    COMMIT="$1"
-      REPO="$GIT_REPO"
-      validate_commit_name $REPO $COMMIT
+        if test -z "$GIT_REPO"; then
+        echo -e "GIT_REPO is not set in your config file\n"
+        exit 1
+        fi
+        REPO="$GIT_REPO"
+        validate_commit_name $REPO $COMMIT
 	    ;;
-  --config) shift
+    --config) shift
 	    supported_flavors gce
 	    BUILD_CONFIG="$1"
-      copy_config $BUILD_CONFIG
+        copy_config $BUILD_CONFIG
 	    ;;
 	--testrunid) shift
 	    supported_flavors gce
@@ -798,7 +802,14 @@ then
     exit 1
 fi
 
-if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" -a -z "$RUN_ON_BLDSRV"
+if test -n "$RUN_ON_KCS" -a -n "$DO_BLKTESTS"
+then
+    echo "Block tests can not be using KCS"
+    exit 1
+fi
+
+if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" \
+    -a -z "$RUN_ON_KCS"
 then
     echo -e "No tests specified!\n"
     print_help

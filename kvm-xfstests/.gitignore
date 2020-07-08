@@ -5,3 +5,5 @@ baseline.*
 .ltm_instance
 .gce_xfstests_cert.pem
 .ltm_cookie
+.kcs_instance
+.kcs_cookie
