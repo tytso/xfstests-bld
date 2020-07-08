@@ -14,6 +14,8 @@ BACKPORTS="@BACKPORTS@"
 BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
 DUPEREMOVE="@DUPEREMOVE@"
+# Hardcoded go version
+GO_VERSION=1.14.4
 
 PACKAGES="bash-completion \
 	bc \
@@ -265,6 +267,18 @@ echo "export RUN_ON_GCE=yes" >> /tmp/test-config
 mv /tmp/test-config /root/test-config
 rm -f /root/*~
 chown root:root /root
+
+# fetch source code for go
+GO_TEMP=$(mktemp -d)
+curl -o "$GO_TEMP/go.tar.gz" https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz
+
+if [ $? -ne 0 ]; then
+    echo "Go download failed! Exiting."
+    exit 1
+fi
+
+tar -C /usr/local/lib  -xzf $GO_TEMP/go.tar.gz
+rm -rf $GO_TEMP
 
 . /root/test-config
 
