@@ -26,4 +26,4 @@ export SM_TST_MNT=/$(basename $SM_TST_DEV)
 export LG_TST_MNT=/$(basename $LG_TST_DEV)
 export LG_SCR_MNT=/$(basename $LG_SCR_DEV)
 
-PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/local/lib/go/bin:/usr/sbin:/usr/bin:/sbin:/bin"
