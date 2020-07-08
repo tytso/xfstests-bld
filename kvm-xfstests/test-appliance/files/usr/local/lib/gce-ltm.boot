@@ -53,3 +53,10 @@ then
     systemctl restart lighttpd.service
     # Restart to allow conf changes to take effect.
 fi
+
+# launch the go server here
+
+if test ! -d "/var/log/go"
+then
+    mkdir -p /var/log/go
+fi
