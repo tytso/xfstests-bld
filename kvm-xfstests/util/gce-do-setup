@@ -129,7 +129,7 @@ if ! gcloud compute images describe-from-family --project $project \
     else
 	echo "You need to add yourself to the gce-xfstests Googlegroup"
 	echo -e "Please visit:\n"
-	echo -e "\thttps://groups.google.com/forum/#!forum/gce-xfstests\n"
+	echo -e '\thttps://groups.google.com/forum/#!forum/gce-xfstests\n'
     fi
     bad_config=1
 fi

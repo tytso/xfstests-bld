@@ -2,7 +2,7 @@
 
 XFSTESTS_FLAVOR=gce
 RUN_ON_LTM=
-RUN_ON_BLDSRV=
+RUN_ON_KCS=
 t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
 eval DIR="\$$t"
 if test -z "$DIR"
@@ -389,11 +389,6 @@ case "$1" in
         --zone $(get_gce_zone "$2") $RUN_INTERNAL
 	exit 0
 	;;
-    scp)
-	gcloud compute --project "$GCE_PROJECT" -q scp "$2" root@"$3":~ \
-               --zone $(get_gce_zone "$3")
-	exit 0
-	;;
     console)
 	gcloud compute --project "$GCE_PROJECT" -q instances \
 	       get-serial-port-output "$2" --zone $(get_gce_zone "$2")
@@ -511,43 +506,44 @@ case "$1" in
 	"$DIR/util/gce-launch-ltm"
 	exit $?
 	;;
-    launch-bldsrv)
-  shift
-  if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
-  then
-      echo "The gce-xfstests build server requires that you build the gce-xfstests image"
-      echo "and put it in your own project."
-      echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
-      echo "in your ~/.config/gce-xfstests file.\n"
-      echo "See the instructions on building an image:"
-      echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
-      exit 1
-  fi
-  "$DIR/util/gce-launch-bldsrv"
-  exit $?
-  ;;
+    launch-kcs)
+	shift
+	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
+	then
+		echo "The gce-xfstests compile server requires that you build the gce-xfstests image"
+		echo "and put it in your own project."
+		echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
+		echo "in your ~/.config/gce-xfstests file.\n"
+		echo "See the instructions on building an image:"
+		echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
+		exit 1
+	fi
+	"$DIR/util/gce-launch-kcs"
+	exit $?
+	;;
     ltm)
-  shift
-  if [ ! -f "$DIR/.ltm_instance" ]; then
-      echo "The .ltm_instance file is not present! Please launch the LTM before"
-      echo "using this option."
-      exit 1
-  fi
-  NO_ACTION=": "
-  RUN_ON_LTM="yes"
-  GCE_USER="ltm"
-  ;;
-    build)
-  shift
-  if [ ! -f "$DIR/.bldsrv_instance" ]; then
-      echo "The .bldsrv_instance file is not present! Please launch the build server before"
-      echo "using this option."
-      exit 1
-  fi
-  NO_ACTION=": "
-  RUN_ON_BLDSRV="yes"
-  GCE_USER="bldsrv"
-  ;;
+	shift
+	if [ ! -f "$DIR/.ltm_instance" ]; then
+		echo "The .ltm_instance file is not present! Please launch the LTM before"
+		echo "using this option."
+		exit 1
+	fi
+	NO_ACTION=": "
+	RUN_ON_LTM="yes"
+	GCE_USER="ltm"
+	;;
+    kcs)
+	shift
+	if [ ! -f "$DIR/.kcs_instance" ]; then
+		echo "The .kcs_instance file is not present! Please launch the compile server before"
+		echo "using this option."
+		exit 1
+	fi
+	NO_ACTION=": "
+	RUN_ON_KCS="yes"
+	GCE_USER="kcs"
+
+	;;
 esac
 
 ORIG_CMDLINE="$*"
@@ -928,15 +924,15 @@ fi
 if test -n "$RUN_ON_LTM"; then
     . "$DIR/util/gce-ltm-funcs"
     send_to_ltm $ORIG_CMDLINE_B64
-elif test -n "$RUN_ON_BLDSRV"; then
+elif test -n "$RUN_ON_KCS"; then
     if ! gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
     then
         echo "Couldn't find build config in $GS_BUCKET"
         echo "Using default build config for kernel build"
         gsutil cp "$DIR/../kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
     fi
-    . "$DIR/util/gce-bldsrv-funcs"
-    send_to_bldsrv $ORIG_CMDLINE_B64
+    . "$DIR/util/gce-kcs-funcs"
+    send_to_kcs $ORIG_CMDLINE_B64
 else
     echo "Launching $INSTANCE using $GCE_MACHTYPE..."
     # echo "Using ARG: $ARG"
