@@ -1,0 +1,68 @@
+. $DIR/.kcs_instance
+
+# The hostname has to match the common name field of the certificate, as set
+# in util/gce-do-setup when running openssl to create a self-signed cert.
+# curl will fail otherwise, stating that the common names do not match.
+KCS_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+function kcs_post_json() {
+    if test -n "$GCE_KCS_INT_IP"; then
+    curl --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_INT_IP" -X POST "$@"
+    else
+    curl --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_EXT_IP" -X POST "$@"
+    fi
+}
+
+function kcs_post_failed() {
+    if gcloud compute instances describe "xfstests-kcs" &> /dev/null; then
+	echo "The build server instance seems to be running. Try deleting the"
+	echo "$DIR/.kcs_instance file and re-running launch-kcs to recreate"
+	echo "the file. If the issue persists, try relaunching the build server"
+	echo "If configuration changes have been made, it may be necessary"
+	echo "to delete and re-launch the build server."
+    else
+	echo "The build server doesn't seem to be running. Try launching the build server"
+	echo "instance with launch-kcs. This will recreate the"
+	echo ".kcs_instance file."
+    fi
+
+
+}
+function send_to_kcs() {
+    local cmd_to_send=$1
+    shift
+
+    # just create a new login session and store it in the cookie
+    kcs_post_json -c $DIR/.kcs_cookie -d "{\"password\":\"$GCE_KCS_PWD\"}" \
+        "https://$KCS_HOSTNAME/login"
+
+    if [ ! $? = 0 ]; then
+	echo "Login failed."
+	kcs_post_failed
+	return 1
+    fi
+
+    KCS_OPTS=""
+    if [ -n "$COMMIT" ]; then
+	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"commit_id\":\"$COMMIT\""
+    fi
+    if [ -n "$REPO" ]; then
+	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"git_repo\":\"$REPO\""
+    fi
+    if [ -n "$KCS_OPTS" ]; then
+	KCS_OPTS="\"options\": {$KCS_OPTS}"
+    fi
+    # Create OPTS.
+
+    kcs_post_json -b $DIR/.kcs_cookie -d \
+	"{\"orig_cmdline\": \"$cmd_to_send\"${KCS_OPTS:+, $KCS_OPTS}}" \
+	"https://$KCS_HOSTNAME/gce-xfstests"
+
+    if [ $? != 0 ]; then
+	echo "Request failed."
+	kcs_post_failed
+	return 1
+    fi
+
+}
