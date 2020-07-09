@@ -20,6 +20,7 @@ generic/235
 generic/270
 generic/382
 generic/204
+generic/587
 
 # These tests are also excluded in 1k.exclude.
 # See there for the reasons.

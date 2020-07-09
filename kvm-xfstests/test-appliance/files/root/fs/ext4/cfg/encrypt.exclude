@@ -24,6 +24,7 @@ generic/270
 generic/381
 generic/382
 generic/566
+generic/587
 
 # encryption doesn't play well with casefold (at least not yet)
 generic/556
