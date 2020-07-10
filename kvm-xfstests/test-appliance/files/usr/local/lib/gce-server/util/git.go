@@ -122,7 +122,7 @@ func (r *Repository) Watch() error {
 		return nil
 	}
 	if r.branch == "" {
-		fmt.Errorf("repo has a detached HEAD %s", r.currCommit)
+		return fmt.Errorf("repo has a detached HEAD %s", r.currCommit)
 	}
 	r.watching = true
 	for {

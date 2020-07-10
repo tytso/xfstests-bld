@@ -1,3 +1,4 @@
+
 . $DIR/.ltm_instance
 
 # The hostname has to match the common name field of the certificate, as set
@@ -42,10 +43,11 @@ function send_to_ltm() {
 	ltm_post_failed
 	return 1
     fi
+    echo
 
     LTM_OPTS=""
     if [ -n "$NO_REGION_SHARD" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":\"yes\""
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":true"
     fi
     if [ -n "$BUCKET_SUBDIR" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bucket_subdir\":\"$BUCKET_SUBDIR\""
@@ -59,8 +61,14 @@ function send_to_ltm() {
     if [ -n "$COMMIT" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"commit_id\":\"$COMMIT\""
     fi
-    if [ -n "$REPO" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"git_repo\":\"$REPO\""
+    if [ -n "$GIT_REPO" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"git_repo\":\"$GIT_REPO\""
+    fi
+    if [ -n "$BRANCH" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"branch_name\":\"$BRANCH\""
+    fi
+    if [ -n "$UNWATCH" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":true"
     fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
@@ -76,5 +84,5 @@ function send_to_ltm() {
 	ltm_post_failed
 	return 1
     fi
-
+    echo
 }
