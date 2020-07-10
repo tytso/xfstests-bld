@@ -14,6 +14,7 @@ now to reduce the code base.
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -41,7 +42,6 @@ type ShardSchedular struct {
 
 	gitRepo  string
 	commitID string
-	callKCS  bool
 
 	zone           string
 	region         string
@@ -73,11 +73,10 @@ type SharderInfo struct {
 	Msg       string      `json:"message"`
 }
 
-// NewShardSchedular constructs a new sharder from user request.
+// NewShardSchedular constructs a new sharder from a test request.
 // All dir strings have a trailing / for consistency purpose,
 // except for bucketSubdir.
-func NewShardSchedular(c server.UserRequest) *ShardSchedular {
-	testID := util.GetTimeStamp()
+func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	logDir := logging.LTMLogDir + testID + "/"
 	err := util.CreateDir(logDir)
 	if err != nil {
@@ -90,28 +89,30 @@ func NewShardSchedular(c server.UserRequest) *ShardSchedular {
 	config, err := util.GetConfig(util.GceConfigFile)
 	logging.CheckPanic(err, log, "Failed to get config")
 
+	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
+	logging.CheckPanic(err, log, "Failed to decode cmdline")
+
 	// assume a zone looks like us-central1-f and a region looks like us-central1
 	// syntax might change in the future so should add support to query for it
 	zone := config.Get("GCE_ZONE")
 	region := zone[:len(zone)-2]
 
-	log.Info("Initializing test sharder")
+	log.Info("Initiating test sharder")
 	sharder := ShardSchedular{
 		testID:  testID,
 		projID:  config.Get("GCE_PROJECT"),
-		origCmd: strings.TrimSpace(c.CmdLine),
+		origCmd: strings.TrimSpace(string(data)),
 
 		gitRepo:  c.Options.GitRepo,
 		commitID: c.Options.CommitID,
-		callKCS:  false,
 
 		zone:           zone,
 		region:         region,
 		gsBucket:       config.Get("GS_BUCKET"),
 		bucketSubdir:   config.Get("BUCKET_SUBDIR"),
-		gsKernel:       "",
+		gsKernel:       c.Options.GsKernel,
 		kernelVersion:  "unknown_kernel_version",
-		reportReceiver: "",
+		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
 
@@ -130,17 +131,6 @@ func NewShardSchedular(c server.UserRequest) *ShardSchedular {
 	}
 	if sharder.bucketSubdir == "" {
 		sharder.bucketSubdir = "results"
-	}
-	if sharder.gitRepo != "" && sharder.commitID != "" {
-		log.Debug("Build is requested, override gsKernel when launching the shards")
-		sharder.callKCS = true
-		sharder.gsKernel = fmt.Sprintf("gs://%s/kernels/bzImage-%s", sharder.gsBucket, sharder.testID)
-	} else {
-		sharder.gsKernel = c.Options.GsKernel
-	}
-
-	if c.Options.ReportEmail != "" {
-		sharder.reportReceiver = c.Options.ReportEmail
 	}
 
 	sharder.validArgs, sharder.configs, err = getConfigs(sharder.origCmd)
@@ -283,25 +273,15 @@ func splitConfigs(numShards int, configs []string) []string {
 	return configConcat
 }
 
-// StartTests launches all the shards in a separate go routine.
+// Run starts all the shards in a separate go routine.
 // Wait between starting shards to avoid hitting the api too hard.
-// Return a JSONifiable sharder info struct to return to user.
-func (sharder *ShardSchedular) StartTests() SharderInfo {
-	go sharder.run()
-
-	return sharder.Info()
-}
-
-func (sharder *ShardSchedular) run() {
+func (sharder *ShardSchedular) Run() {
 	sharder.log.Debug("Starting sharder")
+	defer logging.CloseLog(sharder.log)
 	var wg sync.WaitGroup
 
-	defer sharder.reportFailure()
-
-	if sharder.callKCS {
-		sharder.log.Info("Calling KCS to build kernel")
-		RunBuild(sharder.gitRepo, sharder.commitID, sharder.reportReceiver, sharder.testID, sharder.gce, sharder.log)
-	}
+	subject := fmt.Sprintf("xfstests failure %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
+	defer util.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
 
 	for _, shard := range sharder.shards {
 		wg.Add(1)
@@ -323,10 +303,6 @@ func (sharder *ShardSchedular) Info() SharderInfo {
 
 	for _, shard := range sharder.shards {
 		info.ShardInfo = append(info.ShardInfo, shard.Info())
-	}
-
-	if sharder.callKCS {
-		info.Msg = "calling KCS to build kernel image"
 	}
 
 	return info
@@ -563,39 +539,4 @@ func (sharder *ShardSchedular) cleanup() {
 
 	sharder.log.Info("Remove local aggregate results")
 	util.RemoveDir(sharder.aggDir)
-
-	sharder.log.Info("Existing logging, sharder finished")
-	logging.CloseLog(sharder.log)
-}
-
-func (sharder *ShardSchedular) reportFailure() {
-	if r := recover(); r != nil {
-		sharder.log.WithField("panic", r).Warn("Sharder failed, sending failure report")
-
-		subject := fmt.Sprintf("xfstests failure %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
-
-		msg := "unknown panic"
-		switch s := r.(type) {
-		case string:
-			msg = s
-		case error:
-			msg = s.Error()
-		case *logrus.Entry:
-			msg = s.Message
-		}
-
-		logging.Sync(sharder.log)
-
-		if util.FileExists(sharder.logFile) {
-			sharder.log.WithField("logfile", sharder.logFile).Debug("Attaching log file to email")
-
-			content, err := ioutil.ReadFile(sharder.logFile)
-			if logging.CheckNoError(err, sharder.log, "Failed to read sharder log file") {
-				msg = msg + "\n\n" + string(content)
-			}
-		}
-
-		err := util.SendEmail(subject, msg, sharder.reportReceiver)
-		logging.CheckNoError(err, sharder.log, "Failed to send the email")
-	}
 }

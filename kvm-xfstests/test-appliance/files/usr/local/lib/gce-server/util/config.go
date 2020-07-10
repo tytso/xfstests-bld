@@ -4,10 +4,10 @@ import (
 	"regexp"
 )
 
+// config file locations on multiple machines
 const (
-	// GceConfigFile contains GCE related configs
 	GceConfigFile = "/usr/local/lib/gce_xfstests.config"
-	// KcsConfigFile contains KCS related configs, located on LTM
+	LtmConfigFile = "/root/xfstests_bld/kvm-xfstests/.ltm_instance"
 	KcsConfigFile = "/root/xfstests_bld/kvm-xfstests/.kcs_instance"
 )
 
