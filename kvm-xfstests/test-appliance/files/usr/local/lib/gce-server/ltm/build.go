@@ -19,24 +19,24 @@ import (
 // Timeout defines the time out threshold for a kernel build
 const Timeout = 1800
 
-// RunBuild launches the KCS server to build a kernel image.
-func RunBuild(gitRepo string, commitID string, reportEmail string, testID string, gce *util.GceService, sharderLog *logrus.Entry) {
-	log := sharderLog.WithFields(logrus.Fields{
-		"gitRepo":  gitRepo,
-		"commitID": commitID,
-	})
-	prefix := fmt.Sprintf("kernels/bzImage-%s", testID)
-	names, err := gce.GetFileNames(prefix)
-	logging.CheckPanic(err, log, "Failed to search for files")
-
-	if len(names) > 0 {
-		log.WithField("filename", names[0]).Info("kernel image file already exists on gs, skip building")
-		return
+// StartBuild inits a build task by calling KCS to build a kernel image.
+// Sends failure report email to user on failures
+func StartBuild(req server.TaskRequest, testID string) {
+	logDir := logging.LTMLogDir + testID + "/"
+	err := util.CreateDir(logDir)
+	if err != nil {
+		panic(err)
 	}
+	logFile := logDir + "run.log"
+	log := logging.InitLogger(logFile)
+	defer logging.CloseLog(log)
+
+	subject := "xfstests LTM build request failure " + testID
+	defer util.ReportFailure(log, logFile, req.Options.ReportEmail, subject)
 
 	launchKCS(log)
 
-	resp := sendRequest(gitRepo, commitID, reportEmail, testID, log)
+	resp := sendRequest(req, testID, log)
 	defer resp.Body.Close()
 
 	var c server.SimpleResponse
@@ -44,11 +44,15 @@ func RunBuild(gitRepo string, commitID string, reportEmail string, testID string
 	err = json.NewDecoder(resp.Body).Decode(&c)
 	logging.CheckPanic(err, log, "Failed to parse json response")
 
-	log.WithField("rep", c).Debug("Received response from KCS")
+	log.WithField("resp", c).Debug("Received response from KCS")
 
-	waitKernel(gce, prefix, log)
+	if !c.Status {
+		panic(c.Msg)
+	}
 }
 
+// launchKCS attempts to launch the KCS. If the exit status is 1
+// due to kcs already exists, no panic is thrown.
 func launchKCS(log *logrus.Entry) {
 	log.Info("Launching KCS server")
 
@@ -56,17 +60,17 @@ func launchKCS(log *logrus.Entry) {
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	// exit status is 1 if kcs already exists
 	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
 	if err != nil && output != "The KCS instance already exists!\n" {
 		cmdLog.WithField("output", output).WithError(err).Panic("Failed to launch KCS")
 	}
 }
 
-func sendRequest(gitRepo string, commitID string, reportEmail string, testID string, log *logrus.Entry) *http.Response {
+// sendRequest appends a testID to the original user request and send it to KCS.
+func sendRequest(c server.TaskRequest, testID string, log *logrus.Entry) *http.Response {
 
 	config, err := util.GetConfig(util.KcsConfigFile)
-	logging.CheckPanic(err, log, "Failed to get kcs config")
+	logging.CheckPanic(err, log, "Failed to get KCS config")
 
 	ip := config.Get("GCE_KCS_INT_IP")
 	// pwd := config.Get("GCE_KCS_PWD")
@@ -74,20 +78,13 @@ func sendRequest(gitRepo string, commitID string, reportEmail string, testID str
 
 	url := fmt.Sprintf("https://%s/gce-xfstests", ip)
 
-	args1 := server.UserOptions{
-		GitRepo:     gitRepo,
-		CommitID:    commitID,
-		ReportEmail: reportEmail,
+	args := server.InternalOptions{
+		TestID:    testID,
+		Requester: "ltm",
 	}
-	args2 := server.LTMOptions{
-		TestID: testID,
-	}
-	request := server.UserRequest{
-		Options:      &args1,
-		ExtraOptions: &args2,
-	}
+	c.ExtraOptions = &args
 
-	js, _ := json.Marshal(request)
+	js, _ := json.Marshal(c)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
 	logging.CheckPanic(err, log.WithField("js", js), "Failed to format request")
 
@@ -118,7 +115,7 @@ func sendRequest(gitRepo string, commitID string, reportEmail string, testID str
 		log.WithError(err).WithField("attemptsLeft", attempts).Debug("Failed to connect to KCS")
 		time.Sleep(10 * time.Second)
 	}
-	logging.CheckPanic(err, log, "Failed to talk to KCS in acceptable time")
+	logging.CheckPanic(err, log, "Failed to get response from KCS")
 	return nil
 }
 

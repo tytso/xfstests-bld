@@ -42,6 +42,7 @@ function send_to_kcs() {
 	kcs_post_failed
 	return 1
     fi
+    echo
 
     KCS_OPTS=""
     if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
@@ -50,8 +51,8 @@ function send_to_kcs() {
     if [ -n "$COMMIT" ]; then
 	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"commit_id\":\"$COMMIT\""
     fi
-    if [ -n "$REPO" ]; then
-	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"git_repo\":\"$REPO\""
+    if [ -n "$GIT_REPO" ]; then
+	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"git_repo\":\"$GIT_REPO\""
     fi
     if [ -n "$KCS_OPTS" ]; then
 	KCS_OPTS="\"options\": {$KCS_OPTS}"
@@ -67,5 +68,5 @@ function send_to_kcs() {
 	kcs_post_failed
 	return 1
     fi
-
+    echo
 }

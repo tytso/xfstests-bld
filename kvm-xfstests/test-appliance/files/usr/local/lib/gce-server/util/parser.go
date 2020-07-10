@@ -29,6 +29,8 @@ var invalidOpts = []string{
 	"--machtype",
 	"--kernel",
 	"--commit",
+	"--repo",
+	"--watch",
 }
 
 /*

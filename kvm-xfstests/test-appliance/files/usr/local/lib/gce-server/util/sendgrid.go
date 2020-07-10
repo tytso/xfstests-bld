@@ -2,9 +2,12 @@ package util
 
 import (
 	"fmt"
+	"gce-server/logging"
+	"io/ioutil"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"github.com/sirupsen/logrus"
 )
 
 // SendEmail sends an email with subject and content to the receiver.
@@ -51,4 +54,42 @@ func SendEmail(subject string, content string, receiver string) error {
 		return nil
 	}
 	return fmt.Errorf("Send failed with code %d, response: %s", response.StatusCode, response.Body)
+}
+
+// ReportFailure catches panic and sends a failure report email to user.
+// If log writes to the same location as logFile, flush the log to disk first.
+// Only works as a deferred function.
+func ReportFailure(log *logrus.Entry, logFile string, email string, subject string) {
+	if r := recover(); r != nil {
+		if email == "" {
+			log.WithField("panic", r).Error("Something failed but no email receiver set")
+			return
+		}
+
+		log.WithField("panic", r).Error("Something failed, sending failure report")
+		msg := "unknown panic"
+		switch s := r.(type) {
+		case string:
+			msg = s
+		case error:
+			msg = s.Error()
+		case *logrus.Entry:
+			msg = s.Message
+		}
+
+		file := logging.GetFile(log)
+		if file.Name() != "" && file.Name() == logFile {
+			file.Sync()
+		}
+
+		if FileExists(logFile) {
+			log.Debug("Reading log file to be sent")
+			content, err := ioutil.ReadFile(logFile)
+			if logging.CheckNoError(err, log, "Failed to read log file") {
+				msg = msg + "\n\n" + string(content)
+			}
+		}
+		err := SendEmail(subject, msg, email)
+		logging.CheckNoError(err, log, "Failed to send the email")
+	}
 }

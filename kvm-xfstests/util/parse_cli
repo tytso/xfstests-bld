@@ -186,12 +186,25 @@ validate_config_name()
 
 validate_commit_name()
 {
+    if ! git ls-remote $1 &> /dev/null; then
+  		echo -e "Repo not found: $1\n"
+  		print_help
+  		exit 1
+    elif ! git ls-remote $1 | grep "$2" &> /dev/null; then
+  		echo "Warning: $2 is not a valid branch or tag of $1"
+	fi
+}
+
+validate_branch_name()
+{
     if ! git ls-remote $1 > /dev/null; then
   		echo -e "Repo not found: $1\n"
   		print_help
   		exit 1
-    elif ! git ls-remote $1 | grep "$2" > /dev/null; then
-  		echo "Warning: $2 is not a valid branch or tag of $1"
+    elif ! git ls-remote --heads  --exit-code $1 $2 > /dev/null; then
+  		echo -e "$2 is not a valid branch of $1"
+		print_help
+		exit 1
 	fi
 }
 
@@ -259,10 +272,11 @@ numa:
 pmem-device
 pts-size:
 preemptible
-repo
+repo:
 stress-mem:
 stress-opts:
 testrunid:
+unwatch:
 update-files
 update-xfstests
 update-xfstests-tar
@@ -270,6 +284,7 @@ virtfs-model:
 virtfs-scratch:
 virtfs-test:
 virtfs:
+watch:
 )
 longopts=$(echo "${longopts[*]}" | tr ' ' ,)
 
@@ -555,16 +570,23 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    BUCKET_SUBDIR="$1"
 	    ;;
+    --repo) shift
+	    supported_flavors gce
+	    GIT_REPO="$1"
+	    ;;
     --commit) shift
 	    supported_flavors gce
 	    COMMIT="$1"
-        if test -z "$GIT_REPO"; then
-        echo -e "GIT_REPO is not set in your config file\n"
-        exit 1
-        fi
-        REPO="$GIT_REPO"
-        validate_commit_name $REPO $COMMIT
 	    ;;
+	--watch) shift
+		supported_flavors gce
+		BRANCH="$1"
+		;;
+	--unwatch) shift
+		supported_flavors gce
+		BRANCH="$1"
+		UNWATCH="yes"
+		;;
     --config) shift
 	    supported_flavors gce
 	    BUILD_CONFIG="$1"
@@ -809,14 +831,51 @@ then
     exit 1
 fi
 
+if test -n "$COMMIT"
+then
+    if test -z "$GIT_REPO"
+    then
+        echo "GIT_REPO is neither found in the config file nor provided with --repo"
+        exit 1
+    fi
+    validate_commit_name $GIT_REPO $COMMIT
+fi
+
+if test -n "$BRANCH"
+then
+    if test -z "$GIT_REPO"
+    then
+        echo "GIT_REPO is neither found in the config file nor provided with --repo"
+        exit 1
+    fi
+    validate_branch_name $GIT_REPO $BRANCH
+fi
+
 if test -n "$RUN_ON_KCS" -a -z "$COMMIT"
 then
     echo "No commit id specified for KCS to build"
     exit 1
 fi
 
+if test -n "$COMMIT" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+then
+    echo "Commit id only works with LTM or KCS"
+    exit 1
+fi
+
+if test -n "$BRANCH" -a -z "$RUN_ON_LTM"
+then
+    echo "Repo watcher only works with LTM"
+    exit 1
+fi
+
+if test -n "$COMMIT" -a -n "$BRANCH"
+then
+    echo "--commit conflicts with --watch"
+fi
+
 if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" \
-    -a -z "$RUN_ON_KCS"
+    -a -z "$RUN_ON_KCS" -a -z "$UNWATCH"
 then
     echo -e "No tests specified!\n"
     print_help
