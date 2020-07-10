@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"gce-server/server"
 	"gce-server/util"
 
 	"google.golang.org/api/compute/v1"
@@ -64,7 +65,6 @@ func (sharder *ShardSchedular) Dump(filename string) {
 
 		GitRepo:  sharder.gitRepo,
 		CommitID: sharder.commitID,
-		CallKCS:  sharder.callKCS,
 
 		Zone:           sharder.zone,
 		Region:         sharder.region,
@@ -141,7 +141,6 @@ func ReadSharder(filename string) *ShardSchedular {
 
 		gitRepo:  mock.GitRepo,
 		commitID: mock.CommitID,
-		callKCS:  mock.CallKCS,
 
 		zone:           mock.Zone,
 		region:         mock.Region,
@@ -245,4 +244,19 @@ func test6() {
 	content, _ := ioutil.ReadFile("/var/log/go/go.log")
 	msg = msg + "\n" + string(content)
 	util.SendEmail("test", msg, "xyshen@google.com")
+}
+
+func testWatcher() {
+	c := server.TaskRequest{
+		Options: &server.UserOptions{
+			ReportEmail: "xyshen@google.com",
+			GitRepo:     "https://github.com/XiaoyangShen/spinner_test.git",
+			BranchName:  "master",
+		},
+	}
+
+	watcher := NewGitWatcher(c, "test")
+
+	watcher.Run()
+
 }

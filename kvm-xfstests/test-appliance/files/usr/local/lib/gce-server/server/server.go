@@ -27,11 +27,14 @@ type UserOptions struct {
 	ReportEmail   string `json:"report_email"`
 	CommitID      string `json:"commit_id"`
 	GitRepo       string `json:"git_repo"`
+	BranchName    string `json:"branch_name"`
+	UnWatch       bool   `json:"unwatch"`
 }
 
-// LTMOptions contains configs LTM sends to KCS.
-type LTMOptions struct {
-	TestID string `json:"test_id"`
+// InternalOptions contains configs used by LTM and KCS internally
+type InternalOptions struct {
+	TestID    string `json:"test_id"`
+	Requester string `json:"requester"`
 }
 
 // LoginRequest contains a password for user authentication
@@ -39,17 +42,18 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// UserRequest contains the full cmd from user in base 64 and some configs.
-// LTM can send a UserRequest to KCS with an additional field ExtraOptions.
-type UserRequest struct {
-	CmdLine      string       `json:"orig_cmdline"`
-	Options      *UserOptions `json:"options"`
-	ExtraOptions *LTMOptions  `json:"extra_options"`
+// TaskRequest contains the full cmd from user in base 64 and some configs.
+// LTM and KCS could add an additional field ExtraOptions when talks.
+type TaskRequest struct {
+	CmdLine      string           `json:"orig_cmdline"`
+	Options      *UserOptions     `json:"options"`
+	ExtraOptions *InternalOptions `json:"extra_options"`
 }
 
 // SimpleResponse returns whether a web request succeeds along with a message.
 type SimpleResponse struct {
 	Status bool   `json:"status"`
+	TestID string `json:"testID"`
 	Msg    string `json:"msg"`
 }
 
