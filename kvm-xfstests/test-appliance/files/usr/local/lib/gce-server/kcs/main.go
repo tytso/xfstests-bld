@@ -14,47 +14,47 @@ The endpoints are:
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"gce-server/logging"
 	"gce-server/server"
+	"gce-server/util"
 
 	"github.com/sirupsen/logrus"
 )
 
-/*
-runCompile is the end point for launching a kernel compile task.
-
-*/
+// runCompile is the end point for a build request.
+// Sends a simple status response back to requester.
 func runCompile(w http.ResponseWriter, r *http.Request) {
-	log := server.Log.WithField("endpoint", "/gce-xfstests")
-	log.Info("Request received")
-
 	defer server.FailureResponse(w)
 
-	var c server.UserRequest
+	log := server.Log.WithField("endpoint", "/gce-xfstests")
+
+	var c server.TaskRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
 	logging.CheckPanic(err, log, "Failed to parse json request")
 
-	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
-	logging.CheckPanic(err, log, "Failed to decode cmdline")
-
-	c.CmdLine = string(data)
 	log.WithFields(logrus.Fields{
-		"cmdline":      c.CmdLine,
-		"options":      fmt.Sprintf("%+v", c.Options),
-		"ExtraOptions": fmt.Sprintf("%+v", c.ExtraOptions),
-	}).Info("Receive compile request")
+		"cmdLine":      c.CmdLine,
+		"options":      c.Options,
+		"extraOptions": c.ExtraOptions,
+	}).Info("Received compile request")
 
-	gsPath, err := StartBuild(c)
-	logging.CheckPanic(err, log, "Failed to start builder")
+	testID := util.GetTimeStamp()
+	if c.ExtraOptions == nil {
+		log.WithField("testID", testID).Info("User request, generating testID")
+	} else {
+		testID = c.ExtraOptions.TestID
+		log.WithField("testID", testID).Info("LTM request, use existing testID")
+	}
+
+	go StartBuild(c, testID)
 
 	response := server.SimpleResponse{
 		Status: true,
-		Msg:    gsPath,
+		TestID: testID,
+		Msg:    "Building kernel",
 	}
 
 	log.WithField("response", response).Info("Kernel builder started")

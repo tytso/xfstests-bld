@@ -37,8 +37,8 @@ func InitLogger(logfile string) *logrus.Entry {
 	return logrus.NewEntry(log)
 }
 
-// CloseLog closes the log file handler
-// does nothing if log write to os.Stdout or os.Stderr
+// CloseLog closes the log file handler. It does nothing if log writes
+// to os.Stdout or os.Stderr.
 // TODO: find a more elegant way for the checking
 func CloseLog(log *logrus.Entry) {
 	if file, ok := log.Logger.Out.(*os.File); ok {
@@ -81,4 +81,13 @@ func Sync(log *logrus.Entry) {
 			file.Sync()
 		}
 	}
+}
+
+// GetFile returns the log file descripter if it exists
+// return nil otherwise
+func GetFile(log *logrus.Entry) *os.File {
+	if file, ok := log.Logger.Out.(*os.File); ok {
+		return file
+	}
+	return nil
 }
