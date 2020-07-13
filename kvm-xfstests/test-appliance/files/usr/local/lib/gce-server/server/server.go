@@ -35,6 +35,7 @@ type UserOptions struct {
 type InternalOptions struct {
 	TestID    string `json:"test_id"`
 	Requester string `json:"requester"`
+	MockState string `json:"mock_state"`
 }
 
 // LoginRequest contains a password for user authentication
