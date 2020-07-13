@@ -81,6 +81,20 @@ func runBuild(url string, commit string, gsBucket string, gsPath string, testID 
 	logging.CheckPanic(err, cmdLog, "Failed to build kernel")
 }
 
+func launchLTM(log *logrus.Entry) {
+	log.Info("Fetching LTM config file")
+
+	cmd := exec.Command("gce-xfstests", "launch-ltm")
+	cmdLog := log.WithField("cmd", cmd.String())
+	w := cmdLog.Writer()
+	defer w.Close()
+	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
+	if err != nil && output != "The LTM instance already exists!\n" {
+		cmdLog.WithField("output", output).WithError(err).Panic(
+			"Failed to fetch LTM config file")
+	}
+}
+
 // sendRequest sends a modified request back to LTM to init a test.
 // LTM is assumed to be running, but needs to run launch-ltm once
 // to generate .ltm_instance.
@@ -88,17 +102,7 @@ func sendRequest(c server.TaskRequest, log *logrus.Entry) {
 	log.Info("Sending request to LTM")
 
 	if !util.FileExists(util.LtmConfigFile) {
-		log.Info("Fetching LTM config file")
-
-		cmd := exec.Command("gce-xfstests", "launch-ltm")
-		cmdLog := log.WithField("cmd", cmd.String())
-		w := cmdLog.Writer()
-		defer w.Close()
-		output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
-		if err != nil && output != "The LTM instance already exists!\n" {
-			cmdLog.WithField("output", output).WithError(err).Panic(
-				"Failed to fetch LTM config file")
-		}
+		launchLTM(log)
 	}
 
 	config, err := util.GetConfig(util.LtmConfigFile)

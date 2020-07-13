@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
-type MockSharder struct {
+type JsonSharder struct {
 	TestID  string
 	ProjID  string
 	OrigCmd string
@@ -39,10 +39,10 @@ type MockSharder struct {
 
 	ValidArgs []string
 	Configs   []string
-	Shards    []MockShard
+	Shards    []JsonShard
 }
 
-type MockShard struct {
+type JsonShard struct {
 	ShardID            string
 	Name               string
 	Zone               string
@@ -58,7 +58,7 @@ type MockShard struct {
 }
 
 func (sharder *ShardSchedular) Dump(filename string) {
-	mock := MockSharder{
+	mock := JsonSharder{
 		TestID:  sharder.testID,
 		ProjID:  sharder.projID,
 		OrigCmd: sharder.origCmd,
@@ -92,8 +92,8 @@ func (sharder *ShardSchedular) Dump(filename string) {
 	ioutil.WriteFile(filename, file, 0644)
 }
 
-func (shard *ShardWorker) Dump() MockShard {
-	return MockShard{
+func (shard *ShardWorker) Dump() JsonShard {
+	return JsonShard{
 		ShardID:            shard.shardID,
 		Name:               shard.name,
 		Zone:               shard.zone,
@@ -109,7 +109,7 @@ func (shard *ShardWorker) Dump() MockShard {
 	}
 }
 
-func (mock MockShard) Read(sharder *ShardSchedular) *ShardWorker {
+func (mock JsonShard) Read(sharder *ShardSchedular) *ShardWorker {
 	shard := ShardWorker{
 		sharder:            sharder,
 		shardID:            mock.ShardID,
@@ -131,7 +131,7 @@ func (mock MockShard) Read(sharder *ShardSchedular) *ShardWorker {
 func ReadSharder(filename string) *ShardSchedular {
 	file, _ := ioutil.ReadFile(filename)
 
-	var mock MockSharder
+	var mock JsonSharder
 	json.Unmarshal(file, &mock)
 
 	sharder := ShardSchedular{
@@ -166,6 +166,31 @@ func ReadSharder(filename string) *ShardSchedular {
 		sharder.shards = append(sharder.shards, mockShard.Read(&sharder))
 	}
 	return &sharder
+}
+
+func MockStartBuild(req server.TaskRequest, testID string) {
+	log := server.Log.WithField("testID", testID)
+	log.Info("calling KCS to build mock kernel")
+
+	args := server.InternalOptions{
+		TestID:    testID,
+		Requester: "test",
+	}
+	req.ExtraOptions = &args
+
+	sendRequest(req, log)
+}
+
+func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
+	return &ShardSchedular{
+		testID:  testID,
+		log:     server.Log.WithField("testID", testID),
+		origCmd: c.ExtraOptions.MockState,
+	}
+}
+
+func (sharder *ShardSchedular) MockRun() {
+	sharder.log.WithField("testResult", sharder.origCmd).Info("mock test finished")
 }
 
 var repo *util.Repository
