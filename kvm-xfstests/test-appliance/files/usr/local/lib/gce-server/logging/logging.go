@@ -15,6 +15,10 @@ const (
 	KCSLogDir     = "/var/log/go/kcs_logs/"
 )
 
+// DEBUG declares debugging runs, where log prints to stdout and
+// mock modules are used.
+const DEBUG = true
+
 // InitLogger initializes a logrus logger and writes to logfile
 // writes to stdout if cannot open logfile
 func InitLogger(logfile string) *logrus.Entry {
@@ -30,9 +34,10 @@ func InitLogger(logfile string) *logrus.Entry {
 	log.SetFormatter(&logrus.TextFormatter{})
 	log.SetReportCaller(true)
 
-	// override log to stdout for debugging
-	// log.Out = os.Stdout
-	// log.SetReportCaller(false)
+	if DEBUG {
+		log.Out = os.Stdout
+		log.SetReportCaller(false)
+	}
 
 	return logrus.NewEntry(log)
 }
