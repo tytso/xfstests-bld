@@ -34,9 +34,13 @@ func StartBuild(req server.TaskRequest, testID string) {
 	subject := "xfstests LTM build request failure " + testID
 	defer util.ReportFailure(log, logFile, req.Options.ReportEmail, subject)
 
-	launchKCS(log)
+	args := server.InternalOptions{
+		TestID:    testID,
+		Requester: "ltm",
+	}
+	req.ExtraOptions = &args
 
-	resp := sendRequest(req, testID, log)
+	resp := sendRequest(req, log)
 	defer resp.Body.Close()
 
 	var c server.SimpleResponse
@@ -66,8 +70,10 @@ func launchKCS(log *logrus.Entry) {
 	}
 }
 
-// sendRequest appends a testID to the original user request and send it to KCS.
-func sendRequest(c server.TaskRequest, testID string, log *logrus.Entry) *http.Response {
+func sendRequest(c server.TaskRequest, log *logrus.Entry) *http.Response {
+	log.Info("Sending request to KCS")
+
+	launchKCS(log)
 
 	config, err := util.GetConfig(util.KcsConfigFile)
 	logging.CheckPanic(err, log, "Failed to get KCS config")
@@ -77,12 +83,6 @@ func sendRequest(c server.TaskRequest, testID string, log *logrus.Entry) *http.R
 	// TODO: add login step
 
 	url := fmt.Sprintf("https://%s/gce-xfstests", ip)
-
-	args := server.InternalOptions{
-		TestID:    testID,
-		Requester: "ltm",
-	}
-	c.ExtraOptions = &args
 
 	js, _ := json.Marshal(c)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))

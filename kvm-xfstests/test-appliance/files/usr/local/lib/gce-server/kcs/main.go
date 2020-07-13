@@ -44,12 +44,15 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 	testID := util.GetTimeStamp()
 	if c.ExtraOptions == nil {
 		log.WithField("testID", testID).Info("User request, generating testID")
-	} else {
+	} else if c.ExtraOptions.Requester == "ltm" {
 		testID = c.ExtraOptions.TestID
 		log.WithField("testID", testID).Info("LTM request, use existing testID")
+		go MockStartBuild(c, testID)
+	} else if logging.DEBUG && c.ExtraOptions.Requester == "test" {
+		testID = c.ExtraOptions.TestID
+		log.WithField("testID", testID).Info("LTM mock request")
+		go MockStartBuild(c, testID)
 	}
-
-	go StartBuild(c, testID)
 
 	response := server.SimpleResponse{
 		Status: true,
