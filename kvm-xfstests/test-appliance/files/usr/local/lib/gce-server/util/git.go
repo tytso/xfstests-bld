@@ -11,7 +11,7 @@ import (
 
 // configurable constants for git utility functions
 const (
-	RepoRootDir      = "/root/repositories"
+	RepoRootDir      = "/root/repositories/"
 	FetchBuildScript = "/usr/local/lib/gce-fetch-build-kernel"
 	checkInterval    = 10
 )
@@ -60,7 +60,7 @@ func Clone(url string, commit string) (*Repository, error) {
 
 	// check whether we have a detached head
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	branch, err := CheckOutput(cmd, r.getDir(), EmptyEnv, os.Stderr)
+	branch, err := CheckOutput(cmd, r.Dir(), EmptyEnv, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -79,11 +79,44 @@ func Clone(url string, commit string) (*Repository, error) {
 	return &r, nil
 }
 
+// SimpleClone clones a repo and checkout to commit without any caching and checking
+func SimpleClone(url string, commit string) (*Repository, error) {
+	err := CreateDir(RepoRootDir)
+	if err != nil {
+		return nil, err
+	}
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+
+	r := Repository{
+		url:        url,
+		id:         id.String(),
+		currCommit: commit,
+		watching:   false,
+	}
+
+	cmd := exec.Command("git", "clone", url, r.Dir())
+	err = CheckRun(cmd, RepoRootDir, EmptyEnv, os.Stdout, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = exec.Command("git", "checkout", commit)
+	err = CheckRun(cmd, r.Dir(), EmptyEnv, os.Stdout, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
 // GetCommit returns the newest commit id on a local branch without
 // fetching from remote upstream.
 // It returns the current commit if the repo is at a detached HEAD
 func (r *Repository) GetCommit() (string, error) {
-	dir := r.getDir()
+	dir := r.Dir()
 	if !DirExists(dir) {
 		return "", fmt.Errorf("directory %s does not exist", dir)
 	}
@@ -104,7 +137,7 @@ func (r *Repository) GetCommit() (string, error) {
 
 // Pull the newest code from upstream.
 func (r *Repository) Pull() error {
-	dir := r.getDir()
+	dir := r.Dir()
 	if !DirExists(dir) {
 		return fmt.Errorf("directory %s does not exist", dir)
 	}
@@ -139,8 +172,8 @@ func (r *Repository) Watch() error {
 	}
 }
 
-func (r *Repository) getDir() string {
-	return RepoRootDir + "/" + r.id
+func (r *Repository) Dir() string {
+	return RepoRootDir + r.id + "/"
 }
 
 // MockRepo constructs a mock Repository struct without proper initialization.

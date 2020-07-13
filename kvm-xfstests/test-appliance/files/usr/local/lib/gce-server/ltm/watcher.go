@@ -118,7 +118,13 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 				watcher.log.WithField("commit", newCommit).Info("New commit detected, initiating build")
 				testID := watcher.testID + "-" + util.GetTimeStamp()
 				watcher.testRequest.Options.CommitID = newCommit
-				go StartBuild(watcher.testRequest, testID)
+
+				if logging.DEBUG {
+					go MockStartBuild(watcher.testRequest, testID)
+				} else {
+					go StartBuild(watcher.testRequest, testID)
+				}
+
 				watcher.head = newCommit
 			}
 		}

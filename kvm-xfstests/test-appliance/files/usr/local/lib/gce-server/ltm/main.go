@@ -82,18 +82,32 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if c.Options.CommitID != "" {
 			log.Info("User requests a kernel build, calling KCS")
-			go StartBuild(c, testID)
+
+			if logging.DEBUG {
+				go MockStartBuild(c, testID)
+			} else {
+				go StartBuild(c, testID)
+			}
 
 			response.Msg = "Calling KCS to build the kernel"
 		}
 	}
 
 	if response.Msg == "" {
-		sharder := NewShardSchedular(c, testID)
-		sharder.Dump("/root/mock_sharder.json")
-		// sharder := ReadSharder("/root/mock_sharder.json")
-		log.Info("Test sharder created")
-		go sharder.Run()
+		var sharder *ShardSchedular
+
+		if logging.DEBUG {
+			sharder = MockNewShardSchedular(c, testID)
+			// sharder.Dump("/root/mock_sharder.json")
+			// sharder := ReadSharder("/root/mock_sharder.json")
+			log.Info("Mock sharder created")
+			go sharder.MockRun()
+
+		} else {
+			sharder = NewShardSchedular(c, testID)
+			log.Info("Test sharder created")
+			go sharder.Run()
+		}
 
 		response.Msg = "Launching tests"
 	}
