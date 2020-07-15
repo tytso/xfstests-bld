@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// configurable user name for naming LTM files
+// configurable user name for LTM related files and tests
 const (
 	LTMUserName = "ltm"
 )
@@ -72,19 +72,35 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 				watcher := NewGitWatcher(c, testID)
 				go watcher.Run()
 
-				response.Msg = "Initiating git repo monitor"
+				response.Msg = "Git repo monitor initiating"
 			} else {
 				log.Info("User requests a git unwatch, terminating git repo monitor")
 				StopWatcher(c)
 
-				response.Msg = "Terminated git repo monitor"
+				response.Msg = "Git repo monitor terminated"
 				response.TestID = ""
 			}
+		} else if c.Options.BadCommit != "" && c.Options.GoodCommit != "" {
+			log.Info("User requests a git bisect, calling KCS")
+			args := server.InternalOptions{
+				TestID:    testID,
+				Requester: server.LTMBisectStart,
+			}
+			c.ExtraOptions = &args
+			go ForwardKCS(c, testID)
+
+			response.Msg = "Calling KCS to initiate git bisection"
+
 		} else if c.Options.CommitID != "" {
 			log.Info("User requests a kernel build, calling KCS")
-			go StartBuild(c, testID)
+			args := server.InternalOptions{
+				TestID:    testID,
+				Requester: server.LTMBuild,
+			}
+			c.ExtraOptions = &args
+			go ForwardKCS(c, testID)
 
-			response.Msg = "Calling KCS to build the kernel"
+			response.Msg = "Calling KCS to build kernel"
 		}
 	}
 

@@ -40,9 +40,6 @@ type ShardSchedular struct {
 	projID  string
 	origCmd string
 
-	gitRepo  string
-	commitID string
-
 	zone           string
 	region         string
 	gsBucket       string
@@ -52,6 +49,9 @@ type ShardSchedular struct {
 	reportReceiver string
 	maxShards      int
 	keepDeadVM     bool
+
+	reportKCS   bool
+	testRequest server.TaskRequest
 
 	log     *logrus.Entry
 	logDir  string
@@ -103,9 +103,6 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 		projID:  config.Get("GCE_PROJECT"),
 		origCmd: strings.TrimSpace(string(data)),
 
-		gitRepo:  c.Options.GitRepo,
-		commitID: c.Options.CommitID,
-
 		zone:           zone,
 		region:         region,
 		gsBucket:       config.Get("GS_BUCKET"),
@@ -115,6 +112,9 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
+
+		reportKCS:   false,
+		testRequest: c,
 
 		log:     log,
 		logDir:  logDir,
@@ -144,6 +144,10 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 		sharder.initRegionSharding()
 	} else {
 		sharder.initLocalSharding()
+	}
+
+	if c.ExtraOptions != nil && c.ExtraOptions.Requester == server.KCSBisectStep {
+		sharder.reportKCS = true
 	}
 
 	return &sharder
@@ -317,7 +321,12 @@ func (sharder *ShardSchedular) finish() {
 	sharder.createInfo()
 	sharder.createRunStats()
 	genResultsSummary(sharder.aggDir, sharder.aggDir+"report", sharder.log)
-	sharder.emailReport()
+
+	if !sharder.reportKCS {
+		sharder.emailReport()
+	} else {
+		sharder.sendKCSReport()
+	}
 	sharder.packResults()
 
 	sharder.cleanup()
@@ -460,7 +469,7 @@ func (sharder *ShardSchedular) createRunStats() {
 
 }
 
-// genResultsSummary call a python script to generate the summary on junit xml test results.
+// genResultsSummary calls a python script to generate the summary on junit xml test results.
 func genResultsSummary(resultsDir string, outputFile string, log *logrus.Entry) {
 	cmd := exec.Command(genResultsSummaryPath, resultsDir, "--output_file", outputFile)
 	cmdLog := log.WithField("cmd", cmd.String())
@@ -479,6 +488,14 @@ func (sharder *ShardSchedular) emailReport() {
 
 	err = util.SendEmail(subject, string(content), sharder.reportReceiver)
 	logging.CheckPanic(err, sharder.log, "Failed to send the email")
+}
+
+func (sharder *ShardSchedular) sendKCSReport() {
+
+	sharder.testRequest.ExtraOptions.TestResult = true
+	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
+	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
+
 }
 
 // packResults packs the aggregared files after copying the sharder's log file into it.
