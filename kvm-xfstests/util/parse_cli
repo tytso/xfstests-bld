@@ -186,24 +186,29 @@ validate_config_name()
 
 validate_commit_name()
 {
-    if ! git ls-remote $1 &> /dev/null; then
-  		echo -e "Repo not found: $1\n"
-  		print_help
+	if test -z "$GIT_REPO"
+    then
+        echo "GIT_REPO is neither found in the config file nor provided with --repo"
+        exit 1
+    elif ! git ls-remote "$GIT_REPO" &> /dev/null; then
+  		echo -e "Repo not found: $GIT_REPO\n"
   		exit 1
-    elif ! git ls-remote $1 | grep "$2" &> /dev/null; then
-  		echo "Warning: $2 is not a valid branch or tag of $1"
+    elif ! git ls-remote "$GIT_REPO" | grep "$1" &> /dev/null; then
+  		echo "Warning: $1 is not a valid branch or tag of $GIT_REPO"
 	fi
 }
 
 validate_branch_name()
 {
-    if ! git ls-remote $1 > /dev/null; then
-  		echo -e "Repo not found: $1\n"
-  		print_help
+	if test -z "$GIT_REPO"
+    then
+        echo "GIT_REPO is neither found in the config file nor provided with --repo"
+        exit 1
+    elif ! git ls-remote "$GIT_REPO" > /dev/null; then
+  		echo -e "Repo not found: $GIT_REPO\n"
   		exit 1
-    elif ! git ls-remote --heads  --exit-code $1 $2 > /dev/null; then
-  		echo -e "$2 is not a valid branch of $1"
-		print_help
+    elif ! git ls-remote --heads  --exit-code "$GIT_REPO" $1 > /dev/null; then
+  		echo -e "$1 is not a valid branch of $GIT_REPO"
 		exit 1
 	fi
 }
@@ -235,6 +240,8 @@ shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
 archive
+bisect-bad:
+bisect-good:
 blktests
 bucket-subdir:
 cache:
@@ -587,6 +594,18 @@ while (( $# >= 1 )); do
 		BRANCH="$1"
 		UNWATCH="yes"
 		;;
+	--bisect-bad) shift
+		supported_flavors gce
+		BISECT_BAD="$1"
+		;;
+	--bisect-good) shift
+		supported_flavors gce
+		if test -z "$BISECT_GOOD"; then
+		BISECT_GOOD="$1"
+		else
+		BISECT_GOOD="$BISECT_GOOD|$1"
+		fi
+		;;
     --config) shift
 	    supported_flavors gce
 	    BUILD_CONFIG="$1"
@@ -833,22 +852,22 @@ fi
 
 if test -n "$COMMIT"
 then
-    if test -z "$GIT_REPO"
-    then
-        echo "GIT_REPO is neither found in the config file nor provided with --repo"
-        exit 1
-    fi
-    validate_commit_name $GIT_REPO $COMMIT
+    validate_commit_name $COMMIT
 fi
 
 if test -n "$BRANCH"
 then
-    if test -z "$GIT_REPO"
-    then
-        echo "GIT_REPO is neither found in the config file nor provided with --repo"
-        exit 1
-    fi
-    validate_branch_name $GIT_REPO $BRANCH
+    validate_branch_name $BRANCH
+fi
+
+if test -n "$BISECT_GOOD" -o -n "$BISECT_BAD"
+then
+	if test -z "$BISECT_BAD" -o -z "$BISECT_BAD"
+	then
+		echo "Both BISECT_GOOD and BISECT_BAD should be set"
+		exit 1
+	fi
+	validate_commit_name $BISECT_BAD
 fi
 
 if test -n "$RUN_ON_KCS" -a -z "$COMMIT"

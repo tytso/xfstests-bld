@@ -44,7 +44,8 @@ func init() {
 
 // NewRepository clones a repository with reference to a base repo.
 // The repo directory is named as id under RepoRootDir.
-// Do not overwrite directory if already exists.
+// It assumes each directory binds to a unique repo, and does not
+// overwrite that directory if it already exists.
 func NewRepository(id string, repoURL string) (*Repository, error) {
 	if id == "" {
 		return nil, fmt.Errorf("repo id not specified")
@@ -114,6 +115,90 @@ func (repo *Repository) Checkout(commit string) error {
 	}
 
 	return nil
+}
+
+// BisectStart starts a git bisect on a repository.
+// It uses badCommit and goodCommits to narrow down the search path.
+// Current head is used if badCommit is empty, and throws error if
+// goodCommits is empty. It returns true if git bisect has ended.
+func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (bool, error) {
+	if len(goodCommits) == 0 {
+		return false, fmt.Errorf("No good commits provided")
+	}
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return false, fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	if badCommit == "" {
+		badCommit = "HEAD"
+	}
+
+	args := []string{"bisect", "start", badCommit}
+	args = append(args, goodCommits...)
+
+	cmd := exec.Command("git", args...)
+	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	if err != nil {
+		return false, err
+	}
+	if strings.Contains(output, "is the first bad commit") {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// BisectStep tells git bisect whether the current version is good or not
+// and proceeds to the next step.
+// It returns true if git bisect has ended.
+func (repo *Repository) BisectStep(good bool) (bool, error) {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return false, fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	step := "good"
+	if !good {
+		step = "bad"
+	}
+	cmd := exec.Command("git", "bisect", step)
+	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	if err != nil {
+		return false, err
+	}
+	if strings.Contains(output, "is the first bad commit") {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// BisectLog returns bisect log output.
+func (repo *Repository) BisectLog() (string, error) {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return "", fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	cmd := exec.Command("git", "bisect", "log")
+	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	if err != nil {
+		return "", err
+	}
+
+	return output, nil
+}
+
+// BisectReset resets the current git bisect.
+func (repo *Repository) BisectReset() error {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	cmd := exec.Command("git", "bisect", "reset")
+	return CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
 }
 
 // BuildUpload builds the current kernel code and uploads image to GS.

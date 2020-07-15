@@ -58,9 +58,6 @@ func (sharder *ShardSchedular) Dump(filename string) {
 		ProjID:  sharder.projID,
 		OrigCmd: sharder.origCmd,
 
-		GitRepo:  sharder.gitRepo,
-		CommitID: sharder.commitID,
-
 		Zone:           sharder.zone,
 		Region:         sharder.region,
 		GsBucket:       sharder.gsBucket,
@@ -134,9 +131,6 @@ func ReadSharder(filename string) *ShardSchedular {
 		projID:  mock.ProjID,
 		origCmd: mock.OrigCmd,
 
-		gitRepo:  mock.GitRepo,
-		commitID: mock.CommitID,
-
 		zone:           mock.Zone,
 		region:         mock.Region,
 		gsBucket:       mock.GsBucket,
@@ -164,13 +158,25 @@ func ReadSharder(filename string) *ShardSchedular {
 }
 
 func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
-	return &ShardSchedular{
-		testID:  testID,
-		log:     server.Log.WithField("testID", testID),
-		origCmd: c.ExtraOptions.MockState,
+	sharder := ShardSchedular{
+		testID:      testID,
+		testRequest: c,
+		log:         server.Log.WithField("testID", testID),
 	}
+	if c.ExtraOptions != nil && c.ExtraOptions.Requester == server.KCSBisectStep {
+		sharder.reportKCS = true
+	}
+
+	return &sharder
 }
 
 func (sharder *ShardSchedular) MockRun() {
-	sharder.log.WithField("testResult", sharder.origCmd).Info("mock test finished")
+	sharder.log.Warn("mock test finished")
+	if sharder.testRequest.ExtraOptions != nil {
+		sharder.log.WithField("result", sharder.testRequest.ExtraOptions.TestResult).Warn("get test results")
+	}
+	if sharder.reportKCS {
+		sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
+		ForwardKCS(sharder.testRequest, sharder.testID)
+	}
 }

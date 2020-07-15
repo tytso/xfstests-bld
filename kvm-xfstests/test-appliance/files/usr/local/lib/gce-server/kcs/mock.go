@@ -1,33 +1,26 @@
 package main
 
 import (
-	"gce-server/logging"
-	"gce-server/server"
 	"gce-server/util"
+
+	"github.com/sirupsen/logrus"
 )
 
-// MockStartBuild fetches a mock kernel repo and reads the mock kernel
-// from mock.txt. It then sends a mock build request back to LTM.
-func MockStartBuild(c server.TaskRequest, testID string) {
-	log := server.Log.WithField("testID", testID)
+// MockRunBuild runs a mock build. It reads mock.txt from repo to mock the test result.
+func MockRunBuild(repo *util.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) bool {
 	log.Info("Start building mock kernel")
 
-	repo, err := util.NewSimpleRepository(c.Options.GitRepo, c.Options.CommitID)
-	logging.CheckPanic(err, log, "Failed to clone repo")
-
-	c.ExtraOptions.Requester = "test"
-
-	lines, err := util.ReadLines(repo.Dir() + "mock.txt")
+	lines, _ := util.ReadLines(repo.Dir() + "mock.txt")
+	var result bool
 	switch lines[0] {
 	case "good":
-		fallthrough
+		result = true
 	case "bad":
-		fallthrough
+		result = false
 	case "undefined":
-		c.ExtraOptions.MockState = lines[0]
+		fallthrough
 	default:
-		panic("mock.txt in wrong format")
+		log.Panic("mock.txt in wrong format")
 	}
-
-	sendRequest(c, log)
+	return result
 }
