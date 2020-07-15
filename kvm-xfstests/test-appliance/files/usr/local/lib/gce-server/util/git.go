@@ -1,86 +1,149 @@
 package util
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"os/exec"
-	"time"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 // configurable constants for git utility functions
 const (
-	RepoRootDir      = "/root/repositories/"
-	FetchBuildScript = "/usr/local/lib/gce-fetch-build-kernel"
-	checkInterval    = 10
+	RepoRootDir = "/root/repositories/"
+	RefRepoDir  = RepoRootDir + "linux.reference"
+	RefRepoURL  = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
+	watchInterval     = 10
 )
 
-// Repository represents a git repository and its current states
+// Repository represents a git repo
 type Repository struct {
-	url        string
-	id         string
-	branch     string
-	currCommit string
-	watching   bool
+	id  string
+	url string
 }
 
-/*
-Clone a repository into a unique directory with reference to the linux
-base repository. It then checkout to a certain commit, branch or tag name
-and returns a Repository struct.
-Only public repos are supported for now.
-*/
-func Clone(url string, commit string) (*Repository, error) {
+// RemoteRepository represents a remote repo
+type RemoteRepository struct {
+	url    string
+	branch string
+	head   string
+}
+
+func init() {
 	err := CreateDir(RepoRootDir)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, err
-	}
+}
 
-	cmd := exec.Command(FetchBuildScript)
-	env := map[string]string{
-		"GIT_REPO": url,
-		"REPO_ID":  id.String(),
-		"COMMIT":   commit,
+// NewRepository clones a repository with reference to a base repo.
+// The repo directory is named as id under RepoRootDir.
+// Do not overwrite directory if already exists.
+func NewRepository(id string, repoURL string) (*Repository, error) {
+	if id == "" {
+		return nil, fmt.Errorf("repo id not specified")
 	}
-	err = CheckRun(cmd, RepoRootDir, env, os.Stdout, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	r := Repository{
-		url:      url,
-		id:       id.String(),
-		watching: false,
-	}
-
-	// check whether we have a detached head
-	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	branch, err := CheckOutput(cmd, r.Dir(), EmptyEnv, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	branch = branch[:len(branch)-1]
-	if branch == "HEAD" {
-		r.currCommit = commit
-	} else {
-		r.currCommit, err = r.GetCommit()
+	if !DirExists(RefRepoDir) {
+		cmd := exec.Command("git", "clone", "--mirror", RefRepoURL, RefRepoDir)
+		err := CheckRun(cmd, RootDir, EmptyEnv, os.Stdout, os.Stderr)
 		if err != nil {
 			return nil, err
 		}
-		r.branch = branch
 	}
 
-	return &r, nil
+	repo := Repository{
+		id:  id,
+		url: repoURL,
+	}
+
+	repoDir := repo.Dir()
+	if DirExists(repoDir) {
+		return &repo, nil
+	}
+
+	cmd := exec.Command("git", "clone", "--reference", RefRepoDir, repoURL, repoDir)
+	err := CheckRun(cmd, RootDir, EmptyEnv, os.Stdout, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &repo, nil
 }
 
-// SimpleClone clones a repo and checkout to commit without any caching and checking
-func SimpleClone(url string, commit string) (*Repository, error) {
+// GetCommit returns the commit hash for current repo HEAD
+func (repo *Repository) GetCommit() (string, error) {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return "", fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	commit, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	if err != nil {
+		return "", err
+	}
+
+	return commit[:len(commit)-1], nil
+}
+
+// Checkout pulls from upstream and checkout to a commit hash.
+func (repo *Repository) Checkout(commit string) error {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	cmd := exec.Command("git", "checkout", "-")
+	CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+
+	cmd = exec.Command("git", "pull")
+	err := CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("git", "checkout", commit)
+	err = CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// BuildUpload builds the current kernel code and uploads image to GS.
+// Script output is written into a given writer
+func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Writer) error {
+	repoDir := repo.Dir()
+	if !DirExists(repoDir) {
+		return fmt.Errorf("directory %s does not exist", repoDir)
+	}
+
+	cmd := exec.Command(BuildUploadScript)
+
+	env := map[string]string{
+		"GS_BUCKET": gsBucket,
+		"GS_PATH":   gsPath,
+	}
+
+	err := CheckRun(cmd, repo.Dir(), env, writer, writer)
+
+	return err
+}
+
+// Delete removes repo from local storage
+func (repo *Repository) Delete() error {
+	err := RemoveDir(repo.Dir())
+	return err
+}
+
+// NewSimpleRepository clones a repo and checkout to commit without any caching and checking
+func NewSimpleRepository(repoURL string, commit string) (*Repository, error) {
 	err := CreateDir(RepoRootDir)
 	if err != nil {
 		return nil, err
@@ -91,13 +154,11 @@ func SimpleClone(url string, commit string) (*Repository, error) {
 	}
 
 	r := Repository{
-		url:        url,
-		id:         id.String(),
-		currCommit: commit,
-		watching:   false,
+		url: repoURL,
+		id:  id.String(),
 	}
 
-	cmd := exec.Command("git", "clone", url, r.Dir())
+	cmd := exec.Command("git", "clone", repoURL, r.Dir())
 	err = CheckRun(cmd, RepoRootDir, EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, err
@@ -112,71 +173,82 @@ func SimpleClone(url string, commit string) (*Repository, error) {
 	return &r, nil
 }
 
-// GetCommit returns the newest commit id on a local branch without
-// fetching from remote upstream.
-// It returns the current commit if the repo is at a detached HEAD
-func (r *Repository) GetCommit() (string, error) {
-	dir := r.Dir()
-	if !DirExists(dir) {
-		return "", fmt.Errorf("directory %s does not exist", dir)
+// Dir returns the repo directory
+func (repo *Repository) Dir() string {
+	return RepoRootDir + repo.id + "/"
+}
+
+// NewRemoteRepository initiates a remote repo and get HEAD on given branch
+func NewRemoteRepository(repoURL string, branch string) (*RemoteRepository, error) {
+	repo := RemoteRepository{
+		url:    repoURL,
+		branch: branch,
 	}
-	cmd := exec.Command("git", "checkout", r.branch)
-	err := CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
+
+	head, err := getHead(repo.url, repo.branch)
 	if err != nil {
+		return nil, err
+	}
+	repo.head = head
+
+	return &repo, nil
+}
+
+// Update gets new HEAD and returns true if it has changed since last update
+func (repo *RemoteRepository) Update() (bool, error) {
+	head, err := getHead(repo.url, repo.branch)
+	if err != nil {
+		return false, err
+	}
+	if head != repo.head {
+		repo.head = head
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// Head returns the current head
+func (repo *RemoteRepository) Head() string {
+	return repo.head
+}
+
+// getHead retrives the commit hash of the HEAD on a branch
+func getHead(repoURL string, branch string) (string, error) {
+	cmd := exec.Command("git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
+	output, err := CheckOutput(cmd, RootDir, EmptyEnv, os.Stderr)
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 2 {
+				return "", fmt.Errorf("branch is not found")
+			}
+		}
 		return "", err
 	}
 
-	cmd = exec.Command("git", "rev-parse", "@")
-	commit, err := CheckOutput(cmd, dir, EmptyEnv, os.Stderr)
+	commit := strings.Fields(output)[0]
+	return commit, nil
+}
+
+// ParseGitURL transforms a git url into a human readable directory string
+// Format is hostname - last two parts of path - last 4 byte of md5 sum
+// Clone with ssh key is not supported
+func ParseGitURL(repoURL string) (string, error) {
+	u, err := url.Parse(repoURL)
 	if err != nil {
 		return "", err
 	}
+	paths := strings.Split(u.Path, "/")
+	hash := md5.Sum([]byte(repoURL))
 
-	return commit[:len(commit)-1], nil
+	name := []string{u.Hostname()}
+	name = append(name, paths[len(paths)-2:]...)
+	name = append(name, hex.EncodeToString(hash[len(hash)-4:]))
+
+	return strings.Join(name, "-"), nil
 }
 
-// Pull the newest code from upstream.
-func (r *Repository) Pull() error {
-	dir := r.Dir()
-	if !DirExists(dir) {
-		return fmt.Errorf("directory %s does not exist", dir)
-	}
-	cmd := exec.Command("git", "pull")
-	err := CheckRun(cmd, dir, EmptyEnv, os.Stdout, os.Stderr)
-	return err
-}
-
-// Watch a specified branch and print the newest commit id when it
-// detects code changes from upstream.
-// Watch throws error if the repo is at a detached HEAD, indicated by
-// r.branch == ""
-func (r *Repository) Watch() error {
-	if r.watching {
-		return nil
-	}
-	if r.branch == "" {
-		return fmt.Errorf("repo has a detached HEAD %s", r.currCommit)
-	}
-	r.watching = true
-	for {
-		time.Sleep(checkInterval * time.Second)
-		r.Pull()
-		newCommit, err := r.GetCommit()
-		if err != nil {
-			return err
-		}
-		if newCommit != r.currCommit {
-			r.currCommit = newCommit
-			fmt.Println("new commit detected")
-		}
-	}
-}
-
-func (r *Repository) Dir() string {
-	return RepoRootDir + r.id + "/"
-}
-
-// MockRepo constructs a mock Repository struct without proper initialization.
-func MockRepo(url string, id string, branch string, currCommit string, watching bool) Repository {
-	return Repository{url, id, branch, currCommit, watching}
-}
+// // MockRepo constructs a mock Repository struct without proper initialization.
+// func MockRepo(repoURL string, id string, branch string, currCommit string, watching bool) Repository {
+// 	return Repository{repoURL, id, branch, currCommit, watching}
+// }
