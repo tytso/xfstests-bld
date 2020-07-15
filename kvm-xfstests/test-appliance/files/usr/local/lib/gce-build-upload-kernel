@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e -x
+# This script is used by KCS server to build and upload kernels.
+# If repository REPO_ID exists, it pulls and checkouts to COMMIT.
+# Environment variables can be set:
+# REPO_DIR GS_BUCKET GS_PATH
+
+if test -z "$REPO_DIR"; then
+    REPO_DIR="."
+fi
+
+if test -z "$GS_PATH"; then
+    GS_PATH="gs://$GS_BUCKET/bzImage"
+fi
+
+gsutil cp "gs://$GS_BUCKET/build_config" "$REPO_DIR/.config"
+make olddefconfig
+make -j$(nproc)
+
+gsutil cp "$REPO_DIR/arch/x86/boot/bzImage" $GS_PATH

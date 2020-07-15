@@ -29,6 +29,8 @@ type UserOptions struct {
 	GitRepo       string `json:"git_repo"`
 	BranchName    string `json:"branch_name"`
 	UnWatch       bool   `json:"unwatch"`
+	BadCommit     string `json:"bad_commit"`
+	GoodCommit    string `json:"good_commit"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally

@@ -18,7 +18,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var buildLock sync.Mutex
+// repoMap indexes repos by repo url.
+// repoLock protects map access and ensures one build at a time
+var (
+	repoMap  = make(map[string]*util.Repository)
+	repoLock sync.Mutex
+)
 
 // StartBuild starts a kernel build task.
 // The kernel image is uploaded to gs bucket at path /kernels/bzImage-<testID>.
@@ -51,34 +56,34 @@ func StartBuild(c server.TaskRequest, testID string) {
 }
 
 func runBuild(url string, commit string, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) {
-	buildLock.Lock()
-	defer buildLock.Unlock()
+	repoLock.Lock()
+	defer repoLock.Unlock()
 
 	file, err := os.Create(buildLog)
 	logging.CheckPanic(err, log, "Failed to create file")
 	defer file.Close()
 
-	cmd := exec.Command(util.FetchBuildScript)
-	cmdLog := log.WithFields(logrus.Fields{
-		"GitRepo":  url,
-		"commitID": commit,
-		"gsBucket": gsBucket,
-		"gsPath":   gsPath,
-		"cmd":      cmd.String(),
-	})
-	cmdLog.Info("Start building kernel")
+	id, err := util.ParseGitURL(url)
+	logging.CheckPanic(err, log, "Failed to parse repo url")
 
-	env := map[string]string{
-		"GIT_REPO":     url,
-		"COMMIT":       commit,
-		"GS_BUCKET":    gsBucket,
-		"GS_PATH":      gsPath,
-		"BUILD_KERNEL": "yes",
+	repo, ok := repoMap[id]
+	if !ok {
+		log.WithField("repoId", id).Debug("Cloning repo")
+		repo, err = util.NewRepository(id, url)
+		logging.CheckPanic(err, log, "Failed to clone repo")
+
+		repoMap[id] = repo
+	} else {
+		log.WithField("repoId", id).Debug("Existing repo found")
 	}
 
-	err = util.CheckRun(cmd, util.RootDir, env, file, file)
+	err = repo.Checkout(commit)
+	logging.CheckPanic(err, log, "Failed to checkout to commit")
+
+	err = repo.BuildUpload(gsBucket, gsPath, file)
 	file.Sync()
-	logging.CheckPanic(err, cmdLog, "Failed to build kernel")
+
+	logging.CheckPanic(err, log, "Failed to build kernel")
 }
 
 func launchLTM(log *logrus.Entry) {
@@ -141,7 +146,7 @@ func sendRequest(c server.TaskRequest, log *logrus.Entry) {
 	err = json.NewDecoder(resp.Body).Decode(&c1)
 	logging.CheckPanic(err, log, "Failed to parse json response")
 
-	log.WithField("resp", c1).Debug("Received response from KCS")
+	log.WithField("resp", c1).Debug("Received response from LTM")
 
 	if !c1.Status {
 		panic(c1.Msg)
