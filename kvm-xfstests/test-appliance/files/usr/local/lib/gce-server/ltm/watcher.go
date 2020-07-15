@@ -62,7 +62,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 
 	done := make(chan bool)
 	repo, err := util.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
-	logging.CheckPanic(err, log, "failed to initiate repo")
+	logging.CheckPanic(err, log, "failed to initiate remote repo")
 
 	watcher := GitWatcher{
 		testID:         testID,
@@ -105,7 +105,7 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 	watcher.log.Info("Initiating build at watcher launch")
 	watcher.testRequest.Options.CommitID = watcher.repo.Head()
 
-	go StartBuild(watcher.testRequest, watcher.testID)
+	go ForwardKCS(watcher.testRequest, watcher.testID)
 
 	start := time.Now()
 
@@ -125,7 +125,7 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 				testID := watcher.testID + "-" + util.GetTimeStamp()
 				watcher.testRequest.Options.CommitID = watcher.repo.Head()
 
-				go StartBuild(watcher.testRequest, testID)
+				go ForwardKCS(watcher.testRequest, testID)
 			}
 		}
 	}

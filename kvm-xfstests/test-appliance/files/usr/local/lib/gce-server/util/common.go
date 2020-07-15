@@ -70,7 +70,7 @@ func parseEnv(env map[string]string) []string {
 	return newEnv
 }
 
-// CreateDir creates a directory with default permissions.
+// CreateDir creates a directory recursively with default permissions.
 func CreateDir(path string) error {
 	err := os.MkdirAll(path, 0755)
 	return err

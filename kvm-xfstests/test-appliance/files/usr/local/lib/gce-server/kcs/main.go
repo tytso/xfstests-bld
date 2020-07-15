@@ -39,28 +39,46 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 		"cmdLine":      c.CmdLine,
 		"options":      c.Options,
 		"extraOptions": c.ExtraOptions,
-	}).Info("Received compile request")
+	}).Info("Received request")
 
 	testID := util.GetTimeStamp()
-	if c.ExtraOptions == nil {
-		log.WithField("testID", testID).Info("User request, generating testID")
-	} else if logging.MOCK {
-		testID = c.ExtraOptions.TestID
-		log.WithField("testID", testID).Info("Mock build")
-		go MockStartBuild(c, testID)
-	} else if c.ExtraOptions.Requester == "ltm" {
-		testID = c.ExtraOptions.TestID
-		log.WithField("testID", testID).Info("LTM request, use existing testID")
-		go StartBuild(c, testID)
-	}
 
 	response := server.SimpleResponse{
 		Status: true,
 		TestID: testID,
-		Msg:    "Building kernel",
 	}
 
-	log.WithField("response", response).Info("Kernel builder started")
+	if c.ExtraOptions == nil {
+		log.WithField("testID", testID).Info("User request, generating testID")
+
+		go StartBuild(c, testID)
+		response.Msg = "Building kernel for user"
+
+	} else {
+		switch c.ExtraOptions.Requester {
+		case server.LTMBuild:
+			testID = c.ExtraOptions.TestID
+			log.WithField("testID", testID).Info("LTM build request, use existing testID")
+
+			go StartBuild(c, testID)
+			response.TestID = testID
+			response.Msg = "Building kernel for LTM"
+
+		case server.LTMBisectStart:
+			fallthrough
+		case server.LTMBisectStep:
+			testID = c.ExtraOptions.TestID
+			log.WithField("testID", testID).Info("LTM bisect request, use existing testID")
+
+			go RunBisect(c, testID)
+			response.TestID = testID
+			response.Msg = "Running git bisect task"
+		default:
+			response.Status = false
+			response.Msg = "Unrecognized request"
+		}
+	}
+
 	js, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
