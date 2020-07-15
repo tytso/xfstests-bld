@@ -82,12 +82,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if c.Options.CommitID != "" {
 			log.Info("User requests a kernel build, calling KCS")
-
-			if logging.DEBUG {
-				go MockStartBuild(c, testID)
-			} else {
-				go StartBuild(c, testID)
-			}
+			go StartBuild(c, testID)
 
 			response.Msg = "Calling KCS to build the kernel"
 		}
@@ -96,7 +91,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 	if response.Msg == "" {
 		var sharder *ShardSchedular
 
-		if logging.DEBUG {
+		if logging.MOCK {
 			sharder = MockNewShardSchedular(c, testID)
 			// sharder.Dump("/root/mock_sharder.json")
 			// sharder := ReadSharder("/root/mock_sharder.json")
