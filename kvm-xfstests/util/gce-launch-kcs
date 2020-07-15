@@ -27,7 +27,7 @@ fi
 
 INSTANCE="xfstests-kcs"
 
-NO_ACTION=""
+NO_ACTION=
 if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
     $INSTANCE >& /dev/null
 then
