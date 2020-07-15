@@ -1,16 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"io/ioutil"
-	"log"
-	"os"
 
 	"gce-server/server"
 	"gce-server/util"
-
-	"google.golang.org/api/compute/v1"
 )
 
 type JsonSharder struct {
@@ -168,19 +163,6 @@ func ReadSharder(filename string) *ShardSchedular {
 	return &sharder
 }
 
-func MockStartBuild(req server.TaskRequest, testID string) {
-	log := server.Log.WithField("testID", testID)
-	log.Info("calling KCS to build mock kernel")
-
-	args := server.InternalOptions{
-		TestID:    testID,
-		Requester: "test",
-	}
-	req.ExtraOptions = &args
-
-	sendRequest(req, log)
-}
-
 func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	return &ShardSchedular{
 		testID:  testID,
@@ -191,97 +173,4 @@ func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular 
 
 func (sharder *ShardSchedular) MockRun() {
 	sharder.log.WithField("testResult", sharder.origCmd).Info("mock test finished")
-}
-
-var repo *util.Repository
-
-func test() {
-	reader := bufio.NewReader(os.Stdin)
-	for true {
-		arg, _ := reader.ReadString('\n')
-		switch arg[:len(arg)-1] {
-		case "clone":
-			repo, _ = util.Clone("https://github.com/XiaoyangShen/spinner_test.git", "master")
-		case "commit":
-			id, _ := repo.GetCommit()
-			log.Println(id)
-		case "pull":
-			repo.Pull()
-		case "watch":
-			repo.Watch()
-		}
-	}
-}
-
-func test1() {
-	reader := bufio.NewReader(os.Stdin)
-	for true {
-		arg, _ := reader.ReadString('\n')
-
-		validArg, configs, _ := util.ParseCmd(arg[:len(arg)-1])
-		log.Printf("%s; %+v\n", validArg, configs)
-	}
-}
-
-func test2() {
-	gce, _ := util.NewGceService("xfstests-xyshen")
-	info, _ := gce.GetInstanceInfo("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm")
-	log.Printf("%+v", info.Metadata)
-	for _, item := range info.Metadata.Items {
-		log.Printf("%+v", item)
-	}
-
-	val := "ahaah"
-	newMetadata := compute.Metadata{
-		Fingerprint: info.Metadata.Fingerprint,
-		Items: []*compute.MetadataItems{
-			{
-				Key:   "shutdown_reason",
-				Value: &val,
-			},
-		},
-	}
-	gce.SetMetadata("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm", &newMetadata)
-}
-
-func test3() {
-	sharder := ReadSharder("/root/mock_sharder.json")
-	for _, shard := range sharder.shards {
-		shard.finish()
-	}
-	sharder.finish()
-}
-
-func test4() {
-	config, _ := util.GetConfig(util.KcsConfigFile)
-	log.Printf("%+v", config)
-
-	config, _ = util.GetConfig(util.GceConfigFile)
-	log.Printf("%+v", config)
-}
-
-func test5() {
-	util.SendEmail("test email", "xyshen@google.com", util.GceConfigFile)
-}
-
-func test6() {
-	msg := "random msg"
-	content, _ := ioutil.ReadFile("/var/log/go/go.log")
-	msg = msg + "\n" + string(content)
-	util.SendEmail("test", msg, "xyshen@google.com")
-}
-
-func testWatcher() {
-	c := server.TaskRequest{
-		Options: &server.UserOptions{
-			ReportEmail: "xyshen@google.com",
-			GitRepo:     "https://github.com/XiaoyangShen/spinner_test.git",
-			BranchName:  "master",
-		},
-	}
-
-	watcher := NewGitWatcher(c, "test")
-
-	watcher.Run()
-
 }

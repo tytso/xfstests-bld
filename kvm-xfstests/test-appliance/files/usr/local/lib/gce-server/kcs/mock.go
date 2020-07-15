@@ -12,7 +12,7 @@ func MockStartBuild(c server.TaskRequest, testID string) {
 	log := server.Log.WithField("testID", testID)
 	log.Info("Start building mock kernel")
 
-	repo, err := util.SimpleClone(c.Options.GitRepo, c.Options.CommitID)
+	repo, err := util.NewSimpleRepository(c.Options.GitRepo, c.Options.CommitID)
 	logging.CheckPanic(err, log, "Failed to clone repo")
 
 	c.ExtraOptions.Requester = "test"

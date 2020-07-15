@@ -15,9 +15,12 @@ const (
 	KCSLogDir     = "/var/log/go/kcs_logs/"
 )
 
-// DEBUG declares debugging runs, where log prints to stdout and
-// mock modules are used.
-const DEBUG = true
+// DEBUG = true redirects log to stdout.
+// MOCK = true uses mock modules to skip actual kernel build and test
+const (
+	DEBUG = false
+	MOCK  = false
+)
 
 // InitLogger initializes a logrus logger and writes to logfile
 // writes to stdout if cannot open logfile
