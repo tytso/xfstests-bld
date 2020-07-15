@@ -5,9 +5,6 @@ import (
 	"gce-server/logging"
 	"gce-server/server"
 	"gce-server/util"
-	"os"
-	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -22,12 +19,10 @@ const (
 // GitWatcher watches a branch of a remote repo and detects new commits
 type GitWatcher struct {
 	testID         string
-	url            string
-	branch         string
-	head           string
 	reportReceiver string
 	testRequest    server.TaskRequest
 
+	repo    *util.RemoteRepository
 	done    <-chan bool
 	logFile string
 	log     *logrus.Entry
@@ -38,15 +33,20 @@ type watcherKey struct {
 	branch string
 }
 
-// watcherLookup relates the git repo and branch name to a watcher.
+// watcherMap indexes watcheres by repo url and branch.
 // Used for checking duplication and terminating a monitor.
-var watcherLookup = make(map[watcherKey]chan<- bool)
+var (
+	watcherMap  = make(map[watcherKey]chan<- bool)
+	watcherLock sync.Mutex
+)
 
 // NewGitWatcher constructs a new git watcher from a watch request.
 // It panics if there is already a monitor running on this branch.
 func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
 	searchKey := watcherKey{c.Options.GitRepo, c.Options.BranchName}
-	if _, ok := watcherLookup[searchKey]; ok {
+	if _, ok := watcherMap[searchKey]; ok {
 		panic("Given branch is already linked with a monitor")
 	}
 
@@ -57,27 +57,25 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	}
 
 	logFile := logDir + "run.log"
-	log := logging.InitLogger(logFile)
+	log := logging.InitLogger(logFile).WithField("testID", testID)
 	log.Info("Initiating git watcher")
 
 	done := make(chan bool)
+	repo, err := util.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
+	logging.CheckPanic(err, log, "failed to initiate repo")
+
 	watcher := GitWatcher{
 		testID:         testID,
-		url:            c.Options.GitRepo,
-		branch:         c.Options.BranchName,
-		head:           "",
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
 
+		repo:    repo,
 		done:    done,
 		logFile: logFile,
 		log:     log,
 	}
 
-	_, err = getHead(watcher.url, watcher.branch)
-	logging.CheckPanic(err, log, "Failed to get HEAD")
-
-	watcherLookup[searchKey] = done
+	watcherMap[searchKey] = done
 
 	return &watcher
 }
@@ -104,57 +102,44 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
 	defer util.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
 
+	watcher.log.Info("Initiating build at watcher launch")
+	watcher.testRequest.Options.CommitID = watcher.repo.Head()
+
+	go StartBuild(watcher.testRequest, watcher.testID)
+
+	start := time.Now()
+
 	for {
 		select {
 		case <-watcher.done:
 			watcher.log.Info("Received terminating signal, stopping monitor")
 			return
-		case t := <-ticker.C:
-			watcher.log.WithField("time", t).Debug("Checking new commits")
-			newCommit, err := getHead(watcher.url, watcher.branch)
-			logging.CheckPanic(err, watcher.log, "Failed to get HEAD")
 
-			if newCommit != watcher.head {
-				watcher.log.WithField("commit", newCommit).Info("New commit detected, initiating build")
+		case <-ticker.C:
+			watcher.log.WithField("time", time.Since(start)).Debug("Checking new commits")
+			updated, err := watcher.repo.Update()
+			logging.CheckPanic(err, watcher.log, "Failed to update repo")
+
+			if updated {
+				watcher.log.WithField("commit", watcher.repo.Head()).Info("New commit detected, initiating build")
 				testID := watcher.testID + "-" + util.GetTimeStamp()
-				watcher.testRequest.Options.CommitID = newCommit
+				watcher.testRequest.Options.CommitID = watcher.repo.Head()
 
-				if logging.DEBUG {
-					go MockStartBuild(watcher.testRequest, testID)
-				} else {
-					go StartBuild(watcher.testRequest, testID)
-				}
-
-				watcher.head = newCommit
+				go StartBuild(watcher.testRequest, testID)
 			}
 		}
 	}
-}
-
-// getHead retrives the commit hash of the HEAD on a branch
-func getHead(url string, branch string) (string, error) {
-	cmd := exec.Command("git", "ls-remote", "--heads", "--quiet", "--exit-code", url, branch)
-	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, os.Stderr)
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if exitErr.ExitCode() == 2 {
-				return "", fmt.Errorf("branch is not found")
-			}
-		}
-		return "", err
-	}
-
-	commit := strings.Fields(output)[0]
-	return commit, nil
 }
 
 // StopWatcher finds the running watcher on a given branch and terminate it.
 // It panics if no matching monitor is found.
 func StopWatcher(c server.TaskRequest) {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
 	searchKey := watcherKey{c.Options.GitRepo, c.Options.BranchName}
-	if done, ok := watcherLookup[searchKey]; ok {
+	if done, ok := watcherMap[searchKey]; ok {
 		done <- true
-		delete(watcherLookup, searchKey)
+		delete(watcherMap, searchKey)
 		return
 	}
 	panic("Failed to find a monitor linked with given branch")
