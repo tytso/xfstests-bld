@@ -1,4 +1,3 @@
-
 . $DIR/.ltm_instance
 
 # The hostname has to match the common name field of the certificate, as set
@@ -69,6 +68,12 @@ function send_to_ltm() {
     fi
     if [ -n "$UNWATCH" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":true"
+    fi
+    if [ -n "$BISECT_BAD" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bad_commit\":\"$BISECT_BAD\""
+    fi
+    if [ -n "$BISECT_GOOD" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"good_commit\":\"$BISECT_GOOD\""
     fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
