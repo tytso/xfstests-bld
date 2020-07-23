@@ -24,7 +24,7 @@ import (
 
 // configurable constants for git utility functions
 const (
-	RepoRootDir       = "/root/repositories/"
+	RepoRootDir       = "/cache/repositories/"
 	RefRepoDir        = RepoRootDir + "linux.reference"
 	RefRepoURL        = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
