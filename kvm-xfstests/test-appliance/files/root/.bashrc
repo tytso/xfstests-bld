@@ -1,4 +1,5 @@
-PATH=/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/local/lib/go/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH=/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/local/lib/go/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 if [ "$PS1" ]; then
     # In case of an interactive shell
     . $HOME/test-config
@@ -17,4 +18,8 @@ if [ "$PS1" ]; then
 	esac
     fi
     dmesg -n 8
+fi
+
+if command -v ccache &> /dev/null /cache/ccache ; then
+    export PATH="/usr/lib/ccache:$PATH"
 fi

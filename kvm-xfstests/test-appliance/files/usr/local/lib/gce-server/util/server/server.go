@@ -248,7 +248,7 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		Transport: transport,
 	}
 	if toKCS {
-		client.Timeout = 20 * time.Second
+		client.Timeout = 30 * time.Second
 	} else {
 		client.Timeout = 60 * time.Second
 	}
