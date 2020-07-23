@@ -3,46 +3,44 @@
 . /usr/local/lib/gce-funcs
 . /root/test-config
 
-logger -i "Entered repo cache PD"
+logger -i "Entered kcs cache scratch"
 
 set -vx
-PDCACHE_DSK=$instance-repo-cache
-CREATED_PDCACHE_DEV=/dev/disk/by-id/google-repo-cache
-PDCACHE_SIZE=200
+KCS_DSK=kcs-cache-disk
+CREATED_KCS_DEV=/dev/disk/by-id/google-kcs-cache
+KCS_SIZE=200
 
-DISK_LIST="$(gcloud compute --project ${GCE_PROJECT} disks list)"
-
-if [[ $DISK_LIST == *"repo-cache"* ]]
+d="$(gcloud compute --project $GCE_PROJECT disks list --filter="name = $KCS_DSK")"
+if test -z "$d"
 then
-    logger -s "Test repository cache disk already exists!"
-    # attach the disk & turn off auto-delete
-    gcloud compute -q instances attach-disk ${instance} \
-  --disk "$PDCACHE_DSK" \
-  --device-name repo-cache --zone "$ZONE"
-    gcloud compute -q instances set-disk-auto-delete ${instance} \
-  --no-auto-delete --device-name repo-cache --zone "$ZONE" &
+    logger -s "Create kcs cache PD"
 
-else
-    gcloud compute -q disks create "$PDCACHE_DSK" \
-	--size "${PDCACHE_SIZE:-200}" \
-	--zone "$ZONE" --type "${PDCACHE_TYPE:-pd-standard}"
-
-    # attach the disk & turn off auto-delete
-    gcloud compute -q instances attach-disk ${instance} \
-  --disk "$PDCACHE_DSK" \
-  --device-name repo-cache --zone "$ZONE"
-    gcloud compute -q instances set-disk-auto-delete ${instance} \
-  --no-auto-delete --device-name repo-cache --zone "$ZONE" &
-
-    # make a filesystem
-    mke2fs -t ext4 -q $CREATED_PDCACHE_DEV
+    gcloud compute -q disks create "$KCS_DSK" \
+    --size "${KCS_SIZE:-200}" \
+    --zone "$ZONE" --type "${KCS_TYPE:-pd-standard}"
 fi
 
-if ! test -e $CREATED_PDCACHE_DEV
+# attach the disk & turn off auto-delete
+gcloud compute -q instances attach-disk ${instance} \
+--disk "$KCS_DSK" --device-name kcs-cache --zone "$ZONE"
+gcloud compute -q instances set-disk-auto-delete ${instance} \
+--disk "$KCS_DSK" --no-auto-delete --zone "$ZONE" &
+
+if ! test -e $CREATED_KCS_DEV
 then
-  logger -s "Couldn't create or find the test repository cache disk!"
-  exit 1
+    logger -s "Couldn't create or attach the cache disk!"
+    exit 1
 fi
+
+if test -z "$d"
+then
+    mkfs.ext4 $CREATED_KCS_DEV
+fi
+
+mkdir -p /cache
+mount $CREATED_KCS_DEV /cache
+
+mkdir -p /cache/ccache
 
 wait
 exit 0

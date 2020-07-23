@@ -26,6 +26,7 @@ PACKAGES="bash-completion \
 	"$BTRFS_PROGS" \
 	build-essential \
 	bzip2 \
+	ccache \
 	cpio \
 	cryptsetup \
 	curl \
