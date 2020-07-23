@@ -1,9 +1,14 @@
 #!/bin/bash
-set -e -x
+set -e -vx
 # This script is used by KCS server to build and upload kernels.
 # If repository REPO_ID exists, it pulls and checkouts to COMMIT.
 # Environment variables can be set:
 # REPO_DIR GS_BUCKET GS_PATH
+
+if command -v ccache &> /dev/null /cache/ccache ; then
+    export PATH="/usr/lib/ccache:$PATH"
+    export CCACHE_DIR=/cache/ccache
+fi
 
 if test -z "$REPO_DIR"; then
     REPO_DIR="."

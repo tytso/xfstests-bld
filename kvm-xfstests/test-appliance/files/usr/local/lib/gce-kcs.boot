@@ -14,12 +14,6 @@ fi
 
 /usr/local/lib/gce-logger starting compile server
 
-mkdir /root/repositories
-# attach repository cache disk
-# chmod +x /usr/local/lib/gce-repo-cache
-# /usr/local/lib/gce-repo-cache
-# mount /dev/sdb /repositories
-
 # login shells dont need test env on the compile sever (shouldn't be running tests
 # in the compile server vm)
 echo > ~/test-env
@@ -40,6 +34,10 @@ then
     # (e.g. if the compile server instance was stopped and restarted, this should
     # not get executed)
     mkdir -p /var/log/go
+
+    # attach cache PD with repos and ccache 
+    ./usr/local/lib/gce-repo-cache &> /var/log/gce-repo-cache.log
+
     systemctl enable gce-kcs.service
     systemctl start gce-kcs.service
 fi
