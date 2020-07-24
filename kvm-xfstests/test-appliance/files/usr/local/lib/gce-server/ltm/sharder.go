@@ -1,5 +1,5 @@
 /*
-ShardSchedular arrages the tests and runs them in multiple shardWorkers.
+ShardScheduler arranges the tests and runs them in multiple shardWorkers.
 
 The sharder parses the command line arguments sent by user, parse it into
 machine understandable xfstests configs. Then it queries for GCE quotas and
@@ -7,7 +7,7 @@ spawns a suitable number of shards to run the tests. The sharder waits until
 all shards finish, fetch the result files and aggregate them. An email is sent
 to the user if necessary.
 
-The TestRunManager from previous flask version is integrated into shardSchedular
+The TestRunManager from previous flask version is integrated into shardScheduler
 now to reduce the code base.
 
 */
@@ -38,8 +38,8 @@ import (
 
 const genResultsSummaryPath = "/usr/local/bin/gen_results_summary"
 
-// ShardSchedular schedules tests and aggregates reports.
-type ShardSchedular struct {
+// ShardScheduler schedules tests and aggregates reports.
+type ShardScheduler struct {
 	testID  string
 	projID  string
 	origCmd string
@@ -78,10 +78,10 @@ type SharderInfo struct {
 	Msg       string      `json:"message"`
 }
 
-// NewShardSchedular constructs a new sharder from a test request.
+// NewShardScheduler constructs a new sharder from a test request.
 // All dir strings have a trailing / for consistency purpose,
 // except for bucketSubdir.
-func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
+func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	logDir := logging.LTMLogDir + testID + "/"
 	err := check.CreateDir(logDir)
 	if err != nil {
@@ -109,7 +109,7 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
 
 	log.Info("Initiating test sharder")
-	sharder := ShardSchedular{
+	sharder := ShardScheduler{
 		testID:  testID,
 		projID:  projID,
 		origCmd: strings.TrimSpace(string(data)),
@@ -168,7 +168,7 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 // initLocalSharding creates shards in the same zone the VM runs in.
 // The sharder queries for available quotas in the current zone and
 // spawns new shards accordingly.
-func (sharder *ShardSchedular) initLocalSharding() {
+func (sharder *ShardScheduler) initLocalSharding() {
 	log := sharder.log.WithField("region", sharder.region)
 	log.Info("Initilizing local sharding")
 	allShards := []*ShardWorker{}
@@ -198,7 +198,7 @@ func (sharder *ShardSchedular) initLocalSharding() {
 // initRegionSharding creates shards among all zones with available quotas.
 // It first query all zones on the same continent as the project, and queries
 // other zones if the quota is not enough to assign each config to a separate VM.
-func (sharder *ShardSchedular) initRegionSharding() {
+func (sharder *ShardScheduler) initRegionSharding() {
 	continent := strings.Split(sharder.region, "-")[0]
 	log := sharder.log.WithField("continent", continent)
 	log.Info("Initilizing region sharding")
@@ -291,7 +291,7 @@ func splitConfigs(numShards int, configs []string) []string {
 
 // Run starts all the shards in a separate go routine.
 // Wait between starting shards to avoid hitting the api too hard.
-func (sharder *ShardSchedular) Run() {
+func (sharder *ShardScheduler) Run() {
 	sharder.log.Debug("Starting sharder")
 	defer logging.CloseLog(sharder.log)
 	var wg sync.WaitGroup
@@ -317,7 +317,7 @@ func (sharder *ShardSchedular) Run() {
 }
 
 // Info returns structured sharder information to send back to user.
-func (sharder *ShardSchedular) Info() SharderInfo {
+func (sharder *ShardScheduler) Info() SharderInfo {
 	info := SharderInfo{
 		NumShards: len(sharder.shards),
 		ID:        sharder.testID,
@@ -332,7 +332,7 @@ func (sharder *ShardSchedular) Info() SharderInfo {
 
 // aggregate results and upload a tarball to gs bucket.
 // panic and send an email to user if no results available.
-func (sharder *ShardSchedular) finish() {
+func (sharder *ShardScheduler) finish() {
 	sharder.log.Debug("Finishing sharder")
 
 	sharder.aggResults()
@@ -348,7 +348,7 @@ func (sharder *ShardSchedular) finish() {
 }
 
 // aggResults looks for results file from each shard and aggregates them.
-func (sharder *ShardSchedular) aggResults() {
+func (sharder *ShardScheduler) aggResults() {
 	err := check.CreateDir(sharder.aggDir)
 	check.Panic(err, sharder.log, "Failed to create dir")
 
@@ -404,7 +404,7 @@ func (sharder *ShardSchedular) aggResults() {
 
 // concatResults aggregate all shard files of a given file type by producing
 // a concatenated file at the top level of the aggregate results directory.
-func (sharder *ShardSchedular) concatResults(filename string) {
+func (sharder *ShardScheduler) concatResults(filename string) {
 	log := sharder.log.WithField("resultFile", filename)
 	log.Info("Cancatenating shard result file")
 
@@ -439,7 +439,7 @@ func (sharder *ShardSchedular) concatResults(filename string) {
 }
 
 // createInfo creates an ltm-info file and an ltm_logs directory.
-func (sharder *ShardSchedular) createInfo() {
+func (sharder *ShardScheduler) createInfo() {
 	sharder.log.Info("Creating LTM info")
 	ltmLogDir := sharder.aggDir + "ltm_logs/"
 	err := check.CreateDir(ltmLogDir)
@@ -470,7 +470,7 @@ func (sharder *ShardSchedular) createInfo() {
 	sharder.log.Info("Finished creating ltm-info")
 }
 
-func (sharder *ShardSchedular) createRunStats() {
+func (sharder *ShardScheduler) createRunStats() {
 	sharder.log.Info("Creating LTM run stats")
 	file, err := os.Create(sharder.aggDir + "ltm-run-stats")
 	if err != nil {
@@ -486,7 +486,7 @@ func (sharder *ShardSchedular) createRunStats() {
 
 // genResultsSummary calls a python script to generate the summary on junit xml test results.
 // It parses the summary file to check for any test failures.
-func (sharder *ShardSchedular) genResultsSummary() {
+func (sharder *ShardScheduler) genResultsSummary() {
 	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report")
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
@@ -505,7 +505,7 @@ func (sharder *ShardSchedular) genResultsSummary() {
 }
 
 // emailReport sends the email
-func (sharder *ShardSchedular) emailReport() {
+func (sharder *ShardScheduler) emailReport() {
 	sharder.log.Info("Sending email report")
 	subject := fmt.Sprintf("xfstests results %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
 
@@ -519,7 +519,7 @@ func (sharder *ShardSchedular) emailReport() {
 	check.Panic(err, sharder.log, "Failed to send the email")
 }
 
-func (sharder *ShardSchedular) sendKCSReport() {
+func (sharder *ShardScheduler) sendKCSReport() {
 	sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
 	sharder.testRequest.ExtraOptions.TestResult = sharder.testResult
 	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
@@ -528,7 +528,7 @@ func (sharder *ShardSchedular) sendKCSReport() {
 }
 
 // packResults packs the aggregared files after copying the sharder's log file into it.
-func (sharder *ShardSchedular) packResults() {
+func (sharder *ShardScheduler) packResults() {
 	sharder.log.Info("Packing aggregated files")
 	sharder.log.Info("Copying sharder log file")
 
@@ -571,7 +571,7 @@ func (sharder *ShardSchedular) packResults() {
 }
 
 // cleanup removes local result and log files
-func (sharder *ShardSchedular) cleanup() {
+func (sharder *ShardScheduler) cleanup() {
 	sharder.log.Info("Cleaning up sharder resources")
 
 	if strings.HasSuffix(sharder.gsKernel, "-onerun") {

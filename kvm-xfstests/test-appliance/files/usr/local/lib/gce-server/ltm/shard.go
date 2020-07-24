@@ -25,7 +25,7 @@ import (
 
 // ShardWorker manages a single test VM.
 type ShardWorker struct {
-	sharder   *ShardSchedular
+	sharder   *ShardScheduler
 	shardID   string
 	name      string
 	zone      string
@@ -49,8 +49,16 @@ type ShardInfo struct {
 	Zone    string `json:"zone"`
 }
 
+const (
+	monitorTimeout  = 1 * time.Hour
+	noStatusTimeout = 5 * time.Minute
+	monitorInterval = 60 * time.Second
+	gsInterval      = 10 * time.Second
+	maxAttempts     = 5
+)
+
 // NewShardWorker constructs a new shard, requested by the sharder
-func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone string) *ShardWorker {
+func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone string) *ShardWorker {
 	logPath := sharder.logDir + shardID
 	shard := ShardWorker{
 		sharder:   sharder,
@@ -91,8 +99,6 @@ func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone
 // Run issues the gce-xfstests command to launch a test vm and monitor its running status
 func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	// handle exceptions (panic) here
 	defer shard.exit()
 
 	shard.log.WithField("shardInfo", shard.Info()).Debug("Starting shard")
@@ -114,89 +120,114 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	shard.log.Info("Existing shard process")
 }
 
-// monitor queries the GCE api every minute and logs the serial console output
-// to a local file. If the vm no longer exists or the status hasn't changed for
-// more than an hour, the monitor kills the test vm.
-// panic if VM doesn't finish within 1 hour
+/*
+monitor blocks until the test VM finishes or timeout.
+
+It queries the GCE api periodically and logs the serial console output
+to a local file. If the VM no longer exists, stops running or the
+running test doesn't change for more than monitorTimeout, the monitor
+kills the test vm and returns.
+*/
 func (shard *ShardWorker) monitor() {
 	var (
-		waitTime       int
-		timePrevStatus int
-		prevStart      int64
-		prevStatus     string
+		// start time of the current test
+		testStart time.Time
+		// offset for the current serial port output
+		offset int64
+		// test config metadata
+		testStatus string
 	)
 	shard.log.Info("Waiting for test VM to finish")
 
-	for true {
-		time.Sleep(60 * time.Second)
-		waitTime += 60
-		log := shard.log.WithField("waited", waitTime)
+	ticker := time.NewTicker(monitorInterval)
+	monitorStart := time.Now()
+	testStart = monitorStart
+
+	for range ticker.C {
+		log := shard.log.WithField("time", time.Since(monitorStart).Round(time.Second))
 		instanceInfo, err := shard.sharder.gce.GetInstanceInfo(shard.sharder.projID, shard.zone, shard.name)
 
 		if err != nil {
 			if gcp.NotFound(err) {
-				// If prevStatus is empty, it's likely the VM never launched
-				if prevStatus == "" {
+				if testStart == monitorStart {
 					log.Panic("Test VM failed to launch")
 				} else {
 					log.Info("Test VM no longer exists")
 				}
-				break
+				return
 			}
 			log.WithError(err).Panic("Failed to get instance info")
 		}
 
-		prevStart = shard.updateSerialData(prevStart)
+		offset = shard.updateSerialData(offset)
 
-		if instanceInfo.Status != prevStatus {
-			timePrevStatus = waitTime
-			prevStatus = instanceInfo.Status
-		} else if waitTime > timePrevStatus+3600 {
+		if instanceInfo.Status != "RUNNING" {
+			log.Info("Test VM stop running")
+			return
+		}
+
+		for _, metaData := range instanceInfo.Metadata.Items {
+			if metaData.Key == "status" {
+				if *metaData.Value != testStatus {
+					testStatus = *metaData.Value
+					testStart = time.Now()
+					break
+				}
+			}
+		}
+		if testStatus == "" {
+			if time.Since(monitorStart) > noStatusTimeout {
+				log.Panicf("Tests might fail to start, cannot find test status for %ds", noStatusTimeout.Round(time.Second))
+			} else {
+				log.Warn("Failed to find test status metadata")
+			}
+		}
+
+		if time.Since(testStart) > monitorTimeout {
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
 			}
-			// TODO: validate this step (i.e. whether we wait fot the VM to be deleted)
 			log.WithFields(logrus.Fields{
-				"prevStatus":     prevStatus,
-				"timePrevStatus": timePrevStatus,
-			}).Panic("Instance seems to have wedged, no status update for 1 hour")
+				"testStatus": testStatus,
+				"testStart":  testStart.Format(time.Stamp),
+			}).Panicf("Instance seems to have wedged, no status update for %ds", monitorTimeout.Round(time.Second))
 		}
 
 		log.WithFields(logrus.Fields{
-			"prevStatus":     prevStatus,
-			"timePrevStatus": timePrevStatus,
+			"testStatus": testStatus,
+			"testStart":  testStart.Format(time.Stamp),
 		}).Debug("Keep waiting")
 	}
 }
 
 // updateSerialData writes the serial port output from the test vm to local log file.
-func (shard *ShardWorker) updateSerialData(prevStart int64) int64 {
-	log := shard.log.WithField("prevStart", prevStart)
+func (shard *ShardWorker) updateSerialData(offset int64) int64 {
+	log := shard.log.WithField("offset", offset)
 	output, err := shard.sharder.gce.GetSerialPortOutput(
-		shard.sharder.projID, shard.zone, shard.name, prevStart)
+		shard.sharder.projID, shard.zone, shard.name, offset)
 	if err != nil {
 		log.Debug("Unable to get serial output, VM might be down")
-		return prevStart
+		return offset
 	}
 
 	file, err := os.OpenFile(shard.serialOutputPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if !check.NoError(err, log, "Failed to open file") {
-		return prevStart
+		return offset
 	}
 	defer file.Close()
 
-	if output.Start > prevStart {
+	if output.Start > offset {
 		log.WithField("newStart", output.Start).Info("Missing some serial port output")
 		_, err := file.WriteString(fmt.Sprintf(
-			"\n!=====Missing data from %d to %d=====!\n", prevStart, output.Start))
+			"\n!=====Missing data from %d to %d=====!\n", offset, output.Start))
 		if !check.NoError(err, log, "Failed to write file") {
-			return prevStart
+			return offset
 		}
 	}
 	log.Debug("Writing serial port output to file")
 	_, err = file.WriteString(output.Contents)
 	if !check.NoError(err, log, "Failed to write file") {
-		return prevStart
+		return offset
 	}
 
 	return output.Next
@@ -269,18 +300,16 @@ func (shard *ShardWorker) finish() {
 // return "" if cannot find the result file in 5 attempts
 func (shard *ShardWorker) getResults() string {
 	shard.log.Info("Fetching test results")
-	attempts := 5
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	for attempts > 0 {
+	for attempts := maxAttempts; attempts > 0; attempts-- {
 		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
 		check.NoError(err, shard.log, "Failed to get GS filenames")
 		if err == nil && len(resultFiles) == 1 {
 			shard.log.WithField("resultURL", resultFiles[0]).Info("Found result file url")
 			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
 		}
-		attempts--
 		shard.log.WithField("attemptsLeft", attempts).Debug("No GS file with matching url")
-		time.Sleep(5 * time.Second)
+		time.Sleep(gsInterval)
 	}
 	return ""
 }
