@@ -1,4 +1,4 @@
-package util
+package parser
 
 var exists = struct{}{}
 

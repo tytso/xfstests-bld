@@ -3,9 +3,11 @@ package main
 import (
 	"time"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/email"
+	"gce-server/util/gcp"
+	"gce-server/util/logging"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -17,7 +19,7 @@ const Timeout = 1800
 // Sends failure report email to user on failures
 func ForwardKCS(req server.TaskRequest, testID string) {
 	logDir := logging.LTMLogDir + testID + "/"
-	err := util.CreateDir(logDir)
+	err := check.CreateDir(logDir)
 	if err != nil {
 		panic(err)
 	}
@@ -26,12 +28,12 @@ func ForwardKCS(req server.TaskRequest, testID string) {
 	defer logging.CloseLog(log)
 
 	subject := "xfstests LTM forwarding request failure " + testID
-	defer util.ReportFailure(log, logFile, req.Options.ReportEmail, subject)
+	defer email.ReportFailure(log, logFile, req.Options.ReportEmail, subject)
 
 	server.SendInternalRequest(req, log, true)
 }
 
-func waitKernel(gce *util.GceService, prefix string, log *logrus.Entry) bool {
+func waitKernel(gce *gcp.Service, prefix string, log *logrus.Entry) bool {
 	log.Info("Waiting for kernel image")
 	waitTime := 0
 

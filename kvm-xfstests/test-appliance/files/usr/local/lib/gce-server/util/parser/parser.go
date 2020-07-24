@@ -1,8 +1,12 @@
-package util
+/*
+Package parser parses a gce-xfstests command line to distribute tests among
+multiple shards.
+*/
+package parser
 
 import (
 	"fmt"
-	"sort"
+	"gce-server/util/check"
 	"strings"
 )
 
@@ -31,11 +35,13 @@ var invalidOpts = []string{
 	"--commit",
 	"--repo",
 	"--watch",
+	"--bisect-good",
+	"--bisect-bad",
 }
 
 /*
-ParseCmd parses a gce-xfstests command line to distribute tests among
-multiple shards.
+Cmd parses a cmdline into validArgs and configs.
+
 Returns:
 	validArgs - a slice of cmd args not related to test configurations.
 	Parser removes arguments from the original cmd that don't make sense
@@ -44,7 +50,7 @@ Returns:
 	configs - a map from filesystem names to a slice of corresponding
 	configurations.  Duplicates are removed from the original cmd configs.
 */
-func ParseCmd(cmdLine string) ([]string, map[string][]string, error) {
+func Cmd(cmdLine string) ([]string, map[string][]string, error) {
 	args := strings.Fields(cmdLine)
 	validArgs, _ := sanitizeCmd(args)
 	validArgs = expandAliases(validArgs)
@@ -129,19 +135,12 @@ func processConfigs(args []string) ([]string, map[string][]string, error) {
 		}
 	}
 
-	// remove duplicates
-	for key := range configs {
-		tmpSet := NewSet(configs[key])
-		configs[key] = tmpSet.ToSlice()
-		sort.Strings(configs[key])
-	}
-
 	return newArgs, configs, nil
 }
 
 func defaultConfigs(configs map[string][]string) error {
 	configFile := fmt.Sprintf("%s/fs/%s/cfg/all.list", xfsPath, primaryFS)
-	lines, err := ReadLines(configFile)
+	lines, err := check.ReadLines(configFile)
 	if err != nil {
 		return err
 	}
@@ -167,7 +166,7 @@ func singleConfig(configs map[string][]string, configArg string) error {
 
 	arg := strings.Split(configArg, "/")
 	if len(arg) == 1 {
-		if FileExists(fmt.Sprintf("%s/fs/%s", xfsPath, configArg)) {
+		if check.FileExists(fmt.Sprintf("%s/fs/%s", xfsPath, configArg)) {
 			fs = configArg
 			configLines = []string{"default"}
 		} else {
@@ -182,8 +181,8 @@ func singleConfig(configs map[string][]string, configArg string) error {
 	if len(configLines) == 0 {
 		configFile := fmt.Sprintf("%s/fs/%s/cfg/%s.list", xfsPath, fs, cfg)
 
-		if FileExists(configFile) {
-			lines, err := ReadLines(configFile)
+		if check.FileExists(configFile) {
+			lines, err := check.ReadLines(configFile)
 			if err != nil {
 				return err
 			}
@@ -191,7 +190,7 @@ func singleConfig(configs map[string][]string, configArg string) error {
 		} else {
 			configFile = configFile[:len(configFile)-5]
 
-			if FileExists(configFile) {
+			if check.FileExists(configFile) {
 				configLines = []string{cfg}
 			} else {
 				return nil

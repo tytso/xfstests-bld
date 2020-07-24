@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
 	"sync"
 	"time"
+
+	"gce-server/util/check"
+	"gce-server/util/email"
+	"gce-server/util/git"
+	"gce-server/util/logging"
+	"gce-server/util/mymath"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -22,7 +26,7 @@ type GitWatcher struct {
 	reportReceiver string
 	testRequest    server.TaskRequest
 
-	repo    *util.RemoteRepository
+	repo    *git.RemoteRepository
 	done    <-chan bool
 	logFile string
 	log     *logrus.Entry
@@ -51,7 +55,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	}
 
 	logDir := logging.LTMLogDir + testID + "/"
-	err := util.CreateDir(logDir)
+	err := check.CreateDir(logDir)
 	if err != nil {
 		panic(err)
 	}
@@ -61,8 +65,8 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	log.Info("Initiating git watcher")
 
 	done := make(chan bool)
-	repo, err := util.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
-	logging.CheckPanic(err, log, "failed to initiate remote repo")
+	repo, err := git.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
+	check.Panic(err, log, "failed to initiate remote repo")
 
 	watcher := GitWatcher{
 		testID:         testID,
@@ -100,7 +104,7 @@ func (watcher *GitWatcher) Run() {
 func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 	defer wg.Done()
 	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
-	defer util.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
+	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
 
 	watcher.log.Info("Initiating build at watcher launch")
 	watcher.testRequest.Options.CommitID = watcher.repo.Head()
@@ -118,11 +122,11 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 		case <-ticker.C:
 			watcher.log.WithField("time", time.Since(start)).Debug("Checking new commits")
 			updated, err := watcher.repo.Update()
-			logging.CheckPanic(err, watcher.log, "Failed to update repo")
+			check.Panic(err, watcher.log, "Failed to update repo")
 
 			if updated {
 				watcher.log.WithField("commit", watcher.repo.Head()).Info("New commit detected, initiating build")
-				testID := watcher.testID + "-" + util.GetTimeStamp()
+				testID := watcher.testID + "-" + mymath.GetTimeStamp()
 				watcher.testRequest.Options.CommitID = watcher.repo.Head()
 
 				go ForwardKCS(watcher.testRequest, testID)

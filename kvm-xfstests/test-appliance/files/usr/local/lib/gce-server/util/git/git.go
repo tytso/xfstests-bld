@@ -1,4 +1,10 @@
-package util
+/*
+Package git implements multiple versions of git repositories.
+
+Repository is used for kernel compilation and git bisect.
+RemoteRepository is used for git repo watcher.
+*/
+package git
 
 import (
 	"crypto/md5"
@@ -10,14 +16,17 @@ import (
 	"os/exec"
 	"strings"
 
+	"gce-server/util/check"
+	"gce-server/util/server"
+
 	"github.com/google/uuid"
 )
 
 // configurable constants for git utility functions
 const (
-	RepoRootDir = "/root/repositories/"
-	RefRepoDir  = RepoRootDir + "linux.reference"
-	RefRepoURL  = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+	RepoRootDir       = "/root/repositories/"
+	RefRepoDir        = RepoRootDir + "linux.reference"
+	RefRepoURL        = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
 	watchInterval     = 10
 )
@@ -36,7 +45,7 @@ type RemoteRepository struct {
 }
 
 func init() {
-	err := CreateDir(RepoRootDir)
+	err := check.CreateDir(RepoRootDir)
 	if err != nil {
 		panic(err)
 	}
@@ -50,9 +59,9 @@ func NewRepository(id string, repoURL string) (*Repository, error) {
 	if id == "" {
 		return nil, fmt.Errorf("repo id not specified")
 	}
-	if !DirExists(RefRepoDir) {
+	if !check.DirExists(RefRepoDir) {
 		cmd := exec.Command("git", "clone", "--mirror", RefRepoURL, RefRepoDir)
-		err := CheckRun(cmd, RootDir, EmptyEnv, os.Stdout, os.Stderr)
+		err := check.Run(cmd, check.RootDir, check.EmptyEnv, os.Stdout, os.Stderr)
 		if err != nil {
 			return nil, err
 		}
@@ -64,12 +73,12 @@ func NewRepository(id string, repoURL string) (*Repository, error) {
 	}
 
 	repoDir := repo.Dir()
-	if DirExists(repoDir) {
+	if check.DirExists(repoDir) {
 		return &repo, nil
 	}
 
 	cmd := exec.Command("git", "clone", "--reference", RefRepoDir, repoURL, repoDir)
-	err := CheckRun(cmd, RootDir, EmptyEnv, os.Stdout, os.Stderr)
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -80,12 +89,12 @@ func NewRepository(id string, repoURL string) (*Repository, error) {
 // GetCommit returns the commit hash for current repo HEAD
 func (repo *Repository) GetCommit() (string, error) {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	commit, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	commit, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
 	if err != nil {
 		return "", err
 	}
@@ -96,20 +105,20 @@ func (repo *Repository) GetCommit() (string, error) {
 // Checkout pulls from upstream and checkout to a commit hash.
 func (repo *Repository) Checkout(commit string) error {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "checkout", "-")
-	CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
 
 	cmd = exec.Command("git", "pull")
-	err := CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	err := check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}
 	cmd = exec.Command("git", "checkout", commit)
-	err = CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	err = check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -126,7 +135,7 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (boo
 		return false, fmt.Errorf("No good commits provided")
 	}
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return false, fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
@@ -138,7 +147,7 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (boo
 	args = append(args, goodCommits...)
 
 	cmd := exec.Command("git", args...)
-	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
 	if err != nil {
 		return false, err
 	}
@@ -152,18 +161,25 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (boo
 // BisectStep tells git bisect whether the current version is good or not
 // and proceeds to the next step.
 // It returns true if git bisect has ended.
-func (repo *Repository) BisectStep(good bool) (bool, error) {
+func (repo *Repository) BisectStep(testResult server.ResultType) (bool, error) {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return false, fmt.Errorf("directory %s does not exist", repoDir)
 	}
-
-	step := "good"
-	if !good {
+	var step string
+	switch testResult {
+	case server.Pass:
+		step = "good"
+	case server.Failure:
 		step = "bad"
+	case server.Unknown:
+		step = "skip"
+	default:
+		return false, fmt.Errorf("unexpect test result value")
 	}
+
 	cmd := exec.Command("git", "bisect", step)
-	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
 	if err != nil {
 		return false, err
 	}
@@ -177,12 +193,12 @@ func (repo *Repository) BisectStep(good bool) (bool, error) {
 // BisectLog returns bisect log output.
 func (repo *Repository) BisectLog() (string, error) {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "bisect", "log")
-	output, err := CheckOutput(cmd, repoDir, EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
 	if err != nil {
 		return "", err
 	}
@@ -193,19 +209,19 @@ func (repo *Repository) BisectLog() (string, error) {
 // BisectReset resets the current git bisect.
 func (repo *Repository) BisectReset() error {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "bisect", "reset")
-	return CheckRun(cmd, repoDir, EmptyEnv, os.Stdout, os.Stderr)
+	return check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
 }
 
 // BuildUpload builds the current kernel code and uploads image to GS.
 // Script output is written into a given writer
 func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Writer) error {
 	repoDir := repo.Dir()
-	if !DirExists(repoDir) {
+	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
@@ -216,20 +232,20 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Wr
 		"GS_PATH":   gsPath,
 	}
 
-	err := CheckRun(cmd, repo.Dir(), env, writer, writer)
+	err := check.Run(cmd, repo.Dir(), env, writer, writer)
 
 	return err
 }
 
 // Delete removes repo from local storage
 func (repo *Repository) Delete() error {
-	err := RemoveDir(repo.Dir())
+	err := check.RemoveDir(repo.Dir())
 	return err
 }
 
 // NewSimpleRepository clones a repo and checkout to commit without any caching and checking
 func NewSimpleRepository(repoURL string, commit string) (*Repository, error) {
-	err := CreateDir(RepoRootDir)
+	err := check.CreateDir(RepoRootDir)
 	if err != nil {
 		return nil, err
 	}
@@ -244,13 +260,13 @@ func NewSimpleRepository(repoURL string, commit string) (*Repository, error) {
 	}
 
 	cmd := exec.Command("git", "clone", repoURL, r.Dir())
-	err = CheckRun(cmd, RepoRootDir, EmptyEnv, os.Stdout, os.Stderr)
+	err = check.Run(cmd, RepoRootDir, check.EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
 	cmd = exec.Command("git", "checkout", commit)
-	err = CheckRun(cmd, r.Dir(), EmptyEnv, os.Stdout, os.Stderr)
+	err = check.Run(cmd, r.Dir(), check.EmptyEnv, os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +317,7 @@ func (repo *RemoteRepository) Head() string {
 // getHead retrives the commit hash of the HEAD on a branch
 func getHead(repoURL string, branch string) (string, error) {
 	cmd := exec.Command("git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
-	output, err := CheckOutput(cmd, RootDir, EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, os.Stderr)
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitErr.ExitCode() == 2 {
@@ -315,10 +331,10 @@ func getHead(repoURL string, branch string) (string, error) {
 	return commit, nil
 }
 
-// ParseGitURL transforms a git url into a human readable directory string
+// ParseURL transforms a git url into a human readable directory string
 // Format is hostname - last two parts of path - last 4 byte of md5 sum
 // Clone with ssh key is not supported
-func ParseGitURL(repoURL string) (string, error) {
+func ParseURL(repoURL string) (string, error) {
 	u, err := url.Parse(repoURL)
 	if err != nil {
 		return "", err
