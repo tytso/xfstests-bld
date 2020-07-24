@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/email"
+	"gce-server/util/gcp"
+	"gce-server/util/git"
+	"gce-server/util/logging"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -19,7 +22,7 @@ type GitBisector struct {
 	reportReceiver string
 	testRequest    server.TaskRequest
 
-	repo        *util.Repository
+	repo        *git.Repository
 	badCommit   string
 	goodCommits []string
 	finished    bool
@@ -36,14 +39,14 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	log := server.Log.WithField("testID", testID)
 	log.Info("Initiating git bisector")
 
-	repo, err := util.NewRepository(testID, c.Options.GitRepo)
-	logging.CheckPanic(err, log, "Failed to clone repo")
+	repo, err := git.NewRepository(testID, c.Options.GitRepo)
+	check.Panic(err, log, "Failed to clone repo")
 
 	badCommit := c.Options.BadCommit
 	goodCommits := strings.Split(c.Options.GoodCommit, "|")
 
 	finished, err := repo.BisectStart(badCommit, goodCommits)
-	logging.CheckPanic(err, log, "Failed to start bisect")
+	check.Panic(err, log, "Failed to start bisect")
 
 	bisector := GitBisector{
 		testID:         testID,
@@ -61,12 +64,12 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 }
 
 // Step executed one step of git bisect.
-func (bisector *GitBisector) Step(good bool) {
+func (bisector *GitBisector) Step(testResult server.ResultType) {
 	bisector.log.Debug("Git bisect step")
 
 	if !bisector.finished {
-		finished, err := bisector.repo.BisectStep(good)
-		logging.CheckNoError(err, bisector.log, "Failed to perform a bisect step")
+		finished, err := bisector.repo.BisectStep(testResult)
+		check.NoError(err, bisector.log, "Failed to perform a bisect step")
 
 		bisector.finished = finished
 	}
@@ -85,13 +88,13 @@ func (bisector *GitBisector) GetReport() string {
 	}
 
 	result, err := bisector.repo.BisectLog()
-	logging.CheckPanic(err, bisector.log, "Failed to get bisect log")
+	check.Panic(err, bisector.log, "Failed to get bisect log")
 
 	return result
 }
 
 // GetRepo returns the repo.
-func (bisector *GitBisector) GetRepo() *util.Repository {
+func (bisector *GitBisector) GetRepo() *git.Repository {
 	return bisector.repo
 }
 
@@ -100,7 +103,7 @@ func (bisector *GitBisector) Clean() {
 	bisector.log.Debug("Git bisect clean up")
 
 	err := bisector.repo.Delete()
-	logging.CheckNoError(err, bisector.log, "Failed to clean up bisector")
+	check.NoError(err, bisector.log, "Failed to clean up bisector")
 }
 
 // RunBisect performs a git bisect task.
@@ -113,7 +116,7 @@ func RunBisect(c server.TaskRequest, testID string) {
 
 	bisectLog := logging.KCSLogDir + testID + ".log"
 	subject := "xfstests KCS bisect failure " + testID
-	defer util.ReportFailure(log, bisectLog, c.Options.ReportEmail, subject)
+	defer email.ReportFailure(log, bisectLog, c.Options.ReportEmail, subject)
 
 	var bisector *GitBisector
 	var ok bool
@@ -136,12 +139,12 @@ func RunBisect(c server.TaskRequest, testID string) {
 		defer bisector.Clean()
 
 		subject := "xfstests bisect report " + testID
-		err := util.SendEmail(subject, bisector.GetReport(), bisector.reportReceiver)
-		logging.CheckPanic(err, log, "Failed to send email")
+		err := email.Send(subject, bisector.GetReport(), bisector.reportReceiver)
+		check.Panic(err, log, "Failed to send email")
 
 	} else {
-		config, err := util.GetConfig(util.GceConfigFile)
-		logging.CheckPanic(err, log, "Failed to get config")
+		config, err := gcp.GetConfig(gcp.GceConfigFile)
+		check.Panic(err, log, "Failed to get config")
 
 		gsBucket := config.Get("GS_BUCKET")
 		gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun", gsBucket, testID)

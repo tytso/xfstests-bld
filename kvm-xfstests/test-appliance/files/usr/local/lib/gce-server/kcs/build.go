@@ -5,9 +5,12 @@ import (
 	"os"
 	"sync"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/email"
+	"gce-server/util/gcp"
+	"gce-server/util/git"
+	"gce-server/util/logging"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -15,12 +18,12 @@ import (
 // repoMap indexes repos by repo url.
 // repoLock protects map access and ensures one build at a time
 var (
-	repoMap  = make(map[string]*util.Repository)
+	repoMap  = make(map[string]*git.Repository)
 	repoLock sync.Mutex
 )
 
 func init() {
-	err := util.CreateDir(logging.KCSLogDir)
+	err := check.CreateDir(logging.KCSLogDir)
 	if err != nil {
 		panic("Failed to create dir")
 	}
@@ -36,16 +39,16 @@ func StartBuild(c server.TaskRequest, testID string) {
 
 	buildLog := logging.KCSLogDir + testID + ".build"
 	subject := "xfstests KCS build failure " + testID
-	defer util.ReportFailure(log, buildLog, c.Options.ReportEmail, subject)
+	defer email.ReportFailure(log, buildLog, c.Options.ReportEmail, subject)
 
-	config, err := util.GetConfig(util.GceConfigFile)
-	logging.CheckPanic(err, log, "Failed to get config")
+	config, err := gcp.GetConfig(gcp.GceConfigFile)
+	check.Panic(err, log, "Failed to get config")
 
 	gsBucket := config.Get("GS_BUCKET")
 	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun", gsBucket, testID)
 
-	id, err := util.ParseGitURL(c.Options.GitRepo)
-	logging.CheckPanic(err, log, "Failed to parse repo url")
+	id, err := git.ParseURL(c.Options.GitRepo)
+	check.Panic(err, log, "Failed to parse repo url")
 
 	repoLock.Lock()
 	defer repoLock.Unlock()
@@ -53,8 +56,8 @@ func StartBuild(c server.TaskRequest, testID string) {
 	repo, ok := repoMap[id]
 	if !ok {
 		log.WithField("repoId", id).Debug("Cloning repo")
-		repo, err = util.NewRepository(id, c.Options.GitRepo)
-		logging.CheckPanic(err, log, "Failed to clone repo")
+		repo, err = git.NewRepository(id, c.Options.GitRepo)
+		check.Panic(err, log, "Failed to clone repo")
 
 		repoMap[id] = repo
 	} else {
@@ -62,7 +65,7 @@ func StartBuild(c server.TaskRequest, testID string) {
 	}
 
 	err = repo.Checkout(c.Options.CommitID)
-	logging.CheckPanic(err, log, "Failed to checkout to commit")
+	check.Panic(err, log, "Failed to checkout to commit")
 
 	if logging.MOCK {
 		result := MockRunBuild(repo, gsBucket, gsPath, testID, buildLog, log)
@@ -82,14 +85,14 @@ func StartBuild(c server.TaskRequest, testID string) {
 	}
 }
 
-func runBuild(repo *util.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) {
+func runBuild(repo *git.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) {
 
 	file, err := os.Create(buildLog)
-	logging.CheckPanic(err, log, "Failed to create file")
+	check.Panic(err, log, "Failed to create file")
 	defer file.Close()
 
 	err = repo.BuildUpload(gsBucket, gsPath, file)
 	file.Sync()
 
-	logging.CheckPanic(err, log, "Failed to build kernel")
+	check.Panic(err, log, "Failed to build kernel")
 }

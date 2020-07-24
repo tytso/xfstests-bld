@@ -25,9 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/email"
+	"gce-server/util/gcp"
+	"gce-server/util/logging"
+	"gce-server/util/mymath"
+	"gce-server/util/parser"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -52,6 +56,7 @@ type ShardSchedular struct {
 
 	reportKCS   bool
 	testRequest server.TaskRequest
+	testResult  server.ResultType
 
 	log     *logrus.Entry
 	logDir  string
@@ -61,7 +66,7 @@ type ShardSchedular struct {
 
 	validArgs []string
 	configs   []string
-	gce       *util.GceService
+	gce       *gcp.Service
 	shards    []*ShardWorker
 }
 
@@ -78,7 +83,7 @@ type SharderInfo struct {
 // except for bucketSubdir.
 func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	logDir := logging.LTMLogDir + testID + "/"
-	err := util.CreateDir(logDir)
+	err := check.CreateDir(logDir)
 	if err != nil {
 		panic(err)
 	}
@@ -86,11 +91,11 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	logFile := logDir + "run.log"
 	log := logging.InitLogger(logFile)
 
-	config, err := util.GetConfig(util.GceConfigFile)
-	logging.CheckPanic(err, log, "Failed to get config")
+	config, err := gcp.GetConfig(gcp.GceConfigFile)
+	check.Panic(err, log, "Failed to get config")
 
 	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
-	logging.CheckPanic(err, log, "Failed to decode cmdline")
+	check.Panic(err, log, "Failed to decode cmdline")
 
 	// assume a zone looks like us-central1-f and a region looks like us-central1
 	// syntax might change in the future so should add support to query for it
@@ -115,6 +120,7 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 
 		reportKCS:   false,
 		testRequest: c,
+		testResult:  server.DefaultResult,
 
 		log:     log,
 		logDir:  logDir,
@@ -134,10 +140,10 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	}
 
 	sharder.validArgs, sharder.configs, err = getConfigs(sharder.origCmd)
-	logging.CheckPanic(err, log, "Failed to parse config from origCmd")
+	check.Panic(err, log, "Failed to parse config from origCmd")
 
-	sharder.gce, err = util.NewGceService(sharder.gsBucket)
-	logging.CheckPanic(err, log, "Failed to connect to GCE service")
+	sharder.gce, err = gcp.NewService(sharder.gsBucket)
+	check.Panic(err, log, "Failed to connect to GCE service")
 
 	regionShard := !c.Options.NoRegionShard
 	if regionShard {
@@ -161,16 +167,16 @@ func (sharder *ShardSchedular) initLocalSharding() {
 	log.Info("Initilizing local sharding")
 	allShards := []*ShardWorker{}
 	quota, err := sharder.gce.GetRegionQuota(sharder.projID, sharder.region)
-	logging.CheckPanic(err, log, "Failed to get quota")
+	check.Panic(err, log, "Failed to get quota")
 
 	if quota == nil {
 		log.Panic("GCE region is out of quota")
 	}
 	numShards, err := quota.GetMaxShard()
-	logging.CheckPanic(err, log, "Failed to get max shard")
+	check.Panic(err, log, "Failed to get max shard")
 
 	if sharder.maxShards > 0 {
-		numShards = util.MaxInt(numShards, sharder.maxShards)
+		numShards = mymath.MaxInt(numShards, sharder.maxShards)
 	}
 	configs := splitConfigs(numShards, sharder.configs)
 
@@ -193,14 +199,14 @@ func (sharder *ShardSchedular) initRegionSharding() {
 
 	allShards := []*ShardWorker{}
 	quotas, err := sharder.gce.GetAllRegionsQuota(sharder.projID)
-	logging.CheckPanic(err, log, "Failed to get quota")
+	check.Panic(err, log, "Failed to get quota")
 
 	usedZones := []string{}
 
 	for _, quota := range quotas {
 		if strings.HasPrefix(quota.Zone, continent) {
 			maxShard, err := quota.GetMaxShard()
-			logging.CheckPanic(err, log, "Failed to get max shard")
+			check.Panic(err, log, "Failed to get max shard")
 
 			for i := 0; i < maxShard; i++ {
 				usedZones = append(usedZones, quota.Zone)
@@ -215,7 +221,7 @@ func (sharder *ShardSchedular) initRegionSharding() {
 		for _, quota := range quotas {
 			if !strings.HasPrefix(quota.Zone, continent) {
 				maxShard, err := quota.GetMaxShard()
-				logging.CheckPanic(err, log, "Failed to get max shard")
+				check.Panic(err, log, "Failed to get max shard")
 
 				for i := 0; i < maxShard; i++ {
 					usedZones = append(usedZones, quota.Zone)
@@ -243,7 +249,7 @@ func (sharder *ShardSchedular) initRegionSharding() {
 // getConfigs calls a parser to extract the valid args and configs from
 // the raw cmdline.
 func getConfigs(origCmd string) ([]string, []string, error) {
-	validArgs, configs, err := util.ParseCmd(origCmd)
+	validArgs, configs, err := parser.Cmd(origCmd)
 	if err != nil {
 		return []string{}, []string{}, nil
 	}
@@ -285,7 +291,13 @@ func (sharder *ShardSchedular) Run() {
 	var wg sync.WaitGroup
 
 	subject := fmt.Sprintf("xfstests failure %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
-	defer util.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
+	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
+
+	defer sharder.cleanup()
+
+	if sharder.reportKCS {
+		defer sharder.sendKCSReport()
+	}
 
 	for _, shard := range sharder.shards {
 		wg.Add(1)
@@ -320,7 +332,7 @@ func (sharder *ShardSchedular) finish() {
 	sharder.aggResults()
 	sharder.createInfo()
 	sharder.createRunStats()
-	genResultsSummary(sharder.aggDir, sharder.aggDir+"report", sharder.log)
+	sharder.genResultsSummary()
 
 	if !sharder.reportKCS {
 		sharder.emailReport()
@@ -329,13 +341,12 @@ func (sharder *ShardSchedular) finish() {
 	}
 	sharder.packResults()
 
-	sharder.cleanup()
 }
 
 // aggResults looks for results file from each shard and aggregates them.
 func (sharder *ShardSchedular) aggResults() {
-	err := util.CreateDir(sharder.aggDir)
-	logging.CheckPanic(err, sharder.log, "Failed to create dir")
+	err := check.CreateDir(sharder.aggDir)
+	check.Panic(err, sharder.log, "Failed to create dir")
 
 	hasResults := false
 	for _, shard := range sharder.shards {
@@ -345,20 +356,20 @@ func (sharder *ShardSchedular) aggResults() {
 		})
 		log.Debug("Moving shard result files into aggregate folder")
 
-		if util.DirExists(shard.unpackedResultsDir) {
-			err := util.RemoveDir(sharder.aggDir + shard.shardID)
-			logging.CheckPanic(err, log, "Failed to remove dir")
+		if check.DirExists(shard.unpackedResultsDir) {
+			err := check.RemoveDir(sharder.aggDir + shard.shardID)
+			check.Panic(err, log, "Failed to remove dir")
 
 			err = os.Rename(shard.unpackedResultsDir, sharder.aggDir+shard.shardID)
-			logging.CheckPanic(err, log, "Failed to move dir")
+			check.Panic(err, log, "Failed to move dir")
 
 			hasResults = true
-		} else if util.FileExists(shard.serialOutputPath) {
-			err := util.RemoveDir(sharder.aggDir + shard.shardID + ".serial")
-			logging.CheckPanic(err, log, "Failed to remove dir")
+		} else if check.FileExists(shard.serialOutputPath) {
+			err := check.RemoveDir(sharder.aggDir + shard.shardID + ".serial")
+			check.Panic(err, log, "Failed to remove dir")
 
 			err = os.Rename(shard.serialOutputPath, sharder.aggDir+shard.shardID+".serial")
-			logging.CheckPanic(err, log, "Failed to move dir")
+			check.Panic(err, log, "Failed to move dir")
 
 			hasResults = true
 		} else {
@@ -377,9 +388,9 @@ func (sharder *ShardSchedular) aggResults() {
 
 	for _, shard := range sharder.shards {
 		kernelVersionFile := fmt.Sprintf("%s%s/kernel_version", sharder.aggDir, shard.shardID)
-		if util.FileExists(kernelVersionFile) {
-			content, err := util.ReadLines(kernelVersionFile)
-			if !logging.CheckNoError(err, sharder.log, "Failed to read file") {
+		if check.FileExists(kernelVersionFile) {
+			content, err := check.ReadLines(kernelVersionFile)
+			if !check.NoError(err, sharder.log, "Failed to read file") {
 				continue
 			}
 			sharder.kernelVersion = content[0]
@@ -394,7 +405,7 @@ func (sharder *ShardSchedular) concatResults(filename string) {
 	log.Info("Cancatenating shard result file")
 
 	file, err := os.Create(sharder.aggDir + filename)
-	logging.CheckPanic(err, log, "Failed to create file")
+	check.Panic(err, log, "Failed to create file")
 
 	defer file.Close()
 
@@ -407,11 +418,11 @@ func (sharder *ShardSchedular) concatResults(filename string) {
 		fmt.Fprintf(file, "\n============SHARD %s============\n", shard.shardID)
 		fmt.Fprintf(file, "============CONFIG: %s\n\n", shard.config)
 		shardFile := fmt.Sprintf("%s%s/%s", sharder.aggDir, shard.shardID, filename)
-		if util.FileExists(shardFile) {
+		if check.FileExists(shardFile) {
 			sourceFile, err := os.Open(shardFile)
-			if logging.CheckNoError(err, shardLog, "Failed to open file") {
+			if check.NoError(err, shardLog, "Failed to open file") {
 				_, err = io.Copy(file, sourceFile)
-				logging.CheckNoError(err, shardLog, "Failed to copy file")
+				check.NoError(err, shardLog, "Failed to copy file")
 
 				sourceFile.Close()
 			}
@@ -427,13 +438,13 @@ func (sharder *ShardSchedular) concatResults(filename string) {
 func (sharder *ShardSchedular) createInfo() {
 	sharder.log.Info("Creating LTM info")
 	ltmLogDir := sharder.aggDir + "ltm_logs/"
-	err := util.CreateDir(ltmLogDir)
-	if !logging.CheckNoError(err, sharder.log, "Failed to create dir") {
+	err := check.CreateDir(ltmLogDir)
+	if !check.NoError(err, sharder.log, "Failed to create dir") {
 		return
 	}
 
 	file, err := os.Create(sharder.aggDir + "ltm-info")
-	if !logging.CheckNoError(err, sharder.log, "Failed to create file") {
+	if !check.NoError(err, sharder.log, "Failed to create file") {
 		return
 	}
 
@@ -470,32 +481,42 @@ func (sharder *ShardSchedular) createRunStats() {
 }
 
 // genResultsSummary calls a python script to generate the summary on junit xml test results.
-func genResultsSummary(resultsDir string, outputFile string, log *logrus.Entry) {
-	cmd := exec.Command(genResultsSummaryPath, resultsDir, "--output_file", outputFile)
-	cmdLog := log.WithField("cmd", cmd.String())
+// It parses the summary file to check for any test failures.
+func (sharder *ShardSchedular) genResultsSummary() {
+	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report")
+	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	err := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, w, w)
-	logging.CheckNoError(err, cmdLog, "Failed to run python script gen_results_summary")
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+	check.NoError(err, cmdLog, "Failed to run python script gen_results_summary")
+
+	content, err := ioutil.ReadFile(sharder.aggDir + "report")
+	check.Panic(err, sharder.log, "Failed to read the report file, cannot parse test result")
+
+	if strings.Contains(string(content), "0 failures") {
+		sharder.testResult = server.Pass
+	} else {
+		sharder.testResult = server.Failure
+	}
 }
 
+// emailReport sends the email
 func (sharder *ShardSchedular) emailReport() {
 	sharder.log.Info("Sending email report")
 	subject := fmt.Sprintf("xfstests results %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
 
 	content, err := ioutil.ReadFile(sharder.aggDir + "report")
-	logging.CheckPanic(err, sharder.log, "Failed to read the report file, cannot send email")
+	check.Panic(err, sharder.log, "Failed to read the report file, cannot send email")
 
-	err = util.SendEmail(subject, string(content), sharder.reportReceiver)
-	logging.CheckPanic(err, sharder.log, "Failed to send the email")
+	err = email.Send(subject, string(content), sharder.reportReceiver)
+	check.Panic(err, sharder.log, "Failed to send the email")
 }
 
 func (sharder *ShardSchedular) sendKCSReport() {
-
-	sharder.testRequest.ExtraOptions.TestResult = true
+	sharder.testRequest.ExtraOptions.TestResult = sharder.testResult
 	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
-	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
 
+	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
 }
 
 // packResults packs the aggregared files after copying the sharder's log file into it.
@@ -505,17 +526,17 @@ func (sharder *ShardSchedular) packResults() {
 
 	logging.Sync(sharder.log)
 	aggLogFile := sharder.aggDir + "ltm_logs/run.log"
-	err := util.CopyFile(aggLogFile, sharder.logFile)
+	err := check.CopyFile(aggLogFile, sharder.logFile)
 	if err != nil {
-		logging.CheckPanic(err, sharder.log, "Failed to copy sharder log file")
+		check.Panic(err, sharder.log, "Failed to copy sharder log file")
 	}
 
 	cmd1 := exec.Command("tar", "-cf", sharder.aggFile+".tar", "-C", sharder.aggDir, ".")
 	cmdLog1 := sharder.log.WithField("cmd", cmd1.Args)
 	w1 := cmdLog1.Writer()
 	defer w1.Close()
-	err = util.CheckRun(cmd1, util.RootDir, util.EmptyEnv, w1, w1)
-	if !logging.CheckNoError(err, cmdLog1, "Failed to create tarball") {
+	err = check.Run(cmd1, check.RootDir, check.EmptyEnv, w1, w1)
+	if !check.NoError(err, cmdLog1, "Failed to create tarball") {
 		return
 	}
 
@@ -523,8 +544,8 @@ func (sharder *ShardSchedular) packResults() {
 	cmdLog2 := sharder.log.WithField("cmd2", cmd2.Args)
 	w2 := cmdLog1.Writer()
 	defer w2.Close()
-	err = util.CheckRun(cmd2, util.RootDir, util.EmptyEnv, w2, w2)
-	if !logging.CheckNoError(err, cmdLog2, "Failed to create xz compressed tarball") {
+	err = check.Run(cmd2, check.RootDir, check.EmptyEnv, w2, w2)
+	if !check.NoError(err, cmdLog2, "Failed to create xz compressed tarball") {
 		return
 	}
 
@@ -532,15 +553,15 @@ func (sharder *ShardSchedular) packResults() {
 
 	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
-	logging.CheckPanic(err, sharder.log, "Failed to upload results tarball")
+	check.Panic(err, sharder.log, "Failed to upload results tarball")
 
-	config, err := util.GetConfig(util.GceConfigFile)
-	logging.CheckPanic(err, sharder.log, "Failed to get gce config")
+	config, err := gcp.GetConfig(gcp.GceConfigFile)
+	check.Panic(err, sharder.log, "Failed to get gce config")
 
 	if config.Get("GCE_UPLOAD_SUMMARY") != "" {
 		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
 		err = sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
-		logging.CheckPanic(err, sharder.log, "Failed to upload results summary")
+		check.Panic(err, sharder.log, "Failed to upload results summary")
 	}
 }
 
@@ -555,5 +576,5 @@ func (sharder *ShardSchedular) cleanup() {
 	}
 
 	sharder.log.Info("Remove local aggregate results")
-	util.RemoveDir(sharder.aggDir)
+	check.RemoveDir(sharder.aggDir)
 }

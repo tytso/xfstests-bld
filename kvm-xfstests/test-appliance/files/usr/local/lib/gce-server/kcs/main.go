@@ -17,9 +17,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/logging"
+	"gce-server/util/mymath"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -33,7 +34,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 
 	var c server.TaskRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
-	logging.CheckPanic(err, log, "Failed to parse json request")
+	check.Panic(err, log, "Failed to parse json request")
 
 	log.WithFields(logrus.Fields{
 		"cmdLine":      c.CmdLine,
@@ -41,7 +42,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 		"extraOptions": c.ExtraOptions,
 	}).Info("Received request")
 
-	testID := util.GetTimeStamp()
+	testID := mymath.GetTimeStamp()
 
 	response := server.SimpleResponse{
 		Status: true,
@@ -92,5 +93,5 @@ func main() {
 	http.HandleFunc("/login", server.Login)
 	http.HandleFunc("/gce-xfstests", runCompile)
 	err := http.ListenAndServeTLS(":443", server.CertPath, server.SecretPath, nil)
-	logging.CheckPanic(err, server.Log, "TLS server failed to launch")
+	check.Panic(err, server.Log, "TLS server failed to launch")
 }
