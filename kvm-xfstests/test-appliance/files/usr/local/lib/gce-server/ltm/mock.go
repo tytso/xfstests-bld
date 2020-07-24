@@ -53,7 +53,7 @@ type JsonShard struct {
 	VMTimeout          bool
 }
 
-func (sharder *ShardSchedular) Dump(filename string) {
+func (sharder *ShardScheduler) Dump(filename string) {
 	mock := JsonSharder{
 		TestID:  sharder.testID,
 		ProjID:  sharder.projID,
@@ -102,7 +102,7 @@ func (shard *ShardWorker) Dump() JsonShard {
 	}
 }
 
-func (mock JsonShard) Read(sharder *ShardSchedular) *ShardWorker {
+func (mock JsonShard) Read(sharder *ShardScheduler) *ShardWorker {
 	shard := ShardWorker{
 		sharder:            sharder,
 		shardID:            mock.ShardID,
@@ -121,13 +121,13 @@ func (mock JsonShard) Read(sharder *ShardSchedular) *ShardWorker {
 	return &shard
 }
 
-func ReadSharder(filename string) *ShardSchedular {
+func ReadSharder(filename string) *ShardScheduler {
 	file, _ := ioutil.ReadFile(filename)
 
 	var mock JsonSharder
 	json.Unmarshal(file, &mock)
 
-	sharder := ShardSchedular{
+	sharder := ShardScheduler{
 		testID:  mock.TestID,
 		projID:  mock.ProjID,
 		origCmd: mock.OrigCmd,
@@ -158,8 +158,8 @@ func ReadSharder(filename string) *ShardSchedular {
 	return &sharder
 }
 
-func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
-	sharder := ShardSchedular{
+func MockNewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
+	sharder := ShardScheduler{
 		testID:      testID,
 		testRequest: c,
 		log:         server.Log.WithField("testID", testID),
@@ -171,7 +171,7 @@ func MockNewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular 
 	return &sharder
 }
 
-func (sharder *ShardSchedular) MockRun() {
+func (sharder *ShardScheduler) MockRun() {
 	sharder.log.Warn("mock test finished")
 	if sharder.testRequest.ExtraOptions != nil {
 		sharder.log.WithField("result", sharder.testRequest.ExtraOptions.TestResult).Warn("get test results")

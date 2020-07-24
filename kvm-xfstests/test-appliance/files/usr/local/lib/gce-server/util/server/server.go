@@ -58,6 +58,13 @@ const (
 	UnknownResult
 )
 
+const (
+	kcsTimeout    = 30 * time.Second
+	ltmTimeout    = 60 * time.Second
+	checkInterval = 10 * time.Second
+	maxAttempts   = 5
+)
+
 // UserOptions contains configs user sends to LTM or KCS.
 type UserOptions struct {
 	NoRegionShard bool   `json:"no_region_shard"`
@@ -212,10 +219,8 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		config = gcp.KcsConfig
 
 	} else {
-		if gcp.LtmConfig == nil {
-			launchLTM(log)
-			gcp.Update()
-		}
+		launchLTM(log)
+		gcp.Update()
 		config = gcp.LtmConfig
 	}
 	if config == nil {
@@ -248,21 +253,19 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		Transport: transport,
 	}
 	if toKCS {
-		client.Timeout = 30 * time.Second
+		client.Timeout = kcsTimeout
 	} else {
-		client.Timeout = 60 * time.Second
+		client.Timeout = ltmTimeout
 	}
 
 	var resp *http.Response
-	attempts := 5
-	for attempts > 0 {
+	for attempts := maxAttempts; attempts > 0; attempts-- {
 		resp, err = client.Do(req)
 		if err == nil {
 			break
 		}
-		attempts--
 		log.WithError(err).WithField("attemptsLeft", attempts).Debug("Failed to connect to " + receiver)
-		time.Sleep(10 * time.Second)
+		time.Sleep(checkInterval)
 	}
 	check.Panic(err, log, "Failed to get response from "+receiver)
 
