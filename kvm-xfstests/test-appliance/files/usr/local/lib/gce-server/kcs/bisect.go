@@ -143,10 +143,9 @@ func RunBisect(c server.TaskRequest, testID string) {
 		check.Panic(err, log, "Failed to send email")
 
 	} else {
-		config, err := gcp.GetConfig(gcp.GceConfigFile)
-		check.Panic(err, log, "Failed to get config")
 
-		gsBucket := config.Get("GS_BUCKET")
+		gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+		check.Panic(err, log, "Failed to get gs bucket config")
 		gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun", gsBucket, testID)
 
 		buildLog := logging.KCSLogDir + testID + ".build"

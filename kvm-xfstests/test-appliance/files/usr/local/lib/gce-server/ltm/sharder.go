@@ -91,27 +91,33 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 	logFile := logDir + "run.log"
 	log := logging.InitLogger(logFile)
 
-	config, err := gcp.GetConfig(gcp.GceConfigFile)
-	check.Panic(err, log, "Failed to get config")
-
 	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
 	check.Panic(err, log, "Failed to decode cmdline")
 
 	// assume a zone looks like us-central1-f and a region looks like us-central1
 	// syntax might change in the future so should add support to query for it
-	zone := config.Get("GCE_ZONE")
+	zone, err := gcp.GceConfig.Get("GCE_ZONE")
+	check.Panic(err, log, "Failed to get zone config")
 	region := zone[:len(zone)-2]
+
+	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	check.Panic(err, log, "Failed to get project config")
+
+	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	check.Panic(err, log, "Failed to get gs bucket config")
+
+	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
 
 	log.Info("Initiating test sharder")
 	sharder := ShardSchedular{
 		testID:  testID,
-		projID:  config.Get("GCE_PROJECT"),
+		projID:  projID,
 		origCmd: strings.TrimSpace(string(data)),
 
 		zone:           zone,
 		region:         region,
-		gsBucket:       config.Get("GS_BUCKET"),
-		bucketSubdir:   config.Get("BUCKET_SUBDIR"),
+		gsBucket:       gsBucket,
+		bucketSubdir:   bucketSubdir,
 		gsKernel:       c.Options.GsKernel,
 		kernelVersion:  "unknown_kernel_version",
 		reportReceiver: c.Options.ReportEmail,
@@ -129,7 +135,7 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 		aggFile: fmt.Sprintf("%sresults.%s-%s", logDir, LTMUserName, testID),
 	}
 
-	if config.Get("GCE_LTM_KEEP_DEAD_VM") != "" {
+	if _, err := gcp.GceConfig.Get("GCE_LTM_KEEP_DEAD_VM"); err == nil {
 		sharder.keepDeadVM = true
 	}
 	if c.Options.BucketSubdir != "" {
@@ -555,10 +561,7 @@ func (sharder *ShardSchedular) packResults() {
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
 	check.Panic(err, sharder.log, "Failed to upload results tarball")
 
-	config, err := gcp.GetConfig(gcp.GceConfigFile)
-	check.Panic(err, sharder.log, "Failed to get gce config")
-
-	if config.Get("GCE_UPLOAD_SUMMARY") != "" {
+	if _, err := gcp.GceConfig.Get("GCE_UPLOAD_SUMMARY"); err == nil {
 		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
 		err = sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
 		check.Panic(err, sharder.log, "Failed to upload results summary")
