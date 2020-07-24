@@ -11,8 +11,6 @@ import (
 	"gce-server/util/git"
 	"gce-server/util/logging"
 	"gce-server/util/server"
-
-	"github.com/sirupsen/logrus"
 )
 
 // repoMap indexes repos by repo url.
@@ -52,18 +50,22 @@ func StartBuild(c server.TaskRequest, testID string) {
 	defer repoLock.Unlock()
 
 	repo, ok := repoMap[id]
+
+	cmdLog := log.WithField("repoId", id)
+	w := cmdLog.WithField("cmd", "newRepo").Writer()
+
 	if !ok {
-		log.WithField("repoId", id).Debug("Cloning repo")
-		repo, err = git.NewRepository(id, c.Options.GitRepo)
-		check.Panic(err, log, "Failed to clone repo")
+		cmdLog.Debug("Cloning repo")
+		repo, err = git.NewRepository(id, c.Options.GitRepo, w)
+		check.Panic(err, cmdLog, "Failed to clone repo")
 
 		repoMap[id] = repo
 	} else {
-		log.WithField("repoId", id).Debug("Existing repo found")
+		cmdLog.Debug("Existing repo found")
 	}
 
-	err = repo.Checkout(c.Options.CommitID)
-	check.Panic(err, log, "Failed to checkout to commit")
+	err = repo.Checkout(c.Options.CommitID, w)
+	check.Panic(err, cmdLog, "Failed to checkout to commit")
 
 	if logging.MOCK {
 		result := MockRunBuild(repo, gsBucket, gsPath, testID, buildLog, log)
@@ -74,7 +76,8 @@ func StartBuild(c server.TaskRequest, testID string) {
 		return
 	}
 
-	runBuild(repo, gsBucket, gsPath, testID, buildLog, log)
+	err = runBuild(repo, gsBucket, gsPath, testID, buildLog)
+	check.Panic(err, log, "Failed to build and upload kernel")
 
 	if c.ExtraOptions != nil {
 		c.Options.GsKernel = gsPath
@@ -83,14 +86,16 @@ func StartBuild(c server.TaskRequest, testID string) {
 	}
 }
 
-func runBuild(repo *git.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) {
-
+// runBuild builds the kernel and upload the kernel image
+func runBuild(repo *git.Repository, gsBucket string, gsPath string, testID string, buildLog string) error {
 	file, err := os.Create(buildLog)
-	check.Panic(err, log, "Failed to create file")
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 
 	err = repo.BuildUpload(gsBucket, gsPath, file)
 	file.Sync()
 
-	check.Panic(err, log, "Failed to build kernel")
+	return err
 }

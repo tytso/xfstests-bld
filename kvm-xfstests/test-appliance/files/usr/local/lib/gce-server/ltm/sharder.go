@@ -126,7 +126,7 @@ func NewShardSchedular(c server.TaskRequest, testID string) *ShardSchedular {
 
 		reportKCS:   false,
 		testRequest: c,
-		testResult:  server.DefaultResult,
+		testResult:  server.UnknownResult,
 
 		log:     log,
 		logDir:  logDir,
@@ -342,11 +342,9 @@ func (sharder *ShardSchedular) finish() {
 
 	if !sharder.reportKCS {
 		sharder.emailReport()
-	} else {
-		sharder.sendKCSReport()
 	}
-	sharder.packResults()
 
+	sharder.packResults()
 }
 
 // aggResults looks for results file from each shard and aggregates them.
@@ -497,12 +495,12 @@ func (sharder *ShardSchedular) genResultsSummary() {
 	check.NoError(err, cmdLog, "Failed to run python script gen_results_summary")
 
 	content, err := ioutil.ReadFile(sharder.aggDir + "report")
-	check.Panic(err, sharder.log, "Failed to read the report file, cannot parse test result")
-
-	if strings.Contains(string(content), "0 failures") {
-		sharder.testResult = server.Pass
-	} else {
-		sharder.testResult = server.Failure
+	if check.NoError(err, sharder.log, "Failed to read the report file") {
+		if strings.Contains(string(content), "0 failures") {
+			sharder.testResult = server.Pass
+		} else {
+			sharder.testResult = server.Failure
+		}
 	}
 }
 
@@ -511,14 +509,18 @@ func (sharder *ShardSchedular) emailReport() {
 	sharder.log.Info("Sending email report")
 	subject := fmt.Sprintf("xfstests results %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
 
-	content, err := ioutil.ReadFile(sharder.aggDir + "report")
-	check.Panic(err, sharder.log, "Failed to read the report file, cannot send email")
+	b, err := ioutil.ReadFile(sharder.aggDir + "report")
+	content := string(b)
+	if !check.NoError(err, sharder.log, "Failed to read the report file") {
+		content = "Unable to generate test summary report"
+	}
 
-	err = email.Send(subject, string(content), sharder.reportReceiver)
+	err = email.Send(subject, content, sharder.reportReceiver)
 	check.Panic(err, sharder.log, "Failed to send the email")
 }
 
 func (sharder *ShardSchedular) sendKCSReport() {
+	sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
 	sharder.testRequest.ExtraOptions.TestResult = sharder.testResult
 	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
 
@@ -569,7 +571,6 @@ func (sharder *ShardSchedular) packResults() {
 }
 
 // cleanup removes local result and log files
-// Closes sharder logger handler (if any) here
 func (sharder *ShardSchedular) cleanup() {
 	sharder.log.Info("Cleaning up sharder resources")
 
