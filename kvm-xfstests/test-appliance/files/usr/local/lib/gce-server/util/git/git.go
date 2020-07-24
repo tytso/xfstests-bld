@@ -15,11 +15,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"gce-server/util/check"
 	"gce-server/util/server"
-
-	"github.com/google/uuid"
 )
 
 // configurable constants for git utility functions
@@ -32,12 +31,15 @@ const (
 )
 
 // Repository represents a git repo
+// Uses a lock to avoid concurrent access
 type Repository struct {
-	id  string
-	url string
+	id   string
+	url  string
+	lock sync.Mutex
 }
 
 // RemoteRepository represents a remote repo
+// No need for locks since git watcher is protected by channels
 type RemoteRepository struct {
 	url    string
 	branch string
@@ -55,13 +57,13 @@ func init() {
 // The repo directory is named as id under RepoRootDir.
 // It assumes each directory binds to a unique repo, and does not
 // overwrite that directory if it already exists.
-func NewRepository(id string, repoURL string) (*Repository, error) {
+func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, error) {
 	if id == "" {
 		return nil, fmt.Errorf("repo id not specified")
 	}
 	if !check.DirExists(RefRepoDir) {
 		cmd := exec.Command("git", "clone", "--mirror", RefRepoURL, RefRepoDir)
-		err := check.Run(cmd, check.RootDir, check.EmptyEnv, os.Stdout, os.Stderr)
+		err := check.Run(cmd, check.RootDir, check.EmptyEnv, writer, writer)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +80,7 @@ func NewRepository(id string, repoURL string) (*Repository, error) {
 	}
 
 	cmd := exec.Command("git", "clone", "--reference", RefRepoDir, repoURL, repoDir)
-	err := check.Run(cmd, check.RootDir, check.EmptyEnv, os.Stdout, os.Stderr)
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return nil, err
 	}
@@ -87,38 +89,43 @@ func NewRepository(id string, repoURL string) (*Repository, error) {
 }
 
 // GetCommit returns the commit hash for current repo HEAD
-func (repo *Repository) GetCommit() (string, error) {
+func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	commit, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, writer)
 	if err != nil {
+		writer.Write([]byte(output))
 		return "", err
 	}
 
-	return commit[:len(commit)-1], nil
+	return output[:len(output)-1], nil
 }
 
 // Checkout pulls from upstream and checkout to a commit hash.
-func (repo *Repository) Checkout(commit string) error {
+func (repo *Repository) Checkout(commit string, writer io.Writer) error {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "checkout", "-")
-	check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
+	check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 
 	cmd = exec.Command("git", "pull")
-	err := check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
+	err := check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
 	}
 	cmd = exec.Command("git", "checkout", commit)
-	err = check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
+	err = check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
 	}
@@ -126,11 +133,19 @@ func (repo *Repository) Checkout(commit string) error {
 	return nil
 }
 
-// BisectStart starts a git bisect on a repository.
-// It uses badCommit and goodCommits to narrow down the search path.
-// Current head is used if badCommit is empty, and throws error if
-// goodCommits is empty. It returns true if git bisect has ended.
-func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (bool, error) {
+/*
+BisectStart starts a git bisect on a repository.
+
+It uses badCommit and goodCommits to narrow down the search path.
+Current head is used if badCommit is empty, and throws error if
+goodCommits is empty. It returns true if git bisect has ended.
+
+`git bisect start <bad> <good> [<good-2>...]` command fails silently
+if <bad> is a branch, so we expand it explicitly.
+*/
+func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writer io.Writer) (bool, error) {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	if len(goodCommits) == 0 {
 		return false, fmt.Errorf("No good commits provided")
 	}
@@ -143,14 +158,28 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (boo
 		badCommit = "HEAD"
 	}
 
-	args := []string{"bisect", "start", badCommit}
-	args = append(args, goodCommits...)
-
-	cmd := exec.Command("git", args...)
-	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
+	cmd := exec.Command("git", "bisect", "start")
+	err := check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return false, err
 	}
+
+	cmd = exec.Command("git", "bisect", "bad", badCommit)
+	err = check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
+	if err != nil {
+		return false, err
+	}
+
+	args := []string{"bisect", "good"}
+	args = append(args, goodCommits...)
+
+	cmd = exec.Command("git", args...)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, writer)
+	if err != nil {
+		writer.Write([]byte(output))
+		return false, err
+	}
+
 	if strings.Contains(output, "is the first bad commit") {
 		return true, nil
 	}
@@ -161,7 +190,9 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string) (boo
 // BisectStep tells git bisect whether the current version is good or not
 // and proceeds to the next step.
 // It returns true if git bisect has ended.
-func (repo *Repository) BisectStep(testResult server.ResultType) (bool, error) {
+func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Writer) (bool, error) {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return false, fmt.Errorf("directory %s does not exist", repoDir)
@@ -172,15 +203,16 @@ func (repo *Repository) BisectStep(testResult server.ResultType) (bool, error) {
 		step = "good"
 	case server.Failure:
 		step = "bad"
-	case server.Unknown:
+	case server.UnknownResult:
 		step = "skip"
 	default:
 		return false, fmt.Errorf("unexpect test result value")
 	}
 
 	cmd := exec.Command("git", "bisect", step)
-	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, writer)
 	if err != nil {
+		writer.Write([]byte(output))
 		return false, err
 	}
 	if strings.Contains(output, "is the first bad commit") {
@@ -191,15 +223,18 @@ func (repo *Repository) BisectStep(testResult server.ResultType) (bool, error) {
 }
 
 // BisectLog returns bisect log output.
-func (repo *Repository) BisectLog() (string, error) {
+func (repo *Repository) BisectLog(writer io.Writer) (string, error) {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "bisect", "log")
-	output, err := check.Output(cmd, repoDir, check.EmptyEnv, os.Stderr)
+	output, err := check.Output(cmd, repoDir, check.EmptyEnv, writer)
 	if err != nil {
+		writer.Write([]byte(output))
 		return "", err
 	}
 
@@ -207,19 +242,23 @@ func (repo *Repository) BisectLog() (string, error) {
 }
 
 // BisectReset resets the current git bisect.
-func (repo *Repository) BisectReset() error {
+func (repo *Repository) BisectReset(writer io.Writer) error {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
 	cmd := exec.Command("git", "bisect", "reset")
-	return check.Run(cmd, repoDir, check.EmptyEnv, os.Stdout, os.Stderr)
+	return check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 }
 
 // BuildUpload builds the current kernel code and uploads image to GS.
 // Script output is written into a given writer
 func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Writer) error {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return fmt.Errorf("directory %s does not exist", repoDir)
@@ -239,39 +278,10 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Wr
 
 // Delete removes repo from local storage
 func (repo *Repository) Delete() error {
+	repo.lock.Lock()
+	defer repo.lock.Unlock()
 	err := check.RemoveDir(repo.Dir())
 	return err
-}
-
-// NewSimpleRepository clones a repo and checkout to commit without any caching and checking
-func NewSimpleRepository(repoURL string, commit string) (*Repository, error) {
-	err := check.CreateDir(RepoRootDir)
-	if err != nil {
-		return nil, err
-	}
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, err
-	}
-
-	r := Repository{
-		url: repoURL,
-		id:  id.String(),
-	}
-
-	cmd := exec.Command("git", "clone", repoURL, r.Dir())
-	err = check.Run(cmd, RepoRootDir, check.EmptyEnv, os.Stdout, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	cmd = exec.Command("git", "checkout", commit)
-	err = check.Run(cmd, r.Dir(), check.EmptyEnv, os.Stdout, os.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &r, nil
 }
 
 // Dir returns the repo directory
@@ -348,8 +358,3 @@ func ParseURL(repoURL string) (string, error) {
 
 	return strings.Join(name, "-"), nil
 }
-
-// // MockRepo constructs a mock Repository struct without proper initialization.
-// func MockRepo(repoURL string, id string, branch string, currCommit string, watching bool) Repository {
-// 	return Repository{repoURL, id, branch, currCommit, watching}
-// }
