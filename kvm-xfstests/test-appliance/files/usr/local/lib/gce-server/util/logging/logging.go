@@ -1,3 +1,6 @@
+/*
+Package logging implements a logger.
+*/
 package logging
 
 import (
@@ -18,8 +21,8 @@ const (
 // DEBUG redirects log to stdout.
 // MOCK uses mock modules to skip actual kernel build and test
 const (
-	DEBUG = true
-	MOCK  = true
+	DEBUG = false
+	MOCK  = false
 )
 
 // InitLogger initializes a logrus logger and writes to logfile
@@ -57,29 +60,6 @@ func CloseLog(log *logrus.Entry) {
 	} else if handler, ok := log.Logger.Out.(io.Closer); ok {
 		handler.Close()
 	}
-}
-
-// CheckPanic checks an error and log a panic entry with given msg
-func CheckPanic(err error, log *logrus.Entry, msg string) {
-	if msg == "" {
-		msg = "Something bad happended"
-	}
-	if err != nil {
-		log.WithError(err).Panic(msg)
-	}
-}
-
-// CheckNoError checks an error and log a error entry with given msg
-// return true if error is nil
-func CheckNoError(err error, log *logrus.Entry, msg string) bool {
-	if msg == "" {
-		msg = "Something bad happended"
-	}
-	if err != nil {
-		log.WithError(err).Error(msg)
-		return false
-	}
-	return true
 }
 
 // Sync flushes the log to disk file
