@@ -5,12 +5,14 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"gce-server/logging"
-	"gce-server/util"
 	"io/ioutil"
 	"net/http"
 	"os/exec"
 	"time"
+
+	"gce-server/util/check"
+	"gce-server/util/gcp"
+	"gce-server/util/logging"
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
@@ -24,12 +26,12 @@ const (
 	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
 )
 
-// RequestType specifies the type of a json request
+// RequestType defines the type of a json request.
 type RequestType int
 
 const (
-	// Unspecified indicates RequestType is not set in the json request.
-	Unspecified RequestType = iota
+	// DefaultRequest indicates RequestType is not set in the json request.
+	DefaultRequest RequestType = iota
 	// LTMBuild indicates a build request from LTM to KCS.
 	LTMBuild
 	// LTMBisectStart indicates a bisect start request from LTM to KCS.
@@ -40,6 +42,20 @@ const (
 	KCSTest
 	// KCSBisectStep indicates a bisect step request from KCS to LTM.
 	KCSBisectStep
+)
+
+// ResultType defines the result state of a test.
+type ResultType int
+
+const (
+	// DefaultResult indicates ResultType is not set in the json request.
+	DefaultResult ResultType = iota
+	// Pass indicates all test passed.
+	Pass
+	// Failure indicates at least one failed test.
+	Failure
+	// Unknown indicates something unexpected happened so skip this commit.
+	Unknown
 )
 
 // UserOptions contains configs user sends to LTM or KCS.
@@ -60,7 +76,7 @@ type UserOptions struct {
 type InternalOptions struct {
 	TestID     string      `json:"test_id"`
 	Requester  RequestType `json:"requester"`
-	TestResult bool        `json:"test_result"`
+	TestResult ResultType  `json:"test_result"`
 }
 
 // LoginRequest contains a password for user authentication
@@ -95,15 +111,15 @@ var Log *logrus.Entry
 func init() {
 	Log = logging.InitLogger(logging.ServerLogPath)
 
-	if util.FileExists(sessionsKeyPath) {
+	if check.FileExists(sessionsKeyPath) {
 		buf, err := ioutil.ReadFile(sessionsKeyPath)
-		logging.CheckPanic(err, Log, "Failed to read file")
+		check.Panic(err, Log, "Failed to read file")
 
 		key = buf
 	} else {
 		key = securecookie.GenerateRandomKey(32)
 		err := ioutil.WriteFile(sessionsKeyPath, key, 0644)
-		logging.CheckPanic(err, Log, "Failed to write file")
+		check.Panic(err, Log, "Failed to write file")
 	}
 	store = sessions.NewCookieStore(key)
 }
@@ -123,13 +139,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request received")
 	var c LoginRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
-	if !logging.CheckNoError(err, log, "Failed to parse json request") {
+	if !check.NoError(err, log, "Failed to parse json request") {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	session, err := store.Get(r, "single-session")
-	if !logging.CheckNoError(err, log, "Failed to retrieve user session") {
+	if !check.NoError(err, log, "Failed to retrieve user session") {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -137,7 +153,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	// TODO: implement password validation
 	session.Values["pwd"] = c.Password
 	err = session.Save(r, w)
-	if !logging.CheckNoError(err, log, "Failed to save user session") {
+	if !check.NoError(err, log, "Failed to save user session") {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -192,19 +208,19 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	var ip string
 	if toKCS {
 		launchKCS(log)
-		config, err := util.GetConfig(util.KcsConfigFile)
-		logging.CheckPanic(err, log, "Failed to get KCS config")
+		config, err := gcp.GetConfig(gcp.KcsConfigFile)
+		check.Panic(err, log, "Failed to get KCS config")
 		ip = config.Get("GCE_KCS_INT_IP")
 
 		// pwd := config.Get("GCE_KCS_PWD")
 		// TODO: add login step
 
 	} else {
-		if !util.FileExists(util.LtmConfigFile) {
+		if !check.FileExists(gcp.LtmConfigFile) {
 			launchLTM(log)
 		}
-		config, err := util.GetConfig(util.LtmConfigFile)
-		logging.CheckPanic(err, log, "Failed to get LTM config")
+		config, err := gcp.GetConfig(gcp.LtmConfigFile)
+		check.Panic(err, log, "Failed to get LTM config")
 		ip = config.Get("GCE_LTM_INT_IP")
 	}
 
@@ -212,12 +228,12 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	js, _ := json.Marshal(c)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
-	logging.CheckPanic(err, log.WithField("js", js), "Failed to format request")
+	check.Panic(err, log.WithField("js", js), "Failed to format request")
 
 	req.Header.Set("Content-Type", "application/json")
 
 	cert, err := tls.LoadX509KeyPair(CertPath, SecretPath)
-	logging.CheckPanic(err, log, "Failed to load key pair")
+	check.Panic(err, log, "Failed to load key pair")
 
 	tlsConfig := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
@@ -245,14 +261,14 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		log.WithError(err).WithField("attemptsLeft", attempts).Debug("Failed to connect to " + receiver)
 		time.Sleep(10 * time.Second)
 	}
-	logging.CheckPanic(err, log, "Failed to get response from "+receiver)
+	check.Panic(err, log, "Failed to get response from "+receiver)
 
 	defer resp.Body.Close()
 
 	var c1 SimpleResponse
 
 	err = json.NewDecoder(resp.Body).Decode(&c1)
-	logging.CheckPanic(err, log, "Failed to parse json response")
+	check.Panic(err, log, "Failed to parse json response")
 
 	log.WithField("resp", c1).Debug("Received response from " + receiver)
 
@@ -270,7 +286,7 @@ func launchKCS(log *logrus.Entry) {
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
+	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
 	if err != nil && output != "The KCS instance already exists!\n" {
 		cmdLog.WithField("output", output).WithError(err).Panic("Failed to launch KCS")
 	}
@@ -285,7 +301,7 @@ func launchLTM(log *logrus.Entry) {
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	output, err := util.CheckOutput(cmd, util.RootDir, util.EmptyEnv, w)
+	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
 	if err != nil && output != "The LTM instance already exists!\n" {
 		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")

@@ -1,7 +1,9 @@
-package util
+package gcp
 
 import (
 	"regexp"
+
+	"gce-server/util/check"
 )
 
 // config file locations on multiple machines
@@ -27,7 +29,7 @@ func GetConfig(configFile string) (Config, error) {
 		re = regexp.MustCompile(`^(.*?)=(.*?)$`)
 	}
 
-	lines, err := ReadLines(configFile)
+	lines, err := check.ReadLines(configFile)
 	if err != nil {
 		return c, err
 	}

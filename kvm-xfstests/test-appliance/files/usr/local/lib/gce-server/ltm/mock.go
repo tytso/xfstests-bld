@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/gcp"
+	"gce-server/util/server"
 )
 
 type JsonSharder struct {
@@ -150,7 +150,7 @@ func ReadSharder(filename string) *ShardSchedular {
 		configs:   mock.Configs,
 	}
 
-	sharder.gce, _ = util.NewGceService(sharder.gsBucket)
+	sharder.gce, _ = gcp.NewService(sharder.gsBucket)
 	for _, mockShard := range mock.Shards {
 		sharder.shards = append(sharder.shards, mockShard.Read(&sharder))
 	}
