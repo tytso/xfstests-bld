@@ -121,6 +121,13 @@ func CopyFile(dst string, src string) error {
 	}
 	defer from.Close()
 
+	if FileExists(dst) {
+		err = os.Remove(dst)
+		if err != nil {
+			return err
+		}
+	}
+
 	to, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
