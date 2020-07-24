@@ -18,11 +18,11 @@ const (
 	KCSLogDir     = "/var/log/go/kcs_logs/"
 )
 
-// DEBUG redirects log to stdout.
-// MOCK uses mock modules to skip actual kernel build and test
 const (
+	// DEBUG redirects log to stdout.
 	DEBUG = false
-	MOCK  = false
+	// MOCK uses mock modules to skip actual kernel build and test.
+	MOCK = false
 )
 
 // InitLogger initializes a logrus logger and writes to logfile

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"strings"
 
 	"gce-server/util/gcp"
 	"gce-server/util/server"
@@ -176,6 +177,7 @@ func (sharder *ShardSchedular) MockRun() {
 		sharder.log.WithField("result", sharder.testRequest.ExtraOptions.TestResult).Warn("get test results")
 	}
 	if sharder.reportKCS {
+		sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
 		sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
 		ForwardKCS(sharder.testRequest, sharder.testID)
 	}
