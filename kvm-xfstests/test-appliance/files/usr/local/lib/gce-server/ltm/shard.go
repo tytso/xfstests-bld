@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"gce-server/logging"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/gcp"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
@@ -98,11 +98,11 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	shard.log.WithField("shardInfo", shard.Info()).Debug("Starting shard")
 
 	file, err := os.Create(shard.cmdLogPath)
-	logging.CheckPanic(err, shard.log, "Failed to create file")
+	check.Panic(err, shard.log, "Failed to create file")
 
 	cmd := exec.Command(shard.args[0], shard.args[1:]...)
 	shard.log.WithField("cmd", cmd.String()).Info("Launching test VM")
-	err = util.CheckRun(cmd, util.RootDir, util.EmptyEnv, file, file)
+	err = check.Run(cmd, check.RootDir, check.EmptyEnv, file, file)
 	file.Close()
 
 	if err != nil {
@@ -134,7 +134,7 @@ func (shard *ShardWorker) monitor() {
 		instanceInfo, err := shard.sharder.gce.GetInstanceInfo(shard.sharder.projID, shard.zone, shard.name)
 
 		if err != nil {
-			if util.IsNotFound(err) {
+			if gcp.NotFound(err) {
 				// If prevStatus is empty, it's likely the VM never launched
 				if prevStatus == "" {
 					log.Panic("Test VM failed to launch")
@@ -180,7 +180,7 @@ func (shard *ShardWorker) updateSerialData(prevStart int64) int64 {
 	}
 
 	file, err := os.OpenFile(shard.serialOutputPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if !logging.CheckNoError(err, log, "Failed to open file") {
+	if !check.NoError(err, log, "Failed to open file") {
 		return prevStart
 	}
 	defer file.Close()
@@ -189,13 +189,13 @@ func (shard *ShardWorker) updateSerialData(prevStart int64) int64 {
 		log.WithField("newStart", output.Start).Info("Missing some serial port output")
 		_, err := file.WriteString(fmt.Sprintf(
 			"\n!=====Missing data from %d to %d=====!\n", prevStart, output.Start))
-		if !logging.CheckNoError(err, log, "Failed to write file") {
+		if !check.NoError(err, log, "Failed to write file") {
 			return prevStart
 		}
 	}
 	log.Debug("Writing serial port output to file")
 	_, err = file.WriteString(output.Contents)
-	if !logging.CheckNoError(err, log, "Failed to write file") {
+	if !check.NoError(err, log, "Failed to write file") {
 		return prevStart
 	}
 
@@ -219,11 +219,11 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 	})
 
 	err := shard.sharder.gce.SetMetadata(shard.sharder.projID, shard.zone, shard.name, metadata)
-	logging.CheckNoError(err, shard.log, "Failed to set VM metadata")
+	check.NoError(err, shard.log, "Failed to set VM metadata")
 	// allow some time for metadata to be set
 	time.Sleep(1 * time.Second)
 	err = shard.sharder.gce.DeleteInstance(shard.sharder.projID, shard.zone, shard.name)
-	logging.CheckNoError(err, shard.log, "Failed to delete VM")
+	check.NoError(err, shard.log, "Failed to delete VM")
 }
 
 // finish calls gce-xfstests scripts to fetch and unpack test result files.
@@ -240,29 +240,29 @@ func (shard *ShardWorker) finish() {
 	cmdLog := shard.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	err := util.CheckRun(cmd, util.RootDir, util.EmptyEnv, w, w)
-	logging.CheckPanic(err, cmdLog, "Failed to run get-results")
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+	check.Panic(err, cmdLog, "Failed to run get-results")
 
-	if util.DirExists(shard.tmpResultsDir) {
-		util.RemoveDir(shard.unpackedResultsDir)
+	if check.DirExists(shard.tmpResultsDir) {
+		check.RemoveDir(shard.unpackedResultsDir)
 		err = os.Rename(shard.tmpResultsDir, shard.unpackedResultsDir)
-		logging.CheckPanic(err, shard.log, "Failed to move dir")
+		check.Panic(err, shard.log, "Failed to move dir")
 	} else {
 		shard.log.Panic("Failed to find unpacked result files")
 	}
 
-	if util.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
+	if check.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
 		err = os.Remove(shard.serialOutputPath)
-		logging.CheckNoError(err, shard.log, "Failed to remove dir")
+		check.NoError(err, shard.log, "Failed to remove dir")
 	}
 
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	_, err = shard.sharder.gce.DeleteFiles(prefix)
-	logging.CheckNoError(err, shard.log, "Failed to delete file")
+	check.NoError(err, shard.log, "Failed to delete file")
 
 	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	_, err = shard.sharder.gce.DeleteFiles(prefix)
-	logging.CheckNoError(err, shard.log, "Failed to delete file")
+	check.NoError(err, shard.log, "Failed to delete file")
 }
 
 // getResults fetches the test result files.
@@ -273,7 +273,7 @@ func (shard *ShardWorker) getResults() string {
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	for attempts > 0 {
 		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
-		logging.CheckNoError(err, shard.log, "Failed to get GS filenames")
+		check.NoError(err, shard.log, "Failed to get GS filenames")
 		if err == nil && len(resultFiles) == 1 {
 			shard.log.WithField("resultURL", resultFiles[0]).Info("Found result file url")
 			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
@@ -298,7 +298,7 @@ func (shard *ShardWorker) Info() ShardInfo {
 func (shard *ShardWorker) exit() {
 	if r := recover(); r != nil {
 		shard.log.WithField("panic", r).Warn("Shard finishes with errors, regular result files are not available")
-		if util.FileExists(shard.serialOutputPath) {
+		if check.FileExists(shard.serialOutputPath) {
 			shard.log.Warn("Serial port output is found")
 		} else {
 			shard.log.Warn("Serial port output is not found")

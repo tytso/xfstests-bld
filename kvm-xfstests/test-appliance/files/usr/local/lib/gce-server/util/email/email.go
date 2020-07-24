@@ -1,22 +1,28 @@
-package util
+/*
+Package email sends test reports or failure logs with package sendgrid.
+*/
+package email
 
 import (
 	"fmt"
-	"gce-server/logging"
 	"io/ioutil"
+
+	"gce-server/util/check"
+	"gce-server/util/gcp"
+	"gce-server/util/logging"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/sirupsen/logrus"
 )
 
-// SendEmail sends an email with subject and content to the receiver.
-func SendEmail(subject string, content string, receiver string) error {
+// Send sends an email with subject and content to the receiver.
+func Send(subject string, content string, receiver string) error {
 	if receiver == "" {
 		return fmt.Errorf("No destination for report to be sent to")
 	}
 
-	config, err := GetConfig(GceConfigFile)
+	config, err := gcp.GetConfig(gcp.GceConfigFile)
 	if err != nil {
 		return err
 	}
@@ -82,14 +88,14 @@ func ReportFailure(log *logrus.Entry, logFile string, email string, subject stri
 			file.Sync()
 		}
 
-		if FileExists(logFile) {
+		if check.FileExists(logFile) {
 			log.Debug("Reading log file to be sent")
 			content, err := ioutil.ReadFile(logFile)
-			if logging.CheckNoError(err, log, "Failed to read log file") {
+			if check.NoError(err, log, "Failed to read log file") {
 				msg = msg + "\n\n" + string(content)
 			}
 		}
-		err := SendEmail(subject, msg, email)
-		logging.CheckNoError(err, log, "Failed to send the email")
+		err := Send(subject, msg, email)
+		check.NoError(err, log, "Failed to send the email")
 	}
 }

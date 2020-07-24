@@ -16,9 +16,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"gce-server/logging"
-	"gce-server/server"
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/logging"
+	"gce-server/util/mymath"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
@@ -43,7 +44,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 
 	var c server.TaskRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
-	logging.CheckPanic(err, log, "Failed to parse json request")
+	check.Panic(err, log, "Failed to parse json request")
 
 	// TODO: implement password validation
 	log.WithFields(logrus.Fields{
@@ -52,7 +53,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 		"extraOptions": c.ExtraOptions,
 	}).Info("Received test request")
 
-	testID := util.GetTimeStamp()
+	testID := mymath.GetTimeStamp()
 	if c.ExtraOptions == nil {
 		log.WithField("testID", testID).Info("User request, generating testID")
 	} else {
@@ -89,7 +90,7 @@ func runTests(w http.ResponseWriter, r *http.Request) {
 			c.ExtraOptions = &args
 			go ForwardKCS(c, testID)
 
-			response.Msg = "Calling KCS to initiate git bisection"
+			response.Msg = "Calling KCS to initiate git bisect"
 
 		} else if c.Options.CommitID != "" {
 			log.Info("User requests a kernel build, calling KCS")
@@ -137,5 +138,5 @@ func main() {
 	http.HandleFunc("/login", server.Login)
 	http.HandleFunc("/gce-xfstests", runTests)
 	err := http.ListenAndServeTLS(":443", server.CertPath, server.SecretPath, nil)
-	logging.CheckPanic(err, server.Log, "TLS server failed to launch")
+	check.Panic(err, server.Log, "TLS server failed to launch")
 }

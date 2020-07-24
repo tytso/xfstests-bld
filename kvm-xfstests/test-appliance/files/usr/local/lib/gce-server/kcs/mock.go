@@ -1,24 +1,26 @@
 package main
 
 import (
-	"gce-server/util"
+	"gce-server/util/check"
+	"gce-server/util/git"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
 
 // MockRunBuild runs a mock build. It reads mock.txt from repo to mock the test result.
-func MockRunBuild(repo *util.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) bool {
+func MockRunBuild(repo *git.Repository, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) server.ResultType {
 	log.Info("Start building mock kernel")
 
-	lines, _ := util.ReadLines(repo.Dir() + "mock.txt")
-	var result bool
+	lines, _ := check.ReadLines(repo.Dir() + "mock.txt")
+	var result server.ResultType
 	switch lines[0] {
 	case "good":
-		result = true
+		result = server.Pass
 	case "bad":
-		result = false
+		result = server.Failure
 	case "undefined":
-		fallthrough
+		result = server.Unknown
 	default:
 		log.Panic("mock.txt in wrong format")
 	}

@@ -1,4 +1,11 @@
-package util
+/*
+Package gcp deals with Google Cloud APIs and config file parsing.
+
+Files included in this package:
+	gcp.go: 	Interface for GCP manipulation.
+	config.go: 	Parse config files into dicts.
+*/
+package gcp
 
 import (
 	"fmt"
@@ -8,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"gce-server/util/mymath"
+
 	"cloud.google.com/go/storage"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
@@ -16,26 +25,24 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const gceStateDir = "/var/lib/gce-xfstests/"
-
-// GceService holds the API clients for Google Cloud Platform.
-type GceService struct {
+// Service holds the API clients for Google Cloud Platform.
+type Service struct {
 	ctx     context.Context
 	service *compute.Service
 	bucket  *storage.BucketHandle
 }
 
-// GceQuota holds the quota limits for a zone.
-type GceQuota struct {
+// Quota holds the quota limits for a zone.
+type Quota struct {
 	Zone     string
 	cpuLimit int
 	ipLimit  int
 	ssdLimit int
 }
 
-// NewGceService launches a new GceService Client.
-func NewGceService(gsBucket string) (*GceService, error) {
-	gce := GceService{}
+// NewService launches a new GCP service client.
+func NewService(gsBucket string) (*Service, error) {
+	gce := Service{}
 	gce.ctx = context.Background()
 	client, err := google.DefaultClient(gce.ctx, compute.CloudPlatformScope)
 	if err != nil {
@@ -61,34 +68,34 @@ func NewGceService(gsBucket string) (*GceService, error) {
 
 // GetSerialPortOutput returns the serial port output for an instance.
 // Requires the starting offset of desired output. Returns the new offset.
-func (gce *GceService) GetSerialPortOutput(projID string, zone string, instance string, start int64) (*compute.SerialPortOutput, error) {
+func (gce *Service) GetSerialPortOutput(projID string, zone string, instance string, start int64) (*compute.SerialPortOutput, error) {
 	call := gce.service.Instances.GetSerialPortOutput(projID, zone, instance)
 	call = call.Start(start)
 	return call.Context(gce.ctx).Do()
 }
 
 // GetInstanceInfo returns the info about an instance.
-func (gce *GceService) GetInstanceInfo(projID string, zone string, instance string) (*compute.Instance, error) {
+func (gce *Service) GetInstanceInfo(projID string, zone string, instance string) (*compute.Instance, error) {
 	return gce.service.Instances.Get(projID, zone, instance).Context(gce.ctx).Do()
 }
 
 // SetMetadata sets the metadata for an instance.
-func (gce *GceService) SetMetadata(projID string, zone string, instance string, metadata *compute.Metadata) error {
+func (gce *Service) SetMetadata(projID string, zone string, instance string, metadata *compute.Metadata) error {
 	_, err := gce.service.Instances.SetMetadata(projID, zone, instance, metadata).Context(gce.ctx).Do()
 	return err
 }
 
 // DeleteInstance deletes an instance.
-func (gce *GceService) DeleteInstance(projID string, zone string, instance string) error {
+func (gce *Service) DeleteInstance(projID string, zone string, instance string) error {
 	_, err := gce.service.Instances.Delete(projID, zone, instance).Context(gce.ctx).Do()
 	return err
 }
 
-func (gce *GceService) getRegionInfo(projID string, region string) (*compute.Region, error) {
+func (gce *Service) getRegionInfo(projID string, region string) (*compute.Region, error) {
 	return gce.service.Regions.Get(projID, region).Context(gce.ctx).Do()
 }
 
-func (gce *GceService) getAllRegionsInfo(projID string) ([]*compute.Region, error) {
+func (gce *Service) getAllRegionsInfo(projID string) ([]*compute.Region, error) {
 	allRegions := []*compute.Region{}
 	req := gce.service.Regions.List(projID)
 	err := req.Pages(gce.ctx, func(page *compute.RegionList) error {
@@ -98,7 +105,7 @@ func (gce *GceService) getAllRegionsInfo(projID string) ([]*compute.Region, erro
 	return allRegions, err
 }
 
-func (gce *GceService) getZoneInfo(projID string, zone string) (*compute.Zone, error) {
+func (gce *Service) getZoneInfo(projID string, zone string) (*compute.Zone, error) {
 	return gce.service.Zones.Get(projID, zone).Context(gce.ctx).Do()
 }
 
@@ -106,7 +113,7 @@ func (gce *GceService) getZoneInfo(projID string, zone string) (*compute.Zone, e
 // quota limits on it.
 // Every shard needs 2 vCPUs and SSD space of GCE_MIN_SCR_SIZE.
 // SSD space is no less than 50 GB.
-func (gce *GceService) GetRegionQuota(projID string, region string) (*GceQuota, error) {
+func (gce *Service) GetRegionQuota(projID string, region string) (*Quota, error) {
 	regionInfo, err := gce.getRegionInfo(projID, region)
 	if err != nil {
 		return nil, err
@@ -146,9 +153,9 @@ func (gce *GceService) GetRegionQuota(projID string, region string) (*GceQuota, 
 	if err != nil {
 		ssdMin = 0
 	}
-	ssdLimit := ssdNum / MaxInt(50, ssdMin)
+	ssdLimit := ssdNum / mymath.MaxInt(50, ssdMin)
 
-	return &GceQuota{
+	return &Quota{
 		Zone:     pickedZone,
 		cpuLimit: cpuNum / 2,
 		ipLimit:  ipNum,
@@ -157,12 +164,12 @@ func (gce *GceService) GetRegionQuota(projID string, region string) (*GceQuota, 
 }
 
 // GetAllRegionsQuota returns quota limits for every availble region.
-func (gce *GceService) GetAllRegionsQuota(projID string) ([]*GceQuota, error) {
+func (gce *Service) GetAllRegionsQuota(projID string) ([]*Quota, error) {
 	allRegions, err := gce.getAllRegionsInfo(projID)
 	if err != nil {
-		return []*GceQuota{}, err
+		return []*Quota{}, err
 	}
-	quotas := []*GceQuota{}
+	quotas := []*Quota{}
 	for _, region := range allRegions {
 		if region.Status == "UP" {
 			quota, err := gce.GetRegionQuota(projID, region.Name)
@@ -175,19 +182,19 @@ func (gce *GceService) GetAllRegionsQuota(projID string) ([]*GceQuota, error) {
 }
 
 // GetMaxShard return the max possible number of shards according to the quota limits
-func (quota *GceQuota) GetMaxShard() (int, error) {
-	return MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
+func (quota *Quota) GetMaxShard() (int, error) {
+	return mymath.MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
 }
 
 // GetFiles returns an iterator for all files with a matching path prefix on GS.
-func (gce *GceService) GetFiles(prefix string) *storage.ObjectIterator {
+func (gce *Service) GetFiles(prefix string) *storage.ObjectIterator {
 	query := &storage.Query{Prefix: prefix}
 	it := gce.bucket.Objects(gce.ctx, query)
 	return it
 }
 
 // DeleteFiles removes all files with a matching path prefix on GS.
-func (gce *GceService) DeleteFiles(prefix string) (int, error) {
+func (gce *Service) DeleteFiles(prefix string) (int, error) {
 	it := gce.GetFiles(prefix)
 	count := 0
 	for {
@@ -209,7 +216,7 @@ func (gce *GceService) DeleteFiles(prefix string) (int, error) {
 }
 
 // GetFileNames returns a slice of file names with a matching path prefix on GS.
-func (gce *GceService) GetFileNames(prefix string) ([]string, error) {
+func (gce *Service) GetFileNames(prefix string) ([]string, error) {
 	it := gce.GetFiles(prefix)
 	names := []string{}
 	for {
@@ -227,7 +234,7 @@ func (gce *GceService) GetFileNames(prefix string) ([]string, error) {
 }
 
 // UploadFile uploads a local file or directory to GS.
-func (gce *GceService) UploadFile(localPath string, gsPath string) error {
+func (gce *Service) UploadFile(localPath string, gsPath string) error {
 	obj := gce.bucket.Object(gsPath)
 	w := obj.NewWriter(gce.ctx)
 	defer w.Close()
@@ -245,8 +252,8 @@ func (gce *GceService) UploadFile(localPath string, gsPath string) error {
 	return nil
 }
 
-// IsNotFound returns true if err is 404 not found.
-func IsNotFound(err error) bool {
+// NotFound returns true if err is 404 not found.
+func NotFound(err error) bool {
 	if err != nil {
 		if e, ok := err.(*googleapi.Error); ok && e.Code == http.StatusNotFound {
 			return true

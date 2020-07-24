@@ -2,30 +2,34 @@ package main
 
 import (
 	"bufio"
-	"gce-server/server"
-	"gce-server/util"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 
+	"gce-server/util/email"
+	"gce-server/util/gcp"
+	"gce-server/util/git"
+	"gce-server/util/parser"
+	"gce-server/util/server"
+
 	"google.golang.org/api/compute/v1"
 )
 
-var repo *util.Repository
+var repo *git.Repository
 
 func test1() {
 	reader := bufio.NewReader(os.Stdin)
 	for true {
 		arg, _ := reader.ReadString('\n')
 
-		validArg, configs, _ := util.ParseCmd(arg[:len(arg)-1])
+		validArg, configs, _ := parser.Cmd(arg[:len(arg)-1])
 		log.Printf("%s; %+v\n", validArg, configs)
 	}
 }
 
 func test2() {
-	gce, _ := util.NewGceService("xfstests-xyshen")
+	gce, _ := gcp.NewService("xfstests-xyshen")
 	info, _ := gce.GetInstanceInfo("gce-xfstests-bldsrv", "us-central1-f", "xfstests-ltm")
 	log.Printf("%+v", info.Metadata)
 	for _, item := range info.Metadata.Items {
@@ -54,22 +58,22 @@ func test3() {
 }
 
 func test4() {
-	config, _ := util.GetConfig(util.KcsConfigFile)
+	config, _ := gcp.GetConfig(gcp.KcsConfigFile)
 	log.Printf("%+v", config)
 
-	config, _ = util.GetConfig(util.GceConfigFile)
+	config, _ = gcp.GetConfig(gcp.GceConfigFile)
 	log.Printf("%+v", config)
 }
 
 func test5() {
-	util.SendEmail("test email", "xyshen@google.com", util.GceConfigFile)
+	email.Send("test email", "xyshen@google.com", gcp.GceConfigFile)
 }
 
 func test6() {
 	msg := "random msg"
 	content, _ := ioutil.ReadFile("/var/log/go/go.log")
 	msg = msg + "\n" + string(content)
-	util.SendEmail("test", msg, "xyshen@google.com")
+	email.Send("test", msg, "xyshen@google.com")
 }
 
 func testWatcher() {
@@ -94,7 +98,7 @@ func TestParseGitURL(t *testing.T) {
 		"git://git.kernel.org/pub/scm/linux/kernel/git/elder/linux.git",
 	}
 	for _, url := range urls {
-		dir, err := util.ParseGitURL(url)
+		dir, err := git.ParseURL(url)
 		t.Log(dir, err)
 	}
 

@@ -1,26 +1,19 @@
 /*
-Package util implements some utility functions for LTM and KCS server.
+Package check executes external commands, performs File I/Os and issues
+OS related commands.
 
-The files in this library include:
-	common.go: utility functions to check errors, execute external commands, i/o and os operations.
-	gce.go: Google Compute Engine and Google Cloud Storage utilities
-	git.go: git related utilities
-	parser.go: gce-xfstests configuration parser
-	set.go: set utilities
-
+It also checks for errors and writes messages into logger.
 */
-package util
+package check
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
-	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // RootDir points to the root of go server source code
@@ -29,11 +22,10 @@ const RootDir = "/usr/local/lib/gce-server"
 
 // EmptyEnv provides a placeholder for default exec enviroment.
 var EmptyEnv = map[string]string{}
-var idMutex sync.Mutex
 
-// CheckRun executes an external command and checks the return status.
+// Run executes an external command and checks the return status.
 // Returns true on success and false otherwise.
-func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
+func Run(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
 	cmd.Stdout = stdout
@@ -42,9 +34,9 @@ func CheckRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Wr
 	return err
 }
 
-// CheckOutput executes an external command, checks the return status, and
+// Output executes an external command, checks the return status, and
 // returns the command stdout.
-func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
+func Output(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
 	cmd.Stderr = stderr
@@ -52,9 +44,9 @@ func CheckOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io
 	return string(out), err
 }
 
-// CheckCombinedOutput executes an external command, checks the return status, and
+// CombinedOutput executes an external command, checks the return status, and
 // returns the combined stdout and stderr.
-func CheckCombinedOutput(cmd *exec.Cmd, workDir string, env map[string]string) (string, error) {
+func CombinedOutput(cmd *exec.Cmd, workDir string, env map[string]string) (string, error) {
 	cmd.Dir = workDir
 	cmd.Env = parseEnv(env)
 	out, err := cmd.CombinedOutput()
@@ -101,46 +93,6 @@ func DirExists(filename string) bool {
 	return false
 }
 
-// MinInt returns the smaller int.
-func MinInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// MaxInt returns the larger int.
-func MaxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// MaxIntSlice returns the largest int in a slice.
-func MaxIntSlice(slice []int) (int, error) {
-	if len(slice) == 0 {
-		return 0, errors.New("MaxIntSlice: empty slice")
-	}
-	max := slice[0]
-	for _, i := range slice[1:] {
-		max = MaxInt(max, i)
-	}
-	return max, nil
-}
-
-// MinIntSlice returns the smallest int in a slice.
-func MinIntSlice(slice []int) (int, error) {
-	if len(slice) == 0 {
-		return 0, errors.New("MaxIntSlice: empty slice")
-	}
-	max := slice[0]
-	for _, i := range slice[1:] {
-		max = MinInt(max, i)
-	}
-	return max, nil
-}
-
 // ReadLines read a whole file into a slice of strings split by newlines.
 // Removes '\n' and empty lines
 func ReadLines(filename string) ([]string, error) {
@@ -182,14 +134,25 @@ func CopyFile(dst string, src string) error {
 	return nil
 }
 
-// GetTimeStamp returns the current timestamp
-// Guaranteed uniqueness across go routines.
-func GetTimeStamp() string {
-	idMutex.Lock()
-	defer idMutex.Unlock()
-	// TODO: avoid duplicate timestamp with more efficient ways
-	time.Sleep(2 * time.Second)
-	t := time.Now()
-	return fmt.Sprintf("%.4d%.2d%.2d%.2d%.2d%.2d",
-		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+// Panic checks an error and log a panic entry with given msg
+func Panic(err error, log *logrus.Entry, msg string) {
+	if msg == "" {
+		msg = "Something bad happended"
+	}
+	if err != nil {
+		log.WithError(err).Panic(msg)
+	}
+}
+
+// NoError checks an error and log a error entry with given msg
+// return true if error is nil
+func NoError(err error, log *logrus.Entry, msg string) bool {
+	if msg == "" {
+		msg = "Something bad happended"
+	}
+	if err != nil {
+		log.WithError(err).Error(msg)
+		return false
+	}
+	return true
 }
