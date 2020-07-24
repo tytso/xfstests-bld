@@ -5,11 +5,34 @@ package mymath
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
-var idMutex sync.Mutex
+var (
+	query     chan bool
+	timestamp chan time.Time
+)
+
+func init() {
+	query = make(chan bool)
+	timestamp = make(chan time.Time)
+
+	go func() {
+		for {
+			<-query
+			timestamp <- time.Now()
+			time.Sleep(1100 * time.Millisecond)
+		}
+	}()
+}
+
+// GetTimeStamp returns a unique current timestamp.
+func GetTimeStamp() string {
+	query <- true
+	t := <-timestamp
+	return fmt.Sprintf("%.4d%.2d%.2d%.2d%.2d%.2d",
+		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+}
 
 // MinInt returns the smaller int.
 func MinInt(a, b int) int {
@@ -49,16 +72,4 @@ func MinIntSlice(slice []int) (int, error) {
 		max = MinInt(max, i)
 	}
 	return max, nil
-}
-
-// GetTimeStamp returns the current timestamp
-// Guaranteed uniqueness across go routines.
-func GetTimeStamp() string {
-	idMutex.Lock()
-	defer idMutex.Unlock()
-	// TODO: avoid duplicate timestamp with more efficient ways
-	time.Sleep(2 * time.Second)
-	t := time.Now()
-	return fmt.Sprintf("%.4d%.2d%.2d%.2d%.2d%.2d",
-		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 }
