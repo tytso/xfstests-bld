@@ -205,24 +205,27 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	}
 	log.Info("Sending request to " + receiver)
 
-	var ip string
+	var config *gcp.Config
 	if toKCS {
 		launchKCS(log)
-		config, err := gcp.GetConfig(gcp.KcsConfigFile)
-		check.Panic(err, log, "Failed to get KCS config")
-		ip = config.Get("GCE_KCS_INT_IP")
-
-		// pwd := config.Get("GCE_KCS_PWD")
-		// TODO: add login step
+		gcp.Update()
+		config = gcp.KcsConfig
 
 	} else {
-		if !check.FileExists(gcp.LtmConfigFile) {
+		if gcp.LtmConfig == nil {
 			launchLTM(log)
+			gcp.Update()
 		}
-		config, err := gcp.GetConfig(gcp.LtmConfigFile)
-		check.Panic(err, log, "Failed to get LTM config")
-		ip = config.Get("GCE_LTM_INT_IP")
+		config = gcp.LtmConfig
 	}
+	if config == nil {
+		log.Panicf("Failed to get %s config", receiver)
+	}
+	ip, err := config.Get("GCE_" + receiver + "_INT_IP")
+	check.Panic(err, log, "Failed to get ip for "+receiver)
+
+	// pwd := config.Get("GCE_" + receiver + "_PWD")
+	// TODO: add login step
 
 	url := fmt.Sprintf("https://%s/gce-xfstests", ip)
 
