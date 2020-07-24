@@ -9,7 +9,6 @@ import (
 	"gce-server/util/email"
 	"gce-server/util/git"
 	"gce-server/util/logging"
-	"gce-server/util/mymath"
 	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
@@ -126,7 +125,7 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 
 			if updated {
 				watcher.log.WithField("commit", watcher.repo.Head()).Info("New commit detected, initiating build")
-				testID := watcher.testID + "-" + mymath.GetTimeStamp()
+				testID := watcher.testID + "-" + watcher.repo.Head()[:8]
 				watcher.testRequest.Options.CommitID = watcher.repo.Head()
 
 				go ForwardKCS(watcher.testRequest, testID)
