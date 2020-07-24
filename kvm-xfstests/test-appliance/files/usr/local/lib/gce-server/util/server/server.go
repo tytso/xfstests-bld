@@ -54,8 +54,8 @@ const (
 	Pass
 	// Failure indicates at least one failed test.
 	Failure
-	// Unknown indicates something unexpected happened so skip this commit.
-	Unknown
+	// UnknownResult indicates something unexpected happened so skip this commit.
+	UnknownResult
 )
 
 // UserOptions contains configs user sends to LTM or KCS.
