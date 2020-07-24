@@ -17,22 +17,18 @@ import (
 )
 
 // Send sends an email with subject and content to the receiver.
+// Sender is configured to be receiver if not set in config.
 func Send(subject string, content string, receiver string) error {
 	if receiver == "" {
 		return fmt.Errorf("No destination for report to be sent to")
 	}
 
-	config, err := gcp.GetConfig(gcp.GceConfigFile)
+	apiKey, err := gcp.GceConfig.Get("SENDGRID_API_KEY")
 	if err != nil {
 		return err
 	}
-	apiKey := config.Get("SENDGRID_API_KEY")
-	if apiKey == "" {
-		return fmt.Errorf("No sendgrid api key found")
-	}
-
-	sender := config.Get("GCE_REPORT_SENDER")
-	if sender == "" {
+	sender, err := gcp.GceConfig.Get("GCE_REPORT_SENDER")
+	if err != nil {
 		sender = receiver
 	}
 
