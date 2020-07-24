@@ -135,10 +135,7 @@ func (gce *Service) GetRegionQuota(projID string, region string) (*Quota, error)
 		return nil, fmt.Errorf("GCE region %s has no available zones", region)
 	}
 	var cpuNum, ipNum, ssdNum int
-	config, err := GetConfig(GceConfigFile)
-	if err != nil {
-		return nil, err
-	}
+
 	for _, quota := range regionInfo.Quotas {
 		switch quota.Metric {
 		case "CPUS":
@@ -149,7 +146,11 @@ func (gce *Service) GetRegionQuota(projID string, region string) (*Quota, error)
 			ssdNum = int(quota.Limit - quota.Usage)
 		}
 	}
-	ssdMin, err := strconv.Atoi(config.Get("GCE_MIN_SCR_SIZE"))
+	size, err := GceConfig.Get("GCE_MIN_SCR_SIZE")
+	if err != nil {
+		return nil, err
+	}
+	ssdMin, err := strconv.Atoi(size)
 	if err != nil {
 		ssdMin = 0
 	}

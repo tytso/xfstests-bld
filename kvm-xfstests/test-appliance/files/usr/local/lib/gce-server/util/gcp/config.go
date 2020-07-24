@@ -1,54 +1,130 @@
 package gcp
 
 import (
+	"fmt"
 	"regexp"
+	"sync"
 
 	"gce-server/util/check"
 )
 
 // config file locations on multiple machines
 const (
-	GceConfigFile = "/usr/local/lib/gce_xfstests.config"
-	LtmConfigFile = "/root/xfstests_bld/kvm-xfstests/.ltm_instance"
-	KcsConfigFile = "/root/xfstests_bld/kvm-xfstests/.kcs_instance"
+	gce = "/usr/local/lib/gce_xfstests.config"
+	ltm = "/root/xfstests_bld/kvm-xfstests/.ltm_instance"
+	kcs = "/root/xfstests_bld/kvm-xfstests/.kcs_instance"
 )
 
-// Config dictionary retrieved from gce_xfstests.config.
+// Config stores the parsed config key value pairs.
 type Config struct {
 	kv map[string]string
 }
 
-// GetConfig reads from the config file and returns a struct Config.
-// It attempts to match each line with two possible config patterns.
-func GetConfig(configFile string) (Config, error) {
-	c := Config{make(map[string]string)}
-	var re *regexp.Regexp
-	if configFile == GceConfigFile {
-		re = regexp.MustCompile(`^declare -- (.*?)="(.*?)"$`)
-	} else {
-		re = regexp.MustCompile(`^(.*?)=(.*?)$`)
+// Global config structs initialized at boot time.
+// GceConfig should always be not nil.
+var (
+	GceConfig  *Config
+	LtmConfig  *Config
+	KcsConfig  *Config
+	configLock sync.Mutex
+)
+
+func init() {
+	configLock.Lock()
+	defer configLock.Unlock()
+
+	var err error
+	GceConfig, err = Get(gce)
+	if err != nil {
+		panic("failed to parse gce config file")
 	}
+
+	if check.FileExists(ltm) {
+		LtmConfig, err = Get(ltm)
+		if err != nil {
+			panic("failed to parse ltm config file")
+		}
+	}
+
+	if check.FileExists(kcs) {
+		KcsConfig, err = Get(kcs)
+		if err != nil {
+			panic("failed to parse kcs config file")
+		}
+	}
+}
+
+// Update reads three config files to generate new config kv pairs.
+// It should be called after executing launch-ltm/launch-kcs.
+func Update() error {
+	configLock.Lock()
+	defer configLock.Unlock()
+
+	var err error
+	GceConfig, err = Get(gce)
+	if err != nil {
+		return fmt.Errorf("failed to parse gce config file")
+	}
+
+	if check.FileExists(ltm) {
+		LtmConfig, err = Get(ltm)
+		if err != nil {
+			return fmt.Errorf("failed to parse ltm config file")
+		}
+	}
+
+	if check.FileExists(kcs) {
+		KcsConfig, err = Get(kcs)
+		if err != nil {
+			return fmt.Errorf("failed to parse kcs config file")
+		}
+	}
+
+	return nil
+}
+
+// Get reads from the config file and returns a struct Config.
+// It attempts to match each line with two possible config patterns.
+func Get(configFile string) (*Config, error) {
+	c := Config{make(map[string]string)}
+	re := regexp.MustCompile(`(?:(^declare (?:--|-x) (?P<key>\S+)="(?P<value>\S*)"$)|(^(?P<key>\S+)=(?P<value>\S*))$)`)
 
 	lines, err := check.ReadLines(configFile)
 	if err != nil {
-		return c, err
+		return &c, err
 	}
 
 	for _, line := range lines {
 		tokens := re.FindStringSubmatch(line)
-		if len(tokens) == 3 {
-			c.kv[tokens[1]] = tokens[2]
+		if len(tokens) == 0 {
+			continue
+		}
+		var key, value string
+		for i, name := range re.SubexpNames() {
+			if name == "key" && tokens[i] != "" {
+				key = tokens[i]
+			}
+			if name == "value" && tokens[i] != "" {
+				value = tokens[i]
+			}
+		}
+
+		if key != "" {
+			c.kv[key] = value
 		}
 	}
 
-	return c, nil
+	return &c, nil
 }
 
 // Get a certain config value according to key.
-// Returns empty string if key is not present in config.
-func (c *Config) Get(key string) string {
+// Return empty value of error if key is not present in config.
+func (c *Config) Get(key string) (string, error) {
+	configLock.Lock()
+	defer configLock.Unlock()
+
 	if val, ok := c.kv[key]; ok {
-		return val
+		return val, nil
 	}
-	return ""
+	return "", fmt.Errorf("%s not found in config file", key)
 }

@@ -57,18 +57,6 @@ func test3() {
 	sharder.finish()
 }
 
-func test4() {
-	config, _ := gcp.GetConfig(gcp.KcsConfigFile)
-	log.Printf("%+v", config)
-
-	config, _ = gcp.GetConfig(gcp.GceConfigFile)
-	log.Printf("%+v", config)
-}
-
-func test5() {
-	email.Send("test email", "xyshen@google.com", gcp.GceConfigFile)
-}
-
 func test6() {
 	msg := "random msg"
 	content, _ := ioutil.ReadFile("/var/log/go/go.log")
