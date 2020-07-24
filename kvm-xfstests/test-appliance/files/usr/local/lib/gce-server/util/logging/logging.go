@@ -25,8 +25,8 @@ const (
 	MOCK = false
 )
 
-// InitLogger initializes a logrus logger and writes to logfile
-// writes to stdout if cannot open logfile
+// InitLogger initializes a logrus logger and writes to logfile.
+// It writes to stdout if cannot open logfile.
 func InitLogger(logfile string) *logrus.Entry {
 	log := logrus.New()
 	file, err := os.OpenFile(logfile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
