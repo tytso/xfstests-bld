@@ -25,7 +25,7 @@ import (
 
 // ShardWorker manages a single test VM.
 type ShardWorker struct {
-	sharder   *ShardSchedular
+	sharder   *ShardScheduler
 	shardID   string
 	name      string
 	zone      string
@@ -49,8 +49,15 @@ type ShardInfo struct {
 	Zone    string `json:"zone"`
 }
 
+const (
+	monitorTimeout  = 1 * time.Hour
+	monitorInterval = 30 * time.Second
+	gsInterval      = 10 * time.Second
+	maxAttempts     = 5
+)
+
 // NewShardWorker constructs a new shard, requested by the sharder
-func NewShardWorker(sharder *ShardSchedular, shardID string, config string, zone string) *ShardWorker {
+func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone string) *ShardWorker {
 	logPath := sharder.logDir + shardID
 	shard := ShardWorker{
 		sharder:   sharder,
@@ -114,23 +121,28 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	shard.log.Info("Existing shard process")
 }
 
-// monitor queries the GCE api every minute and logs the serial console output
-// to a local file. If the vm no longer exists or the status hasn't changed for
-// more than an hour, the monitor kills the test vm.
-// panic if VM doesn't finish within 1 hour
+/*
+monitor blocks on the VM until it finishes or timeout.
+
+It queries the GCE api periodically and logs the serial console output
+to a local file. If the VM no longer exists or the status hasn't changed
+for more than an hour, the monitor kills the test vm.
+It returns immediately if VM changes from RUNNING to STOPPING.
+*/
 func (shard *ShardWorker) monitor() {
 	var (
-		waitTime       int
-		timePrevStatus int
-		prevStart      int64
-		prevStatus     string
+		prevChange time.Time
+		prevStart  int64
+		prevStatus string
 	)
 	shard.log.Info("Waiting for test VM to finish")
 
-	for true {
-		time.Sleep(60 * time.Second)
-		waitTime += 60
-		log := shard.log.WithField("waited", waitTime)
+	ticker := time.NewTicker(monitorInterval)
+	start := time.Now()
+	prevChange = start
+
+	for range ticker.C {
+		log := shard.log.WithField("time", time.Since(start).Round(time.Second))
 		instanceInfo, err := shard.sharder.gce.GetInstanceInfo(shard.sharder.projID, shard.zone, shard.name)
 
 		if err != nil {
@@ -141,7 +153,7 @@ func (shard *ShardWorker) monitor() {
 				} else {
 					log.Info("Test VM no longer exists")
 				}
-				break
+				return
 			}
 			log.WithError(err).Panic("Failed to get instance info")
 		}
@@ -149,22 +161,26 @@ func (shard *ShardWorker) monitor() {
 		prevStart = shard.updateSerialData(prevStart)
 
 		if instanceInfo.Status != prevStatus {
-			timePrevStatus = waitTime
+			if prevStatus == "RUNNING" {
+				log.Info("Test VM stop running")
+				return
+			}
+
+			prevChange = time.Now()
 			prevStatus = instanceInfo.Status
-		} else if waitTime > timePrevStatus+3600 {
+		} else if time.Since(prevChange) > monitorTimeout {
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
 			}
-			// TODO: validate this step (i.e. whether we wait fot the VM to be deleted)
 			log.WithFields(logrus.Fields{
-				"prevStatus":     prevStatus,
-				"timePrevStatus": timePrevStatus,
+				"prevStatus": prevStatus,
+				"prevChange": prevChange.Format(time.Stamp),
 			}).Panic("Instance seems to have wedged, no status update for 1 hour")
 		}
 
 		log.WithFields(logrus.Fields{
-			"prevStatus":     prevStatus,
-			"timePrevStatus": timePrevStatus,
+			"prevStatus": prevStatus,
+			"prevChange": prevChange.Format(time.Stamp),
 		}).Debug("Keep waiting")
 	}
 }
@@ -269,18 +285,16 @@ func (shard *ShardWorker) finish() {
 // return "" if cannot find the result file in 5 attempts
 func (shard *ShardWorker) getResults() string {
 	shard.log.Info("Fetching test results")
-	attempts := 5
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
-	for attempts > 0 {
+	for attempts := maxAttempts; attempts > 0; attempts-- {
 		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
 		check.NoError(err, shard.log, "Failed to get GS filenames")
 		if err == nil && len(resultFiles) == 1 {
 			shard.log.WithField("resultURL", resultFiles[0]).Info("Found result file url")
 			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
 		}
-		attempts--
 		shard.log.WithField("attemptsLeft", attempts).Debug("No GS file with matching url")
-		time.Sleep(5 * time.Second)
+		time.Sleep(gsInterval)
 	}
 	return ""
 }

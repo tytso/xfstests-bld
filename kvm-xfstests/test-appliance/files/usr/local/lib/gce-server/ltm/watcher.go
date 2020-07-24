@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	timeout  = 1 * time.Hour
-	duration = 10 * time.Second
+	watchInterval = 10 * time.Second
 )
 
 // GitWatcher watches a branch of a remote repo and detects new commits
@@ -91,7 +90,7 @@ func (watcher *GitWatcher) Run() {
 	defer logging.CloseLog(watcher.log)
 	var wg sync.WaitGroup
 
-	ticker := time.NewTicker(duration)
+	ticker := time.NewTicker(watchInterval)
 
 	wg.Add(1)
 	go watcher.watch(ticker, &wg)
@@ -119,7 +118,7 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 			return
 
 		case <-ticker.C:
-			watcher.log.WithField("time", time.Since(start)).Debug("Checking new commits")
+			watcher.log.WithField("time", time.Since(start).Round(time.Second)).Debug("Checking new commits")
 			updated, err := watcher.repo.Update()
 			check.Panic(err, watcher.log, "Failed to update repo")
 
