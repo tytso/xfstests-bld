@@ -14,11 +14,9 @@ The endpoints are:
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"gce-server/util/check"
-	"gce-server/util/logging"
 	"gce-server/util/mymath"
 	"gce-server/util/server"
 
@@ -27,23 +25,18 @@ import (
 
 // runCompile is the end point for a build request.
 // Sends a simple status response back to requester.
-func runCompile(w http.ResponseWriter, r *http.Request) {
-	defer server.FailureResponse(w)
+func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
+	log := serverLog.WithField("endpoint", "/gce-xfstests")
 
-	log := server.Log.WithField("endpoint", "/gce-xfstests")
-
-	var c server.TaskRequest
-	err := json.NewDecoder(r.Body).Decode(&c)
-	check.Panic(err, log, "Failed to parse json request")
-
+	c, err := server.ParseTaskRequest(w, r)
+	check.Panic(err, log, "Failed to parse request")
 	log.WithFields(logrus.Fields{
 		"cmdLine":      c.CmdLine,
 		"options":      c.Options,
 		"extraOptions": c.ExtraOptions,
-	}).Info("Received request")
+	}).Info("Received build request")
 
 	testID := mymath.GetTimeStamp()
-
 	response := server.SimpleResponse{
 		Status: true,
 		TestID: testID,
@@ -52,7 +45,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 	if c.ExtraOptions == nil {
 		log.WithField("testID", testID).Info("User request, generating testID")
 
-		go StartBuild(c, testID)
+		go StartBuild(c, testID, serverLog)
 		response.Msg = "Building kernel for user"
 
 	} else {
@@ -61,7 +54,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 			testID = c.ExtraOptions.TestID
 			log.WithField("testID", testID).Info("LTM build request, use existing testID")
 
-			go StartBuild(c, testID)
+			go StartBuild(c, testID, serverLog)
 			response.TestID = testID
 			response.Msg = "Building kernel for LTM"
 
@@ -71,7 +64,7 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 			testID = c.ExtraOptions.TestID
 			log.WithField("testID", testID).Info("LTM bisect request, use existing testID")
 
-			go RunBisect(c, testID)
+			go RunBisect(c, testID, serverLog)
 			response.TestID = testID
 			response.Msg = "Running git bisect task"
 		default:
@@ -80,18 +73,24 @@ func runCompile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	js, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	log.WithField("response", response).Info("Sending response")
+	err = server.SendResponse(w, r, response)
+	check.Panic(err, log, "Failed to send the response")
 }
 
 func main() {
-	defer logging.CloseLog(server.Log)
+	s, err := server.New(":443")
+	if err != nil {
+		panic(err)
+	}
 
-	server.Log.Info("Launching KCS server")
-	http.HandleFunc("/", server.Index)
-	http.HandleFunc("/login", server.Login)
-	http.HandleFunc("/gce-xfstests", runCompile)
-	err := http.ListenAndServeTLS(":443", server.CertPath, server.SecretPath, nil)
-	check.Panic(err, server.Log, "TLS server failed to launch")
+	s.Handler().Handle("/gce-xfstests", s.LoginHandler(s.FailureHandler(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			runCompile(w, r, s.Log())
+		})))).Methods("POST")
+	s.Handler().Handle("/internal", s.FailureHandler(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			runCompile(w, r, s.Log())
+		}))).Methods("POST")
+	s.Start()
 }

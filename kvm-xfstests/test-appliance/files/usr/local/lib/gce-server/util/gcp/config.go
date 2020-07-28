@@ -122,7 +122,9 @@ func Get(configFile string) (*Config, error) {
 func (c *Config) Get(key string) (string, error) {
 	configLock.Lock()
 	defer configLock.Unlock()
-
+	if c == nil {
+		return "", fmt.Errorf("config is nil")
+	}
 	if val, ok := c.kv[key]; ok {
 		return val, nil
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gce-server/util/gcp"
+	"gce-server/util/logging"
 	"gce-server/util/server"
 )
 
@@ -162,7 +163,7 @@ func MockNewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler 
 	sharder := ShardScheduler{
 		testID:      testID,
 		testRequest: c,
-		log:         server.Log.WithField("testID", testID),
+		log:         logging.InitLogger("").WithField("testID", testID),
 	}
 	if c.ExtraOptions != nil && c.ExtraOptions.Requester == server.KCSBisectStep {
 		sharder.reportKCS = true

@@ -175,8 +175,8 @@ a report to the user and cleans up related resources.
 If the current HEAD in the request differs from the bisector, it does nothing.
 If the build fails, it bisect skip the current commit.
 */
-func RunBisect(c server.TaskRequest, testID string) {
-	log := server.Log.WithField("testID", testID)
+func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
+	log := serverLog.WithField("testID", testID)
 	log.Info("Start git bisect task")
 
 	logFile := logging.KCSLogDir + testID + ".log"
