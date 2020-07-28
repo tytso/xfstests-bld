@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -326,7 +327,8 @@ func (shard *ShardWorker) Info() ShardInfo {
 // exit handles panic from shard run.
 func (shard *ShardWorker) exit() {
 	if r := recover(); r != nil {
-		shard.log.WithField("panic", r).Warn("Shard finishes with errors, regular result files are not available")
+		shard.log.Error("Shard finishes with error, get stack trace")
+		shard.log.Error(string(debug.Stack()))
 		if check.FileExists(shard.serialOutputPath) {
 			shard.log.Warn("Serial port output is found")
 		} else {

@@ -11,6 +11,8 @@ import (
 	"gce-server/util/git"
 	"gce-server/util/logging"
 	"gce-server/util/server"
+
+	"github.com/sirupsen/logrus"
 )
 
 // repoMap indexes repos by repo url.
@@ -31,8 +33,8 @@ func init() {
 // The kernel image is uploaded to gs bucket at path /kernels/bzImage-<testID>.
 // If ExtraOptions is not nil, it rewrites gsKernel in original request and
 // send it back to LTM to init a test.
-func StartBuild(c server.TaskRequest, testID string) {
-	log := server.Log.WithField("testID", testID)
+func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
+	log := serverLog.WithField("testID", testID)
 	log.Info("Start building kernel")
 
 	buildLog := logging.KCSLogDir + testID + ".build"
@@ -75,6 +77,7 @@ func StartBuild(c server.TaskRequest, testID string) {
 		server.SendInternalRequest(c, log, false)
 		return
 	}
+	cmdLog.WithField("commit", c.Options.CommitID).Info("Building kernel")
 
 	err = runBuild(repo, gsBucket, gsPath, testID, buildLog)
 	check.Panic(err, log, "Failed to build and upload kernel")
