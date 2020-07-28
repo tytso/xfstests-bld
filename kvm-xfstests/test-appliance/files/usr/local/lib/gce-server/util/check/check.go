@@ -134,7 +134,8 @@ func CopyFile(dst string, src string) error {
 	return nil
 }
 
-// Panic checks an error and log a panic entry with given msg
+// Panic checks an error and logs a panic entry with given msg
+// if the error is not nil.
 func Panic(err error, log *logrus.Entry, msg string) {
 	if msg == "" {
 		msg = "Something bad happended"
@@ -144,8 +145,8 @@ func Panic(err error, log *logrus.Entry, msg string) {
 	}
 }
 
-// NoError checks an error and log a error entry with given msg
-// return true if error is nil
+// NoError checks an error and logs a error entry with given msg
+// if the error is not nil. Returns true otherwise.
 func NoError(err error, log *logrus.Entry, msg string) bool {
 	if msg == "" {
 		msg = "Something bad happended"

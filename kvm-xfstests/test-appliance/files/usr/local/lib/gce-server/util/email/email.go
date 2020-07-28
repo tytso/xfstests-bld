@@ -6,6 +6,7 @@ package email
 import (
 	"fmt"
 	"io/ioutil"
+	"runtime/debug"
 
 	"gce-server/util/check"
 	"gce-server/util/gcp"
@@ -63,12 +64,14 @@ func Send(subject string, content string, receiver string) error {
 // Only works as a deferred function.
 func ReportFailure(log *logrus.Entry, logFile string, email string, subject string) {
 	if r := recover(); r != nil {
+		log.Error("Something failed, get stack trace")
+		log.Error(string(debug.Stack()))
 		if email == "" {
-			log.WithField("panic", r).Error("Something failed but no email receiver set")
+			log.Info("No email receiver provided")
 			return
 		}
+		log.Info("Sending failure report")
 
-		log.WithField("panic", r).Error("Something failed, sending failure report")
 		msg := "unknown panic"
 		switch s := r.(type) {
 		case string:
