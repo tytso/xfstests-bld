@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"gce-server/util/check"
@@ -50,12 +49,10 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 
 	repoLock.Lock()
 	defer repoLock.Unlock()
-
-	repo, ok := repoMap[id]
-
 	cmdLog := log.WithField("repoId", id)
 	w := cmdLog.WithField("cmd", "newRepo").Writer()
 
+	repo, ok := repoMap[id]
 	if !ok {
 		cmdLog.Debug("Cloning repo")
 		repo, err = git.NewRepository(id, c.Options.GitRepo, w)
@@ -79,26 +76,13 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	}
 	cmdLog.WithField("commit", c.Options.CommitID).Info("Building kernel")
 
-	err = runBuild(repo, gsBucket, gsPath, testID, buildLog)
+	err = RunBuild(repo, gsBucket, gsPath, testID, buildLog)
 	check.Panic(err, log, "Failed to build and upload kernel")
+	log.WithField("gsPath", gsPath).Info("Kernel build and upload finished")
 
 	if c.ExtraOptions != nil {
 		c.Options.GsKernel = gsPath
 		c.ExtraOptions.Requester = server.KCSTest
 		server.SendInternalRequest(c, log, false)
 	}
-}
-
-// runBuild builds the kernel and upload the kernel image
-func runBuild(repo *git.Repository, gsBucket string, gsPath string, testID string, buildLog string) error {
-	file, err := os.Create(buildLog)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	err = repo.BuildUpload(gsBucket, gsPath, file)
-	file.Sync()
-
-	return err
 }

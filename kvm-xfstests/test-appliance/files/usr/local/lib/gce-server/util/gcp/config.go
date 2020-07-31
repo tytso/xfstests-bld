@@ -24,9 +24,9 @@ type Config struct {
 // GceConfig should always be not nil.
 var (
 	GceConfig  *Config
-	LtmConfig  *Config
-	KcsConfig  *Config
-	configLock sync.Mutex
+	LTMConfig  *Config
+	KCSConfig  *Config
+	configLock sync.RWMutex
 )
 
 func init() {
@@ -40,16 +40,16 @@ func init() {
 	}
 
 	if check.FileExists(ltm) {
-		LtmConfig, err = Get(ltm)
+		LTMConfig, err = Get(ltm)
 		if err != nil {
-			panic("failed to parse ltm config file")
+			panic("failed to parse LTM config file")
 		}
 	}
 
 	if check.FileExists(kcs) {
-		KcsConfig, err = Get(kcs)
+		KCSConfig, err = Get(kcs)
 		if err != nil {
-			panic("failed to parse kcs config file")
+			panic("failed to parse KCS config file")
 		}
 	}
 }
@@ -67,16 +67,16 @@ func Update() error {
 	}
 
 	if check.FileExists(ltm) {
-		LtmConfig, err = Get(ltm)
+		LTMConfig, err = Get(ltm)
 		if err != nil {
-			return fmt.Errorf("failed to parse ltm config file")
+			return fmt.Errorf("failed to parse LTM config file")
 		}
 	}
 
 	if check.FileExists(kcs) {
-		KcsConfig, err = Get(kcs)
+		KCSConfig, err = Get(kcs)
 		if err != nil {
-			return fmt.Errorf("failed to parse kcs config file")
+			return fmt.Errorf("failed to parse KCS config file")
 		}
 	}
 
@@ -120,8 +120,8 @@ func Get(configFile string) (*Config, error) {
 // Get a certain config value according to key.
 // Return empty value of error if key is not present in config.
 func (c *Config) Get(key string) (string, error) {
-	configLock.Lock()
-	defer configLock.Unlock()
+	configLock.RLock()
+	defer configLock.RUnlock()
 	if c == nil {
 		return "", fmt.Errorf("config is nil")
 	}

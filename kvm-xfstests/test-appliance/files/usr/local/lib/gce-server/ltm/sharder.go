@@ -70,12 +70,11 @@ type ShardScheduler struct {
 	shards    []*ShardWorker
 }
 
-// SharderInfo exports sharder info to be sent back to user.
+// SharderInfo exports sharder info.
 type SharderInfo struct {
+	ID        string      `json:"id"`
 	NumShards int         `json:"num_shards"`
 	ShardInfo []ShardInfo `json:"shard_info"`
-	ID        string      `json:"id"`
-	Msg       string      `json:"message"`
 }
 
 // NewShardScheduler constructs a new sharder from a test request.
@@ -293,13 +292,12 @@ func splitConfigs(numShards int, configs []string) []string {
 // Wait between starting shards to avoid hitting the api too hard.
 func (sharder *ShardScheduler) Run() {
 	sharder.log.Debug("Starting sharder")
-	defer logging.CloseLog(sharder.log)
 	var wg sync.WaitGroup
 
 	subject := fmt.Sprintf("xfstests failure %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
 	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
 
-	defer sharder.cleanup()
+	defer sharder.clean()
 
 	if sharder.reportKCS {
 		defer sharder.sendKCSReport()
@@ -316,11 +314,11 @@ func (sharder *ShardScheduler) Run() {
 	sharder.finish()
 }
 
-// Info returns structured sharder information to send back to user.
+// Info returns structured sharder information.
 func (sharder *ShardScheduler) Info() SharderInfo {
 	info := SharderInfo{
-		NumShards: len(sharder.shards),
 		ID:        sharder.testID,
+		NumShards: len(sharder.shards),
 	}
 
 	for _, shard := range sharder.shards {
@@ -361,7 +359,7 @@ func (sharder *ShardScheduler) aggResults() {
 		log.Debug("Moving shard result files into aggregate folder")
 
 		if check.DirExists(shard.unpackedResultsDir) {
-			err := check.RemoveDir(sharder.aggDir + shard.shardID)
+			err := os.RemoveAll(sharder.aggDir + shard.shardID)
 			check.Panic(err, log, "Failed to remove dir")
 
 			err = os.Rename(shard.unpackedResultsDir, sharder.aggDir+shard.shardID)
@@ -369,7 +367,7 @@ func (sharder *ShardScheduler) aggResults() {
 
 			hasResults = true
 		} else if check.FileExists(shard.serialOutputPath) {
-			err := check.RemoveDir(sharder.aggDir + shard.shardID + ".serial")
+			err := os.RemoveAll(sharder.aggDir + shard.shardID + ".serial")
 			check.Panic(err, log, "Failed to remove dir")
 
 			err = os.Rename(shard.serialOutputPath, sharder.aggDir+shard.shardID+".serial")
@@ -464,7 +462,6 @@ func (sharder *ShardScheduler) createInfo() {
 		fmt.Fprintf(file, "instance name: %s\n", shard.name)
 		fmt.Fprintf(file, "split config: %s\n", shard.config)
 		fmt.Fprintf(file, "gce command executed: %v\n\n", shard.args)
-		//TODO: fix the tricky log dir moving around stuffs
 	}
 
 	sharder.log.Info("Finished creating ltm-info")
@@ -539,21 +536,21 @@ func (sharder *ShardScheduler) packResults() {
 		check.Panic(err, sharder.log, "Failed to copy sharder log file")
 	}
 
-	cmd1 := exec.Command("tar", "-cf", sharder.aggFile+".tar", "-C", sharder.aggDir, ".")
-	cmdLog1 := sharder.log.WithField("cmd", cmd1.Args)
-	w1 := cmdLog1.Writer()
+	cmd := exec.Command("tar", "-cf", sharder.aggFile+".tar", "-C", sharder.aggDir, ".")
+	cmdLog := sharder.log.WithField("cmd", cmd.Args)
+	w1 := cmdLog.Writer()
 	defer w1.Close()
-	err = check.Run(cmd1, check.RootDir, check.EmptyEnv, w1, w1)
-	if !check.NoError(err, cmdLog1, "Failed to create tarball") {
+	err = check.Run(cmd, check.RootDir, check.EmptyEnv, w1, w1)
+	if !check.NoError(err, cmdLog, "Failed to create tarball") {
 		return
 	}
 
-	cmd2 := exec.Command("xz", "-6ef", sharder.aggFile+".tar")
-	cmdLog2 := sharder.log.WithField("cmd2", cmd2.Args)
-	w2 := cmdLog1.Writer()
+	cmd = exec.Command("xz", "-6ef", sharder.aggFile+".tar")
+	cmdLog = sharder.log.WithField("cmd", cmd.Args)
+	w2 := cmdLog.Writer()
 	defer w2.Close()
-	err = check.Run(cmd2, check.RootDir, check.EmptyEnv, w2, w2)
-	if !check.NoError(err, cmdLog2, "Failed to create xz compressed tarball") {
+	err = check.Run(cmd, check.RootDir, check.EmptyEnv, w2, w2)
+	if !check.NoError(err, cmdLog, "Failed to create xz compressed tarball") {
 		return
 	}
 
@@ -570,8 +567,8 @@ func (sharder *ShardScheduler) packResults() {
 	}
 }
 
-// cleanup removes local result and log files
-func (sharder *ShardScheduler) cleanup() {
+// clean removes local result and log files
+func (sharder *ShardScheduler) clean() {
 	sharder.log.Info("Cleaning up sharder resources")
 
 	if strings.HasSuffix(sharder.gsKernel, "-onerun") {
@@ -580,5 +577,7 @@ func (sharder *ShardScheduler) cleanup() {
 	}
 
 	sharder.log.Info("Remove local aggregate results")
-	check.RemoveDir(sharder.aggDir)
+	os.RemoveAll(sharder.aggDir)
+	sharder.gce.Close()
+	logging.CloseLog(sharder.log)
 }
