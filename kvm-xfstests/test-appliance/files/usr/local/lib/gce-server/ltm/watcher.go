@@ -15,19 +15,28 @@ import (
 )
 
 const (
-	watchInterval = 10 * time.Second
+	watchInterval = 1 * time.Minute
 )
 
 // GitWatcher watches a branch of a remote repo and detects new commits
 type GitWatcher struct {
 	testID         string
+	searchKey      watcherKey
 	reportReceiver string
 	testRequest    server.TaskRequest
 
 	repo    *git.RemoteRepository
-	done    <-chan bool
+	done    chan bool
 	logFile string
 	log     *logrus.Entry
+}
+
+// WatcherInfo exports watcher info.
+type WatcherInfo struct {
+	ID     string `json:"id"`
+	Repo   string `json:"repo"`
+	Branch string `json:"branch"`
+	HEAD   string `json:"HEAD"`
 }
 
 type watcherKey struct {
@@ -35,10 +44,10 @@ type watcherKey struct {
 	branch string
 }
 
-// watcherMap indexes watcheres by repo url and branch.
+// watcherMap indexes watchers by repo url and branch.
 // Used for checking duplication and terminating a monitor.
 var (
-	watcherMap  = make(map[watcherKey]chan<- bool)
+	watcherMap  = make(map[watcherKey]*GitWatcher)
 	watcherLock sync.Mutex
 )
 
@@ -71,8 +80,9 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		Requester: server.LTMBuild,
 	}
 
-	watcher := GitWatcher{
+	watcher := &GitWatcher{
 		testID:         testID,
+		searchKey:      searchKey,
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
 
@@ -82,9 +92,9 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		log:     log,
 	}
 
-	watcherMap[searchKey] = done
+	watcherMap[searchKey] = watcher
 
-	return &watcher
+	return watcher
 }
 
 // Run starts watching on a remote repo. The watcher checks remote HEAD
@@ -92,7 +102,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 // and run a test.
 func (watcher *GitWatcher) Run() {
 	watcher.log.Debug("Starting watcher")
-	defer logging.CloseLog(watcher.log)
+	defer watcher.Clean()
 	var wg sync.WaitGroup
 
 	ticker := time.NewTicker(watchInterval)
@@ -139,16 +149,45 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 	}
 }
 
+// Clean removes the watcher from watcherMap and performs other cleanup.
+func (watcher *GitWatcher) Clean() {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
+	watcher.log.Info("Cleaning up watcher resources")
+	delete(watcherMap, watcher.searchKey)
+	close(watcher.done)
+	logging.CloseLog(watcher.log)
+}
+
+// Info returns structured watcher information.
+func (watcher *GitWatcher) Info() WatcherInfo {
+	return WatcherInfo{
+		ID:     watcher.testID,
+		Repo:   watcher.testRequest.Options.GitRepo,
+		Branch: watcher.testRequest.Options.BranchName,
+		HEAD:   watcher.repo.Head(),
+	}
+}
+
 // StopWatcher finds the running watcher on a given branch and terminate it.
 // It panics if no matching monitor is found.
 func StopWatcher(c server.TaskRequest) {
-	watcherLock.Lock()
-	defer watcherLock.Unlock()
 	searchKey := watcherKey{c.Options.GitRepo, c.Options.BranchName}
-	if done, ok := watcherMap[searchKey]; ok {
-		done <- true
-		delete(watcherMap, searchKey)
+	if watcher, ok := watcherMap[searchKey]; ok {
+		watcher.done <- true
 		return
 	}
 	panic("Failed to find a monitor linked with given branch")
+}
+
+// WatcherStatus returns the info for active git watchers.
+func WatcherStatus() []WatcherInfo {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
+	infoList := []WatcherInfo{}
+	for _, v := range watcherMap {
+		infoList = append(infoList, v.Info())
+	}
+
+	return infoList
 }

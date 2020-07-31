@@ -30,8 +30,7 @@ func Run(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer,
 	cmd.Env = parseEnv(env)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	err := cmd.Run()
-	return err
+	return cmd.Run()
 }
 
 // Output executes an external command, checks the return status, and
@@ -64,15 +63,7 @@ func parseEnv(env map[string]string) []string {
 
 // CreateDir creates a directory recursively with default permissions.
 func CreateDir(path string) error {
-	err := os.MkdirAll(path, 0755)
-	return err
-}
-
-// RemoveDir removes a directory and all contents in it.
-// Do nothing if the target path doesn't exist.
-func RemoveDir(path string) error {
-	err := os.RemoveAll(path)
-	return err
+	return os.MkdirAll(path, 0755)
 }
 
 // FileExists returns true if a file exists.

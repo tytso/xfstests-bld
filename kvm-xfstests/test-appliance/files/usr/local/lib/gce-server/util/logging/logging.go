@@ -13,9 +13,11 @@ import (
 
 // log file paths for go server components
 const (
-	ServerLogPath = "/var/log/go/go.log"
-	LTMLogDir     = "/var/log/go/ltm_logs/"
-	KCSLogDir     = "/var/log/go/kcs_logs/"
+	LogDir        = "/var/log/go/"
+	ServerLogPath = LogDir + "server.log"
+	LTMLogDir     = LogDir + "ltm_logs/"
+	KCSLogDir     = LogDir + "kcs_logs/"
+	KCSCachedDir  = "/cache/log/"
 )
 
 const (

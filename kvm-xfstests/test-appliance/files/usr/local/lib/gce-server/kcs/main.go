@@ -92,5 +92,9 @@ func main() {
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			runCompile(w, r, s.Log())
 		}))).Methods("POST")
+
+	finished := make(chan bool)
+	go StartTracker(s, finished)
 	s.Start()
+	<-finished
 }

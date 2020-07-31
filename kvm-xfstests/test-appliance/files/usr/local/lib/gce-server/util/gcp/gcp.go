@@ -28,6 +28,7 @@ import (
 // Service holds the API clients for Google Cloud Platform.
 type Service struct {
 	ctx     context.Context
+	cancel  context.CancelFunc
 	service *compute.Service
 	bucket  *storage.BucketHandle
 }
@@ -41,9 +42,10 @@ type Quota struct {
 }
 
 // NewService launches a new GCP service client.
+// If gsBucket is not empty, launches a new GS client as well.
 func NewService(gsBucket string) (*Service, error) {
 	gce := Service{}
-	gce.ctx = context.Background()
+	gce.ctx, gce.cancel = context.WithCancel(context.Background())
 	client, err := google.DefaultClient(gce.ctx, compute.CloudPlatformScope)
 	if err != nil {
 		return nil, err
@@ -58,12 +60,20 @@ func NewService(gsBucket string) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	gce.bucket = gsclient.Bucket(gsBucket)
-	_, err = gce.bucket.Attrs(gce.ctx)
-	if err != nil {
-		return nil, err
+
+	if gsBucket != "" {
+		gce.bucket = gsclient.Bucket(gsBucket)
+		_, err = gce.bucket.Attrs(gce.ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &gce, nil
+}
+
+// Close cancels the context to close the GCP service client.
+func (gce *Service) Close() {
+	gce.cancel()
 }
 
 // GetSerialPortOutput returns the serial port output for an instance.
@@ -187,16 +197,23 @@ func (quota *Quota) GetMaxShard() (int, error) {
 	return mymath.MinIntSlice([]int{quota.cpuLimit, quota.ipLimit, quota.ssdLimit})
 }
 
-// GetFiles returns an iterator for all files with a matching path prefix on GS.
-func (gce *Service) GetFiles(prefix string) *storage.ObjectIterator {
+// getFiles returns an iterator for all files with a matching path prefix on GS.
+func (gce *Service) getFiles(prefix string) (*storage.ObjectIterator, error) {
+	if gce.bucket == nil {
+		return nil, fmt.Errorf("GS client is not initialized")
+	}
 	query := &storage.Query{Prefix: prefix}
 	it := gce.bucket.Objects(gce.ctx, query)
-	return it
+	return it, nil
 }
 
 // DeleteFiles removes all files with a matching path prefix on GS.
 func (gce *Service) DeleteFiles(prefix string) (int, error) {
-	it := gce.GetFiles(prefix)
+	it, err := gce.getFiles(prefix)
+	if err != nil {
+		return 0, err
+	}
+
 	count := 0
 	for {
 		objAttrs, err := it.Next()
@@ -218,8 +235,12 @@ func (gce *Service) DeleteFiles(prefix string) (int, error) {
 
 // GetFileNames returns a slice of file names with a matching path prefix on GS.
 func (gce *Service) GetFileNames(prefix string) ([]string, error) {
-	it := gce.GetFiles(prefix)
 	names := []string{}
+	it, err := gce.getFiles(prefix)
+	if err != nil {
+		return names, err
+	}
+
 	for {
 		objAttrs, err := it.Next()
 		if err != nil {
@@ -236,6 +257,9 @@ func (gce *Service) GetFileNames(prefix string) ([]string, error) {
 
 // UploadFile uploads a local file or directory to GS.
 func (gce *Service) UploadFile(localPath string, gsPath string) error {
+	if gce.bucket == nil {
+		return fmt.Errorf("GS client is not initialized")
+	}
 	obj := gce.bucket.Object(gsPath)
 	w := obj.NewWriter(gce.ctx)
 	defer w.Close()
