@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"gce-server/util/check"
@@ -21,11 +23,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// file paths for certificates and keys
 const (
+	// LTMServer defines the instance name for LTM server
+	LTMServer = "xfstests-ltm"
+	// KCSServer defines the instance name for KCS server
+	KCSServer = "xfstests-kcs"
+	// file paths for certificates and keys
 	certPath        = "/root/xfstests_bld/kvm-xfstests/.gce_xfstests_cert.pem"
 	secretPath      = "/etc/lighttpd/server.pem"
 	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
+
+	shutdownTimeout = 30 * time.Second
 )
 
 // RequestType defines the type of a json request.
@@ -61,10 +69,11 @@ const (
 )
 
 const (
-	kcsTimeout    = 30 * time.Second
-	ltmTimeout    = 60 * time.Second
-	checkInterval = 10 * time.Second
-	maxAttempts   = 5
+	kcsTimeout     = 30 * time.Second
+	ltmTimeout     = 60 * time.Second
+	checkInterval  = 10 * time.Second
+	launchInterval = 2 * time.Minute
+	maxAttempts    = 5
 )
 
 // UserOptions contains configs user sends to LTM or KCS.
@@ -81,7 +90,7 @@ type UserOptions struct {
 	GoodCommit    string `json:"good_commit"`
 }
 
-// InternalOptions contains configs used by LTM and KCS internally
+// InternalOptions contains configs used by LTM and KCS internally.
 type InternalOptions struct {
 	TestID     string      `json:"test_id"`
 	Requester  RequestType `json:"requester"`
@@ -89,7 +98,7 @@ type InternalOptions struct {
 	Password   string      `json:"password"`
 }
 
-// LoginRequest contains a password for user authentication
+// LoginRequest contains a password for user authentication.
 type LoginRequest struct {
 	Password string `json:"password"`
 }
@@ -141,11 +150,11 @@ func init() {
 	}
 
 	var err error
-	if gcp.LtmConfig != nil {
-		password, err = gcp.LtmConfig.Get("GCE_LTM_PWD")
+	if gcp.LTMConfig != nil {
+		password, err = gcp.LTMConfig.Get("GCE_LTM_PWD")
 
-	} else if gcp.KcsConfig != nil {
-		password, err = gcp.KcsConfig.Get("GCE_KCS_PWD")
+	} else if gcp.KCSConfig != nil {
+		password, err = gcp.KCSConfig.Get("GCE_KCS_PWD")
 	} else {
 		panic("Failed to find config file")
 	}
@@ -186,6 +195,7 @@ func (server *Instance) Log() *logrus.Entry {
 // Start launches the server. Custom endpoints shuold be registered already.
 func (server *Instance) Start() {
 	server.log.Info("Launching server")
+	defer logging.CloseLog(server.log)
 
 	server.httpServer = &http.Server{
 		Addr:    server.addr,
@@ -199,12 +209,14 @@ func (server *Instance) Start() {
 	} else {
 		server.log.WithError(err).Info("Server stopped")
 	}
-	logging.CloseLog(server.log)
 }
 
-// Shutdown shut down the web service and delete the VM instance.
+// Shutdown closes the web service gracefully
 func (server *Instance) Shutdown() {
-
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	err := server.httpServer.Shutdown(ctx)
+	check.NoError(err, server.log, "Failed to shut down server gracefully")
 }
 
 // Index handles the root endpoint.
@@ -360,12 +372,14 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	if toKCS {
 		launchKCS(log)
 		gcp.Update()
-		config = gcp.KcsConfig
+		config = gcp.KCSConfig
 
 	} else {
-		launchLTM(log)
-		gcp.Update()
-		config = gcp.LtmConfig
+		if gcp.LTMConfig == nil {
+			fetchLTMConfig(log)
+			gcp.Update()
+		}
+		config = gcp.LTMConfig
 	}
 	if config == nil {
 		log.Panicf("Failed to get %s config", receiver)
@@ -436,24 +450,74 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	}
 }
 
-// launchKCS attempts to launch the KCS. If the exit status is 1
-// due to kcs already exists, no panic is thrown.
+/*
+launchKCS attempts to launch the KCS.
+
+KCS is assumed to be always launched by LTM instead of user.
+It checks KCS's metadata to ensure it's not in the process of shutting down.
+*/
 func launchKCS(log *logrus.Entry) {
 	log.Info("Launching KCS server")
 
+	zone, err := gcp.GceConfig.Get("GCE_ZONE")
+	check.Panic(err, log, "Failed to get zone config")
+	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	check.Panic(err, log, "Failed to get project config")
+
+	gce, err := gcp.NewService("")
+	check.Panic(err, log, "Failed to connect to GCE service")
+	defer gce.Close()
+
+	for attempts := maxAttempts; attempts > 0; attempts-- {
+		instanceInfo, err := gce.GetInstanceInfo(projID, zone, KCSServer)
+		if err != nil {
+			if gcp.NotFound(err) {
+				log.Info("KCS is not running, launching it")
+				runLaunchKCS(log)
+				return
+			}
+			log.WithError(err).Panic("Failed to get KCS instance info")
+		}
+
+		active := true
+		if instanceInfo.Status != "RUNNING" {
+			active = false
+		} else {
+			for _, metaData := range instanceInfo.Metadata.Items {
+				if metaData.Key == "shutdown_reason" {
+					active = false
+					break
+				}
+			}
+		}
+		if active {
+			log.Info("KCS is running")
+			if gcp.KCSConfig == nil {
+				runLaunchKCS(log)
+			}
+			return
+		}
+		log.WithField("attemptsLeft", attempts).Warn("Wait for KCS to shut down before re-launching it")
+		time.Sleep(launchInterval)
+	}
+	log.Panic("Failed to launch KCS")
+}
+
+func runLaunchKCS(log *logrus.Entry) {
 	cmd := exec.Command("gce-xfstests", "launch-kcs")
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil && output != "The KCS instance already exists!\n" {
-		cmdLog.WithField("output", output).WithError(err).Panic("Failed to launch KCS")
+	if err != nil && !strings.HasPrefix(output, "The KCS instance already exists!") {
+		cmdLog.WithField("output", output).WithError(err).Panic(
+			"Failed to fetch LTM config file")
 	}
 }
 
-// launchLTM attempts to launch the LTM. Usually used to generate .ltm_instance
+// fetchLTMConfig attempts to generate .ltm_instance config file
 // since LTM should always be running.
-func launchLTM(log *logrus.Entry) {
+func fetchLTMConfig(log *logrus.Entry) {
 	log.Info("Fetching LTM config file")
 
 	cmd := exec.Command("gce-xfstests", "launch-ltm")
@@ -461,7 +525,7 @@ func launchLTM(log *logrus.Entry) {
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil && output != "The LTM instance already exists!\n" {
+	if err != nil && !strings.HasPrefix(output, "The LTM instance already exists!") {
 		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")
 	}

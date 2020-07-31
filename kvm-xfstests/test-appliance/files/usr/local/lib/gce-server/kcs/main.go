@@ -92,5 +92,7 @@ func main() {
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			runCompile(w, r, s.Log())
 		}))).Methods("POST")
+
+	go StartTracker(s)
 	s.Start()
 }

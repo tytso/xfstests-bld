@@ -90,8 +90,6 @@ func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, er
 
 // GetCommit returns the commit hash for current repo HEAD
 func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
-	repo.lock.Lock()
-	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
@@ -224,8 +222,6 @@ func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Write
 
 // BisectLog returns bisect log output.
 func (repo *Repository) BisectLog(writer io.Writer) (string, error) {
-	repo.lock.Lock()
-	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
@@ -280,7 +276,7 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Wr
 func (repo *Repository) Delete() error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
-	err := check.RemoveDir(repo.Dir())
+	err := os.RemoveAll(repo.Dir())
 	return err
 }
 
