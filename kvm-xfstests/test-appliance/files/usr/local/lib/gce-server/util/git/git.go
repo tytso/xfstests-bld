@@ -90,8 +90,6 @@ func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, er
 
 // GetCommit returns the commit hash for current repo HEAD
 func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
-	repo.lock.Lock()
-	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
@@ -107,7 +105,7 @@ func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
 	return output[:len(output)-1], nil
 }
 
-// Checkout pulls from upstream and checkout to a commit hash.
+// Checkout fetches from upstream and checkout to a commit hash.
 func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
@@ -116,15 +114,12 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 		return fmt.Errorf("directory %s does not exist", repoDir)
 	}
 
-	cmd := exec.Command("git", "checkout", "-q", "-")
-	check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
-
-	cmd = exec.Command("git", "pull", "-q")
+	cmd := exec.Command("git", "fetch", "-q", "--all")
 	err := check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
 	}
-	cmd = exec.Command("git", "checkout", "-q", commit)
+	cmd = exec.Command("git", "checkout", "-q", "-f", commit)
 	err = check.Run(cmd, repoDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
@@ -224,8 +219,6 @@ func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Write
 
 // BisectLog returns bisect log output.
 func (repo *Repository) BisectLog(writer io.Writer) (string, error) {
-	repo.lock.Lock()
-	defer repo.lock.Unlock()
 	repoDir := repo.Dir()
 	if !check.DirExists(repoDir) {
 		return "", fmt.Errorf("directory %s does not exist", repoDir)
@@ -280,7 +273,7 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Wr
 func (repo *Repository) Delete() error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
-	err := check.RemoveDir(repo.Dir())
+	err := os.RemoveAll(repo.Dir())
 	return err
 }
 

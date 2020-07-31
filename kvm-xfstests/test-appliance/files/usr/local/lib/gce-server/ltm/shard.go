@@ -43,7 +43,7 @@ type ShardWorker struct {
 	unpackedResultsDir string
 }
 
-// ShardInfo exports shard info to be sent back to user.
+// ShardInfo exports shard info.
 type ShardInfo struct {
 	ShardID string `json:"shard_id"`
 	Config  string `json:"cfg"`
@@ -157,7 +157,7 @@ func (shard *ShardWorker) monitor() {
 				}
 				return
 			}
-			log.WithError(err).Panic("Failed to get instance info")
+			log.WithError(err).Panic("Failed to get shard instance info")
 		}
 
 		offset = shard.updateSerialData(offset)
@@ -178,7 +178,7 @@ func (shard *ShardWorker) monitor() {
 		}
 		if testStatus == "" {
 			if time.Since(monitorStart) > noStatusTimeout {
-				log.Panicf("Tests might fail to start, cannot find test status for %ds", noStatusTimeout.Round(time.Second))
+				log.Panicf("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
 			} else {
 				log.Warn("Failed to find test status metadata")
 			}
@@ -191,7 +191,7 @@ func (shard *ShardWorker) monitor() {
 			log.WithFields(logrus.Fields{
 				"testStatus": testStatus,
 				"testStart":  testStart.Format(time.Stamp),
-			}).Panicf("Instance seems to have wedged, no status update for %ds", monitorTimeout.Round(time.Second))
+			}).Panicf("Instance seems to have wedged, no status update for %s", monitorTimeout.Round(time.Minute))
 		}
 
 		log.WithFields(logrus.Fields{
@@ -244,7 +244,7 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 		}
 	}
 
-	val := "ltm detected test timeout"
+	val := "LTM detected test timeout"
 	metadata.Items = append(metadata.Items, &compute.MetadataItems{
 		Key:   "shutdown_reason",
 		Value: &val,
@@ -276,7 +276,7 @@ func (shard *ShardWorker) finish() {
 	check.Panic(err, cmdLog, "Failed to run get-results")
 
 	if check.DirExists(shard.tmpResultsDir) {
-		check.RemoveDir(shard.unpackedResultsDir)
+		os.RemoveAll(shard.unpackedResultsDir)
 		err = os.Rename(shard.tmpResultsDir, shard.unpackedResultsDir)
 		check.Panic(err, shard.log, "Failed to move dir")
 	} else {
@@ -315,7 +315,7 @@ func (shard *ShardWorker) getResults() string {
 	return ""
 }
 
-// Info returns structured shard information to send back to user
+// Info returns structured shard information.
 func (shard *ShardWorker) Info() ShardInfo {
 	return ShardInfo{
 		ShardID: shard.shardID,
@@ -327,7 +327,7 @@ func (shard *ShardWorker) Info() ShardInfo {
 // exit handles panic from shard run.
 func (shard *ShardWorker) exit() {
 	if r := recover(); r != nil {
-		shard.log.Error("Shard finishes with error, get stack trace")
+		shard.log.Error("Shard exits with error, get stack trace")
 		shard.log.Error(string(debug.Stack()))
 		if check.FileExists(shard.serialOutputPath) {
 			shard.log.Warn("Serial port output is found")

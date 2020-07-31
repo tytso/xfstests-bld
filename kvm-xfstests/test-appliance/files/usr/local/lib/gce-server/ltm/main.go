@@ -48,16 +48,17 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	}).Info("Received test request")
 
 	testID := mymath.GetTimeStamp()
-	response := server.SimpleResponse{
-		Status: true,
-		TestID: testID,
-	}
 
 	if c.ExtraOptions == nil {
 		log.WithField("testID", testID).Info("User request, generating testID")
 	} else {
 		testID = c.ExtraOptions.TestID
 		log.WithField("testID", testID).Info("KCS request, use existing testID")
+	}
+
+	response := server.SimpleResponse{
+		Status: true,
+		TestID: testID,
 	}
 
 	if c.ExtraOptions == nil {
