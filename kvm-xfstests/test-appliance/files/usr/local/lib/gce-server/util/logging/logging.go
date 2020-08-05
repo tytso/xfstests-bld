@@ -52,11 +52,9 @@ func InitLogger(logfile string) *logrus.Entry {
 
 // CloseLog closes the log file handler. It does nothing if log writes
 // to os.Stdout or os.Stderr.
-// TODO: find a more elegant way for the checking
 func CloseLog(log *logrus.Entry) {
 	if file, ok := log.Logger.Out.(*os.File); ok {
 		if !strings.HasPrefix(file.Name(), "/dev") {
-			file.Sync()
 			file.Close()
 		}
 	} else if handler, ok := log.Logger.Out.(io.Closer); ok {
