@@ -11,9 +11,9 @@ need to do a number of setup tasks:
 
 ## Get a Google Compute Engine account
 
-If you don't have GCE account, you can go to https://cloud.google.com
+If you don't have a GCE account, you can go to https://cloud.google.com
 and sign up for a free trial.  This will get you $300 worth of credit
-which you can use over a 60 day period (as of this writing).  Given
+which you can use over a 12-month period (as of this writing).  Given
 that a full test for ext4 costs around $1.50, and a smoke test costs
 pennies, that should be enough for plenty of testing.  :-)
 
@@ -64,14 +64,18 @@ test reports show up in your inbox once they are finished.
 The gce-xfstests system uses sendgrid, so if you would like to get
 e-mailed reports, you will need to sign up for a free Sendgrid
 account.  Sendgrid is designed for companies who want to do bulk
-mailings, so the free account is good for up to 25,000 e-mails per
-month --- and it's highly unlikely that you will be running more than
-100 test runs per month, let alone 25,000!  It may take a day or two
+mailings, so the free account provides 40,000 e-mails for the
+first 30 days and 100/day afterwards --- and it's highly unlikely that
+you will be running more than 100 test runs per month.  To start, visit
+the [Sendgrid website](http://www.sendgrid.com) and click on the "Start
+for Free" button. It may take a day or two
 for sendgrid to decide you are a not a robot spammer, so please start
 the process right away while you familiarize yourself with the rest of
-gce-xfstests.  To start, visit the [Sendgrid
-website](http://www.sendgrid.com) and click on the "Try for Free"
-button.
+gce-xfstests.
+
+> **_NOTE:_** Starting from April 6 2020, Sendgrid requires new users to
+verify their Sender Identities before using the service. You could check
+[this guide](https://sendgrid.com/docs/for-developers/sending-email/sender-identity/) for more details.
 
 Once you have set up a Sendgrid account, get a new API key by going to
 the url
@@ -80,7 +84,7 @@ and click on the blue "Create API Key" button and select "General API
 Key".  Pick a name such as "gce-xfstests" and enter it into the "Name
 of this key".  Then click on the Mail Send's "Full Access" bubble and
 then click on the blue "Save" button.  Copy the API key that was
-generated and use it to set the GCE_SG_API configuration variable in
+generated and use it to set the `GCE_SG_API` configuration variable in
 gce-xfstests's config file.
 
 Then go to Sendgrid's Tracking Settings web page at
@@ -104,7 +108,7 @@ need to do so now:
 
 The gce-xfstests driver script needs to be customized so it can find
 the "real" gce-xfstests script, which is located in
-fstests/kvm-xfstests/gce-xfstests.   To do this:
+fstests/kvm-xfstests/gce-xfstests.  To do this:
 
         cd fstests
         make gce-xfstests.sh
@@ -127,7 +131,7 @@ used):
 ## Configure gce-xfstests
 
 You will need to set up the following configuration parameters in
-~/.config/gce-xfstests:
+`~/.config/gce-xfstests`:
 
 * GS_BUCKET
   * The name of the Google Storage bucket which should be used by
@@ -152,9 +156,9 @@ configuration parameters in order to have reports e-mailed to you:
   * The email addressed for which test results should be sent.
 * GCE_REPORT_SENDER
   * The email used as the sender for the test report.  This defaults
-    to the GCE_REPORT_EMAIL configuration parameter.  If the domain used
-    by GCE_REPORT_EMAIL has restrictive SPF settings, and you don't have
-    control over the domain used by GCE_REPORT_EMAIL, you may need to
+    to the `GCE_REPORT_EMAIL` configuration parameter.  If the domain used
+    by `GCE_REPORT_EMAIL` has restrictive SPF settings, and you don't have
+    control over the domain used by `GCE_REPORT_EMAIL`, you may need to
     choose a different sender address.
 
 Other optional parameters include:
@@ -171,19 +175,20 @@ Other optional parameters include:
 * GCE_USER
   * Optional identifier for all test instance names. By default, if
     this is unset, test instances will be named
-    "xfstests-USER-DATECODE". (USER will be the evaluation of $USER)
+    "xfstests-USER-DATECODE". (USER will be the evaluation of `$USER`)
     This option can be set to the empty string,
-    i.e. GCE_USER= or GCE_USER="" to disable having "$USER-" in
-    instance names, and simply have them named "xfstests-DATECODE"
+    i.e. `GCE_USER=` or `GCE_USER=""` to disable having "$USER-" in
+    instance names, and simply have them named "xfstests-DATECODE".
+    This doesn't affect the instances managed by LTM server.
 * GCE_UPLOAD_SUMMARY
   * If set to a non-empty string value, test appliances will upload
-    a summary.*.txt file in addition to the regular results tarball.
+    a `summary.*.txt` file in addition to the regular results tarball.
     This summary file will be a copy of the summary file normally
     found at the root directory of the results tarball.
 * BUCKET_SUBDIR
   * Optional parameter to specify the subdirectory to be used to
-    upload results instead of the default results/ directory.
-    e.g. BUCKET_SUBDIR="4.13-rc5" or BUCKET_SUBDIR="my_subdir"
+    upload results instead of the default `BUCKET_ROOT/results/` directory.
+    e.g. `BUCKET_SUBDIR="4.13-rc5"` or `BUCKET_SUBDIR="my_subdir"`
 * GCE_MIN_SCR_SIZE
   * Optional value to use as a minimum scratch disk size. Must be a
     number between 0 and 250. If specified, the scratch disk created
@@ -196,6 +201,10 @@ Other optional parameters include:
   * Optional string. If specified as a non-empty string, the LTM
     instance will preserve VMs that are presumed to have wedged/timed
     out rather than deleting the VM.
+* GIT_REPO
+  * Optional git repo url. If specified, all kernel building requests
+    will use this repo be default. It can be overridden by command
+    line argument `--repo`.
 
 
 An example ~/.config/gce-xfstests might look like this:
@@ -222,29 +231,32 @@ require updating your local copy of the xfstests-bld git repository to
 get the latest version of the gce-xfstests script.
 
 If you don't want to use the pre-built image, please see the section
-"Creating a new GCE test appliance image" below for instructions to
+[Creating a new GCE test appliance image](#creating-a-new-gce-test-appliance-image) below for instructions to
 build your own image from source.
 
 ## Run "gce-xfstests setup"
 
-The command "gce-xfstests setup" will set some GCE settings for
+The command `gce-xfstests setup` will set some GCE settings for
 gce-xfstests, but more importantly, it will sanity check the
 configuration parameters for gce-xfstests.  If there are any problems
 or potential problems, it will report them so you can fix them.
 
+> **_NOTE:_** Whenever you make changes to `~/.config/gce-xfstests`,
+you will need to run `gce-xfstests setup` again.
+
 # Running gce-xfstests
 
 Once you have completed all of the set up tasks listed above, you can
-now start using gce-xfstests.  The GCE_KERNEL configuration parameter
+now start using gce-xfstests.  The `GCE_KERNEL` configuration parameter
 should be set to the location of your build directory or the kernel
 that you want to boot.  So for example, you could set it to
-/build/ext4, or /build/ext4/arch/x86/boot/bzImage.  If gce-xfstests is
+`/build/ext4`, or /`build/ext4/arch/x86/boot/bzImage`.  If gce-xfstests is
 run from the top-level of a kernel build or source tree where there is
 a built kernel, gce-xfstests will use it.  Otherwise, it will use the
 kernel specified by the GCE_KERNEL variable.
 
 The design of gce-xfstests allows you to to apply a patch to your
-kernel, build it, and then run "gce-xfstests smoke", which will test
+kernel, build it, and then run `gce-xfstests smoke`, which will test
 the kernel without needing to install it first; gce-xfstests will
 upload it to Google Cloud Storage, and then the test appliance VM will
 kexec into that kernel.  This speeds up your edit, compile, debug
@@ -254,9 +266,9 @@ Running gce-xfstests is much like [kvm-xfstests](kvm-xfstests.md):
 
 	gce-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
 
-As with kvm-xfstests, you can also use "gce-xfstests smoke" and
-"gce-xfstests full", to run the a quick smoke test and the full file
-system regression test.  The command "gce-xfstests help" will provide
+As with kvm-xfstests, you can also use `gce-xfstests smoke` and
+`gce-xfstests full`, to run the a quick smoke test and the full file
+system regression test.  The command `gce-xfstests help` will provide
 a quick summary of how tests can be run.
 
 The gce-xfstests command also has a few other commands, some of which
@@ -265,14 +277,14 @@ are described below:
 ### gce-xfstests ssh INSTANCE
 
 Remotely login as root to a test instances.  This is a
-convenience shorthand for: "gcloud compute --project
-GCE_PROJECT ssh root@INSTANCE --zone GCE_ZONE".
+convenience shorthand for: `gcloud compute --project
+GCE_PROJECT ssh root@INSTANCE --zone GCE_ZONE`.
 
 ### gce-xfstests console INSTANCE
 
 Fetch the serial console from a test instance.  This is a
-convenience shorthand for: "gcloud compute --project
-GCE_PROJECT get-serial-port-output INSTANCE --zone GCE_ZONE".
+convenience shorthand for: `gcloud compute --project
+GCE_PROJECT get-serial-port-output INSTANCE --zone GCE_ZONE`.
 
 ### gce-xfstests console [--port N] INSTANCE
 
@@ -289,65 +301,125 @@ support.
 List the current test instances.  With the -l option, it will
 list the current status of each instance.
 
-This command can be abbreviated as "gce-xfstests ls".
+This command can be abbreviated as `gce-xfstests ls`.
 
-The ls-gce option is a convenience command for "gcloud compute
---project GCE_PROJECT instances list --regexp ^xfstests.*"
+The ls-gce option is a convenience command for `gcloud compute
+--project GCE_PROJECT instances list --regexp ^xfstests.*`
 
 ### gce-xfstests rm-instances INSTANCE
 
 Shut down the instance.  If test kernel has hung, it may be useful to
-use "gce-xfstests console" to fetch the console, and then use
-"gce-xfstests rm" and examine the results disk before deleting it.
+use `gce-xfstests console` to fetch the console, and then use
+`gce-xfstests rm` and examine the results disk before deleting it.
 
-This command can be abbreviated as "gce-xfstests rm"
+This command can be abbreviated as `gce-xfstests rm`
 
 ### gce-xfstests abort-instances INSTANCE
 
-this command functions much as the "gce-xfstests rm-instances"
+this command functions much as the `gce-xfstests rm-instances`
 command, except it makes sure the results disk will be deleted.
 
-This command can be abbreviated as "gce-xfstests abort"
+This command can be abbreviated as `gce-xfstests abort`
+
+> **_NOTE:_** This command will delete the cache pd for KCS.
 
 ### gce-xfstests ls-disks
 
-List the GCE disks.  This is a convenience command for "gcloud
-compute --project "$GCE_PROJECT" disks list --regexp
-^xfstests.*"
+List the GCE disks.  This is a convenience command for `gcloud
+compute --project "$GCE_PROJECT" disks list --regexp ^xfstests.*`
 
-ALIAS: gce-xfstests ls-disk
+ALIAS: `gce-xfstests ls-disk`
 
 ### gce-xfstests rm-disks DISK
 
 Delete a specified GCE disk.  This is a convenience command
-for "gcloud compute --project "$GCE_PROJECT" disks delete DISK"
+for `gcloud compute --project "$GCE_PROJECT" disks delete DISK`
 
-ALIAS: gce-xfstests rm-disk
+ALIAS: `gce-xfstests rm-disk`
 
-### gce-xfstests ls-results
+### gce-xfstests ls-results|ls-gce
 
 List the available results tarballs stored in the Google Cloud
 Storage bucket.  This is a convenience command for
-"gsutil ls gs://GS_BUCKET/results.*" (ls-results) or
-"gsutil ls gs://GS_BUCKET" (ls-gcs).
+`gsutil ls gs://GS_BUCKET/results.*` (`ls-results`) or
+`gsutil ls gs://GS_BUCKET` (`ls-gcs`).
 
 ### gce-xfstests rm-results RESULT_FILE
 
 Delete a specified result tarball.  This is a convenience
-command for "gsutil rm gs://GS_BUCKET/RESULT_FILE".
+command for `gsutil rm gs://GS_BUCKET/RESULT_FILE`.
 
 ### gce-xfstests get-results [--unpack | --summary | --failures ] RESULT_FILE
 
 Fetch the run-tests.log file from the RESULT_FILE stored in
-the Google Cloud Storage bucket.  The --summary or --failures
+the Google Cloud Storage bucket.  The `--summary` or `--failures`
 option will cause the log file to be piped into the
-"get-results" script to summarize the log file using the "-s"
-or "-F" option, respectively.  The "--failures" or "-F" option
-results in a more succinct summary than the "--summary" or "-s"
+`get-results` script to summarize the log file using the `-s`
+or `-F` option, respectively.  The `--failures` or `-F` option
+results in a more succinct summary than the `--summary` or `-s`
 option.
 
-The --unpack option will cause the complete results directory
-to be unpacked into a directory in /tmp instead.
+The `--unpack` option will cause the complete results directory
+to be unpacked into a directory in `/tmp` instead.
+
+## Managing multiple tests with LTM server
+
+Gce-xfstests provides a service called Lightweight Test Manager (LTM) to launch and manage multiple tests automatically. It can parallelize tests, monitor test progress, aggregate test results and do more. To launch the LTM server, use the following command:
+
+        gce-xfstests launch-ltm
+
+It launches a VM named "xfstests-ltm" in your GCE project. Then you can run tests through LTM server by adding `ltm` to the regular command:
+
+      	gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ...
+
+The LTM server attempts to split your config into smaller tests, one `cfg` for each. For example, it splits the config `full` into `-c ext4/data_journal full, -c ext4/encrypt full, -c ext4/ext3 full...` For more details about how LTM splits the config, check [parser.go](kvm-xfstests/test-appliance/files/usr/local/lib/gce-server/util/parser/parser.go).
+
+Then the LTM server will launch these tests in parallel and monitor the status of each test VM. If a single test makes no progress in an hour, it will kill that test VM early. After all tests finish, the LTM server aggregates the test results into one tarball and upload it to the GCS bucket.
+
+> **_NOTE:_** Some command line arguments takes no affect with LTM., including `--instance-name, --gce-zone, --hooks` and more.
+
+## Building kernels remotely with KCS server
+
+Gce-xfstests also provides a way to build kernel images remotely on the Kernel Compile Server (KCS). To build a kernel and run tests on it, you can specify the git repo for the kernel source code with `--repo` and a single revision (SHA-1 hash, tag name or branch name) with `--commit`:
+
+        gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ... [--repo <url>] --commit <rev>
+
+If you've set `GIT_REPO` in `~/.config/gce-xfstests`, then `--repo <url>` can be omitted. The LTM server will launch the KCS server in a separate VM to build the kernel and use the built image to run xfstests. KCS builds your kernel with [x86_64-config-5.4](kernel-configs/x86_64-config-5.4) by default, but you can provide a custom config with `--config <filepath>` as well.
+
+Under rare conditions you might want to build the kernel image only. First make sure the KCS server is running with the command:
+
+        gce-xfstests launch-kcs
+
+Then use the following command to build the kernel:
+
+        gce-xfstests kcs --repo <url> --commit <rev>
+
+After the compilation finishes, you will find the built kernel under GCS path `BUCKET_ROOT/kernels/`.
+
+The KCS server uses a cache pd to store local repositories, cached compilations and build logs. The cache pd is auto-generated when launching KCS for the first time and gets reused later. While the LTM server keeps running unless you kill it explicitly, the KCS server shuts down itself automatically after being idle for more than one hour.
+
+## Running gce-xfstests test spinner
+
+With LTM and KCS, gce-xfstests supports a test spinner that watches a git repo and run tests on newly pushed code automatically. You can initiate a new watcher with command:
+
+        gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ... [--repo <url>] --watch <branch>
+
+LTM server will check for new commit on `branch` periodically, build kernels and launch tests when new code are pushed to this branch. If you've set up the email service, a new email is sent to you every time a new round of tests finishes.
+
+You can have multiple watchers running at the same time, but only one watcher is allowed for each branch. To terminate a watcher, use command:
+
+        gce-xfstests ltm [--repo <url>] --unwatch <branch>
+
+## Searching for buggy commits with git bisect
+
+Sometimes you might apply some patches only to find some xfstests tests fails, and you want to find the commit that introduces the bug. Gce-xfstests provides an automated way to perform git-bisect on a git tree. To use git bisect, you need to provide the tests that you expect to fail, a `bad_rev` commit that is known to have the bug, and at least one `good_rev` commit that is known to be before the bug was introduced:
+
+        gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ... [--repo <url>] \
+        --bisect-bad <bad_rev> --bisect-good <good_rev> [--bisect-good <good_rev1> ...]
+
+The KCS server will use a binary search approach to find which commit between two endpoints that introduced a bug causing any of the tests to fail. This process involves multiple rounds of building kernels and running xfstests. If the server encounters a kernel build error or any test error (e.g. crashed test VMs), the corresponding commit is skipped.
+
+After git bisect finishes, you will receive an email containing the bisect log report. Test results are also uploaded to the GCS bucket.
 
 # Creating a new GCE test appliance image
 
@@ -355,8 +427,8 @@ By default gce-xfstests uses the prebuilt image which is made
 available via the xfstests-cloud project.  However, if you want to
 build your own image, you must first build the xfstests tarball as
 described in the [instructions for building
-xfstests](building-xfstests.md).  Then run the command "gce-xfstests
-create-image".  This will create a new GCE image with a name such as
+xfstests](building-xfstests.md).  Then run the command `gce-xfstests
+create-image`.  This will create a new GCE image with a name such as
 "xfstests-201608132226" where 201608132226 indicates when the image
 was created (in this case, August 13, 2016 at 22:26).
 
@@ -372,7 +444,7 @@ By default, when you start a test using gce-xfstests, the most
 recently created image in the xfstests image family will be used.
 
 In order to use the xfstests image family created in your GCE project
-(instead of the xfstests-cloud project), add the following to your
+(instead of the xfstests-cloud project), add the following line to your
 `~/.config/gce-xfstests` configuration file after the GCE_PROJECT
 variable is defined:
 
