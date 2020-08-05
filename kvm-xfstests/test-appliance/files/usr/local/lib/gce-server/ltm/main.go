@@ -23,8 +23,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// configurable user name for LTM related files and tests
-const (
+// Configurable user name for test instance and result file names.
+var (
 	LTMUserName = "ltm"
 )
 
