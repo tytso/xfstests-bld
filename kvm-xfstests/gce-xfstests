@@ -792,12 +792,21 @@ function get_cache_dir() {
 function get_machtype_file() {
     get_cache_dir
     GCE_MACHTYPE_FILE=$GCE_CACHE_DIR/machtype_file
-    if [[ $(find "$GCE_MACHTYPE_FILE" -mtime +28 -print 2> /dev/null) ]]; then
-	rm -f $GCE_MACHTYPE_FILE
-    fi
-    if test ! -r $GCE_MACHTYPE_FILE ; then
+    if [ ! -r $GCE_MACHTYPE_FILE ] ||
+       [[ $(find "$GCE_MACHTYPE_FILE" -mtime +28 -print 2> /dev/null) ]]; then
+	local NEW_GCE_MACHTYPE_FILE=$GCE_CACHE_DIR/machtype_file.$$
+
 	gcloud compute machine-types list | sed -e 1d | \
-	  awk '{print $1, $2, $3, int(0.5 + ($4 * 1024))}' > $GCE_MACHTYPE_FILE
+	    awk '{print $1, $2, $3, int(0.5 + ($4 * 1024))}' > \
+		$NEW_GCE_MACHTYPE_FILE
+    else
+	return
+    fi
+    if [ ! -r $GCE_MACHTYPE_FILE ] ||
+       [[ $(find "$GCE_MACHTYPE_FILE" -mtime +28 -print 2> /dev/null) ]]; then
+	mv $NEW_GCE_MACHTYPE_FILE $GCE_MACHTYPE_FILE
+    else
+	rm $NEW_GCE_MACHTYPE_FILE
     fi
 }
 
