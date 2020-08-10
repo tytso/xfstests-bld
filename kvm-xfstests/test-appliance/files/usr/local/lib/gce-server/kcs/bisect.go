@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -21,25 +25,31 @@ import (
 // Each bisector keeps a unique repository to save the states for bisect
 // progress.
 type GitBisector struct {
-	testID         string
+	testID string
+
+	gsBucket       string
+	bucketSubdir   string
 	reportReceiver string
 	testRequest    server.TaskRequest
-	gsBucket       string
+	testHistory    []string
 
 	repo       *git.Repository
 	finished   bool
 	lastActive time.Time
+
+	logDir     string
+	resultsDir string
 	log        *logrus.Entry
 }
 
 // BisectorInfo exports bisector info.
 type BisectorInfo struct {
-	ID          string `json:"id"`
-	Repo        string `json:"repo"`
-	BadCommit   string `json:"bad_commit"`
-	GoodCommits string `json:"good_commits"`
-	Progress    string `json:"progress"`
-	LastActive  string `json:"last_active"`
+	ID          string   `json:"id"`
+	Repo        string   `json:"repo"`
+	BadCommit   string   `json:"bad_commit"`
+	GoodCommits string   `json:"good_commits"`
+	LastActive  string   `json:"last_active"`
+	Log         []string `json:"log"`
 }
 
 const (
@@ -70,9 +80,31 @@ func init() {
 
 // NewGitBisector constructs a new git bisect manager from a bisect request.
 // The repo is initialized with a git bisect session.
-func NewGitBisector(c server.TaskRequest, testID string, logFile string) *GitBisector {
+func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
+	logDir := logging.KCSLogDir + testID + "/"
+	err := check.CreateDir(logDir)
+	if err != nil {
+		panic(err)
+	}
+
+	logFile := logDir + "run.log"
 	log := logging.InitLogger(logFile)
 	log.Info("Initiating git bisector")
+
+	resultsDir := logDir + "results/"
+	err = check.CreateDir(resultsDir)
+	check.Panic(err, log, "Failed to create dir")
+
+	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
+	if c.Options.BucketSubdir != "" {
+		bucketSubdir = c.Options.BucketSubdir
+	}
+	if bucketSubdir == "" {
+		bucketSubdir = "results"
+	}
+
+	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	check.Panic(err, log, "Failed to get gs bucket config")
 
 	w := log.WithField("cmd", "bisectStart").Writer()
 	defer w.Close()
@@ -86,25 +118,28 @@ func NewGitBisector(c server.TaskRequest, testID string, logFile string) *GitBis
 	finished, err := repo.BisectStart(badCommit, goodCommits, w)
 	check.Panic(err, log, "Failed to start bisect")
 
-	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
-	check.Panic(err, log, "Failed to get gs bucket config")
-
 	bisector := GitBisector{
-		testID:         testID,
+		testID: testID,
+
+		gsBucket:       gsBucket,
+		bucketSubdir:   bucketSubdir,
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
-		gsBucket:       gsBucket,
+		testHistory:    []string{},
 
 		repo:       repo,
 		finished:   finished,
 		lastActive: time.Now(),
+
+		logDir:     logDir,
+		resultsDir: resultsDir,
 		log:        log,
 	}
 
 	return &bisector
 }
 
-// Step executes one step of git bisect.
+// Step executes one step of git bisect. It stores the test result and related info.
 func (bisector *GitBisector) Step(testResult server.ResultType) {
 	bisector.lastActive = time.Now()
 	bisector.log.WithField("testResult", testResult).Debug("Git bisect step")
@@ -120,36 +155,159 @@ func (bisector *GitBisector) Step(testResult server.ResultType) {
 	}
 }
 
-// Finish sends the bisect log to user and returns true if finished.
+// Finish checks whether bisect finishes and perform result aggregation if true.
+// It fetches and aggregates test results and send bisect log as email.
 func (bisector *GitBisector) Finish() bool {
-	if bisector.finished {
-		bisector.log.Info("Git bisect finished, sending report")
-		defer bisector.Clean()
+	if !bisector.finished {
+		return false
+	}
 
-		subject := "xfstests bisect report " + bisector.testID
-		err := email.Send(subject, bisector.GetReport(), bisector.reportReceiver)
-		check.Panic(err, bisector.log, "Failed to send email")
+	bisector.log.Info("Git bisect finished")
+	defer bisector.Clean()
 
+	gce, err := gcp.NewService(bisector.gsBucket)
+	if !check.NoError(err, bisector.log, "Failed to connect to GCE service") {
 		return true
 	}
+	defer gce.Close()
 
-	return false
+	bisector.aggResults(gce)
+	bisector.packResults(gce)
+	bisector.emailReport()
+
+	// subject := "xfstests bisect report " + bisector.testID
+	// err := email.Send(subject, bisector.GetReport(), bisector.reportReceiver)
+	// check.Panic(err, bisector.log, "Failed to send email")
+
+	return true
 }
 
-// GetReport returns the biect log report.
-// It returns a message instead of panic when gets error.
-func (bisector *GitBisector) GetReport() string {
-	bisector.log.Debug("Git bisect get report")
-	if !bisector.finished {
-		bisector.log.Warn("Bisector has not finished, the report is incomplete")
+func (bisector *GitBisector) aggResults(gce *gcp.Service) {
+	bisector.log.Info("Fetching test results")
+	file, err := os.Create(bisector.resultsDir + "report")
+	if !check.NoError(err, bisector.log, "Failed to create file") {
+		return
+	}
+	defer file.Close()
+
+	info := bisector.Info()
+	e, err := json.MarshalIndent(&info, "", "  ")
+	if !check.NoError(err, bisector.log, "Failed to parse json") {
+		return
+	}
+	fmt.Fprintf(file, "KCS bisector info:\n%s\n", string(e))
+
+	for _, testID := range bisector.testHistory {
+		fmt.Fprintf(file, "\n============TEST %s============\n", testID)
+		reportFile, err := bisector.getResults(testID, gce)
+		if err == nil {
+			sourceFile, err := os.Open(reportFile)
+			if check.NoError(err, bisector.log, "Failed to open file") {
+				_, err = io.Copy(file, sourceFile)
+				check.NoError(err, bisector.log, "Failed to copy file")
+
+				sourceFile.Close()
+			}
+		}
+		if err != nil {
+			fmt.Fprintf(file, "No test results available, check prior emails or log for errors\n")
+		}
+	}
+}
+
+func (bisector *GitBisector) getResults(testID string, gce *gcp.Service) (string, error) {
+	prefix := fmt.Sprintf("%s/results.%s-%s.", bisector.bucketSubdir, server.LTMUserName, testID)
+	resultFiles, err := gce.GetFileNames(prefix)
+	if !check.NoError(err, bisector.log, "Failed to get GS filenames") {
+		return "", err
 	}
 
-	result, err := bisector.repo.BisectLog(os.Stdout)
-	if !check.NoError(err, bisector.log, "Failed to get bisect log") {
-		return "Bisect log not available"
+	if len(resultFiles) >= 1 {
+		bisector.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
+
+		url := fmt.Sprintf("gs://%s/%s", bisector.gsBucket, resultFiles[0])
+		cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+		cmdLog := bisector.log.WithField("cmd", cmd.String())
+		w := cmdLog.Writer()
+		defer w.Close()
+		err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+		if !check.NoError(err, cmdLog, "Failed to run get-results") {
+			return "", err
+		}
+
+		tmpResultsDir := fmt.Sprintf("/tmp/results-%s-%s", server.LTMUserName, testID)
+		unpackedResultsDir := bisector.logDir + "results/" + testID + "/"
+
+		if check.DirExists(tmpResultsDir) {
+			os.RemoveAll(unpackedResultsDir)
+			err = os.Rename(tmpResultsDir, unpackedResultsDir)
+			if !check.NoError(err, bisector.log, "Failed to move dir") {
+				return "", err
+			}
+		} else {
+			return "", fmt.Errorf("Failed to find unpacked result files")
+		}
+		reportFile := unpackedResultsDir + "report"
+		if !check.FileExists(reportFile) {
+			return "", fmt.Errorf("test results found but failed to get report file")
+		}
+		return reportFile, nil
 	}
-	bisector.log.Info(result)
-	return result
+
+	return "", fmt.Errorf("Failed to get test result")
+}
+
+func (bisector *GitBisector) packResults(gce *gcp.Service) {
+	bisector.log.Info("Packing test results")
+	aggFile := fmt.Sprintf("%sresults.%s-%s-bisector", bisector.logDir, server.LTMUserName, bisector.testID)
+
+	cmd := exec.Command("tar", "-cf", aggFile+".tar", "-C", bisector.resultsDir, ".")
+	cmdLog := bisector.log.WithField("cmd", cmd.Args)
+	w1 := cmdLog.Writer()
+	defer w1.Close()
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w1, w1)
+	if !check.NoError(err, cmdLog, "Failed to create tarball") {
+		return
+	}
+
+	cmd = exec.Command("xz", "-6ef", aggFile+".tar")
+	cmdLog = bisector.log.WithField("cmd", cmd.Args)
+	w2 := cmdLog.Writer()
+	defer w2.Close()
+	err = check.Run(cmd, check.RootDir, check.EmptyEnv, w2, w2)
+	if !check.NoError(err, cmdLog, "Failed to create xz compressed tarball") {
+		return
+	}
+
+	bisector.log.Info("Uploading repacked results tarball")
+	gsPath := fmt.Sprintf("%s/results.%s-%s-bisector.tar.xz", bisector.bucketSubdir, server.LTMUserName, bisector.testID)
+	err = gce.UploadFile(aggFile+".tar.xz", gsPath)
+	if !check.NoError(err, bisector.log, "Failed to upload results tarball") {
+		return
+	}
+
+	bisector.log.Info("Removing separate results tarball")
+	for _, testID := range bisector.testHistory {
+		prefix := fmt.Sprintf("%s/results.%s-%s", bisector.bucketSubdir, server.LTMUserName, testID)
+		_, err = gce.DeleteFiles(prefix)
+		check.NoError(err, bisector.log, "Failed to delete file")
+	}
+
+	os.Remove(aggFile + ".tar.xz")
+}
+
+func (bisector *GitBisector) emailReport() {
+	bisector.log.Info("Sending email report")
+	subject := "xfstests bisector summary " + bisector.testID
+
+	b, err := ioutil.ReadFile(bisector.resultsDir + "report")
+	content := string(b)
+	if !check.NoError(err, bisector.log, "Failed to read the report file") {
+		content = "Unable to generate bisector summary report"
+	}
+
+	err = email.Send(subject, content, bisector.reportReceiver)
+	check.NoError(err, bisector.log, "Failed to send the email")
 }
 
 // GetCommit returns the repo's head.
@@ -174,6 +332,8 @@ func (bisector *GitBisector) Build() server.ResultType {
 	bisector.testRequest.Options.CommitID = commit
 	bisector.testRequest.ExtraOptions.TestID = newTestID
 	bisector.testRequest.ExtraOptions.Requester = server.KCSBisectStep
+
+	bisector.testHistory = append(bisector.testHistory, newTestID)
 
 	buildLog := logging.KCSLogDir + newTestID + ".build"
 
@@ -202,7 +362,7 @@ func (bisector *GitBisector) Clean() {
 	check.NoError(err, bisector.log, "Failed to clean up bisector")
 
 	delete(bisectorMap, bisector.testID)
-
+	os.RemoveAll(bisector.resultsDir)
 	logging.CloseLog(bisector.log)
 }
 
@@ -211,7 +371,6 @@ func (bisector *GitBisector) Clean() {
 func (bisector *GitBisector) Exit() {
 	if r := recover(); r != nil {
 		bisector.log.Error("Bisector exits with error, clean up")
-		bisector.GetReport()
 		bisector.Clean()
 
 		panic(r)
@@ -222,15 +381,16 @@ func (bisector *GitBisector) Exit() {
 func (bisector *GitBisector) Info() BisectorInfo {
 	result, err := bisector.repo.BisectLog(os.Stdout)
 	if err != nil {
-		result = "unknown"
+		result = "Bisect log not available"
 	}
+	resultLines := strings.Split(result, "\n")
 	return BisectorInfo{
 		ID:          bisector.testID,
 		Repo:        bisector.testRequest.Options.GitRepo,
 		BadCommit:   bisector.testRequest.Options.BadCommit,
 		GoodCommits: bisector.testRequest.Options.GoodCommit,
-		Progress:    result,
 		LastActive:  bisector.lastActive.Format(time.Stamp),
+		Log:         resultLines,
 	}
 }
 
@@ -259,7 +419,7 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	log := serverLog.WithField("testID", testID)
 	log.Info("Start git bisect task")
 
-	logFile := logging.KCSLogDir + testID + ".log"
+	logFile := logging.KCSLogDir + testID + "/run.log"
 	subject := "xfstests KCS bisect failure " + testID
 	defer email.ReportFailure(log, logFile, c.Options.ReportEmail, subject)
 
@@ -270,7 +430,7 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 			log.Panic("Git bisector already exists")
 		}
 
-		bisector = NewGitBisector(c, testID, logFile)
+		bisector = NewGitBisector(c, testID)
 		bisectorMap[testID] = bisector
 
 		defer bisector.Exit()

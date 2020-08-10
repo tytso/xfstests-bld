@@ -14,7 +14,7 @@ func TestBisectSkip(t *testing.T) {
 			GoodCommit: "v5.6",
 		},
 	}
-	bisector := NewGitBisector(c, "test", "")
+	bisector := NewGitBisector(c, "test")
 	t.Logf(bisector.GetCommit())
 
 	bisector.Step(server.Pass)

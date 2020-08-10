@@ -23,11 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Configurable user name for test instance and result file names.
-var (
-	LTMUserName = "ltm"
-)
-
 /*
 runTests is the end point for a gce-xfstests test request from user.
 
