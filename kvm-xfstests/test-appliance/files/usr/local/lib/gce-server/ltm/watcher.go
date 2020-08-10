@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"sync"
 	"time"
 
 	"gce-server/util/check"
 	"gce-server/util/email"
+	"gce-server/util/gcp"
 	"gce-server/util/git"
 	"gce-server/util/logging"
 	"gce-server/util/server"
@@ -20,15 +25,22 @@ const (
 
 // GitWatcher watches a branch of a remote repo and detects new commits
 type GitWatcher struct {
-	testID         string
-	searchKey      watcherKey
+	testID    string
+	searchKey watcherKey
+
+	gsBucket       string
+	bucketSubdir   string
 	reportReceiver string
 	testRequest    server.TaskRequest
+	testHistory    []string
 
-	repo    *git.RemoteRepository
-	done    chan bool
-	logFile string
-	log     *logrus.Entry
+	repo *git.RemoteRepository
+	done chan bool
+
+	logDir     string
+	resultsDir string
+	logFile    string
+	log        *logrus.Entry
 }
 
 // WatcherInfo exports watcher info.
@@ -68,8 +80,23 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	}
 
 	logFile := logDir + "run.log"
-	log := logging.InitLogger(logFile).WithField("testID", testID)
+	log := logging.InitLogger(logFile)
 	log.Info("Initiating git watcher")
+
+	resultsDir := logDir + "results/"
+	err = check.CreateDir(resultsDir)
+	check.Panic(err, log, "Failed to create dir")
+
+	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
+	if c.Options.BucketSubdir != "" {
+		bucketSubdir = c.Options.BucketSubdir
+	}
+	if bucketSubdir == "" {
+		bucketSubdir = "results"
+	}
+
+	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	check.Panic(err, log, "Failed to get gs bucket config")
 
 	done := make(chan bool)
 	repo, err := git.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
@@ -81,15 +108,21 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	}
 
 	watcher := &GitWatcher{
-		testID:         testID,
-		searchKey:      searchKey,
+		testID:    testID,
+		searchKey: searchKey,
+
+		gsBucket:       gsBucket,
+		bucketSubdir:   bucketSubdir,
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
+		testHistory:    []string{},
 
-		repo:    repo,
-		done:    done,
-		logFile: logFile,
-		log:     log,
+		repo:       repo,
+		done:       done,
+		logDir:     logDir,
+		resultsDir: resultsDir,
+		logFile:    logFile,
+		log:        log,
 	}
 
 	watcherMap[searchKey] = watcher
@@ -119,17 +152,14 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
 	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
 
-	watcher.log.Info("Initiating build at watcher launch")
-	watcher.testRequest.Options.CommitID = watcher.repo.Head()
-
-	go ForwardKCS(watcher.testRequest, watcher.testID)
-
 	start := time.Now()
+	watcher.InitTest()
 
 	for {
 		select {
 		case <-watcher.done:
-			watcher.log.Info("Received terminating signal, stopping monitor")
+			watcher.log.Info("Received terminating signal, generating watcher summary")
+			watcher.Finish()
 			return
 
 		case <-ticker.C:
@@ -138,15 +168,144 @@ func (watcher *GitWatcher) watch(ticker *time.Ticker, wg *sync.WaitGroup) {
 			check.Panic(err, watcher.log, "Failed to update repo")
 
 			if updated {
-				watcher.log.WithField("commit", watcher.repo.Head()).Info("New commit detected, initiating build")
-				testID := watcher.testID + "-" + watcher.repo.Head()[:8]
-				watcher.testRequest.Options.CommitID = watcher.repo.Head()
-				watcher.testRequest.ExtraOptions.TestID = testID
-
-				go ForwardKCS(watcher.testRequest, testID)
+				watcher.InitTest()
 			}
 		}
 	}
+}
+
+// InitTest initiates a kernel building and testing using the current repo head.
+func (watcher *GitWatcher) InitTest() {
+	watcher.log.WithField("commit", watcher.repo.Head()).Info("initiating new build and test task")
+	testID := watcher.testID + "-" + watcher.repo.Head()[:8]
+	watcher.testHistory = append(watcher.testHistory, testID)
+	watcher.testRequest.Options.CommitID = watcher.repo.Head()
+	watcher.testRequest.ExtraOptions.TestID = testID
+
+	go ForwardKCS(watcher.testRequest, watcher.testID)
+}
+
+// Finish fetches and aggregates the test result files.
+// It generates a summary file and sends the email report.
+func (watcher *GitWatcher) Finish() {
+	gce, err := gcp.NewService(watcher.gsBucket)
+	if !check.NoError(err, watcher.log, "Failed to connect to GCE service") {
+		return
+	}
+	defer gce.Close()
+
+	watcher.aggResults(gce)
+	watcher.packResults(gce)
+}
+
+func (watcher *GitWatcher) aggResults(gce *gcp.Service) {
+	watcher.log.Info("Fetching test results")
+	file, err := os.Create(watcher.resultsDir + "report")
+	if !check.NoError(err, watcher.log, "Failed to create file") {
+		return
+	}
+	defer file.Close()
+
+	info := watcher.Info()
+	e, err := json.MarshalIndent(&info, "", "  ")
+	if !check.NoError(err, watcher.log, "Failed to parse json") {
+		return
+	}
+	fmt.Fprintf(file, "LTM watcher info:\n%s\n", e)
+
+	for _, testID := range watcher.testHistory {
+		fmt.Fprintf(file, "\n============TEST %s============\n", testID)
+		reportFile, err := watcher.getResults(testID, gce)
+		if err == nil {
+			sourceFile, err := os.Open(reportFile)
+			if check.NoError(err, watcher.log, "Failed to open file") {
+				_, err = io.Copy(file, sourceFile)
+				check.NoError(err, watcher.log, "Failed to copy file")
+
+				sourceFile.Close()
+			}
+		}
+		if err != nil {
+			fmt.Fprintf(file, "No test results available, check prior emails or log for errors\n")
+		}
+	}
+}
+
+func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, error) {
+	prefix := fmt.Sprintf("%s/results.%s-%s", watcher.bucketSubdir, server.LTMUserName, testID)
+	resultFiles, err := gce.GetFileNames(prefix)
+	if !check.NoError(err, watcher.log, "Failed to get GS filenames") {
+		return "", err
+	}
+
+	if len(resultFiles) >= 1 {
+		watcher.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
+
+		url := fmt.Sprintf("gs://%s/%s", watcher.gsBucket, resultFiles[0])
+		cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+		cmdLog := watcher.log.WithField("cmd", cmd.String())
+		w := cmdLog.Writer()
+		defer w.Close()
+		err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+		if !check.NoError(err, cmdLog, "Failed to run get-results") {
+			return "", err
+		}
+
+		tmpResultsDir := fmt.Sprintf("/tmp/results-%s-%s", server.LTMUserName, testID)
+		unpackedResultsDir := watcher.logDir + "results/" + testID + "/"
+
+		if check.DirExists(tmpResultsDir) {
+			os.RemoveAll(unpackedResultsDir)
+			err = os.Rename(tmpResultsDir, unpackedResultsDir)
+			if !check.NoError(err, watcher.log, "Failed to move dir") {
+				return "", err
+			}
+		} else {
+			return "", fmt.Errorf("Failed to find unpacked result files")
+		}
+		reportFile := unpackedResultsDir + "report"
+		if !check.FileExists(reportFile) {
+			return "", fmt.Errorf("test results found but failed to get report file")
+		}
+		return reportFile, nil
+	}
+
+	return "", fmt.Errorf("Failed to get test result")
+}
+
+func (watcher *GitWatcher) packResults(gce *gcp.Service) {
+	watcher.log.Info("Packing test results")
+	aggFile := fmt.Sprintf("%sresults.%s-%s-watcher", watcher.logDir, server.LTMUserName, watcher.testID)
+
+	cmd := exec.Command("tar", "-cf", aggFile+".tar", "-C", watcher.resultsDir, ".")
+	cmdLog := watcher.log.WithField("cmd", cmd.Args)
+	w1 := cmdLog.Writer()
+	defer w1.Close()
+	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w1, w1)
+	if !check.NoError(err, cmdLog, "Failed to create tarball") {
+		return
+	}
+
+	cmd = exec.Command("xz", "-6ef", aggFile+".tar")
+	cmdLog = watcher.log.WithField("cmd", cmd.Args)
+	w2 := cmdLog.Writer()
+	defer w2.Close()
+	err = check.Run(cmd, check.RootDir, check.EmptyEnv, w2, w2)
+	if !check.NoError(err, cmdLog, "Failed to create xz compressed tarball") {
+		return
+	}
+
+	watcher.log.Info("Removing separate results tarball")
+	prefix := fmt.Sprintf("%s/results.%s-%s", watcher.bucketSubdir, server.LTMUserName, watcher.testID)
+	_, err = gce.DeleteFiles(prefix)
+	check.NoError(err, watcher.log, "Failed to delete file")
+
+	watcher.log.Info("Uploading repacked results tarball")
+	gsPath := fmt.Sprintf("%s/results.%s-%s-watcher.tar.xz", watcher.bucketSubdir, server.LTMUserName, watcher.testID)
+	err = gce.UploadFile(aggFile+".tar.xz", gsPath)
+	check.NoError(err, watcher.log, "Failed to upload results tarball")
+
+	os.Remove(aggFile + ".tar.xz")
 }
 
 // Clean removes the watcher from watcherMap and performs other cleanup.
@@ -156,6 +315,7 @@ func (watcher *GitWatcher) Clean() {
 	watcher.log.Info("Cleaning up watcher resources")
 	delete(watcherMap, watcher.searchKey)
 	close(watcher.done)
+	os.RemoveAll(watcher.resultsDir)
 	logging.CloseLog(watcher.log)
 }
 

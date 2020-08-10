@@ -19,6 +19,7 @@ import (
 
 	"gce-server/util/check"
 	"gce-server/util/gcp"
+	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"
@@ -74,9 +75,9 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		logPath:            logPath,
 		cmdLogPath:         logPath + ".cmdlog",
 		serialOutputPath:   logPath + ".serial",
-		resultsName:        fmt.Sprintf("%s-%s-%s", LTMUserName, sharder.testID, shardID),
-		tmpResultsDir:      fmt.Sprintf("/tmp/results-%s-%s-%s", LTMUserName, sharder.testID, shardID),
-		unpackedResultsDir: fmt.Sprintf("%sresults-%s-%s-%s", sharder.logDir, LTMUserName, sharder.testID, shardID),
+		resultsName:        fmt.Sprintf("%s-%s-%s", server.LTMUserName, sharder.testID, shardID),
+		tmpResultsDir:      fmt.Sprintf("/tmp/results-%s-%s-%s", server.LTMUserName, sharder.testID, shardID),
+		unpackedResultsDir: fmt.Sprintf("%sresults-%s-%s-%s", sharder.logDir, server.LTMUserName, sharder.testID, shardID),
 	}
 
 	shard.log.Info("Initializing test shard")
@@ -265,7 +266,8 @@ func (shard *ShardWorker) finish() {
 
 	url := shard.getResults()
 	if url == "" {
-		shard.log.Panic("Failed to find result file")
+		shard.log.Warn("Failed to find result file")
+		return
 	}
 
 	cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)

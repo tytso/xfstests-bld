@@ -130,8 +130,8 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		log:     log,
 		logDir:  logDir,
 		logFile: logFile,
-		aggDir:  fmt.Sprintf("%sresults-%s-%s/", logDir, LTMUserName, testID),
-		aggFile: fmt.Sprintf("%sresults.%s-%s", logDir, LTMUserName, testID),
+		aggDir:  fmt.Sprintf("%sresults-%s-%s/", logDir, server.LTMUserName, testID),
+		aggFile: fmt.Sprintf("%sresults.%s-%s", logDir, server.LTMUserName, testID),
 	}
 
 	if _, err := gcp.GceConfig.Get("GCE_LTM_KEEP_DEAD_VM"); err == nil {
@@ -294,7 +294,7 @@ func (sharder *ShardScheduler) Run() {
 	sharder.log.Debug("Starting sharder")
 	var wg sync.WaitGroup
 
-	subject := fmt.Sprintf("xfstests failure %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
+	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
 	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
 
 	defer sharder.clean()
@@ -402,6 +402,7 @@ func (sharder *ShardScheduler) aggResults() {
 
 // concatResults aggregate all shard files of a given file type by producing
 // a concatenated file at the top level of the aggregate results directory.
+// If test result is not found for any shard, testResult is set to unknown.
 func (sharder *ShardScheduler) concatResults(filename string) {
 	log := sharder.log.WithField("resultFile", filename)
 	log.Info("Cancatenating shard result file")
@@ -476,7 +477,7 @@ func (sharder *ShardScheduler) createRunStats() {
 	}
 	defer file.Close()
 
-	fmt.Fprintf(file, "TESTRUNID: %s-%s\n", LTMUserName, sharder.testID)
+	fmt.Fprintf(file, "TESTRUNID: %s-%s\n", server.LTMUserName, sharder.testID)
 	fmt.Fprintf(file, "CMDLINE: %s\n", sharder.origCmd)
 
 }
@@ -504,7 +505,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 // emailReport sends the email
 func (sharder *ShardScheduler) emailReport() {
 	sharder.log.Info("Sending email report")
-	subject := fmt.Sprintf("xfstests results %s-%s %s", LTMUserName, sharder.testID, sharder.kernelVersion)
+	subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
 
 	b, err := ioutil.ReadFile(sharder.aggDir + "report")
 	content := string(b)
@@ -556,12 +557,14 @@ func (sharder *ShardScheduler) packResults() {
 
 	sharder.log.Info("Uploading repacked results tarball")
 
-	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
+	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
 	check.Panic(err, sharder.log, "Failed to upload results tarball")
 
+	os.Remove(sharder.aggFile + ".tar.xz")
+
 	if _, err := gcp.GceConfig.Get("GCE_UPLOAD_SUMMARY"); err == nil {
-		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, LTMUserName, sharder.testID, sharder.kernelVersion)
+		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
 		err = sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
 		check.Panic(err, sharder.log, "Failed to upload results summary")
 	}
