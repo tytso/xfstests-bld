@@ -24,6 +24,8 @@ import (
 )
 
 const (
+	// Configurable user name for test instance and result file names.
+	LTMUserName = "ltm"
 	// LTMServer defines the instance name for LTM server
 	LTMServer = "xfstests-ltm"
 	// KCSServer defines the instance name for KCS server
