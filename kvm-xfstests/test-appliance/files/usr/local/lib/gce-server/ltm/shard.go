@@ -109,7 +109,7 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 
 	cmd := exec.Command(shard.args[0], shard.args[1:]...)
 	shard.log.WithField("cmd", cmd.String()).Info("Launching test VM")
-	err = check.Run(cmd, check.RootDir, check.EmptyEnv, file, file)
+	err = check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, file, file)
 	file.Close()
 
 	if err != nil {
@@ -272,7 +272,7 @@ func (shard *ShardWorker) finish() {
 	cmdLog := shard.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+	err := check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, w, w)
 	check.Panic(err, cmdLog, "Failed to run get-results")
 
 	if check.DirExists(shard.tmpResultsDir) {

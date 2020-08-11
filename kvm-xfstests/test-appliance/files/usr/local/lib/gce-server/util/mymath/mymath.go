@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	query     chan bool
+	query     chan struct{}
 	timestamp chan time.Time
 )
 
 func init() {
-	query = make(chan bool)
+	query = make(chan struct{})
 	timestamp = make(chan time.Time)
 
 	go func() {
@@ -28,7 +28,7 @@ func init() {
 
 // GetTimeStamp returns a unique current timestamp.
 func GetTimeStamp() string {
-	query <- true
+	query <- struct{}{}
 	t := <-timestamp
 	return fmt.Sprintf("%.4d%.2d%.2d%.2d%.2d%.2d",
 		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
