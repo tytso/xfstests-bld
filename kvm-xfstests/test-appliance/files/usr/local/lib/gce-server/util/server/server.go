@@ -509,7 +509,7 @@ func runLaunchKCS(log *logrus.Entry) {
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
+	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
 	if err != nil && !strings.HasPrefix(output, "The KCS instance already exists!") {
 		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")
@@ -525,7 +525,7 @@ func fetchLTMConfig(log *logrus.Entry) {
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, w)
+	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
 	if err != nil && !strings.HasPrefix(output, "The LTM instance already exists!") {
 		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")

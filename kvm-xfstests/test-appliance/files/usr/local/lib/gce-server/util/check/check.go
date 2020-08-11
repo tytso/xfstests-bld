@@ -20,6 +20,12 @@ import (
 // The compiled go executables are located in GOPATH/bin
 const RootDir = "/usr/local/lib/gce-server"
 
+// cmdLimit caps the number of gce-xfstests commands that can run at the same time.
+// It reduces the risk of exhausting memory when launching test VMs.
+const cmdLimit = 15
+
+var limiter = make(chan struct{}, cmdLimit)
+
 // EmptyEnv provides a placeholder for default exec environment.
 var EmptyEnv = map[string]string{}
 
@@ -41,6 +47,23 @@ func Output(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writ
 	cmd.Stderr = stderr
 	out, err := cmd.Output()
 	return string(out), err
+}
+
+// LimitedRun works like Run but caps the number of running commands.
+// At most cmdLimit commands passed by LimitedRun can run at the same time.
+func LimitedRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
+	limiter <- struct{}{}
+	err := Run(cmd, workDir, env, stdout, stderr)
+	<-limiter
+	return err
+}
+
+// LimitedOutput works like Output but caps the number of running commands.
+func LimitedOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
+	limiter <- struct{}{}
+	output, err := Output(cmd, workDir, env, stderr)
+	<-limiter
+	return output, err
 }
 
 // CombinedOutput executes an external command, checks the return status, and

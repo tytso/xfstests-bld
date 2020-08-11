@@ -488,7 +488,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
-	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
+	err := check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, w, w)
 	check.NoError(err, cmdLog, "Failed to run python script gen_results_summary")
 
 	content, err := ioutil.ReadFile(sharder.aggDir + "report")
