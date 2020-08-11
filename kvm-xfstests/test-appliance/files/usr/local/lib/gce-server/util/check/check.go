@@ -7,18 +7,34 @@ It also checks for errors and writes messages into logger.
 package check
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 // RootDir points to the root of go server source code
 // The compiled go executables are located in GOPATH/bin
 const RootDir = "/usr/local/lib/gce-server"
+
+// cmdCap caps the number of gce-xfstests commands that can run at the same time.
+// cmdLimit limits the frequency at which these commands can be called.
+// They reduce the risk of exhausting memory when launching test VMs.
+const (
+	cmdCap   = 15
+	cmdLimit = 1
+)
+
+var (
+	capper  = make(chan struct{}, cmdCap)
+	limiter = rate.NewLimiter(rate.Every(cmdLimit*time.Second), 1)
+)
 
 // EmptyEnv provides a placeholder for default exec environment.
 var EmptyEnv = map[string]string{}
@@ -41,6 +57,31 @@ func Output(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writ
 	cmd.Stderr = stderr
 	out, err := cmd.Output()
 	return string(out), err
+}
+
+// LimitedRun works like Run but caps the number of running commands.
+// At most cmdLimit commands passed by LimitedRun can run at the same time.
+func LimitedRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
+	capper <- struct{}{}
+	err := limiter.Wait(context.Background())
+	if err != nil {
+		return err
+	}
+	err = Run(cmd, workDir, env, stdout, stderr)
+	<-capper
+	return err
+}
+
+// LimitedOutput works like Output but caps the number of running commands.
+func LimitedOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
+	capper <- struct{}{}
+	err := limiter.Wait(context.Background())
+	if err != nil {
+		return "", err
+	}
+	output, err := Output(cmd, workDir, env, stderr)
+	<-capper
+	return output, err
 }
 
 // CombinedOutput executes an external command, checks the return status, and
