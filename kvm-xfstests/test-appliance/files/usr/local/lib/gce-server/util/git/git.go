@@ -196,9 +196,13 @@ func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Write
 	switch testResult {
 	case server.Pass:
 		step = "good"
-	case server.Failure:
+	case server.Fail:
+		fallthrough
+	case server.Hang:
+		fallthrough
+	case server.Crash:
 		step = "bad"
-	case server.UnknownResult:
+	case server.Error:
 		step = "skip"
 	default:
 		return false, fmt.Errorf("unexpect test result value")

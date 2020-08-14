@@ -35,6 +35,9 @@ type ShardWorker struct {
 	args      []string
 	vmTimeout bool
 
+	vmStatus   string
+	testResult server.ResultType
+
 	log                *logrus.Entry
 	logPath            string
 	cmdLogPath         string
@@ -46,9 +49,11 @@ type ShardWorker struct {
 
 // ShardInfo exports shard info.
 type ShardInfo struct {
-	ShardID string `json:"shard_id"`
-	Config  string `json:"cfg"`
-	Zone    string `json:"zone"`
+	ID     string `json:"id"`
+	Config string `json:"cfg"`
+	Zone   string `json:"zone"`
+	Status string `json:"vm_status"`
+	Result string `json:"test_result"`
 }
 
 const (
@@ -70,6 +75,9 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		config:    config,
 		args:      []string{},
 		vmTimeout: false,
+
+		vmStatus:   "waiting for launch",
+		testResult: server.DefaultResult,
 
 		log:                sharder.log.WithField("shardID", shardID),
 		logPath:            logPath,
@@ -104,6 +112,7 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer shard.exit()
 
 	shard.log.WithField("shardInfo", shard.Info()).Debug("Starting shard")
+	shard.vmStatus = "launching"
 
 	file, err := os.Create(shard.cmdLogPath)
 	check.Panic(err, shard.log, "Failed to create file")
@@ -115,6 +124,7 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 
 	if err != nil {
 		shard.log.WithError(err).WithField("cmd", cmd.String()).Error("Failed to start test VM")
+		shard.vmStatus = "failed to launch"
 	} else {
 		shard.monitor()
 		shard.finish()
@@ -126,7 +136,7 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 monitor blocks until the test VM finishes or timeout.
 
 It queries the GCE api periodically and logs the serial console output
-to a local file. If the VM no longer exists, stops running or the
+to a local file. If the VM no longer exists, stops running, or the
 running test doesn't change for more than monitorTimeout, the monitor
 kills the test vm and returns.
 */
@@ -136,8 +146,6 @@ func (shard *ShardWorker) monitor() {
 		testStart time.Time
 		// offset for the current serial port output
 		offset int64
-		// test config metadata
-		testStatus string
 	)
 	shard.log.Info("Waiting for test VM to finish")
 
@@ -153,13 +161,16 @@ func (shard *ShardWorker) monitor() {
 		if err != nil {
 			if gcp.NotFound(err) {
 				if testStart == monitorStart {
-					log.Panic("Test VM failed to launch")
+					shard.vmStatus = "failed to launch"
+					log.Error("Test VM failed to launch")
 				} else {
 					log.Info("Test VM no longer exists")
 				}
-				return
+			} else {
+				shard.vmStatus = "unexpected error"
+				log.WithError(err).Panic("Failed to get shard instance info")
 			}
-			log.WithError(err).Panic("Failed to get shard instance info")
+			return
 		}
 
 		offset = shard.updateSerialData(offset)
@@ -171,34 +182,44 @@ func (shard *ShardWorker) monitor() {
 
 		for _, metaData := range instanceInfo.Metadata.Items {
 			if metaData.Key == "status" {
-				if *metaData.Value != testStatus {
-					testStatus = *metaData.Value
+				if *metaData.Value != shard.vmStatus {
+					shard.vmStatus = *metaData.Value
 					testStart = time.Now()
 					break
 				}
 			}
 		}
-		if testStatus == "" {
+		if shard.vmStatus == "launching" {
 			if time.Since(monitorStart) > noStatusTimeout {
-				log.Panicf("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
-			} else {
-				log.Warn("Failed to find test status metadata")
+				if !shard.sharder.keepDeadVM {
+					shard.shutdownOnTimeout(instanceInfo.Metadata)
+				}
+				shard.vmStatus = "timeout without launching tests"
+				shard.testResult = server.Error
+
+				log.Error("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
+				return
 			}
+			log.Debug("waiting to get test status metadata")
 		}
 
 		if time.Since(testStart) > monitorTimeout {
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
 			}
+			shard.vmStatus = "timeout on one test"
+			shard.testResult = server.Hang
+
 			log.WithFields(logrus.Fields{
-				"testStatus": testStatus,
-				"testStart":  testStart.Format(time.Stamp),
-			}).Panicf("Instance seems to have wedged, no status update for %s", monitorTimeout.Round(time.Minute))
+				"status": shard.vmStatus,
+				"start":  testStart.Format(time.Stamp),
+			}).Errorf("Instance seems to have wedged, no status update for %s", monitorTimeout.Round(time.Minute))
+			return
 		}
 
 		log.WithFields(logrus.Fields{
-			"testStatus": testStatus,
-			"testStart":  testStart.Format(time.Stamp),
+			"status": shard.vmStatus,
+			"start":  testStart.Format(time.Stamp),
 		}).Debug("Keep waiting")
 	}
 }
@@ -260,14 +281,31 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 	check.NoError(err, shard.log, "Failed to delete VM")
 }
 
-// finish calls gce-xfstests scripts to fetch and unpack test result files.
-// It deletes the results in gs bucket and local serial port output.
+/*
+finish calls gce-xfstests scripts to fetch and unpack test result files.
+It deletes the results in gs bucket and local serial port output.
+It also determines testResult:
+
+Default		VM finishes without issues, test result is found;
+Crash		VM started running tests but no test result is found;
+Hang		VM stays on one test for too long;
+Error		VM stops before launching any tests, doesn't launch any tests
+			at all, or other unexpected errors.
+*/
 func (shard *ShardWorker) finish() {
 	shard.log.Info("Finishing shard")
 
 	url := shard.getResults()
 	if url == "" {
-		shard.log.Warn("Failed to find result file")
+		if shard.testResult == server.DefaultResult {
+			if shard.vmStatus == "launching" {
+				shard.testResult = server.Error
+				shard.vmStatus = "finished without launching tests"
+			} else {
+				shard.testResult = server.Crash
+			}
+		}
+		shard.log.Error("Failed to find result file")
 		return
 	}
 
@@ -298,10 +336,11 @@ func (shard *ShardWorker) finish() {
 	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	_, err = shard.sharder.gce.DeleteFiles(prefix)
 	check.NoError(err, shard.log, "Failed to delete file")
+	shard.vmStatus = "finished"
 }
 
 // getResults fetches the test result files.
-// return "" if cannot find the result file in 5 attempts
+// It returns empty string if cannot find the result file in 5 attempts
 func (shard *ShardWorker) getResults() string {
 	shard.log.Info("Fetching test results")
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
@@ -321,9 +360,11 @@ func (shard *ShardWorker) getResults() string {
 // Info returns structured shard information.
 func (shard *ShardWorker) Info() ShardInfo {
 	return ShardInfo{
-		ShardID: shard.shardID,
-		Config:  shard.config,
-		Zone:    shard.zone,
+		ID:     shard.shardID,
+		Config: shard.config,
+		Zone:   shard.zone,
+		Status: shard.vmStatus,
+		Result: shard.testResult.String(),
 	}
 }
 
@@ -336,6 +377,9 @@ func (shard *ShardWorker) exit() {
 			shard.log.Warn("Serial port output is found")
 		} else {
 			shard.log.Warn("Serial port output is not found")
+		}
+		if shard.testResult == server.DefaultResult {
+			shard.testResult = server.Error
 		}
 	}
 }

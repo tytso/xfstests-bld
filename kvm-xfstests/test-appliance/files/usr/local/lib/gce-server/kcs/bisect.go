@@ -36,6 +36,7 @@ type GitBisector struct {
 	repo       *git.Repository
 	finished   bool
 	lastActive time.Time
+	done       chan bool
 
 	logDir     string
 	resultsDir string
@@ -64,22 +65,9 @@ var (
 	bisectorLock sync.Mutex
 )
 
-// init initiates a checker that removes expired bisectors periodically.
-func init() {
-	go func() {
-		ticker := time.NewTicker(checkInterval)
-		for range ticker.C {
-			bisectorLock.Lock()
-			for _, bisector := range bisectorMap {
-				bisector.CheckActive(bisectorTimeout)
-			}
-			bisectorLock.Unlock()
-		}
-	}()
-}
-
 // NewGitBisector constructs a new git bisect manager from a bisect request.
 // The repo is initialized with a git bisect session.
+// Creates a monitor goroutine that removes expired bisectors.
 func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	logDir := logging.KCSLogDir + testID + "/"
 	err := check.CreateDir(logDir)
@@ -130,11 +118,25 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 		repo:       repo,
 		finished:   finished,
 		lastActive: time.Now(),
+		done:       make(chan bool),
 
 		logDir:     logDir,
 		resultsDir: resultsDir,
 		log:        log,
 	}
+
+	go func() {
+		ticker := time.NewTicker(checkInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-bisector.done:
+				return
+			case <-ticker.C:
+				bisector.CheckActive()
+			}
+		}
+	}()
 
 	return &bisector
 }
@@ -335,15 +337,14 @@ func (bisector *GitBisector) Build() server.ResultType {
 
 	bisector.testHistory = append(bisector.testHistory, newTestID)
 
-	buildLog := logging.KCSLogDir + newTestID + ".build"
+	buildLog := bisector.logDir + newTestID + ".build"
 
 	if logging.MOCK {
 		return MockRunBuild(bisector.repo, bisector.gsBucket, gsPath, newTestID, buildLog, bisector.log)
 	}
-
 	err := RunBuild(bisector.repo, bisector.gsBucket, gsPath, newTestID, buildLog)
 	if !check.NoError(err, bisector.log, "Failed to build and upload kernel, skip commit") {
-		return server.UnknownResult
+		return server.Error
 	}
 	return server.DefaultResult
 }
@@ -354,16 +355,20 @@ func (bisector *GitBisector) StartTest() {
 }
 
 // Clean removes the repo that binds to the bisector and closes log.
-// It also removes itself from bisectorMap if found.
+// It also disables the expire monitor and removes itself from bisectorMap.
 func (bisector *GitBisector) Clean() {
+	bisectorLock.Lock()
+	defer bisectorLock.Unlock()
 	bisector.log.Debug("Git bisect clean up")
 
 	err := bisector.repo.Delete()
-	check.NoError(err, bisector.log, "Failed to clean up bisector")
+	check.NoError(err, bisector.log, "Failed to clean up repo")
 
 	delete(bisectorMap, bisector.testID)
 	os.RemoveAll(bisector.resultsDir)
 	logging.CloseLog(bisector.log)
+	bisector.done <- true
+	close(bisector.done)
 }
 
 // Exit handles bisector panic and clean up.
@@ -395,8 +400,8 @@ func (bisector *GitBisector) Info() BisectorInfo {
 }
 
 // CheckActive checks whether a bisector is active and clean it up when expired.
-func (bisector *GitBisector) CheckActive(timeout time.Duration) {
-	if time.Since(bisector.lastActive) > timeout {
+func (bisector *GitBisector) CheckActive() {
+	if time.Since(bisector.lastActive) > bisectorTimeout {
 		bisector.log.WithField(
 			"lastActive", bisector.lastActive.Format(time.Stamp),
 		).Warn("Bisector timeout, cleaning resources")
@@ -414,8 +419,6 @@ If the current HEAD in the request differs from the bisector, it does nothing.
 If the build fails, it bisect skip the current commit.
 */
 func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
-	bisectorLock.Lock()
-	defer bisectorLock.Unlock()
 	log := serverLog.WithField("testID", testID)
 	log.Info("Start git bisect task")
 
@@ -431,11 +434,17 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 		}
 
 		bisector = NewGitBisector(c, testID)
+
+		bisectorLock.Lock()
 		bisectorMap[testID] = bisector
+		bisectorLock.Unlock()
 
 		defer bisector.Exit()
 	} else {
+		bisectorLock.Lock()
 		bisector, ok = bisectorMap[testID]
+		bisectorLock.Unlock()
+
 		if !ok {
 			log.Panic("Git bisector doesn't exist")
 		}
