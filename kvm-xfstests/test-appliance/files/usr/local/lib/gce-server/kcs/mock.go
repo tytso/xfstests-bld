@@ -18,9 +18,9 @@ func MockRunBuild(repo *git.Repository, gsBucket string, gsPath string, testID s
 	case "good":
 		result = server.Pass
 	case "bad":
-		result = server.Failure
+		result = server.Fail
 	case "undefined":
-		result = server.UnknownResult
+		result = server.Error
 	default:
 		log.Panic("mock.txt in wrong format")
 	}

@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	// Configurable user name for test instance and result file names.
+	// LTMUserName defines user name for test instance and result file names.
 	LTMUserName = "ltm"
 	// LTMServer defines the instance name for LTM server
 	LTMServer = "xfstests-ltm"
@@ -56,6 +56,17 @@ const (
 	KCSBisectStep
 )
 
+func (r RequestType) String() string {
+	return [...]string{
+		"default",
+		"LTM-build",
+		"LTM-bisectStart",
+		"LTM-bisectStep",
+		"KCS-test",
+		"KCS-bisectStep",
+	}[r]
+}
+
 // ResultType defines the result state of a test.
 type ResultType int
 
@@ -64,11 +75,26 @@ const (
 	DefaultResult ResultType = iota
 	// Pass indicates all test passed.
 	Pass
-	// Failure indicates at least one failed test.
-	Failure
-	// UnknownResult indicates something unexpected happened so skip this commit.
-	UnknownResult
+	// Fail indicates at least one failed test.
+	Fail
+	// Hang indicates a hanging kernel during a test.
+	Hang
+	// Crash indicates a crashed kernel despite a successful test VM launch.
+	Crash
+	// Error indicates something unexpected happened so skip this commit.
+	Error
 )
+
+func (r ResultType) String() string {
+	return [...]string{
+		"default",
+		"pass",
+		"fail",
+		"hang",
+		"crash",
+		"error",
+	}[r]
+}
 
 const (
 	kcsTimeout     = 30 * time.Second

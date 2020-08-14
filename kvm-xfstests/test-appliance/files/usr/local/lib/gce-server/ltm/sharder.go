@@ -15,6 +15,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -72,9 +73,17 @@ type ShardScheduler struct {
 // SharderInfo exports sharder info.
 type SharderInfo struct {
 	ID        string      `json:"id"`
+	Command   string      `json:"command"`
 	NumShards int         `json:"num_shards"`
-	ShardInfo []ShardInfo `json:"shard_info"`
+	Result    string      `json:"test_result"`
+	ShardInfo []ShardInfo `json:"shards"`
 }
+
+// sharderMap indexes sharders by testID.
+var (
+	sharderMap  = make(map[string]*ShardScheduler)
+	sharderLock sync.Mutex
+)
 
 // NewShardScheduler constructs a new sharder from a test request.
 // All dir strings have a trailing / for consistency purpose,
@@ -124,7 +133,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 
 		reportKCS:   false,
 		testRequest: c,
-		testResult:  server.UnknownResult,
+		testResult:  server.DefaultResult,
 
 		log:     log,
 		logDir:  logDir,
@@ -159,6 +168,10 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	if c.ExtraOptions != nil && c.ExtraOptions.Requester == server.KCSBisectStep {
 		sharder.reportKCS = true
 	}
+
+	sharderLock.Lock()
+	sharderMap[testID] = &sharder
+	sharderLock.Unlock()
 
 	return &sharder
 }
@@ -315,7 +328,9 @@ func (sharder *ShardScheduler) Run() {
 func (sharder *ShardScheduler) Info() SharderInfo {
 	info := SharderInfo{
 		ID:        sharder.testID,
+		Command:   sharder.origCmd,
 		NumShards: len(sharder.shards),
+		Result:    sharder.testResult.String(),
 	}
 
 	for _, shard := range sharder.shards {
@@ -479,8 +494,19 @@ func (sharder *ShardScheduler) createRunStats() {
 
 }
 
-// genResultsSummary calls a python script to generate the summary on junit xml test results.
-// It parses the summary file to check for any test failures.
+/*
+genResultsSummary generate test result summary and determine the test result status.
+
+It calls a python script to generate the summary on junit xml test results and parses
+the summary file to check for any test failures.
+It also checks testResult from each shard. The final testResult is:
+
+Fail	a crash, hang or failed test happens;
+Error	any shard has error, test result is not found or other unexpected errors;
+Pass	nothing above happens and no test failure found.
+
+If any shard has non-default testResult, append the sharder info to the result file.
+*/
 func (sharder *ShardScheduler) genResultsSummary() {
 	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report")
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
@@ -489,13 +515,52 @@ func (sharder *ShardScheduler) genResultsSummary() {
 	err := check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, w, w)
 	check.NoError(err, cmdLog, "Failed to run python script gen_results_summary")
 
+	var testFailure, testError, reportInfo bool
+
+	for _, shard := range sharder.shards {
+		switch shard.testResult {
+		case server.DefaultResult:
+			// do nothing, won't fallthrough like in C
+		case server.Error:
+			testError = true
+			reportInfo = true
+		case server.Pass:
+			fallthrough
+		case server.Fail:
+			sharder.log.Error("shard may not produce a pass or fail result")
+		default:
+			testFailure = true
+			reportInfo = true
+		}
+	}
+
 	content, err := ioutil.ReadFile(sharder.aggDir + "report")
 	if check.NoError(err, sharder.log, "Failed to read the report file") {
-		if strings.Contains(string(content), "0 failures") {
-			sharder.testResult = server.Pass
-		} else {
-			sharder.testResult = server.Failure
+		if !strings.Contains(string(content), "0 failures") {
+			testFailure = true
 		}
+	}
+
+	if testFailure {
+		sharder.testResult = server.Fail
+	} else if testError {
+		sharder.testResult = server.Error
+	} else {
+		sharder.testResult = server.Pass
+	}
+
+	file, err := os.OpenFile(sharder.aggDir+"report", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if !check.NoError(err, sharder.log, "failed to open report file") {
+		return
+	}
+	defer file.Close()
+	info := sharder.Info()
+	e, err := json.MarshalIndent(&info, "", "  ")
+	if !check.NoError(err, sharder.log, "Failed to parse json") {
+		return
+	}
+	if reportInfo {
+		fmt.Fprintf(file, "\nSome shard finished with problems:\n%s\n", string(e))
 	}
 }
 
@@ -575,9 +640,24 @@ func (sharder *ShardScheduler) clean() {
 		sharder.log.WithField("gsKernel", sharder.gsKernel).Info("Delete onerun kernel image")
 		sharder.gce.DeleteFiles(sharder.gsKernel)
 	}
+	sharderLock.Lock()
+	delete(sharderMap, sharder.testID)
+	sharderLock.Unlock()
 
 	sharder.log.Info("Remove local aggregate results")
 	os.RemoveAll(sharder.aggDir)
 	sharder.gce.Close()
 	logging.CloseLog(sharder.log)
+}
+
+// SharderStatus returns the info for running sharders.
+func SharderStatus() []SharderInfo {
+	sharderLock.Lock()
+	defer sharderLock.Unlock()
+	infoList := []SharderInfo{}
+	for _, v := range sharderMap {
+		infoList = append(infoList, v.Info())
+	}
+
+	return infoList
 }
