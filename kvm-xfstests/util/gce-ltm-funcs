@@ -6,11 +6,11 @@
 LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
 function ltm_post_json() {
     if test -n "$GCE_LTM_INT_IP"; then
-    curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_INT_IP" -X POST "$@"
+    curl -s --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_INT_IP" -X POST "$@" | jq '.'
     else
-    curl --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@"
+    curl -s --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@" | jq '.'
     fi
 }
 
@@ -33,17 +33,28 @@ function send_to_ltm() {
     local cmd_to_send=$1
     shift
 
-    # just create a new login session and store it in the cookie
-    ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
-        "https://$LTM_HOSTNAME/login"
+    if test ! -f "$DIR/.ltm_cookie"; then
+        # just create a new login session and store it in the cookie
+        ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
+            "https://$LTM_HOSTNAME/login"
 
-    if [ ! $? = 0 ]; then
-	echo "Login failed."
-	ltm_post_failed
-	return 1
+        if [ ! $? = 0 ]; then
+        echo "Login failed."
+        ltm_post_failed
+        return 1
+        fi
+        echo
     fi
-    echo
 
+    if test -n "$LTM_INFO"; then
+        ltm_post_json -b $DIR/.ltm_cookie "https://$LTM_HOSTNAME/status"
+        if [ $? != 0 ]; then
+        echo "Request failed."
+        ltm_post_failed
+        return 1
+        fi
+        echo
+    else
     LTM_OPTS=""
     if [ -n "$NO_REGION_SHARD" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":true"
@@ -90,4 +101,6 @@ function send_to_ltm() {
 	return 1
     fi
     echo
+
+    fi
 }

@@ -5,6 +5,7 @@ multiple shards.
 package parser
 
 import (
+	"encoding/base64"
 	"fmt"
 	"gce-server/util/check"
 	"strings"
@@ -204,4 +205,13 @@ func singleConfig(configs map[string][]string, configArg string) error {
 		configs[fs] = configLines
 	}
 	return nil
+}
+
+// DecodeCmd decodes the base64 string in user requests.
+func DecodeCmd(cmdLine string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(cmdLine)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }

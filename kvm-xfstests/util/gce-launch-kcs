@@ -27,6 +27,11 @@ fi
 
 INSTANCE="xfstests-kcs"
 
+if test -f "$DIR/.kcs_cookie"; then
+    echo "Removing old cookies..."
+    rm -f "$DIR/.kcs_cookie"
+fi
+
 NO_ACTION=
 if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
     $INSTANCE >& /dev/null

@@ -6,11 +6,11 @@
 KCS_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
 function kcs_post_json() {
     if test -n "$GCE_KCS_INT_IP"; then
-    curl --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_INT_IP" -X POST "$@"
+    curl -s --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_INT_IP" -X POST "$@" | jq '.'
     else
-    curl --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_EXT_IP" -X POST "$@"
+    curl -s --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_EXT_IP" -X POST "$@" | jq '.'
     fi
 }
 
@@ -33,16 +33,18 @@ function send_to_kcs() {
     local cmd_to_send=$1
     shift
 
-    # just create a new login session and store it in the cookie
-    kcs_post_json -c $DIR/.kcs_cookie -d "{\"password\":\"$GCE_KCS_PWD\"}" \
-        "https://$KCS_HOSTNAME/login"
+    if test ! -f "$DIR/.kcs_cookie"; then
+        # just create a new login session and store it in the cookie
+        kcs_post_json -c $DIR/.kcs_cookie -d "{\"password\":\"$GCE_KCS_PWD\"}" \
+            "https://$KCS_HOSTNAME/login"
 
-    if [ ! $? = 0 ]; then
-	echo "Login failed."
-	kcs_post_failed
-	return 1
+        if [ ! $? = 0 ]; then
+        echo "Login failed."
+        kcs_post_failed
+        return 1
+        fi
+        echo
     fi
-    echo
 
     KCS_OPTS=""
     if [ -n "${GCE_REPORT_EMAIL+x}" ]; then

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +16,7 @@ import (
 	"gce-server/util/gcp"
 	"gce-server/util/git"
 	"gce-server/util/logging"
+	"gce-server/util/parser"
 	"gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
@@ -25,7 +26,8 @@ import (
 // Each bisector keeps a unique repository to save the states for bisect
 // progress.
 type GitBisector struct {
-	testID string
+	testID  string
+	origCmd string
 
 	gsBucket       string
 	bucketSubdir   string
@@ -41,16 +43,6 @@ type GitBisector struct {
 	logDir     string
 	resultsDir string
 	log        *logrus.Entry
-}
-
-// BisectorInfo exports bisector info.
-type BisectorInfo struct {
-	ID          string   `json:"id"`
-	Repo        string   `json:"repo"`
-	BadCommit   string   `json:"bad_commit"`
-	GoodCommits string   `json:"good_commits"`
-	LastActive  string   `json:"last_active"`
-	Log         []string `json:"log"`
 }
 
 const (
@@ -94,6 +86,9 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 
+	origCmd, err := parser.DecodeCmd(c.CmdLine)
+	check.Panic(err, log, "Failed to decode cmdline")
+
 	w := log.WithField("cmd", "bisectStart").Writer()
 	defer w.Close()
 
@@ -107,7 +102,8 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	check.Panic(err, log, "Failed to start bisect")
 
 	bisector := GitBisector{
-		testID: testID,
+		testID:  testID,
+		origCmd: origCmd,
 
 		gsBucket:       gsBucket,
 		bucketSubdir:   bucketSubdir,
@@ -192,12 +188,7 @@ func (bisector *GitBisector) aggResults(gce *gcp.Service) {
 	}
 	defer file.Close()
 
-	info := bisector.Info()
-	e, err := json.MarshalIndent(&info, "", "  ")
-	if !check.NoError(err, bisector.log, "Failed to parse json") {
-		return
-	}
-	fmt.Fprintf(file, "KCS bisector info:\n%s\n", string(e))
+	fmt.Fprint(file, bisector.Info().String())
 
 	for _, testID := range bisector.testHistory {
 		fmt.Fprintf(file, "\n============TEST %s============\n", testID)
@@ -383,18 +374,19 @@ func (bisector *GitBisector) Exit() {
 }
 
 // Info returns structured bisector information.
-func (bisector *GitBisector) Info() BisectorInfo {
+func (bisector *GitBisector) Info() server.BisectorInfo {
 	result, err := bisector.repo.BisectLog(os.Stdout)
 	if err != nil {
 		result = "Bisect log not available"
 	}
 	resultLines := strings.Split(result, "\n")
-	return BisectorInfo{
+	return server.BisectorInfo{
 		ID:          bisector.testID,
+		Command:     bisector.origCmd,
 		Repo:        bisector.testRequest.Options.GitRepo,
 		BadCommit:   bisector.testRequest.Options.BadCommit,
-		GoodCommits: bisector.testRequest.Options.GoodCommit,
-		LastActive:  bisector.lastActive.Format(time.Stamp),
+		GoodCommits: strings.Split(bisector.testRequest.Options.GoodCommit, "|"),
+		LastActive:  time.Since(bisector.lastActive).Round(time.Second).String(),
 		Log:         resultLines,
 	}
 }
@@ -477,13 +469,15 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 }
 
 // BisectorStatus returns the info for active git bisectors.
-func BisectorStatus() []BisectorInfo {
+func BisectorStatus() []server.BisectorInfo {
 	bisectorLock.Lock()
 	defer bisectorLock.Unlock()
-	infoList := []BisectorInfo{}
+	infoList := []server.BisectorInfo{}
 	for _, v := range bisectorMap {
 		infoList = append(infoList, v.Info())
 	}
-
+	sort.Slice(infoList, func(i, j int) bool {
+		return infoList[i].ID < infoList[j].ID
+	})
 	return infoList
 }

@@ -378,6 +378,10 @@ Then the LTM server will launch these tests in parallel and monitor the status o
 
 > **_NOTE:_** Some command line arguments takes no affect with LTM., including `--instance-name, --gce-zone, --hooks` and more.
 
+When LTM server is running, the following command queries for LTM running status, and prints a json response with active sharders, watchers and bisectors info.
+
+      	gce-xfstests ltm-info
+
 ## Building kernels remotely with KCS server
 
 Gce-xfstests also provides a way to build kernel images remotely on the Kernel Compile Server (KCS). To build a kernel and run tests on it, you can specify the git repo for the kernel source code with `--repo` and a single revision (SHA-1 hash, tag name or branch name) with `--commit`:

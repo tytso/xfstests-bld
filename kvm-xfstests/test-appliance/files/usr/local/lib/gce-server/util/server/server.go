@@ -54,6 +54,8 @@ const (
 	KCSTest
 	// KCSBisectStep indicates a bisect step request from KCS to LTM.
 	KCSBisectStep
+	// Query indicates a running status query request.
+	Query
 )
 
 func (r RequestType) String() string {
@@ -156,6 +158,7 @@ type Instance struct {
 	log   *logrus.Entry
 }
 
+// server maintained secrets.
 var (
 	key      []byte
 	password string
@@ -373,7 +376,7 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request) (TaskRequest, erro
 }
 
 // SendResponse sends a formatted response back to the requester.
-func SendResponse(w http.ResponseWriter, r *http.Request, resp SimpleResponse) error {
+func SendResponse(w http.ResponseWriter, r *http.Request, resp interface{}) error {
 	js, err := json.Marshal(resp)
 	if err != nil {
 		return err
@@ -399,7 +402,7 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	var config *gcp.Config
 	if toKCS {
-		launchKCS(log)
+		accessKCS(log, true)
 		gcp.Update()
 		config = gcp.KCSConfig
 
@@ -428,36 +431,13 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
 	check.Panic(err, log.WithField("js", js), "Failed to format request")
 
-	req.Header.Set("Content-Type", "application/json")
-
-	cert, err := tls.LoadX509KeyPair(certPath, secretPath)
-	check.Panic(err, log, "Failed to load key pair")
-
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
-	}
-	tlsConfig.BuildNameToCertificate()
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{
-		Transport: transport,
-	}
+	timeout := ltmTimeout
 	if toKCS {
-		client.Timeout = kcsTimeout
-	} else {
-		client.Timeout = ltmTimeout
+		timeout = kcsTimeout
 	}
 
-	var resp *http.Response
-	for attempts := maxAttempts; attempts > 0; attempts-- {
-		resp, err = client.Do(req)
-		if err == nil {
-			break
-		}
-		log.WithError(err).WithField("attemptsLeft", attempts).Debug("Failed to connect to " + receiver)
-		time.Sleep(checkInterval)
-	}
-	check.Panic(err, log, "Failed to get response from "+receiver)
+	resp, err := sendRequest(req, timeout)
+	check.Panic(err, log, "Failed to send request")
 
 	defer resp.Body.Close()
 
@@ -479,13 +459,45 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	}
 }
 
-/*
-launchKCS attempts to launch the KCS.
+func sendRequest(req *http.Request, timeout time.Duration) (*http.Response, error) {
+	req.Header.Set("Content-Type", "application/json")
 
+	cert, err := tls.LoadX509KeyPair(certPath, secretPath)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load key pair")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+	tlsConfig.BuildNameToCertificate()
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   timeout,
+	}
+
+	var resp *http.Response
+	for attempts := maxAttempts; attempts > 0; attempts-- {
+		resp, err = client.Do(req)
+		if err == nil {
+			return resp, nil
+		}
+		time.Sleep(checkInterval)
+	}
+
+	return nil, fmt.Errorf("Failed to get response within %d attempts", maxAttempts)
+}
+
+/*
+accessKCS attempts to get access to the KCS and return whether VM is up.
+
+if launch is true, it attempts to launch KCS if it's not running.
 KCS is assumed to be always launched by LTM instead of user.
 It checks KCS's metadata to ensure it's not in the process of shutting down.
 */
-func launchKCS(log *logrus.Entry) {
+func accessKCS(log *logrus.Entry, launch bool) bool {
 	log.Info("Launching KCS server")
 
 	zone, err := gcp.GceConfig.Get("GCE_ZONE")
@@ -501,9 +513,13 @@ func launchKCS(log *logrus.Entry) {
 		instanceInfo, err := gce.GetInstanceInfo(projID, zone, KCSServer)
 		if err != nil {
 			if gcp.NotFound(err) {
-				log.Info("KCS is not running, launching it")
-				runLaunchKCS(log)
-				return
+				if launch {
+					log.Info("KCS is not running, launching it")
+					runLaunchKCS(log)
+					return true
+				}
+				log.Info("KCS is not running")
+				return false
 			}
 			log.WithError(err).Panic("Failed to get KCS instance info")
 		}
@@ -524,12 +540,15 @@ func launchKCS(log *logrus.Entry) {
 			if gcp.KCSConfig == nil {
 				runLaunchKCS(log)
 			}
-			return
+			return true
+		} else if !launch {
+			return false
 		}
 		log.WithField("attemptsLeft", attempts).Warn("Wait for KCS to shut down before re-launching it")
 		time.Sleep(launchInterval)
 	}
 	log.Panic("Failed to launch KCS")
+	return false
 }
 
 func runLaunchKCS(log *logrus.Entry) {
