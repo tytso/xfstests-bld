@@ -542,7 +542,18 @@ case "$1" in
 	NO_ACTION=": "
 	RUN_ON_KCS="yes"
 	GCE_USER="kcs"
-
+	;;
+    ltm-info)
+	shift
+	if [ ! -f "$DIR/.ltm_instance" ]; then
+		echo "The .ltm_instance file is not present! Please launch the LTM before"
+		echo "using this option."
+		exit 1
+	fi
+	NO_ACTION=": "
+	RUN_ON_LTM="yes"
+	GCE_USER="ltm"
+	LTM_INFO="yes"
 	;;
 esac
 

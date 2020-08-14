@@ -14,14 +14,13 @@ now to reduce the code base.
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 
@@ -70,15 +69,6 @@ type ShardScheduler struct {
 	shards    []*ShardWorker
 }
 
-// SharderInfo exports sharder info.
-type SharderInfo struct {
-	ID        string      `json:"id"`
-	Command   string      `json:"command"`
-	NumShards int         `json:"num_shards"`
-	Result    string      `json:"test_result"`
-	ShardInfo []ShardInfo `json:"shards"`
-}
-
 // sharderMap indexes sharders by testID.
 var (
 	sharderMap  = make(map[string]*ShardScheduler)
@@ -98,7 +88,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	logFile := logDir + "run.log"
 	log := logging.InitLogger(logFile)
 
-	data, err := base64.StdEncoding.DecodeString(c.CmdLine)
+	origCmd, err := parser.DecodeCmd(c.CmdLine)
 	check.Panic(err, log, "Failed to decode cmdline")
 
 	// assume a zone looks like us-central1-f and a region looks like us-central1
@@ -119,7 +109,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	sharder := ShardScheduler{
 		testID:  testID,
 		projID:  projID,
-		origCmd: strings.TrimSpace(string(data)),
+		origCmd: origCmd,
 
 		zone:           zone,
 		region:         region,
@@ -325,8 +315,8 @@ func (sharder *ShardScheduler) Run() {
 }
 
 // Info returns structured sharder information.
-func (sharder *ShardScheduler) Info() SharderInfo {
-	info := SharderInfo{
+func (sharder *ShardScheduler) Info() server.SharderInfo {
+	info := server.SharderInfo{
 		ID:        sharder.testID,
 		Command:   sharder.origCmd,
 		NumShards: len(sharder.shards),
@@ -549,18 +539,14 @@ func (sharder *ShardScheduler) genResultsSummary() {
 		sharder.testResult = server.Pass
 	}
 
-	file, err := os.OpenFile(sharder.aggDir+"report", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if !check.NoError(err, sharder.log, "failed to open report file") {
-		return
-	}
-	defer file.Close()
-	info := sharder.Info()
-	e, err := json.MarshalIndent(&info, "", "  ")
-	if !check.NoError(err, sharder.log, "Failed to parse json") {
-		return
-	}
 	if reportInfo {
-		fmt.Fprintf(file, "\nSome shard finished with problems:\n%s\n", string(e))
+		file, err := os.OpenFile(sharder.aggDir+"report", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if !check.NoError(err, sharder.log, "failed to open report file") {
+			return
+		}
+		defer file.Close()
+
+		fmt.Fprintf(file, "\nSome shard finished with problems:\n%s", sharder.Info().String())
 	}
 }
 
@@ -651,13 +637,15 @@ func (sharder *ShardScheduler) clean() {
 }
 
 // SharderStatus returns the info for running sharders.
-func SharderStatus() []SharderInfo {
+func SharderStatus() []server.SharderInfo {
 	sharderLock.Lock()
 	defer sharderLock.Unlock()
-	infoList := []SharderInfo{}
+	infoList := []server.SharderInfo{}
 	for _, v := range sharderMap {
 		infoList = append(infoList, v.Info())
 	}
-
+	sort.Slice(infoList, func(i, j int) bool {
+		return infoList[i].ID < infoList[j].ID
+	})
 	return infoList
 }

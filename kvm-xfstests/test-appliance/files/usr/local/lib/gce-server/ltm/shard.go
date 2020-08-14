@@ -35,8 +35,9 @@ type ShardWorker struct {
 	args      []string
 	vmTimeout bool
 
-	vmStatus   string
-	testResult server.ResultType
+	vmStatus    string
+	vmtestStart time.Time
+	testResult  server.ResultType
 
 	log                *logrus.Entry
 	logPath            string
@@ -45,15 +46,6 @@ type ShardWorker struct {
 	resultsName        string
 	tmpResultsDir      string
 	unpackedResultsDir string
-}
-
-// ShardInfo exports shard info.
-type ShardInfo struct {
-	ID     string `json:"id"`
-	Config string `json:"cfg"`
-	Zone   string `json:"zone"`
-	Status string `json:"vm_status"`
-	Result string `json:"test_result"`
 }
 
 const (
@@ -76,8 +68,9 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		args:      []string{},
 		vmTimeout: false,
 
-		vmStatus:   "waiting for launch",
-		testResult: server.DefaultResult,
+		vmStatus:    "waiting for launch",
+		vmtestStart: time.Now(),
+		testResult:  server.DefaultResult,
 
 		log:                sharder.log.WithField("shardID", shardID),
 		logPath:            logPath,
@@ -141,18 +134,13 @@ running test doesn't change for more than monitorTimeout, the monitor
 kills the test vm and returns.
 */
 func (shard *ShardWorker) monitor() {
-	var (
-		// start time of the current test
-		testStart time.Time
-		// offset for the current serial port output
-		offset int64
-	)
 	shard.log.Info("Waiting for test VM to finish")
 
+	var offset int64
 	ticker := time.NewTicker(monitorInterval)
 	defer ticker.Stop()
 	monitorStart := time.Now()
-	testStart = monitorStart
+	shard.vmtestStart = monitorStart
 
 	for range ticker.C {
 		log := shard.log.WithField("time", time.Since(monitorStart).Round(time.Second))
@@ -160,7 +148,7 @@ func (shard *ShardWorker) monitor() {
 
 		if err != nil {
 			if gcp.NotFound(err) {
-				if testStart == monitorStart {
+				if shard.vmtestStart == monitorStart {
 					shard.vmStatus = "failed to launch"
 					log.Error("Test VM failed to launch")
 				} else {
@@ -184,7 +172,7 @@ func (shard *ShardWorker) monitor() {
 			if metaData.Key == "status" {
 				if *metaData.Value != shard.vmStatus {
 					shard.vmStatus = *metaData.Value
-					testStart = time.Now()
+					shard.vmtestStart = time.Now()
 					break
 				}
 			}
@@ -203,7 +191,7 @@ func (shard *ShardWorker) monitor() {
 			log.Debug("waiting to get test status metadata")
 		}
 
-		if time.Since(testStart) > monitorTimeout {
+		if time.Since(shard.vmtestStart) > monitorTimeout {
 			if !shard.sharder.keepDeadVM {
 				shard.shutdownOnTimeout(instanceInfo.Metadata)
 			}
@@ -212,14 +200,14 @@ func (shard *ShardWorker) monitor() {
 
 			log.WithFields(logrus.Fields{
 				"status": shard.vmStatus,
-				"start":  testStart.Format(time.Stamp),
+				"start":  shard.vmtestStart.Format(time.Stamp),
 			}).Errorf("Instance seems to have wedged, no status update for %s", monitorTimeout.Round(time.Minute))
 			return
 		}
 
 		log.WithFields(logrus.Fields{
 			"status": shard.vmStatus,
-			"start":  testStart.Format(time.Stamp),
+			"start":  shard.vmtestStart.Format(time.Stamp),
 		}).Debug("Keep waiting")
 	}
 }
@@ -358,12 +346,13 @@ func (shard *ShardWorker) getResults() string {
 }
 
 // Info returns structured shard information.
-func (shard *ShardWorker) Info() ShardInfo {
-	return ShardInfo{
+func (shard *ShardWorker) Info() server.ShardInfo {
+	return server.ShardInfo{
 		ID:     shard.shardID,
 		Config: shard.config,
 		Zone:   shard.zone,
 		Status: shard.vmStatus,
+		Time:   time.Since(shard.vmtestStart).Round(time.Second).String(),
 		Result: shard.testResult.String(),
 	}
 }

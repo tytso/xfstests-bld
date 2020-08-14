@@ -27,6 +27,11 @@ fi
 
 INSTANCE="xfstests-ltm"
 
+if test -f "$DIR/.ltm_cookie"; then
+    echo "Removing old cookies..."
+    rm -f "$DIR/.ltm_cookie"
+fi
+
 NO_ACTION=
 if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
     $INSTANCE >& /dev/null

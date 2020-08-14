@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"sync"
 	"time"
 
@@ -34,12 +35,14 @@ const (
 type GitWatcher struct {
 	testID    string
 	searchKey watcherKey
+	origCmd   string
 
 	gsBucket       string
 	bucketSubdir   string
 	reportReceiver string
 	testRequest    server.TaskRequest
 	testHistory    []string
+	packHistory    []string
 
 	repo *git.RemoteRepository
 	done chan bool
@@ -48,15 +51,6 @@ type GitWatcher struct {
 	resultsDir string
 	logFile    string
 	log        *logrus.Entry
-}
-
-// WatcherInfo exports watcher info.
-type WatcherInfo struct {
-	ID     string   `json:"id"`
-	Repo   string   `json:"repo"`
-	Branch string   `json:"branch"`
-	HEAD   string   `json:"HEAD"`
-	Tests  []string `json:"active_tests"`
 }
 
 type watcherKey struct {
@@ -106,6 +100,9 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 
+	origCmd, err := parser.DecodeCmd(c.CmdLine)
+	check.Panic(err, log, "Failed to decode cmdline")
+
 	done := make(chan bool)
 	repo, err := git.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
 	check.Panic(err, log, "failed to initiate remote repo")
@@ -118,12 +115,14 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	watcher := &GitWatcher{
 		testID:    testID,
 		searchKey: searchKey,
+		origCmd:   origCmd,
 
 		gsBucket:       gsBucket,
 		bucketSubdir:   bucketSubdir,
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
 		testHistory:    []string{},
+		packHistory:    []string{},
 
 		repo:       repo,
 		done:       done,
@@ -327,6 +326,7 @@ func (watcher *GitWatcher) packResults(gce *gcp.Service, fetchedTests []string) 
 	if !check.NoError(err, watcher.log, "Failed to upload results tarball") {
 		return
 	}
+	watcher.packHistory = append(watcher.packHistory, gsPath)
 
 	watcher.log.Info("Removing separate results tarball")
 	for _, testID := range fetchedTests {
@@ -359,13 +359,15 @@ func (watcher *GitWatcher) Clean() {
 }
 
 // Info returns structured watcher information.
-func (watcher *GitWatcher) Info() WatcherInfo {
-	return WatcherInfo{
+func (watcher *GitWatcher) Info() server.WatcherInfo {
+	return server.WatcherInfo{
 		ID:     watcher.testID,
+		Command: watcher.origCmd,
 		Repo:   watcher.testRequest.Options.GitRepo,
 		Branch: watcher.testRequest.Options.BranchName,
 		HEAD:   watcher.repo.Head(),
 		Tests:  watcher.testHistory,
+		Packs:  watcher.packHistory,
 	}
 }
 
@@ -381,13 +383,15 @@ func StopWatcher(c server.TaskRequest) {
 }
 
 // WatcherStatus returns the info for active git watchers.
-func WatcherStatus() []WatcherInfo {
+func WatcherStatus() []server.WatcherInfo {
 	watcherLock.Lock()
 	defer watcherLock.Unlock()
-	infoList := []WatcherInfo{}
+	infoList := []server.WatcherInfo{}
 	for _, v := range watcherMap {
 		infoList = append(infoList, v.Info())
 	}
-
+	sort.Slice(infoList, func(i, j int) bool {
+		return infoList[i].ID < infoList[j].ID
+	})
 	return infoList
 }

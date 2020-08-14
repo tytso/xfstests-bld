@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// runCompile is the end point for a build request.
+// runCompile is the endpoint for a build request.
 // Sends a simple status response back to requester.
 func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
 	log := serverLog.WithField("endpoint", "/gce-xfstests")
@@ -78,6 +78,20 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 	check.Panic(err, log, "Failed to send the response")
 }
 
+// status is the endpoint for querying running status.
+func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
+	log := serverLog.WithField("endpoint", "/status")
+	log.Info("generating running status info")
+
+	response := server.StatusResponse{
+		Bisectors: BisectorStatus(),
+	}
+	log.WithField("response", response).Info("Sending response")
+
+	err := server.SendResponse(w, r, response)
+	check.Panic(err, log, "Failed to send the response")
+}
+
 func main() {
 	s, err := server.New(":443")
 	if err != nil {
@@ -91,6 +105,10 @@ func main() {
 	s.Handler().Handle("/internal", s.FailureHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			runCompile(w, r, s.Log())
+		}))).Methods("POST")
+	s.Handler().Handle("/internal-status", s.FailureHandler(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			status(w, r, s.Log())
 		}))).Methods("POST")
 
 	finished := make(chan bool)

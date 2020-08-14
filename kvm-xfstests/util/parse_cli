@@ -901,7 +901,7 @@ then
 fi
 
 if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" \
-    -a -z "$RUN_ON_KCS" -a -z "$UNWATCH"
+    -a -z "$RUN_ON_KCS" -a -z "$UNWATCH" -a -z "$LTM_INFO"
 then
     echo -e "No tests specified!\n"
     print_help

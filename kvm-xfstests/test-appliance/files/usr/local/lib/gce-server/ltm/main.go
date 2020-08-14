@@ -24,7 +24,7 @@ import (
 )
 
 /*
-runTests is the end point for a gce-xfstests test request from user.
+runTests is the endpoint for a gce-xfstests test request from user.
 
 orig_cmdline is a base64 encoding of the command line arguments.
 A ShardScheduler is constructed to arrange the tests in multiple
@@ -117,6 +117,24 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	check.Panic(err, log, "Failed to send the response")
 }
 
+// status is the endpoint for querying running status.
+func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
+	log := serverLog.WithField("endpoint", "/status")
+	log.Info("generating running status info")
+
+	KCSStatus := server.InternalQuery(log)
+
+	response := server.StatusResponse{
+		Sharders:  SharderStatus(),
+		Watchers:  WatcherStatus(),
+		Bisectors: KCSStatus.Bisectors,
+	}
+	log.WithField("response", response).Info("Sending response")
+
+	err := server.SendResponse(w, r, response)
+	check.Panic(err, log, "Failed to send the response")
+}
+
 func main() {
 	s, err := server.New(":443")
 	if err != nil {
@@ -131,5 +149,10 @@ func main() {
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			runTests(w, r, s.Log())
 		}))).Methods("POST")
+	s.Handler().Handle("/status", s.LoginHandler(s.FailureHandler(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			status(w, r, s.Log())
+		})))).Methods("POST")
+
 	s.Start()
 }

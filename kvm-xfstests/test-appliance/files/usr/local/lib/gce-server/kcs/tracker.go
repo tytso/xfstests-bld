@@ -51,7 +51,9 @@ func StartTracker(instance *server.Instance, finished chan bool) {
 				log.Infof("%+v", bisectors)
 				timer.Stop()
 			} else {
-				shutdown(instance)
+				if !logging.DEBUG {
+					shutdown(instance)
+				}
 				alive = false
 			}
 		}
