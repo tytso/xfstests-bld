@@ -35,10 +35,12 @@ type GitBisector struct {
 	testRequest    server.TaskRequest
 	testHistory    []string
 
-	repo       *git.Repository
-	finished   bool
-	lastActive time.Time
-	done       chan bool
+	repo        *git.Repository
+	finished    bool
+	badCommit   string
+	goodCommits []string
+	lastActive  time.Time
+	done        chan bool
 
 	logDir     string
 	resultsDir string
@@ -89,7 +91,7 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	origCmd, err := parser.DecodeCmd(c.CmdLine)
 	check.Panic(err, log, "Failed to decode cmdline")
 
-	w := log.WithField("cmd", "bisectStart").Writer()
+	w := log.WithField("cmd", "bisectInit").Writer()
 	defer w.Close()
 
 	repo, err := git.NewRepository(testID, c.Options.GitRepo, w)
@@ -97,9 +99,6 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 
 	badCommit := c.Options.BadCommit
 	goodCommits := strings.Split(c.Options.GoodCommit, "|")
-
-	finished, err := repo.BisectStart(badCommit, goodCommits, w)
-	check.Panic(err, log, "Failed to start bisect")
 
 	bisector := GitBisector{
 		testID:  testID,
@@ -111,10 +110,12 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 		testRequest:    c,
 		testHistory:    []string{},
 
-		repo:       repo,
-		finished:   finished,
-		lastActive: time.Now(),
-		done:       make(chan bool),
+		repo:        repo,
+		finished:    false,
+		badCommit:   badCommit,
+		goodCommits: goodCommits,
+		lastActive:  time.Now(),
+		done:        make(chan bool),
 
 		logDir:     logDir,
 		resultsDir: resultsDir,
@@ -135,6 +136,38 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 	}()
 
 	return &bisector
+}
+
+// Start starts the bisect.
+func (bisector *GitBisector) Start() {
+	bisector.lastActive = time.Now()
+	bisector.log.Debug("Git bisect Start")
+
+	w := bisector.log.WithField("cmd", "bisectStart").Writer()
+	defer w.Close()
+
+	bisector.log.Debug("Validate commits")
+
+	valid, err := bisector.repo.Valid(bisector.badCommit, w)
+	if !valid && !strings.HasPrefix(bisector.badCommit, "origin/") {
+		bisector.badCommit = "origin/" + bisector.badCommit
+		valid, err = bisector.repo.Valid(bisector.badCommit, w)
+	}
+	check.Panic(err, bisector.log, "Failed to validate badCommit")
+
+	for i, rev := range bisector.goodCommits {
+		valid, err = bisector.repo.Valid(rev, w)
+		if !valid && !strings.HasPrefix(rev, "origin/") {
+			bisector.goodCommits[i] = "origin/" + rev
+			valid, err = bisector.repo.Valid(bisector.goodCommits[i], w)
+		}
+		check.Panic(err, bisector.log, "Failed to validate goodCommit")
+	}
+
+	finished, err := bisector.repo.BisectStart(bisector.badCommit, bisector.goodCommits, w)
+	check.Panic(err, bisector.log, "Failed to start bisect")
+
+	bisector.finished = finished
 }
 
 // Step executes one step of git bisect. It stores the test result and related info.
@@ -172,10 +205,6 @@ func (bisector *GitBisector) Finish() bool {
 	bisector.aggResults(gce)
 	bisector.packResults(gce)
 	bisector.emailReport()
-
-	// subject := "xfstests bisect report " + bisector.testID
-	// err := email.Send(subject, bisector.GetReport(), bisector.reportReceiver)
-	// check.Panic(err, bisector.log, "Failed to send email")
 
 	return true
 }
@@ -384,8 +413,8 @@ func (bisector *GitBisector) Info() server.BisectorInfo {
 		ID:          bisector.testID,
 		Command:     bisector.origCmd,
 		Repo:        bisector.testRequest.Options.GitRepo,
-		BadCommit:   bisector.testRequest.Options.BadCommit,
-		GoodCommits: strings.Split(bisector.testRequest.Options.GoodCommit, "|"),
+		BadCommit:   bisector.badCommit,
+		GoodCommits: bisector.goodCommits,
 		LastActive:  time.Since(bisector.lastActive).Round(time.Second).String(),
 		Log:         resultLines,
 	}
@@ -430,18 +459,13 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 		bisectorLock.Lock()
 		bisectorMap[testID] = bisector
 		bisectorLock.Unlock()
-
-		defer bisector.Exit()
 	} else {
 		bisectorLock.Lock()
 		bisector, ok = bisectorMap[testID]
 		bisectorLock.Unlock()
-
 		if !ok {
 			log.Panic("Git bisector doesn't exist")
 		}
-
-		defer bisector.Exit()
 
 		if c.Options.CommitID != bisector.GetCommit() {
 			log.WithFields(logrus.Fields{
@@ -449,6 +473,12 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 				"bisector": bisector.GetCommit(),
 			}).Panic("CommitID in request differs from bisector")
 		}
+	}
+
+	defer bisector.Exit()
+	if c.ExtraOptions.Requester == server.LTMBisectStart {
+		bisector.Start()
+	} else {
 		bisector.Step(c.ExtraOptions.TestResult)
 	}
 
