@@ -410,9 +410,9 @@ With LTM and KCS, gce-xfstests supports a test spinner that watches a git repo a
 
 LTM server will check for new commit on `branch` periodically, build kernels and launch tests when new code are pushed to this branch. If you've set up the email service, a new email is sent to you every time a new round of tests finishes.
 
-You can have multiple watchers running at the same time, but only one watcher is allowed for each branch. To terminate a watcher, use command:
+You can have multiple watchers running at the same time, even on the same branch. To terminate a watcher, find the watcher's testID with command `gce-xfstests ltm-info` and run command:
 
-        gce-xfstests ltm [--repo <url>] --unwatch <branch>
+        gce-xfstests ltm --unwatch <testID>
 
 ## Searching for buggy commits with git bisect
 

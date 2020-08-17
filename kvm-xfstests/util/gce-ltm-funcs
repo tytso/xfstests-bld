@@ -77,8 +77,8 @@ function send_to_ltm() {
     if [ -n "$BRANCH" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"branch_name\":\"$BRANCH\""
     fi
-    if [ -n "$UNWATCH" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":true"
+    if [ -n "$WATCHER_ID" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":\"$WATCHER_ID\""
     fi
     if [ -n "$BISECT_BAD" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bad_commit\":\"$BISECT_BAD\""

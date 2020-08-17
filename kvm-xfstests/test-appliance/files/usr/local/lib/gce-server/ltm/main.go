@@ -57,20 +57,20 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	}
 
 	if c.ExtraOptions == nil {
-		if c.Options.BranchName != "" {
-			if !c.Options.UnWatch {
-				log.Info("User requests a git watch, launching git repo monitor")
-				watcher := NewGitWatcher(c, testID)
-				go watcher.Run()
+		if c.Options.UnWatch != "" {
+			log.Info("User requests a git unwatch, terminating git repo monitor")
+			StopWatcher(c)
 
-				response.Msg = "Git repo monitor initiating"
-			} else {
-				log.Info("User requests a git unwatch, terminating git repo monitor")
-				StopWatcher(c)
+			response.Msg = "Git repo monitor terminated"
+			response.TestID = ""
 
-				response.Msg = "Git repo monitor terminated"
-				response.TestID = ""
-			}
+		} else if c.Options.BranchName != "" {
+			log.Info("User requests a git watch, launching git repo monitor")
+			watcher := NewGitWatcher(c, testID)
+			go watcher.Run()
+
+			response.Msg = "Git repo monitor initiating"
+
 		} else if c.Options.BadCommit != "" && c.Options.GoodCommit != "" {
 			log.Info("User requests a git bisect, forwarding to KCS")
 			c.ExtraOptions = &server.InternalOptions{
