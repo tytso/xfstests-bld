@@ -1,13 +1,16 @@
 /*
-Webserver endpoints for the gce-xfstests LTM (lightweight test manager).
+Web server endpoints for the gce-xfstests LTM (lightweight test manager).
 
 This stand-alone server handles requests sent by the client-side scripts.
 The endpoints are:
-	/login (deprecated) - to authenticate a user session, enforced by the flask
-	webserver in the previous implementation.
+	/login - authenticates a user session, implemented in server.go
 
 	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
 	tests.
+
+	/internal - handles internal requests from KCS server.
+
+	/status - handles queries for running status from user.
 
 */
 package main
@@ -118,6 +121,7 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 }
 
 // status is the endpoint for querying running status.
+// It calls KCS to collect building and bisector status.
 func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
 	log := serverLog.WithField("endpoint", "/status")
 	log.Info("generating running status info")

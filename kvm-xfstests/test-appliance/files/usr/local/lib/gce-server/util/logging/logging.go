@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	// DEBUG redirects log to stdout.
+	// DEBUG redirects log to stdout and disable auto shutdown for KCS.
 	DEBUG = false
 	// MOCK uses mock modules to skip actual kernel build and test.
 	MOCK = false
@@ -62,7 +62,7 @@ func CloseLog(log *logrus.Entry) {
 	}
 }
 
-// Sync flushes the log to disk file
+// Sync flushes the log to disk file.
 func Sync(log *logrus.Entry) {
 	if file, ok := log.Logger.Out.(*os.File); ok {
 		if !strings.HasPrefix(file.Name(), "/dev") {
@@ -71,8 +71,8 @@ func Sync(log *logrus.Entry) {
 	}
 }
 
-// GetFile returns the log file descripter if it exists
-// return nil otherwise
+// GetFile returns the log file descripter if it exists,
+// and returns nil otherwise.
 func GetFile(log *logrus.Entry) *os.File {
 	if file, ok := log.Logger.Out.(*os.File); ok {
 		return file

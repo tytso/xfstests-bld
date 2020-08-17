@@ -1,3 +1,11 @@
+/*
+Package server implements server functions shared by LTM and KCS.
+
+Files included in this package:
+	server.go: 	Web servers interface and handlers, and functions to send requests.
+	info.go: 	Construct human-friendly status info for multiple modules.
+
+*/
 package server
 
 import (

@@ -85,8 +85,8 @@ func sanitizeCmd(args []string) ([]string, []string) {
 }
 
 // expandAliases expands some explicit aliases of test options.
-// It converts "smoke" to "-c 4k -g quick" only, since other aliases
-// ("full", "quick") have no affects on -c configs.
+// It only converts "smoke" to "-c 4k -g quick", since other aliases
+// ("full", "quick") have no effects on -c configs.
 func expandAliases(args []string) []string {
 	prefixArgs := []string{}
 	expandedArgs := []string{}

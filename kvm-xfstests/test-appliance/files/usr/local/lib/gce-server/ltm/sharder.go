@@ -330,7 +330,7 @@ func (sharder *ShardScheduler) Info() server.SharderInfo {
 	return info
 }
 
-// aggregate results and upload a tarball to gs bucket.
+// finish aggregates results and upload a tarball to gs bucket.
 // panic and send an email to user if no results available.
 func (sharder *ShardScheduler) finish() {
 	sharder.log.Debug("Finishing sharder")
@@ -550,7 +550,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 	}
 }
 
-// emailReport sends the email
+// emailReport sends the email.
 func (sharder *ShardScheduler) emailReport() {
 	sharder.log.Info("Sending email report")
 	subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
@@ -618,7 +618,7 @@ func (sharder *ShardScheduler) packResults() {
 	}
 }
 
-// clean removes local result and log files
+// clean removes local result and log files.
 func (sharder *ShardScheduler) clean() {
 	sharder.log.Info("Cleaning up sharder resources")
 
