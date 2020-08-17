@@ -598,8 +598,7 @@ while (( $# >= 1 )); do
 		;;
 	--unwatch) shift
 		supported_flavors gce
-		BRANCH="$1"
-		UNWATCH="yes"
+		WATCHER_ID="$1"
 		;;
 	--bisect-bad) shift
 		supported_flavors gce
@@ -901,7 +900,7 @@ then
 fi
 
 if test -z "$FSTESTSET" -a -z "$ARG" -a -z "$DO_BLKTESTS" \
-    -a -z "$RUN_ON_KCS" -a -z "$UNWATCH" -a -z "$LTM_INFO"
+    -a -z "$RUN_ON_KCS" -a -z "$WATCHER_ID" -a -z "$LTM_INFO"
 then
     echo -e "No tests specified!\n"
     print_help

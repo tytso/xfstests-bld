@@ -33,9 +33,8 @@ const (
 
 // GitWatcher watches a branch of a remote repo and detects new commits
 type GitWatcher struct {
-	testID    string
-	searchKey watcherKey
-	origCmd   string
+	testID  string
+	origCmd string
 
 	gsBucket       string
 	bucketSubdir   string
@@ -53,26 +52,20 @@ type GitWatcher struct {
 	log        *logrus.Entry
 }
 
-type watcherKey struct {
-	url    string
-	branch string
-}
-
-// watcherMap indexes watchers by repo url and branch.
-// Used for checking duplication and terminating a monitor.
+// watcherMap indexes watchers by testID.
+// Used for checking duplication and terminating a watcher.
 var (
-	watcherMap  = make(map[watcherKey]*GitWatcher)
+	watcherMap  = make(map[string]*GitWatcher)
 	watcherLock sync.Mutex
 )
 
 // NewGitWatcher constructs a new git watcher from a watch request.
-// It panics if there is already a monitor running on this branch.
+// It panics if there is already a watcher running on this branch.
 func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	watcherLock.Lock()
 	defer watcherLock.Unlock()
-	searchKey := watcherKey{c.Options.GitRepo, c.Options.BranchName}
-	if _, ok := watcherMap[searchKey]; ok {
-		panic("Given branch is already linked with a monitor")
+	if _, ok := watcherMap[testID]; ok {
+		panic("Given testID is already linked with a watcher")
 	}
 
 	logDir := logging.LTMLogDir + testID + "/"
@@ -113,9 +106,8 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 	}
 
 	watcher := &GitWatcher{
-		testID:    testID,
-		searchKey: searchKey,
-		origCmd:   origCmd,
+		testID:  testID,
+		origCmd: origCmd,
 
 		gsBucket:       gsBucket,
 		bucketSubdir:   bucketSubdir,
@@ -132,7 +124,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		log:        log,
 	}
 
-	watcherMap[searchKey] = watcher
+	watcherMap[testID] = watcher
 
 	return watcher
 }
@@ -352,7 +344,7 @@ func (watcher *GitWatcher) Clean() {
 	watcherLock.Lock()
 	defer watcherLock.Unlock()
 	watcher.log.Info("Cleaning up watcher resources")
-	delete(watcherMap, watcher.searchKey)
+	delete(watcherMap, watcher.testID)
 	close(watcher.done)
 	os.RemoveAll(watcher.resultsDir)
 	logging.CloseLog(watcher.log)
@@ -361,25 +353,24 @@ func (watcher *GitWatcher) Clean() {
 // Info returns structured watcher information.
 func (watcher *GitWatcher) Info() server.WatcherInfo {
 	return server.WatcherInfo{
-		ID:     watcher.testID,
+		ID:      watcher.testID,
 		Command: watcher.origCmd,
-		Repo:   watcher.testRequest.Options.GitRepo,
-		Branch: watcher.testRequest.Options.BranchName,
-		HEAD:   watcher.repo.Head(),
-		Tests:  watcher.testHistory,
-		Packs:  watcher.packHistory,
+		Repo:    watcher.testRequest.Options.GitRepo,
+		Branch:  watcher.testRequest.Options.BranchName,
+		HEAD:    watcher.repo.Head(),
+		Tests:   watcher.testHistory,
+		Packs:   watcher.packHistory,
 	}
 }
 
 // StopWatcher finds the running watcher on a given branch and terminate it.
-// It panics if no matching monitor is found.
+// It panics if no matching watcher is found.
 func StopWatcher(c server.TaskRequest) {
-	searchKey := watcherKey{c.Options.GitRepo, c.Options.BranchName}
-	if watcher, ok := watcherMap[searchKey]; ok {
+	if watcher, ok := watcherMap[c.Options.UnWatch]; ok {
 		watcher.done <- true
 		return
 	}
-	panic("Failed to find a monitor linked with given branch")
+	panic("No active watcher with ID " + c.Options.UnWatch)
 }
 
 // WatcherStatus returns the info for active git watchers.
