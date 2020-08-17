@@ -1,14 +1,17 @@
 /*
-Webserver endpoints for the gce-xfstests KCS (kernel compile server).
+Web server endpoints for the gce-xfstests KCS (kernel compile server).
 
 This stand-alone server handles requests to build a kernel image from the
-client-side bash scripts or the LTM server.
+client-side bash scripts or the LTM server. It also supports auto git bisect.
 The endpoints are:
-	/login (deprecated) - to authenticate a user session, enforced by the flask
-	webserver in the previoud implementation.
+	/login - authenticates a user session, implemented in server.go
 
 	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
 	tests.
+
+	/internal - handles internal requests from LTM server.
+
+	/internal-status - handles queries for running status from LTM server.
 
 */
 package main
@@ -79,8 +82,9 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 }
 
 // status is the endpoint for querying running status.
+// It only get exposed to LTM server.
 func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
-	log := serverLog.WithField("endpoint", "/status")
+	log := serverLog.WithField("endpoint", "/internal-status")
 	log.Info("generating running status info")
 
 	response := server.StatusResponse{

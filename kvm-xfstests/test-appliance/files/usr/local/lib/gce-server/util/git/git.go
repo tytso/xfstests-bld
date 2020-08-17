@@ -1,8 +1,8 @@
 /*
-Package git implements multiple versions of git repositories.
+Package git implements multiple versions of git repositories:
 
-Repository is used for kernel compilation and git bisect.
-RemoteRepository is used for git repo watcher.
+Repository - local repo copies for kernel compilation and git bisect.
+RemoteRepository - remote repos for git repo watcher.
 */
 package git
 
@@ -30,8 +30,8 @@ const (
 	watchInterval     = 10
 )
 
-// Repository represents a git repo
-// Uses a lock to avoid concurrent access
+// Repository represents a local copy of git repo with a lock to
+// avoid concurrent access.
 type Repository struct {
 	id   string
 	url  string
@@ -40,8 +40,7 @@ type Repository struct {
 	lock sync.Mutex
 }
 
-// RemoteRepository represents a remote repo
-// No need for locks since git watcher is protected by channels
+// RemoteRepository represents a remote repo for queries.
 type RemoteRepository struct {
 	url    string
 	branch string
@@ -122,7 +121,7 @@ func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, er
 	return &repo, nil
 }
 
-// GetCommit returns the commit hash for current repo HEAD
+// GetCommit returns the commit hash for current repo HEAD.
 func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
 	if !check.DirExists(repo.dir) {
 		return "", fmt.Errorf("directory %s does not exist", repo.dir)
@@ -296,7 +295,7 @@ func (repo *Repository) BisectReset(writer io.Writer) error {
 }
 
 // BuildUpload builds the current kernel code and uploads image to GS.
-// Script output is written into a given writer
+// Script output is written into a given writer.
 func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Writer) error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
@@ -316,7 +315,7 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, writer io.Wr
 	return err
 }
 
-// Delete removes repo from local storage
+// Delete removes repo from local storage.
 func (repo *Repository) Delete() error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
@@ -324,12 +323,12 @@ func (repo *Repository) Delete() error {
 	return err
 }
 
-// Dir returns the repo directory
+// Dir returns the repo directory.
 func (repo *Repository) Dir() string {
 	return repo.dir
 }
 
-// NewRemoteRepository initiates a remote repo and get HEAD on given branch
+// NewRemoteRepository initiates a remote repo and get HEAD on given branch.
 func NewRemoteRepository(repoURL string, branch string) (*RemoteRepository, error) {
 	repo := RemoteRepository{
 		url:    repoURL,
@@ -345,7 +344,7 @@ func NewRemoteRepository(repoURL string, branch string) (*RemoteRepository, erro
 	return &repo, nil
 }
 
-// Update gets new HEAD and returns true if it has changed since last update
+// Update gets new HEAD and returns true if it has changed since last update.
 func (repo *RemoteRepository) Update() (bool, error) {
 	head, err := getHead(repo.url, repo.branch)
 	if err != nil {
@@ -359,12 +358,12 @@ func (repo *RemoteRepository) Update() (bool, error) {
 	return false, nil
 }
 
-// Head returns the current head
+// Head returns the current head.
 func (repo *RemoteRepository) Head() string {
 	return repo.head
 }
 
-// getHead retrives the commit hash of the HEAD on a branch
+// getHead retrives the commit hash of the HEAD on a branch.
 func getHead(repoURL string, branch string) (string, error) {
 	cmd := exec.Command("git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
 	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, os.Stderr)
@@ -381,9 +380,9 @@ func getHead(repoURL string, branch string) (string, error) {
 	return commit, nil
 }
 
-// ParseURL transforms a git url into a human readable directory string
-// Format is hostname - last two parts of path - last 4 byte of md5 sum
-// Clone with ssh key is not supported
+// ParseURL transforms a git url into a human readable directory string.
+// Format: hostname - last two parts of path - last 4 byte of md5 sum
+// Clone with ssh key is not supported.
 func ParseURL(repoURL string) (string, error) {
 	u, err := url.Parse(repoURL)
 	if err != nil {

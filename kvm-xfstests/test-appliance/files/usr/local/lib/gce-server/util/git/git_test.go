@@ -3,12 +3,21 @@ package git
 import (
 	"gce-server/util/check"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
 var ext4Url = "https://github.com/tytso/ext4.git"
 
 func TestNewRepository(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Error(err)
+	}
+	if hostname != "xfstests-kcs" {
+		t.Skip("test only runs on KCS server")
+	}
+
 	repo, err := NewRepository("test", ext4Url, ioutil.Discard)
 	if err != nil {
 		t.Error(err)
@@ -29,6 +38,14 @@ func TestNewRepository(t *testing.T) {
 }
 
 func TestCheckout(t *testing.T) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Error(err)
+	}
+	if hostname != "xfstests-kcs" {
+		t.Skip("test only runs on KCS server")
+	}
+
 	commit := "v5.6"
 	hash := "7111951b8d4973bda27ff663f2cf18b663d15b48"
 

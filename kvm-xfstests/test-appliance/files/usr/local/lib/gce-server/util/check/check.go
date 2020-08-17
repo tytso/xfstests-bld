@@ -19,7 +19,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// RootDir points to the root of go server source code
+// RootDir points to the root of go server source code.
 // The compiled go executables are located in GOPATH/bin
 const RootDir = "/usr/local/lib/gce-server"
 
@@ -27,7 +27,7 @@ const RootDir = "/usr/local/lib/gce-server"
 // cmdLimit limits the frequency at which these commands can be called.
 // They reduce the risk of exhausting memory when launching test VMs.
 const (
-	cmdCap   = 15
+	cmdCap   = 12
 	cmdLimit = 1
 )
 
@@ -125,8 +125,8 @@ func DirExists(filename string) bool {
 	return false
 }
 
-// ReadLines read a whole file into a slice of strings split by newlines.
-// Removes '\n' and empty lines
+// ReadLines read a whole file into a slice of strings split by newlines,
+// and removes '\n' and empty lines.
 func ReadLines(filename string) ([]string, error) {
 	lines := []string{}
 
@@ -144,8 +144,8 @@ func ReadLines(filename string) ([]string, error) {
 	return nonEmptyLines, nil
 }
 
-// CopyFile copies the content of file src to file dst
-// Overwrites dst if it already exists
+// CopyFile copies the content of file src to file dst.
+// Overwrites dst if it already exists.
 func CopyFile(dst string, src string) error {
 	from, err := os.Open(src)
 	if err != nil {

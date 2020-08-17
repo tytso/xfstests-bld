@@ -2,9 +2,9 @@
 ShardWorker launches, monitors and collects results from a single gce-xfstests run.
 
 A shard is created and configured by a sharder only. It make a call to the gce-xfstests
-scripts on start, and then waits for the test to finish by checking the VM status every
-60 seconds. After the VM is deleted, the shard calls the scripts again to fetch the test
-result files from GS and unpacks them to a local directory.
+scripts on start, and then waits for the test to finish by checking the VM status
+periodically. After the test finishes, the shard calls the scripts again to fetch the test
+result files from GCS and unpacks them to a local directory.
 
 */
 package main
@@ -99,7 +99,7 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 	return &shard
 }
 
-// Run issues the gce-xfstests command to launch a test vm and monitor its running status
+// Run issues the gce-xfstests command to launch a test VM and monitor its running status.
 func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer shard.exit()
@@ -130,7 +130,7 @@ monitor blocks until the test VM finishes or timeout.
 
 It queries the GCE api periodically and logs the serial console output
 to a local file. If the VM no longer exists, stops running, or the
-running test doesn't change for more than monitorTimeout, the monitor
+running test hasn't changed for more than monitorTimeout, the monitor
 kills the test vm and returns.
 */
 func (shard *ShardWorker) monitor() {
@@ -185,7 +185,7 @@ func (shard *ShardWorker) monitor() {
 				shard.vmStatus = "timeout without launching tests"
 				shard.testResult = server.Error
 
-				log.Error("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
+				log.Errorf("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
 				return
 			}
 			log.Debug("waiting to get test status metadata")
@@ -212,7 +212,7 @@ func (shard *ShardWorker) monitor() {
 	}
 }
 
-// updateSerialData writes the serial port output from the test vm to local log file.
+// updateSerialData writes the serial port output from the test VM to local log file.
 func (shard *ShardWorker) updateSerialData(offset int64) int64 {
 	log := shard.log.WithField("offset", offset)
 	output, err := shard.sharder.gce.GetSerialPortOutput(
@@ -277,8 +277,8 @@ It also determines testResult:
 Default		VM finishes without issues, test result is found;
 Crash		VM started running tests but no test result is found;
 Hang		VM stays on one test for too long;
-Error		VM stops before launching any tests, doesn't launch any tests
-			at all, or other unexpected errors.
+Error		VM stops at launch time, doesn't launch any tests at all,
+			or other unexpected errors.
 */
 func (shard *ShardWorker) finish() {
 	shard.log.Info("Finishing shard")
@@ -328,7 +328,7 @@ func (shard *ShardWorker) finish() {
 }
 
 // getResults fetches the test result files.
-// It returns empty string if cannot find the result file in 5 attempts
+// It returns empty string if cannot find the result file in maxAttempts.
 func (shard *ShardWorker) getResults() string {
 	shard.log.Info("Fetching test results")
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
