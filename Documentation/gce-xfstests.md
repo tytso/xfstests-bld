@@ -372,7 +372,7 @@ It launches a VM named "xfstests-ltm" in your GCE project. Then you can run test
 
       	gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ...
 
-The LTM server attempts to split your config into smaller tests, one `cfg` for each. For example, it splits the config `full` into `-c ext4/data_journal full, -c ext4/encrypt full, -c ext4/ext3 full...` For more details about how LTM splits the config, check [parser.go](kvm-xfstests/test-appliance/files/usr/local/lib/gce-server/util/parser/parser.go).
+The LTM server attempts to split your config into smaller tests, one `cfg` for each. For example, it splits the config `full` into `-c ext4/data_journal full, -c ext4/encrypt full, -c ext4/ext3 full...` For more details about how LTM splits the config, check [parser.go](../kvm-xfstests/test-appliance/files/usr/local/lib/gce-server/util/parser/parser.go).
 
 Then the LTM server will launch these tests in parallel and monitor the status of each test VM. If a single test makes no progress in an hour, it will kill that test VM early. After all tests finish, the LTM server aggregates the test results into one tarball and upload it to the GCS bucket.
 
