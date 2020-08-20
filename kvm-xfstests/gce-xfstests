@@ -542,6 +542,7 @@ case "$1" in
 	NO_ACTION=": "
 	RUN_ON_KCS="yes"
 	GCE_USER="kcs"
+	OVERRIDE_KERNEL="none"
 	;;
     ltm-info)
 	shift
@@ -554,6 +555,7 @@ case "$1" in
 	RUN_ON_LTM="yes"
 	GCE_USER="ltm"
 	LTM_INFO="yes"
+	OVERRIDE_KERNEL="none"
 	;;
 esac
 

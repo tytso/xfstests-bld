@@ -590,6 +590,7 @@ while (( $# >= 1 )); do
 	    ;;
     --commit) shift
 	    supported_flavors gce
+	    OVERRIDE_KERNEL="none"
 	    COMMIT="$1"
 	    ;;
 	--watch) shift
@@ -603,14 +604,16 @@ while (( $# >= 1 )); do
 	--bisect-bad) shift
 		supported_flavors gce
 		BISECT_BAD="$1"
+		OVERRIDE_KERNEL="none"
 		;;
 	--bisect-good) shift
 		supported_flavors gce
 		if test -z "$BISECT_GOOD"; then
-		BISECT_GOOD="$1"
+		    BISECT_GOOD="$1"
 		else
-		BISECT_GOOD="$BISECT_GOOD|$1"
+		    BISECT_GOOD="$BISECT_GOOD|$1"
 		fi
+		OVERRIDE_KERNEL="none"
 		;;
     --config) shift
 	    supported_flavors gce
