@@ -304,6 +304,8 @@ func (sharder *ShardScheduler) Run() {
 		defer sharder.sendKCSReport()
 	}
 
+	defer sharder.sendWatcherResult()
+
 	for _, shard := range sharder.shards {
 		wg.Add(1)
 		go shard.Run(&wg)
@@ -498,6 +500,7 @@ Pass	nothing above happens and no test failure found.
 If any shard has non-default testResult, append the sharder info to the result file.
 */
 func (sharder *ShardScheduler) genResultsSummary() {
+	sharder.log.Info("Creating LTM test result summary")
 	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report")
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
@@ -571,6 +574,10 @@ func (sharder *ShardScheduler) sendKCSReport() {
 	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
 
 	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
+}
+
+func (sharder *ShardScheduler) sendWatcherResult() {
+	UpdateWatcherTest(sharder.testID, sharder.testResult)
 }
 
 // packResults packs the aggregared files after copying the sharder's log file into it.

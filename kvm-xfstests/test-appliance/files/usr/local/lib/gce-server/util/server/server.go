@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"gce-server/util/check"
@@ -166,10 +167,11 @@ type Instance struct {
 	log   *logrus.Entry
 }
 
-// server maintained secrets.
+// server maintained secrets and mutex to avoid race conditions.
 var (
-	key      []byte
-	password string
+	key        []byte
+	password   string
+	launchLock sync.Mutex
 )
 
 func init() {
@@ -560,6 +562,9 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 }
 
 func runLaunchKCS(log *logrus.Entry) {
+	launchLock.Lock()
+	defer launchLock.Unlock()
+
 	cmd := exec.Command("gce-xfstests", "launch-kcs")
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
@@ -574,6 +579,8 @@ func runLaunchKCS(log *logrus.Entry) {
 // fetchLTMConfig attempts to generate .ltm_instance config file
 // since LTM should always be running.
 func fetchLTMConfig(log *logrus.Entry) {
+	launchLock.Lock()
+	defer launchLock.Unlock()
 	log.Info("Fetching LTM config file")
 
 	cmd := exec.Command("gce-xfstests", "launch-ltm")

@@ -58,28 +58,47 @@ func (s ShardInfo) String() string {
 	)
 }
 
+// TestInfo stores the info about one test for watcher.
+type TestInfo struct {
+	TestID     string `json:"test_id"`
+	UpdateTime string `json:"update_time"`
+	Status     string `json:"status"`
+}
+
+func (t TestInfo) String() string {
+	return fmt.Sprintf(
+		"[Test INFO %s]\tUPDATE TIME:\t%s\tSTATUS:\t%s\n",
+		t.TestID,
+		t.UpdateTime,
+		t.Status,
+	)
+}
+
 // WatcherInfo exports watcher info.
 type WatcherInfo struct {
-	ID      string   `json:"id"`
-	Command string   `json:"command"`
-	Repo    string   `json:"repo"`
-	Branch  string   `json:"branch"`
-	HEAD    string   `json:"HEAD"`
-	Tests   []string `json:"active_tests"`
-	Packs   []string `json:"packed_tests"`
+	ID      string     `json:"id"`
+	Command string     `json:"command"`
+	Repo    string     `json:"repo"`
+	Branch  string     `json:"branch"`
+	HEAD    string     `json:"HEAD"`
+	Tests   []TestInfo `json:"recent_tests"`
+	Packs   []string   `json:"packed_tests"`
 }
 
 func (w WatcherInfo) String() string {
-	return fmt.Sprintf(
-		"============WATCHER INFO %s============\nCMDLINE:\t%s\nREPO:\t%s\nBRANCH:\t%s\nHEAD:\t%s\nACTIVE TESTS:\n\t%s\nPACKED TESTS:\n\t%s\n",
+	info := fmt.Sprintf(
+		"============WATCHER INFO %s============\nCMDLINE:\t%s\nREPO:\t%s\nBRANCH:\t%s\nHEAD:\t%s\nPACKED TESTS:\n\t%s\nRECENT TESTS:\n",
 		w.ID,
 		w.Command,
 		w.Repo,
 		w.Branch,
 		w.HEAD,
-		strings.Join(w.Tests, "\n\t"),
 		strings.Join(w.Packs, "\t\n"),
 	)
+	for _, test := range w.Tests {
+		info += test.String()
+	}
+	return info
 }
 
 // BisectorInfo exports bisector info.

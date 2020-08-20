@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,8 @@ const (
 	aggInterval = 7 * 24 * time.Hour
 	// aggMinCount sets the minimum existing tests to trigger tidy up.
 	aggMinCount = 10
+	// historyLength sets the length of testHistory return by ltm-info.
+	historyLength = 10
 )
 
 // GitWatcher watches a branch of a remote repo and detects new commits
@@ -40,8 +43,9 @@ type GitWatcher struct {
 	bucketSubdir   string
 	reportReceiver string
 	testRequest    server.TaskRequest
-	testHistory    []string
+	testHistory    []server.TestInfo
 	packHistory    []string
+	historyLock    sync.Mutex
 
 	repo *git.RemoteRepository
 	done chan bool
@@ -113,7 +117,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		bucketSubdir:   bucketSubdir,
 		reportReceiver: c.Options.ReportEmail,
 		testRequest:    c,
-		testHistory:    []string{},
+		testHistory:    []server.TestInfo{},
 		packHistory:    []string{},
 
 		repo:       repo,
@@ -160,7 +164,7 @@ func (watcher *GitWatcher) watch() {
 			return
 
 		case <-checkTicker.C:
-			watcher.log.WithField("time", time.Since(start).Round(time.Second)).Debug("Checking new commits")
+			watcher.log.WithField("time", time.Since(start).Round(time.Second)).Debug("Checking for new commits")
 			updated, err := watcher.repo.Update()
 			check.Panic(err, watcher.log, "Failed to update repo")
 
@@ -179,7 +183,15 @@ func (watcher *GitWatcher) watch() {
 func (watcher *GitWatcher) InitTest() {
 	watcher.log.WithField("commit", watcher.repo.Head()).Info("initiating new build and test task")
 	testID := watcher.testID + "-" + watcher.repo.Head()[:8]
-	watcher.testHistory = append(watcher.testHistory, testID)
+
+	watcher.historyLock.Lock()
+	watcher.testHistory = append(watcher.testHistory, server.TestInfo{
+		TestID:     testID,
+		UpdateTime: time.Now().Format(time.Stamp),
+		Status:     "running",
+	})
+	watcher.historyLock.Unlock()
+
 	watcher.testRequest.Options.CommitID = watcher.repo.Head()
 	watcher.testRequest.ExtraOptions.TestID = testID
 
@@ -190,7 +202,10 @@ func (watcher *GitWatcher) InitTest() {
 // since last agg time. It only works when there are enough existing test runs.
 // Any test run gets packed into the tarball is removed from watcher.testHistory.
 func (watcher *GitWatcher) tidyUp() {
+	watcher.historyLock.Lock()
+	defer watcher.historyLock.Unlock()
 	watcher.log.Info("Tidy up the GCS results")
+
 	if len(watcher.testHistory) < aggMinCount {
 		watcher.log.Info("No enough tests, returning")
 		return
@@ -212,7 +227,10 @@ func (watcher *GitWatcher) tidyUp() {
 }
 
 func (watcher *GitWatcher) aggResults(gce *gcp.Service) []string {
+	watcher.historyLock.Lock()
+	defer watcher.historyLock.Unlock()
 	watcher.log.Info("Fetching test results")
+
 	fetchedTests := []string{}
 	file, err := os.Create(watcher.resultsDir + "report")
 	if !check.NoError(err, watcher.log, "Failed to create file") {
@@ -227,9 +245,9 @@ func (watcher *GitWatcher) aggResults(gce *gcp.Service) []string {
 	}
 	fmt.Fprintf(file, "LTM watcher info:\n%s\n", e)
 
-	for _, testID := range watcher.testHistory {
-		fmt.Fprintf(file, "\n============TEST %s============\n", testID)
-		reportFile, err := watcher.getResults(testID, gce)
+	for _, test := range watcher.testHistory {
+		fmt.Fprintf(file, "\n============TEST %s============\n", test.TestID)
+		reportFile, err := watcher.getResults(test.TestID, gce)
 		if err == nil {
 			sourceFile, err := os.Open(reportFile)
 			if check.NoError(err, watcher.log, "Failed to open file") {
@@ -242,7 +260,7 @@ func (watcher *GitWatcher) aggResults(gce *gcp.Service) []string {
 		if err != nil {
 			fmt.Fprintf(file, "No test results available, check prior emails or log for errors\n")
 		} else {
-			fetchedTests = append(fetchedTests, testID)
+			fetchedTests = append(fetchedTests, test.TestID)
 		}
 	}
 	return fetchedTests
@@ -327,14 +345,16 @@ func (watcher *GitWatcher) packResults(gce *gcp.Service, fetchedTests []string) 
 		check.NoError(err, watcher.log, "Failed to delete file")
 	}
 
-	newTestHistory := []string{}
+	watcher.historyLock.Lock()
+	newTestHistory := []server.TestInfo{}
 	set := parser.NewSet(fetchedTests)
-	for _, testID := range watcher.testHistory {
-		if !set.Contain(testID) {
-			newTestHistory = append(newTestHistory, testID)
+	for _, test := range watcher.testHistory {
+		if !set.Contain(test.TestID) {
+			newTestHistory = append(newTestHistory, test)
 		}
 	}
 	watcher.testHistory = newTestHistory
+	watcher.historyLock.Unlock()
 
 	os.Remove(aggFile + ".tar.xz")
 }
@@ -352,15 +372,37 @@ func (watcher *GitWatcher) Clean() {
 
 // Info returns structured watcher information.
 func (watcher *GitWatcher) Info() server.WatcherInfo {
+	watcher.historyLock.Lock()
+	defer watcher.historyLock.Unlock()
+	tests := watcher.testHistory
+	if len(tests) > historyLength {
+		tests = tests[len(tests)-historyLength:]
+	}
 	return server.WatcherInfo{
 		ID:      watcher.testID,
 		Command: watcher.origCmd,
 		Repo:    watcher.testRequest.Options.GitRepo,
 		Branch:  watcher.testRequest.Options.BranchName,
 		HEAD:    watcher.repo.Head(),
-		Tests:   watcher.testHistory,
+		Tests:   tests,
 		Packs:   watcher.packHistory,
 	}
+}
+
+// UpdateTest updates the info about a test.
+func (watcher *GitWatcher) UpdateTest(testID string, testResult server.ResultType) {
+	watcher.historyLock.Lock()
+	defer watcher.historyLock.Unlock()
+	watcher.log.WithField("testID", testID).Info("Updating test results")
+
+	for i, test := range watcher.testHistory {
+		if test.TestID == testID {
+			watcher.testHistory[i].UpdateTime = time.Now().Format(time.Stamp)
+			watcher.testHistory[i].Status = testResult.String()
+			return
+		}
+	}
+	watcher.log.WithField("testID", testID).Warn("testID not found in watcher history")
 }
 
 // StopWatcher finds the running watcher on a given branch and terminate it.
@@ -385,4 +427,16 @@ func WatcherStatus() []server.WatcherInfo {
 		return infoList[i].ID < infoList[j].ID
 	})
 	return infoList
+}
+
+// UpdateWatcherTest attempts to find update the test info for a watcher test.
+// It does nothing if testID is not related to any watcher.
+func UpdateWatcherTest(testID string, testResult server.ResultType) {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
+
+	baseID := strings.Split(testID, "-")[0]
+	if watcher, ok := watcherMap[baseID]; ok {
+		watcher.UpdateTest(testID, testResult)
+	}
 }
