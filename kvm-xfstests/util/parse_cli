@@ -186,24 +186,24 @@ validate_config_name()
 
 validate_commit_name()
 {
-	if test -z "$GIT_REPO"; then
+    if test -z "$GIT_REPO"; then
         echo "GIT_REPO is neither found in the config file nor provided with --repo"
         exit 1
     fi
     if [[ "$GIT_REPO" != *".git" ]]; then
-        GIT_REPO="$GIT_REPO.git"
+	GIT_REPO="$GIT_REPO.git"
     fi
     if ! git ls-remote "$GIT_REPO" &> /dev/null; then
-  		echo -e "Repo not found: $GIT_REPO\n"
-  		exit 1
+	echo -e "Repo not found: $GIT_REPO\n"
+	exit 1
     elif ! git ls-remote "$GIT_REPO" | grep "$1" &> /dev/null; then
-  		echo "Warning: $1 is not a valid branch or tag of $GIT_REPO"
-	fi
+	echo "Warning: $1 is not a valid branch or tag of $GIT_REPO"
+    fi
 }
 
 validate_branch_name()
 {
-	if test -z "$GIT_REPO"
+    if test -z "$GIT_REPO"
     then
         echo "GIT_REPO is neither found in the config file nor provided with --repo"
         exit 1
@@ -212,12 +212,12 @@ validate_branch_name()
         GIT_REPO="$GIT_REPO.git"
     fi
     if ! git ls-remote "$GIT_REPO" > /dev/null; then
-  		echo -e "Repo not found: $GIT_REPO\n"
-  		exit 1
+	echo -e "Repo not found: $GIT_REPO\n"
+	exit 1
     elif ! git ls-remote --heads  --exit-code "$GIT_REPO" $1 > /dev/null; then
-  		echo -e "$1 is not a valid branch of $GIT_REPO"
-		exit 1
-	fi
+	echo -e "$1 is not a valid branch of $GIT_REPO"
+	exit 1
+    fi
 }
 
 copy_config()
@@ -226,9 +226,9 @@ copy_config()
     then
     gsutil cp $1 "gs://$GS_BUCKET/build_config"
     else
-  		echo -e "Could not find: $1\n"
-  		print_help
-  		exit 1
+	echo -e "Could not find: $1\n"
+	print_help
+	exit 1
     fi
 }
 
@@ -584,41 +584,41 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    BUCKET_SUBDIR="$1"
 	    ;;
-    --repo) shift
+	--repo) shift
 	    supported_flavors gce
 	    GIT_REPO="$1"
 	    ;;
-    --commit) shift
+	--commit) shift
 	    supported_flavors gce
 	    OVERRIDE_KERNEL="none"
 	    COMMIT="$1"
 	    ;;
 	--watch) shift
-		supported_flavors gce
-		BRANCH="$1"
-		;;
+	    supported_flavors gce
+	    BRANCH="$1"
+	    ;;
 	--unwatch) shift
-		supported_flavors gce
-		WATCHER_ID="$1"
-		;;
+	    supported_flavors gce
+	    WATCHER_ID="$1"
+	    ;;
 	--bisect-bad) shift
-		supported_flavors gce
-		BISECT_BAD="$1"
-		OVERRIDE_KERNEL="none"
-		;;
+	    supported_flavors gce
+	    BISECT_BAD="$1"
+	    OVERRIDE_KERNEL="none"
+	    ;;
 	--bisect-good) shift
-		supported_flavors gce
-		if test -z "$BISECT_GOOD"; then
-		    BISECT_GOOD="$1"
-		else
-		    BISECT_GOOD="$BISECT_GOOD|$1"
-		fi
-		OVERRIDE_KERNEL="none"
-		;;
-    --config) shift
+	    supported_flavors gce
+	    if test -z "$BISECT_GOOD"; then
+		BISECT_GOOD="$1"
+	    else
+		BISECT_GOOD="$BISECT_GOOD|$1"
+	    fi
+	    OVERRIDE_KERNEL="none"
+	    ;;
+	--config) shift
 	    supported_flavors gce
 	    BUILD_CONFIG="$1"
-        copy_config $BUILD_CONFIG
+            copy_config $BUILD_CONFIG
 	    ;;
 	--testrunid) shift
 	    supported_flavors gce
