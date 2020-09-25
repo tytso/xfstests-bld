@@ -54,9 +54,6 @@ swapon /swapfile
 #     # Restart to allow conf changes to take effect.
 # fi
 
-systemctl stop lighttpd.service
-systemctl disable lighttpd.service
-
 if test ! -d "/var/log/go"
 then
     # we only want to do this if the server isn't set up already.

@@ -70,6 +70,7 @@ then
     ln -s "$SM_TST_DEV" /dev/vdd
     ln -s "$LG_SCR_DEV" /dev/vde
     ln -s "$LG_TST_DEV" /dev/vdf
+    systemctl start lighttpd.service
 elif test -b /dev/vdh
 then
     mkdir /tmp/upload

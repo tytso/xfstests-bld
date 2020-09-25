@@ -262,6 +262,8 @@ q
 EOF
 cp /etc/lighttpd/lighttpd.conf /etc/lighttpd/lighttpd-orig.conf
 cat /etc/lighttpd/ltm.conf >> /etc/lighttpd/lighttpd.conf
+systemctl stop lighttpd.service
+systemctl disable lighttpd.service
 
 sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config

@@ -25,9 +25,6 @@ systemctl disable gce-finalize.timer
 
 logger -i "Disabled gce-finalize timer"
 
-systemctl stop lighttpd.service
-systemctl disable lighttpd.service
-
 if test ! -d "/var/log/go"
 then
     # we only want to do this if the server isn't set up already.
