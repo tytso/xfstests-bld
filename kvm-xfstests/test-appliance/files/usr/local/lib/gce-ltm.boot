@@ -34,26 +34,6 @@ chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 
-# adjust the configuration of the web server of the test appliance and
-# relaunch lighttpd with the new configuration.
-# essentially create a webserver right here.
-
-# if test ! -d "/var/log/lgtm"
-# then
-#     # we only want to do this if the server isn't set up already.
-#     # (e.g. if the ltm server instance was stopped and restarted, this should
-#     # not get executed)
-#     rm -r /var/www/*
-#     mkdir -p /var/log/lgtm
-#     chown www-data:www-data -R /var/log/lgtm
-#     lighttpd-enable-mod fastcgi
-#     cat /usr/local/lib/gce-ltm/ltm-lighttpd.conf >> /etc/lighttpd/lighttpd.conf
-#     # Webserver static files should go in static
-#     mv /usr/local/lib/gce-ltm/static /var/www/
-#     systemctl restart lighttpd.service
-#     # Restart to allow conf changes to take effect.
-# fi
-
 if test ! -d "/var/log/go"
 then
     # we only want to do this if the server isn't set up already.

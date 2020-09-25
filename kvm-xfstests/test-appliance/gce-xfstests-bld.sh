@@ -231,10 +231,6 @@ tar -C /root -xzf /run/xfstests.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/xfstests.tar.gz /run/files.tar.gz
 
-# this is to install some python packages into the image for
-# the LTM web server.
-pip install -r /usr/local/lib/gce-ltm/requirements.txt
-
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
 do
@@ -247,7 +243,6 @@ do
 done
 rm -rf /var/www/html /var/www/cgi-bin
 ln -s /usr/lib/cgi-bin /var/www/cgi-bin
-chown www-data:www-data -R /usr/local/lib/gce-ltm
 chown www-data:www-data -R /var/www
 
 lighttpd-enable-mod ssi
@@ -356,8 +351,6 @@ then
     dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
     rm -f /run/*.deb
 fi
-chmod +rx /usr/local/lib/gce-ltm/gce-xfs-ltm.fcgi
-chmod +rx /usr/local/lib/gce-ltm/app.py
 
 gcloud components -q update
 
