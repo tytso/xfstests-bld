@@ -273,6 +273,7 @@ log
 machtype:
 modules:
 nfssrv:
+note:
 no-action
 no-archive
 no-collapse
@@ -510,6 +511,8 @@ while (( $# >= 1 )); do
 		    ;;
 	    esac
 	    OVERRIDE_MODULES="$MODULES";
+	    ;;
+	--note) shift
 	    ;;
 	--initrd) shift
 	    supported_flavors kvm
