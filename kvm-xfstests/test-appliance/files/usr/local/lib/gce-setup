@@ -30,7 +30,7 @@ fi
 run_hooks pre-setup
 
 /usr/local/lib/gce-logger disk setup
-gce_attribute orig_cmdline | base64 -d > /var/www/cmdline
+echo "$ORIG_CMDLINE" | base64 -d > /var/www/cmdline
 
 if test "$CMD" = "pts" ; then
     SCRATCH_SIZE=0

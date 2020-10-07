@@ -172,10 +172,7 @@ then
 fi
 
 cp /dev/null "$RUNSTATS"
-if test -f /var/www/cmdline
-then
-    echo "CMDLINE: $(cat /var/www/cmdline)" >> "$RUNSTATS"
-fi
+echo CMDLINE: \"$(echo $ORIG_CMDLINE | base64 -d)\" >> "$RUNSTATS"
 if test -n "$RUN_ON_GCE"
 then
     cp /usr/local/lib/gce-local.config /root/xfstests/local.config

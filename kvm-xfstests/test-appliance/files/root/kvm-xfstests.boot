@@ -23,6 +23,7 @@ FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
 FSTESTTYP=$(parse fstesttyp)
 FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
 FSTESTSTR=$(parse fsteststr | sed -e 's/\,/ /g')
+ORIG_CMDLINE=$(parse orig_cmdline)
 timezone=$(parse fstesttz)
 MNTOPTS=$(parse mount_opts)
 PTS_SIZE=$(parse pts_size)
@@ -38,6 +39,7 @@ FSTESTOPT="$FSTESTOPT"
 FSTESTTYP="$FSTESTTYP"
 FSTESTAPI="$FSTESTAPI"
 FSTESTSTR="$FSTESTSTR"
+ORIG_CMDLINE="$ORIG_CMDLINE"
 timezone="$timezone"
 MNTOPTS="$MNTOPTS"
 PTS_SIZE="$PTS_SIZE"
@@ -97,6 +99,7 @@ fi
 
 export FSTESTCFG FSTESTSET FSTESTOPT FSTESTTYP FSTESTAPI FSTESTSTR FSTESTEXC
 export MNTOPTS FSTEST_ARCHIVE NFSSRV FILESTORE_TOP FILESTORE_SUBDIR
+export ORIG_CMDLINE
 
 case "$FSTESTOPT" in
     *blktests*)

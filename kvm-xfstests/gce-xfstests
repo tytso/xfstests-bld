@@ -559,8 +559,6 @@ case "$1" in
 	;;
 esac
 
-ORIG_CMDLINE="$*"
-
 . "$DIR/util/parse_cli"
 
 if test -n "$EXTRA_ARG"
@@ -933,8 +931,6 @@ if test -n "$GCE_REPORT_EMAIL"
 then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"
 fi
-
-ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
 
 ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"
 

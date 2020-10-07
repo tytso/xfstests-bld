@@ -47,6 +47,7 @@ fstesttz=$(gce_attribute fstesttz)
 fstesttyp=$(gce_attribute fstesttyp)
 fstestapi=$(gce_attribute fstestapi)
 fsteststr=$(gce_attribute fsteststr)
+orig_cmdline=$(gce_attribute orig_cmdline)
 tarxfstests=$(gce_attribute tarxfstests)
 tarfiles=$(gce_attribute tarfiles)
 tarmodules=$(gce_attribute tarmodules)
@@ -82,6 +83,7 @@ then
     /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
     cat >> /run/test-env <<EOF
 # Appended by gce-kexec
+ORIG_CMDLINE="${orig_cmdline}"
 FSTESTCFG="${fstestcfg//,/ }"
 FSTESTSET="${fstestset//,/ }"
 FSTESTOPT="${fstestopt//,/ }"
@@ -143,7 +145,7 @@ run_hooks kexec
 /usr/local/lib/gce-logger kexec to test kernel
 systemctl stop rsyslog.service
 sync
-kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop net.ifnames=0 biosdevname=0 console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi fsteststr=$fsteststr nfssrv=$nfssrv"
+kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elevator=noop net.ifnames=0 biosdevname=0 console=ttyS0 $kopt fstestcfg=$fstestcfg fstestset=$fstestset fstestexc=$fstestexc fstestopt=$fstestopt fstesttyp=$fstesttyp fstestapi=$fstestapi fsteststr=$fsteststr nfssrv=$nfssrv orig_cmdline=$orig_cmdline"
 /usr/local/lib/gce-logger kexec failed?!?
 exit 1
 EOF
