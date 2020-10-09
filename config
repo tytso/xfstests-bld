@@ -20,7 +20,7 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 
 FIO_COMMIT=fio-3.15
 QUOTA_COMMIT=6e631074330a
-XFSPROGS_COMMIT=v5.2.0
+XFSPROGS_COMMIT=v5.8.0
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
