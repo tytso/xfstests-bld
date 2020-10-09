@@ -12,7 +12,9 @@ ext4/028
 # file systems with encryption enabled can't be mounted with ext3
 ext4/044
 
-# encryption doesn't play well with quota
+# These tests use the old-style quota support where the quota files are user
+# files instead of hidden inodes.  This isn't compatible with
+# test_dummy_encryption, as it causes the quota files to be encrypted.
 generic/082
 generic/219
 generic/230
@@ -25,6 +27,8 @@ generic/381
 generic/382
 generic/566
 generic/587
+generic/600
+generic/601
 
 # encryption doesn't play well with casefold (at least not yet)
 generic/556
