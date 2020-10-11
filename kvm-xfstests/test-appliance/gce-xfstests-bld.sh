@@ -60,6 +60,7 @@ PACKAGES="bash-completion \
 	libssl-dev \
 	lighttpd \
 	lvm2 \
+	lz4 \
 	mtd-utils \
 	multipath-tools \
 	nano \

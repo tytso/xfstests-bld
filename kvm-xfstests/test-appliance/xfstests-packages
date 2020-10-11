@@ -25,6 +25,7 @@ liblzo2-2
 libbsd0
 libkeyutils1
 lvm2
+lz4
 makedev
 mtd-utils
 multipath-tools
