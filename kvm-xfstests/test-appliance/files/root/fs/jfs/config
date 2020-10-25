@@ -11,7 +11,7 @@ function check_filesystem()
 
     /sbin/fsck.jfs -fy "$dev"
     ret="$?"
-    echo e2fsck exited with status "$ret"
+    echo fsck.jfs exited with status "$ret"
     return "$ret"
 }
 

@@ -29,13 +29,13 @@ function __check_filesystem()
 	__fsck "$tst_dev"
 	ret="$?"
 	mount -t $FSTESTTYP $tst_dev $tst_mnt
-	echo e2fsck exited with status "$ret"
+	echo fsck for "$FSTESTTYP" on test device exited with status "$ret"
 
 	umount $scr_dev >& /dev/null
 	__fsck "$scr_dev"
 	ret2="$?"
 	mount -t $FSTESTTYP $scr_dev $scr_mnt
-	echo e2fsck exited with status "$ret2"
+	echo fsck for "$FSTESTTYP" on scratch device exited with status "$ret"
 
 	if test "$ret" -eq 0 ; then
 		ret=$ret2
