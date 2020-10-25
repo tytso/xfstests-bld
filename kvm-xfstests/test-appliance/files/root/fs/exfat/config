@@ -1,0 +1,64 @@
+#
+# Configuration file for exfat
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    local dev="$1"
+    local ret
+
+    /sbin/fsck.exfat -y "$dev"
+    ret="$?"
+    echo fsck.exfat exited with status "$ret"
+    return "$ret"
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+    local ret
+
+    /sbin/mkfs.exfat $opts "$dev"
+    ret="$?"
+    return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$MOUNT_OPTIONS" ; then
+            export MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    export MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$EXFAT_MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo EXFAT_MKFS_OPTIONS: "$EXFAT_MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo MOUNT_OPTIONS: "MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset MOUNT_OPTIONS
+    unset EXFAT_MKFS_OPTIONS
+}

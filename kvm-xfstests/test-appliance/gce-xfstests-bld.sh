@@ -34,11 +34,13 @@ PACKAGES="bash-completion \
 	dbench \
 	dbus \
 	dmsetup \
+	dosfstools \
 	"$DUPEREMOVE" \
 	dump \
 	"e2fsprogs$BACKPORTS" \
 	e3 \
 	ed \
+	exfat-utils \
 	"$F2FS_TOOLS" \
 	file \
 	flex \
@@ -82,6 +84,7 @@ PACKAGES="bash-completion \
 	stress \
 	thin-provisioning-tools \
 	time \
+	udftools \
 	xz-utils"
 
 PACKAGES_REMOVE="e2fsprogs-l10n"

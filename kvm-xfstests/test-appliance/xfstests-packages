@@ -10,8 +10,10 @@ dc
 dbench
 dbus
 dmsetup
+dosfstools
 dump
 ed
+exfat-utils
 f2fs-tools
 file
 gawk
@@ -47,6 +49,7 @@ systemd
 systemd-sysv
 thin-provisioning-tools
 time
+udftools
 uuid-runtime
 udev
 xz-utils

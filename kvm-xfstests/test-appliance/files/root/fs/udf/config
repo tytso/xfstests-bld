@@ -1,0 +1,60 @@
+#
+# Configuration file for udf
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    # there is no fsck for udf yet --- udf_test was a restricted download that
+    # has since been removed from the philips.com web site.
+    :
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+    local ret
+
+    /usr/sbin/mkudffs $opts "$dev"
+    ret="$?"
+    return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$MOUNT_OPTIONS" ; then
+            export MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    export MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$UDF_MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo UDF_MKFS_OPTIONS: "$UDF_MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo MOUNT_OPTIONS: "MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset MOUNT_OPTIONS
+    unset UDF_MKFS_OPTIONS
+}

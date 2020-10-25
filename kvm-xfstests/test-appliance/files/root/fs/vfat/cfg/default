@@ -1,0 +1,5 @@
+SIZE=small
+export VFAT_MKFS_OPTIONS="-I"
+export MKFS_OPTIONS="$VFAT_MKFS_OPTIONS"
+export MOUNT_OPTIONS=""
+TESTNAME="vfat"

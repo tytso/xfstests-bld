@@ -1,0 +1,4 @@
+SIZE=small
+export UDF_MKFS_OPTIONS=""
+export MOUNT_OPTIONS=""
+TESTNAME="udf"
