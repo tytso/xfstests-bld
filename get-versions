@@ -58,6 +58,13 @@ then
     cd ..
 fi
 
+if test -d util-linux
+then
+    cd util-linux
+    ver=$(git describe --always --dirty --tags); echo "util-linux	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/util-linux.ver
+    cd ..
+fi
+
 if test -d go/src/github.com/google/syzkaller
 then
     cd go/src/github.com/google/syzkaller
@@ -73,6 +80,11 @@ cd xfstests-dev
 ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfstests.ver
 cd ..
 
-cat $TMPDIR/*.ver
+if test -n "$(ls kvm-xfstests/test-appliance/debs/*.ver 2> /dev/null)"
+then
+    cp kvm-xfstests/test-appliance/debs/*.ver $TMPDIR
+fi
+
+cat $TMPDIR/*.ver | sort
 rm -rf $TMPDIR
 exit 0
