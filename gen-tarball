@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if test -f config.custom ; then
 	. config.custom
 else
@@ -59,7 +61,11 @@ else
     cp xfstests-dev/README* xfstests
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
-debs_vers=$(find kvm-xfstests/test-appliance/debs -name "*.ver" -print 2>/dev/null)
+if test -e kvm-xfstests/test-appliance/debs ; then
+    debs_vers=$(find kvm-xfstests/test-appliance/debs -name "*.ver" -print)
+else
+    debs_vers=
+fi
 cat *.ver $debs_vers | sort > xfstests/git-versions
 if test -f build-distro ; then
     cp build-distro xfstests/build-distro
@@ -72,15 +78,19 @@ if test -d bld/usr/bin ; then
     cp bld/usr/bin/* xfstests/bin
 fi
 cp bld/lib/client.txt xfstests/lib
-cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
-ln -s libimaevm.so.0.0.0 xfstests/lib/libimaevm.so.0
+# ima-evm-utils is optional.
+if test -e bld/lib/libimaevm.so.0.0.0; then
+    cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
+    ln -s libimaevm.so.0.0.0 xfstests/lib/libimaevm.so.0
+fi
 rm -f xfstests/bin/compile_et xfstests/bin/mk_cmds
 for i in ltp/fsstress ltp/fsx ltp/aio-stress src/godown
 do
     ln -s ../$i xfstests/bin
 done
 echo "STRIP xfstests/*"
-find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null
+find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null \
+    || true
 echo "TAR xfstests"
 find xfstests blktests -path blktests/.git -prune -o -print0 | \
     LC_ALL=C sort -z | \
