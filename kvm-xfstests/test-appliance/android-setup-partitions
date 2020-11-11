@@ -357,9 +357,10 @@ create_xfstests_partitions()
 		finished "insufficient_space"
 	    fi
 	fi
-	echo "$name is ${DISK_DEV}${partno}: $(pprint_bytes $size) at offset $start"
+	local part_dev=$(echo $USERDATA_RAW_DEV | sed -E "s/[0-9]+$/${partno}/")
+	echo "$name is $part_dev: $(pprint_bytes $size) at offset $start"
 	addpart $DISK_DEV $partno $(( start / 512)) $(( size / 512 ))
-	ln -s ${DISK_DEV}${partno} /dev/block/xfstests/$name
+	ln -s "$part_dev" /dev/block/xfstests/$name
 	start=$(( start + size ))
     done
 }
@@ -369,7 +370,7 @@ USERDATA_RAW_DEV=$(find_userdata_partition)
 
 # Device node for disk containing userdata partition, e.g. /dev/block/sda.
 # This is the Android device's internal storage.
-DISK_DEV=${USERDATA_RAW_DEV%%[0-9]*}
+DISK_DEV=$(echo $USERDATA_RAW_DEV | sed -E 's/p?[0-9]+$//')
 
 # Block device containing the userdata filesystem.  This can be either
 # USERDATA_RAW_DEV or a device-mapper device above USERDATA_RAW_DEV.
