@@ -59,7 +59,7 @@ ask_yesno()
 
 adb_ready()
 {
-    adb devices | grep -q 'device$'
+    adb devices | grep -E -q '(device|recovery)$'
 }
 
 fastboot_ready()
