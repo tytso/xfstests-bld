@@ -89,9 +89,19 @@ get_partition_start()
 # Find the device node for the raw userdata partition, e.g. /dev/block/sda35
 find_userdata_partition()
 {
-    local link=/dev/block/bootdevice/by-name/userdata
-    if [ ! -L $link ]; then
-	die "There's no symlink to the userdata partition at $link. " \
+    local links=(/dev/block/bootdevice/by-name/userdata
+		 /dev/block/by-name/userdata)
+    local link=""
+    local i
+
+    for i in "${!links[@]}"; do
+	if [ -L "${links[$i]}" ]; then
+	    link=${links[$i]}
+	    break
+	fi
+    done
+    if [ -z "$link" ]; then
+	die "There's no symlink to the userdata partition at any of [${links[*]}]. " \
 	    "Please update this script to support your device!"
     fi
     local dev=$(readlink $link)
