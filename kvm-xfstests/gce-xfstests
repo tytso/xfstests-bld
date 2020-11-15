@@ -24,6 +24,7 @@ then
 fi
 
 . "$DIR/util/get-config"
+. "$DIR/util/parse_opt_funcs"
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
@@ -455,13 +456,14 @@ case "$1" in
 	;;
     upload-kernel)
 	shift
+	KERNEL=$GCE_KERNEL
 	while (( $# >= 1 )); do
 	    case $1 in
 		--no-action)
 		    NO_ACTION="echo "
 		    ;;
 		--kernel) shift
-		    GCE_KERNEL="$1"
+		    OVERRIDE_KERNEL="$1"
 		    ;;
 		--gs-bucket) shift
 		    GS_BUCKET="$1"
@@ -476,19 +478,20 @@ case "$1" in
 	    esac
 	    shift
 	done
-	if test -d "$GCE_KERNEL" ; then
-	    GCE_KERNEL="$GCE_KERNEL/arch/x86/boot/bzImage"
-	fi
+	find_kernel_to_use
 	if test -n "$1" ; then
 	    GS_KERNEL=gs://$GS_BUCKET/$1
 	else
 	    GS_KERNEL=gs://$GS_BUCKET/bzImage
 	fi
-	if ! test -f "$GCE_KERNEL" ; then
-	    echo "Can't find kernel at $GCE_KERNEL"
+	if ! test -f "$KERNEL" ; then
+	    echo "Can't find kernel at $KERNEL"
 	    exit 1
 	fi
-	$NO_ACTION gsutil cp $GCE_KERNEL $GS_KERNEL
+	echo "gsutil cp $KERNEL $GS_KERNEL"
+	if test -z "$NO_ACTION" ; then
+	    gsutil -q cp $KERNEL $GS_KERNEL
+	fi
 	exit $?
 	;;
     launch-ltm)

@@ -22,6 +22,7 @@ then
 fi
 
 . "$DIR/util/get-config"
+. "$DIR/util/parse_opt_funcs"
 
 QUIET="quiet loglevel=0"
 

@@ -24,6 +24,7 @@ then
 fi
 
 . "$DIR/util/get-config"
+. "$DIR/util/parse_opt_funcs"
 
 # Chroot directory on device.
 # Note: this will be wiped clean when deploying a new chroot tarball.

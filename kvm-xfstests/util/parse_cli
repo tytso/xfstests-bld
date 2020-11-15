@@ -991,39 +991,7 @@ if test -n "$DO_ARCHIVE" ; then
     ARG="$ARG fstestarc=$DO_ARCHIVE"
 fi
 
-if test -z "$OVERRIDE_KERNEL" ; then
-    if test -f .git/kbuild/config ; then
-	t=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
-	if test -n "$t" -a "$KERNEL" != "$t" -a \
-		"$KERNEL" != "$t/arch/x86/boot/bzImage" ; then
-	    echo "Detected kbuild config; using $t for kernel"
-	    KERNEL=$t
-	    OVERRIDE_KERNEL=$t
-	    if test -z "$OVERRIDE_MODULES" ; then
-		MODULES=
-	    fi
-	fi
-    elif test -f "./arch/x86/boot/bzImage" ; then
-	t=$(pwd)
-	if test "$KERNEL" != "$t" -a "$KERNEL" != "$t/arch/x86/boot/bzImage"
-	then
-	    echo "Current directory appears to be a kernel tree; using it"
-	    KERNEL=$t
-	    OVERRIDE_KERNEL=$t
-	    if test -z "$OVERRIDE_MODULES" ; then
-		MODULES=
-	    fi
-	fi
-    fi
-    if test -d "$KERNEL" ; then
-	if test -f "$KERNEL/modules.tar.xz" -a -z "$OVERRIDE_MODULES"; then
-	    MODULES="$KERNEL/modules.tar.xz"
-	    OVERRIDE_MODULES="$KERNEL/modules.tar.xz"
-	fi
-	KERNEL="$KERNEL/arch/x86/boot/bzImage"
-	OVERRIDE_KERNEL="$KERNEL"
-    fi
-fi
+find_kernel_to_use
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
     (cd $DIR/.. ; ./gen-tarball --fast)
