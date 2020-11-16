@@ -30,11 +30,11 @@ fi
 
 if test -n "$DO_STATE" ; then
     tar -C /pts --exclude=fiofile -cJf /tmp/pts-state.tar.xz phoronix-test-suite
-    gsutil cp /tmp/pts-state.tar.xz "gs://$GS_BUCKET/pts-state.tar.xz"
+    gsutil cp /tmp/pts-state.tar.xz "gs://$GS_BUCKET/${instance}-state.tar.xz"
 fi
 
 if test -n "$DO_RESULTS" ; then
     tar -C /pts/phoronix-test-suite -cJf /tmp/pts-results.tar.xz test-results
-    gsutil cp /tmp/pts-results.tar.xz "gs://$GS_BUCKET/pts-results.tar.xz"
+    gsutil cp /tmp/pts-results.tar.xz "gs://$GS_BUCKET/${instance}-results.tar.xz"
 fi
 

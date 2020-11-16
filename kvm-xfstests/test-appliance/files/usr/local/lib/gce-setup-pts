@@ -7,7 +7,7 @@
 logger -i "Entered pts scratch"
 
 set -vx
-PTS_DSK=pts-disk
+PTS_DSK="${instance}-disk"
 CREATED_PTS_DEV=/dev/disk/by-id/google-pts
 
 apt-get update > /dev/null &
@@ -49,6 +49,10 @@ if ! test -d /pts/phoronix-test-suite ; then
     fi
     if gsutil cp "gs://$GS_BUCKET/pts-results.tar.xz" /tmp ; then
 	tar -C /pts/phoronix-test-suite -xJf /tmp/pts-results.tar.xz
+    fi
+    if test "$instance" != "pts" &&
+	    gsutil cp "gs://$GS_BUCKET/${instance}-results.tar.xz" /tmp ; then
+	tar -C /pts/phoronix-test-suite -xJf "/tmp/${instance}-results.tar.xz"
     fi
 fi
 
