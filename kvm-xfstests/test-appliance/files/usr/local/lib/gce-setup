@@ -24,6 +24,11 @@ if test -f /results/setup-syslog ; then
     if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
 	script -a -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log
     fi
+    # We need to remount the pts directory after a reboot
+    if test "$CMD" = "pts" ; then
+	SCRATCH_SIZE=0
+	script -a -c /usr/local/lib/gce-setup-pts /var/log/gce-setup-pts.log
+    fi
     exit 0
 fi
 
