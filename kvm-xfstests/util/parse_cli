@@ -269,6 +269,7 @@ initrd:
 instance-name:
 kernel:
 local-ssd
+local-ssd-nvme
 log
 machtype:
 modules:
@@ -523,7 +524,11 @@ while (( $# >= 1 )); do
 	    ;;
 	--local-ssd)
 	    supported_flavors gce
-	    DO_LOCAL_SSD=yes
+	    DO_LOCAL_SSD=SCSI
+	    ;;
+	--local-ssd-nvme)
+	    supported_flavors gce
+	    DO_LOCAL_SSD=NVME
 	    ;;
 	--pmem-device)
 	    supported_flavors gce

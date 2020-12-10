@@ -864,6 +864,7 @@ function fit_machtype_resources() {
     do
 	case "$f_machtype" in
 	    n2-*|c2-*) continue ;;
+	    e2-*)	if test -n "$DO_LOCAL_SSD" ; then continue ; fi ;;
 	esac
 	if test "$GCE_ZONE" != "$f_zone" ; then
 	    continue
@@ -939,7 +940,7 @@ ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"
 
 if test -n "$DO_LOCAL_SSD"
 then
-    SSD_ARG="--local-ssd interface=SCSI"
+    SSD_ARG="--local-ssd interface=$DO_LOCAL_SSD"
 fi
 
 if test -n "$RUN_ON_LTM"; then
