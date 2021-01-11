@@ -13,6 +13,9 @@ CREATED_SCRATCH_DEV=/dev/disk/by-id/google-scratch
 if test -e /dev/disk/by-id/google-local-ssd-0
 then
     CREATED_SCRATCH_DEV=/dev/disk/by-id/google-local-ssd-0
+elif test -e /dev/disk/by-id/google-local-nvme-ssd-0
+then
+    CREATED_SCRATCH_DEV=/dev/disk/by-id/google-local-nvme-ssd-0
 fi
 
 if ! test -e $CREATED_SCRATCH_DEV
