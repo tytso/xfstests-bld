@@ -147,7 +147,7 @@ get_gce_zone()
 	    ;;
     esac
     z=$(gcloud compute instances list --project "$GCE_PROJECT" \
-	       --filter="name = $1" --format="value(zone)")
+	       --filter="name <= $1 and name >= $1" --format="value(zone)")
     if test -z "$z" ; then
 	z="$GCE_ZONE"
     fi
@@ -167,7 +167,7 @@ get_gce_zone_disk()
 	    ;;
     esac
     z=$(gcloud compute disks list --project "$GCE_PROJECT" \
-	       --filter="name = $1" --format="value(zone)")
+		--filter="name <= $1 AND name >= $1" --format="value(zone)")
     if test -z "$z" ; then
 	z="$GCE_ZONE"
     fi
