@@ -375,7 +375,9 @@ if test -z "$SKIP_XFSPROGS" ; then
     # disable xfsprogs's use of blkid.
     if test -f $DESTDIR/lib/libblkid.a -a ! -d util-linux; then
 	 export disable_blkid="--disable-blkid"
-     fi
+    fi
+    (cd libinih ; $MAKE_CLEAN ; make CFLAGS="$LCF -I$DESTDIR/include" ; \
+     make install DESTDIR=$DESTDIR)
     (cd xfsprogs-dev; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
