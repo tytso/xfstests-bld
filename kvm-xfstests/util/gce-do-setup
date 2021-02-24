@@ -186,6 +186,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p GCE_MIN_SCR_SIZE
     declare -p GCE_LTM_KEEP_DEAD_VM
     declare -p GCE_NETWORK
+    declare -p GCE_SERIAL_PORT_ACCESS
     declare -p TZ
 } 2>/dev/null > $tmpf
 
