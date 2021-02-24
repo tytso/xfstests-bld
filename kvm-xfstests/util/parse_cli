@@ -257,7 +257,9 @@ cache:
 commit:
 config:
 cpu-type:
+disable-serial
 email:
+enable-serial
 gce-network:
 gce-zone:
 gs-bucket:
@@ -703,6 +705,15 @@ while (( $# >= 1 )); do
 		FSTESTSTR="$stress_opts"
 	    fi
 	    unset stress_opts
+	    ;;
+	--enable-serial)
+	    GCE_SERIAL_PORT_ACCESS=TRUE
+	    ;;
+	--enable-serial)
+	    GCE_SERIAL_PORT_ACCESS=TRUE
+	    ;;
+	--disable-serial)
+	    GCE_SERIAL_PORT_ACCESS=FALSE
 	    ;;
 	--)
 	    shift

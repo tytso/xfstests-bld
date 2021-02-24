@@ -72,3 +72,7 @@ if test "$XFSTESTS_FLAVOR" = "gce" && \
         fi
     fi
 fi
+
+if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
+   GCE_SERIAL_PORT_ACCESS=TRUE
+fi

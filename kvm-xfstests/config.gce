@@ -34,3 +34,8 @@ IMAGE_FLAG="--image-family"
 # space saved isn't worth the additional VM time to run certain
 # high-IOPS tests.
 GCE_MIN_SCR_SIZE=100
+
+#
+# Enable serial port access by default
+#
+GCE_SERIAL_PORT_ACCESS=TRUE

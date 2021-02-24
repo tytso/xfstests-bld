@@ -70,7 +70,7 @@ PREEMPTIBLE="--maintenance-policy MIGRATE"
 ROOT_FS="xfstests"
 IMAGE_FLAG="--image-family"
 
-ARG="gs_bucket=$GS_BUCKET serial-port-enable=true"
+ARG="gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
 ARG="$ARG gce_xfs_ltm=YES"
 if test -n "$TZ" ; then
     ARG="$ARG fstesttz=$TZ"

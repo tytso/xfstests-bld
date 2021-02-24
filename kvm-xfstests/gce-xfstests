@@ -395,6 +395,20 @@ case "$1" in
 	       get-serial-port-output "$2" --zone $(get_gce_zone "$2")
 	exit 0
 	;;
+    enable-serial)
+	exec gcloud compute --project "$GCE_PROJECT" \
+	     instances add-metadata --zone $(get_gce_zone "$2") "$2" \
+	     --metadata serial-port-enable=true
+	;;
+    disable-serial)
+	exec gcloud compute --project "$GCE_PROJECT" \
+	     instances add-metadata --zone $(get_gce_zone "$2") "$2" \
+	     --metadata serial-port-enable=false
+	;;
+    describe-vm)
+	exec gcloud compute --project "$GCE_PROJECT" \
+	     instances describe --zone $(get_gce_zone "$2") "$2"
+	;;
     serial)
 	case "$GCE_SERIAL_PORT_DEFAULT" in
 	    [1234])
@@ -925,7 +939,7 @@ then
     ARG="$ARG nr_cpus=$NR_CPU"
 fi
 
-ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=true"
+ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
 
 if test -n "$BUCKET_SUBDIR"; then
     ARG="$ARG bucket_subdir=$BUCKET_SUBDIR"
