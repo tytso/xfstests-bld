@@ -38,11 +38,14 @@ setup_for_stretch()
 {
 	IMAGE_FAMILY=debian-9
 	IMAGE_PROJECT=debian-cloud
-	BACKPORTS=/stretch-backports
+	E2FSPROGS=e2fsprogs/stretch-backports
+	LIBCOMERR=libcomerr2/stretch-backports
+	LIBSS=libss2/stretch-backports
 	BTRFS_PROGS=btrfs-progs/stretch-backports
 	F2FS_TOOLS=f2fs-tools/stretch-backports
 	DUPEREMOVE=
 	SUITE=stretch
+	BACKPORTS=/stretch-backports
 }
 
 setup_for_buster()
@@ -50,8 +53,11 @@ setup_for_buster()
 	IMAGE_FAMILY=debian-10
 	IMAGE_PROJECT=debian-cloud
 	SUITE=buster
-	BTRFS_PROGS=btrfs-progs
-	F2FS_TOOLS=f2fs-tools
+	E2FSPROGS=
+	LIBCOMERR=
+	LIBSS=
+	BTRFS_PROGS=btrfs-progs/buster-backports
+	F2FS_TOOLS=f2fs-tools/buster-backports
 	DUPEREMOVE=duperemove
 	BACKPORTS=/buster-backports
 }
@@ -130,6 +136,9 @@ sed -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GS_TAR@;$GS_TAR;" \
     -e "s/@BLD_INST@/$BLD_INST/" \
     -e "s;@BACKPORTS@;$BACKPORTS;" \
+    -e "s;@E2FSPROGS@;$E2FSPROGS;" \
+    -e "s;@LIBCOMERR@;$LIBCOMERR;" \
+    -e "s;@LIBSS@;$LIBSS;" \
     -e "s;@BTRFS_PROGS@;$BTRFS_PROGS;" \
     -e "s;@F2FS_TOOLS@;$F2FS_TOOLS;" \
     -e "s;@DUPEREMOVE@;$DUPEREMOVE;" \

@@ -11,6 +11,9 @@ BUCKET=@BUCKET@
 GS_TAR=@GS_TAR@
 BLD_INST=@BLD_INST@
 BACKPORTS="@BACKPORTS@"
+E2FSPROGS="@E2FSPROGS@"
+LIBCOMERR="@LIBCOMERR@"
+LIBSS="@LIBSS@"
 BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
 DUPEREMOVE="@DUPEREMOVE@"
@@ -23,7 +26,7 @@ PACKAGES="bash-completion \
 	blktrace \
 	bsdmainutils \
 	bsd-mailx \
-	"$BTRFS_PROGS" \
+	$BTRFS_PROGS \
 	build-essential \
 	bzip2 \
 	ccache \
@@ -35,13 +38,13 @@ PACKAGES="bash-completion \
 	dbus \
 	dmsetup \
 	dosfstools \
-	"$DUPEREMOVE" \
+	$DUPEREMOVE \
+	$E2FSPROGS \
 	dump \
-	"e2fsprogs$BACKPORTS" \
 	e3 \
 	ed \
 	exfat-utils \
-	"$F2FS_TOOLS" \
+	$F2FS_TOOLS \
 	file \
 	flex \
 	gawk \
@@ -52,10 +55,10 @@ PACKAGES="bash-completion \
 	keyutils \
 	less \
 	libcap2-bin \
-	"libcomerr2$BACKPORTS" \
+	$LIBCOMERR \
 	libelf-dev \
 	libsasl2-modules \
-	"libss2$BACKPORTS" \
+	$LIBSS \
 	liblzo2-2 \
 	libkeyutils1 \
 	libncurses-dev \
