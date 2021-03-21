@@ -23,6 +23,12 @@
     to the kernel version you wish to build, then copy it to .config
     in your kernel build tree and run 'make olddefconfig'.
 
+    This can be automated via the command:
+
+        kvm-xfstests install-kconfig [--i386]
+
+    (Add the --i386 option if you wish to build a 32-bit kernel.)
+
 4.  In the fstests/kvm-xfstests/ directory, take a look at the
     "config.kvm" file and either edit that file in place, or (this is
     preferred) put override values in ~/.config/kvm-xfstests.  The

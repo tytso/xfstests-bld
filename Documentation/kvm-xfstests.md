@@ -55,7 +55,12 @@ configured kernel, base your configuration on one of the files in the
 kernel-configs directory.  That is, copy the config for the desired
 architecture and kernel version (or the closest available version) to
 .config in your kernel build tree, then run 'make olddefconfig' ('make
-oldnoconfig' for pre-3.7 kernels).
+oldnoconfig' for pre-3.7 kernels).  This can be automated via the
+command:
+
+        kvm-xfstests install-kconfig [--i386]
+
+(Add the --i386 option if you wish to build a 32-bit kernel.)
 
 By default, the scratch disks used by test-appliance will be set up
 automatically, and are stored in the kvm-xfstests directory with the
