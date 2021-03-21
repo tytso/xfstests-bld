@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from junitparser import JUnitXml
 import argparse
@@ -12,7 +12,7 @@ def combine_xunit(suites_fn, report_fn, name='Aggregated test results'):
     testsuites.add_testsuite(JUnitXml.fromfile(report_fn))
     for tc in testsuites:
         for ts in tc:
-            print ts.name
+            print(ts.name)
     testsuites.write(suites_fn, pretty=True)
 
 parser = argparse.ArgumentParser()

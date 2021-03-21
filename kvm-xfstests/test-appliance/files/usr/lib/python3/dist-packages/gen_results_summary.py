@@ -67,7 +67,11 @@ def print_tests(out_f, testsuite, result_type, type_label):
     found = False
     pos = 0
     for testcase in testsuite:
-        if not isinstance(testcase.result, result_type):
+        match = False
+        for entry in testcase.result:
+            if isinstance(entry, result_type):
+                match = True
+        if not match:
             continue
         if not found:
             out_f.write('  %s: ' % type_label)
@@ -134,13 +138,18 @@ def print_summary(out_f, testsuite, verbose):
     out_f.write('%d seconds\n' % runtime)
     if verbose:
         for test_case in testsuite:
-            status = 'Pass'
-            if isinstance(test_case.result, Failure):
-                status = 'Failed'
-            if isinstance(test_case.result, Skipped):
-                status = 'Skipped'
-            if isinstance(test_case.result, Error):
-                status = 'Error'
+            status = ''
+            for entry in test_case.result:
+                if isinstance(entry, Failure):
+                    status = status + 'Failed,'
+                if isinstance(entry, Skipped):
+                    status = status + 'Skipped,'
+                if isinstance(entry, Error):
+                    status = status + 'Error,'
+            if (status == ''):
+                status = 'Pass'
+            else:
+                status = status[:-1]
             out_f.write("  %-12s %-8s %ds\n" %
                         (test_case.name, status, test_case.time))
     else:
@@ -199,7 +208,6 @@ def check_for_ltm(results_dir, props):
         remove_properties(props, 'FSTESTCFG')
         return True
     except IOError:
-        sys.exc_clear()
         return False
 
 def gen_results_summary(results_dir, output_fn=None, merge_fn=None,

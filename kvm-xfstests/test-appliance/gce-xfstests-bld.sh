@@ -82,6 +82,7 @@ PACKAGES="bash-completion \
 	python-future \
 	python-gdbm \
 	python-pip \
+	python3-pip \
 	reiserfsprogs \
 	strace \
 	stress \
@@ -237,6 +238,8 @@ gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \
 tar -C /root -xzf /run/xfstests.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/xfstests.tar.gz /run/files.tar.gz
+
+pip3 install "junitparser==2.0.0"
 
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
