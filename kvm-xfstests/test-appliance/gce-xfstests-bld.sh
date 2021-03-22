@@ -239,7 +239,8 @@ tar -C /root -xzf /run/xfstests.tar.gz
 tar -C / -xzf /run/files.tar.gz
 rm /run/xfstests.tar.gz /run/files.tar.gz
 
-pip3 install "junitparser==2.0.0"
+# This installs junitparser and the sendgrid python classes
+pip3 install -r /usr/local/lib/requirements.txt
 
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
