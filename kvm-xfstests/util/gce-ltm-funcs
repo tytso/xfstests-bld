@@ -86,6 +86,12 @@ function send_to_ltm() {
     if [ -n "$BISECT_GOOD" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"good_commit\":\"$BISECT_GOOD\""
     fi
+    if [ -n "$KCONFIG" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kconfig\":\"$KCONFIG\""
+    fi
+    if [ -n "$KCONFIG_OPTS" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kconfig_opts\":\"$KCONFIG_OPTS\""
+    fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
     fi

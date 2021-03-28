@@ -1,9 +1,19 @@
 #!/bin/bash
-set -e -vx
+set -vx
 # This script is used by KCS server to build and upload kernels.
 # If repository REPO_ID exists, it pulls and checkouts to COMMIT.
 # Environment variables can be set:
-# REPO_DIR GS_BUCKET GS_PATH
+# REPO_DIR GS_BUCKET GS_PATH GS_CONFIG KCONFIG_OPTS
+
+function install_kconfig () {
+    if test -z "$KCONFIG_OPTS" ; then
+	gce-xfstests install-kconfig || exit 1
+    else
+	local array=($(echo $KCONFIG_OPTS | sed -e 's/,/ /g'))
+
+	gce-xfstests install-kconfig "${array[@]}" || exit 1
+    fi
+}
 
 if command -v ccache &> /dev/null /cache/ccache ; then
     export PATH="/usr/lib/ccache:$PATH"
@@ -18,8 +28,19 @@ if test -z "$GS_PATH"; then
     GS_PATH="gs://$GS_BUCKET/bzImage"
 fi
 
-gsutil cp "gs://$GS_BUCKET/build_config" "$REPO_DIR/.config"
-make olddefconfig
-make -j$(nproc)
+if test -n "$GS_CONFIG" ; then
+    if gsutil cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
+	if test $(du -k "$REPO_DIR/.config") -gt 16 ; then
+	    make oldconfig || exit 1
+	else
+	    make olddefconfig || exit 1
+	fi
+    else
+	install_kconfig
+    fi
+else
+    install_kconfig
+fi
+time make -j$(nproc) || exit 1
 
 gsutil cp "$REPO_DIR/arch/x86/boot/bzImage" $GS_PATH

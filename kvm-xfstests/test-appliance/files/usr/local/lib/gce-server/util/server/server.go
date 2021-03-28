@@ -127,6 +127,8 @@ type UserOptions struct {
 	UnWatch       string `json:"unwatch"`
 	BadCommit     string `json:"bad_commit"`
 	GoodCommit    string `json:"good_commit"`
+	KConfig	      string `json:"kconfig"`
+	KConfigOpts   string `json:"kconfig_opts"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally.

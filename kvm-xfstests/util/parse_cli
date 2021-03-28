@@ -222,18 +222,6 @@ validate_branch_name()
     fi
 }
 
-copy_config()
-{
-    if test -e $1
-    then
-    gsutil cp $1 "gs://$GS_BUCKET/build_config"
-    else
-	echo -e "Could not find: $1\n"
-	print_help
-	exit 1
-    fi
-}
-
 if flavor_in gce && test -n "$GCE_KERNEL" ; then
     KERNEL="$GCE_KERNEL"
 fi
@@ -270,6 +258,7 @@ image-project:
 initrd:
 instance-name:
 kernel:
+kconfig-opts:
 local-ssd
 local-ssd-nvme
 log
@@ -629,8 +618,25 @@ while (( $# >= 1 )); do
 	    ;;
 	--config) shift
 	    supported_flavors gce
-	    BUILD_CONFIG="$1"
-            copy_config $BUILD_CONFIG
+	    KCONFIG="$1"
+	    case "$KCONFIG" in
+		gs://*) ;;
+		*)
+		    if test -e "$KCONFIG"
+		    then
+			gsutil cp "$KCONFIG" "gs://$GS_BUCKET/build_config"
+			KCONFIG="gs://$GS_BUCKET/build_config"
+		    else
+			echo -e "Could not find: $1\n"
+			print_help
+			exit 1
+		    fi
+		    ;;
+	    esac
+	    ;;
+	--kconfig-opts) shift
+	    supported_flavors gce
+	    KCONFIG_OPTS="$1"
 	    ;;
 	--testrunid) shift
 	    supported_flavors gce
@@ -909,6 +915,18 @@ fi
 if test -n "$COMMIT" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
 then
     echo "Commit id only works with LTM or KCS"
+    exit 1
+fi
+
+if test -n "$KCONFIG" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+then
+    echo "--config only is supported with LTM or KCS"
+    exit 1
+fi
+
+if test -n "$KCONFIG_OPTS" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+then
+    echo "--kconfig-opts only is supported with LTM or KCS"
     exit 1
 fi
 

@@ -34,6 +34,8 @@ var invalidOpts = []string{
 	"--machtype",
 	"--kernel",
 	"--commit",
+	"--config",
+	"--kconfig-opts",
 	"--repo",
 	"--watch",
 	"--bisect-good",
