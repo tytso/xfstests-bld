@@ -79,9 +79,6 @@ PACKAGES="bash-completion \
 	perl \
 	procps \
 	psmisc \
-	python-future \
-	python-gdbm \
-	python-pip \
 	python3-pip \
 	reiserfsprogs \
 	strace \
@@ -205,7 +202,7 @@ else
 fi
 
 if test "$NEW_SUITE" = "buster" ; then
-    PACKAGES="$PACKAGES duperemove"
+    PACKAGES="$PACKAGES duperemove libgdbm6"
 fi
 
 apt-get install -y $PACKAGES

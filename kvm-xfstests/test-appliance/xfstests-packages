@@ -39,8 +39,8 @@ perl
 pciutils
 procps
 psmisc
-python2.7
-python-future
+python3
+python3-future
 openssl
 reiserfsprogs
 strace
