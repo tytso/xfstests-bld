@@ -409,6 +409,14 @@ case "$1" in
 	exec gcloud compute --project "$GCE_PROJECT" \
 	     instances describe --zone $(get_gce_zone "$2") "$2"
 	;;
+    describe-image)
+	exec gcloud compute --project "$GCE_PROJECT" \
+	     images describe "$2"
+	;;
+    describe-disk)
+	exec gcloud compute --project "$GCE_PROJECT" \
+	     disks describe --zone $(get_gce_zone_disk "$2") "$2"
+	;;
     serial)
 	case "$GCE_SERIAL_PORT_DEFAULT" in
 	    [1234])
