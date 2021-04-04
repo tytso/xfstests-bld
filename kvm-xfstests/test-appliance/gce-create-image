@@ -222,6 +222,7 @@ run_gcloud compute instances create "$BLD_INST" \
        --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$BLD_DISK"
 
+start_time=$(date +%s)
 echo -n "Waiting for bootable image setup."
 
 cnt=0
@@ -236,7 +237,9 @@ do
     fi
     sleep 1
 done
+stop_time=$(date +%s)
 echo " Done!"
+echo Time to run xfststs-bld: $((stop_time - start_time))
 
 echo "Creating new image $ROOT_FS-$DATECODE"
 run_gcloud compute -q images create "$ROOT_FS-$DATECODE" \
