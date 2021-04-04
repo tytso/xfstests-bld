@@ -100,13 +100,16 @@ do_get_results()
 	get_remote_hash "$URI"
 	if test "$LOCAL_HASH" != "$REMOTE_HASH"
 	then
-	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	    $NO_ACTION gsutil cp "$URI" "$TARBALL" 2> /dev/null
 	fi
     else
 	if ! test -f "$TARBALL"
 	then
-	    gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	    $NO_ACTION gsutil cp "$URI" "$TARBALL" 2> /dev/null
 	fi
+    fi
+    if test -n "$NO_ACTION" ; then
+	exit 0
     fi
     if ! test -f "$TARBALL"
     then
@@ -146,7 +149,7 @@ get_gce_zone()
 	    return
 	    ;;
     esac
-    z=$(gcloud compute instances list --project "$GCE_PROJECT" \
+    z=$(run_gcloud_always compute instances list \
 	       --filter="name <= $1 and name >= $1" --format="value(zone)")
     if test -z "$z" ; then
 	z="$GCE_ZONE"
@@ -166,7 +169,7 @@ get_gce_zone_disk()
 	    return
 	    ;;
     esac
-    z=$(gcloud compute disks list --project "$GCE_PROJECT" \
+    z=$(run_gcloud_always compute disks list \
 		--filter="name <= $1 AND name >= $1" --format="value(zone)")
     if test -z "$z" ; then
 	z="$GCE_ZONE"
@@ -174,20 +177,26 @@ get_gce_zone_disk()
     echo "$z"
 }
 
+if test "$1" = "--no-action" ; then
+    NO_ACTION="echo"
+    shift
+fi
+
 unset TESTRUNID
 case "$1" in
     ls|ls-instances)
 	if test "$2" = "--gce"
 	then
-	   gcloud compute --project "$GCE_PROJECT" instances list
+	   run_gcloud compute instances list
 	   exit 0
 	fi
 	inst_info=$(mktemp)
-	gcloud compute --project "$GCE_PROJECT" instances list \
-	       --format="value(name,zone)" | \
+	run_gcloud_always compute instances list --format="value(name,zone)"
+	exit 0
+	run_gcloud_always compute instances list --format="value(name,zone)" | \
 	    while read -r i z
 	do
-	    gcloud compute --project "$GCE_PROJECT" instances describe \
+	    run_gcloud compute instances describe \
 			--zone "$z" "$i" --format=json > "$inst_info"
 	    kver=$(jq < "$inst_info" 2> /dev/null \
 		'.metadata.items[] | select(.key == "kernel_version") | .value' | \
@@ -220,11 +229,12 @@ case "$1" in
 	    else
 		reason="manual stop"
 	    fi
-	    gcloud compute --project "$GCE_PROJECT" -q instances \
-		   add-metadata "$i" --metadata "shutdown_reason=$reason" \
-		   --zone $(get_gce_zone "$i") > /dev/null
-	    gcloud compute --project "$GCE_PROJECT" -q instances delete "$i" \
-		   --zone $(get_gce_zone "$i") $deldisks &
+	    zone=$(get_gce_zone "$i")
+	    run_gcloud compute -q instances add-metadata "$i" \
+		       --metadata "shutdown_reason=$reason" \
+		       --zone "$zone" > /dev/null
+	    run_gcloud compute -q instances delete "$i" \
+		       --zone "$zone" $deldisks &
 	done
 	exit 0
 	;;
@@ -232,7 +242,7 @@ case "$1" in
 	shift
 	for i in "$@"
 	do
-	    gcloud compute --project "$GCE_PROJECT" -q instances start "$i" \
+	    run_gcloud compute -q instances start "$i" \
 		   --zone $(get_gce_zone "$i") &
 	done
 	exit 0
@@ -241,14 +251,14 @@ case "$1" in
 	shift
 	for i in "$@"
 	do
-	    gcloud compute --project "$GCE_PROJECT" -q instances stop "$i" \
+	    run_gcloud compute -q instances stop "$i" \
 		   --zone $(get_gce_zone "$i") &
 	done
 	exit 0
 	;;
     ls-disks|ls-disk)
-	gcloud compute --project "$GCE_PROJECT" disks list
-	exit 0
+	run_gcloud compute disks list
+	exit $?
 	;;
     rm-disks|rm-disk)
 	shift
@@ -262,9 +272,8 @@ case "$1" in
 	else
 	    GCE_ZONE=$(get_gce_zone_disk "$1")
 	fi
-	gcloud compute --project "$GCE_PROJECT" disks delete "$@" \
-	       --zone $GCE_ZONE
-	exit 0
+	run_gcloud compute disks delete "$@" --zone $GCE_ZONE
+	exit $?
 	;;
     ls-images)
 	shift
@@ -273,8 +282,8 @@ case "$1" in
 		GCE_PROJECT=$1
 		shift ;;
 	esac
-	gcloud compute --project "$GCE_PROJECT" images list --no-standard-images
-	exit 0
+	run_gcloud compute images list --no-standard-images
+	exit $?
 	;;
     rm-images)
 	shift
@@ -283,8 +292,8 @@ case "$1" in
 		GCE_PROJECT=$1
 		shift ;;
 	esac
-	gcloud compute --project "$GCE_PROJECT" images delete "$@"
-	exit 0
+	run_gcloud compute images delete "$@"
+	exit $?
 	;;
     ls-results|ls-gcs)
 	if test "$1" = "ls-gcs"
@@ -320,8 +329,8 @@ case "$1" in
 		arg="gs://$GS_BUCKET/results/results*"
 	    fi
 	fi
-	gsutil ls $opt "$arg"
-	exit 0
+	$NO_ACTION gsutil ls $opt "$arg"
+	exit $?
 	;;
     rm-results|rm-gcs)
 	shift
@@ -338,7 +347,7 @@ case "$1" in
 	    then
 		URI=$(echo $URI | sed -e "s;results\.;summary.;" | \
 		    sed -e "s;\.tar\.xz;.txt;")
-		gsutil rm "$URI" 2> /dev/null
+		$NO_ACTION gsutil rm "$URI" 2> /dev/null
 	    fi
 	done
 	exit 0
@@ -381,41 +390,45 @@ case "$1" in
 	exit $?
 	;;
     ssh)
-	gcloud compute --project "$GCE_PROJECT" -q ssh root@"$2" \
+	run_gcloud compute -q ssh root@"$2" \
 	    --zone $(get_gce_zone "$2") $RUN_INTERNAL
-	exit 0
+	exit $?
 	;;
-	scp)
-	gcloud compute --project "$GCE_PROJECT" -q scp "$3" root@"$2":~ \
-        --zone $(get_gce_zone "$2") $RUN_INTERNAL
-	exit 0
+    scp)
+	run_gcloud compute -q scp "$3" root@"$2":~ \
+	    --zone $(get_gce_zone "$2") $RUN_INTERNAL
+	exit $?
 	;;
     console)
-	gcloud compute --project "$GCE_PROJECT" -q instances \
+	run_gcloud compute -q instances \
 	       get-serial-port-output "$2" --zone $(get_gce_zone "$2")
-	exit 0
+	exit $?
 	;;
     enable-serial)
-	exec gcloud compute --project "$GCE_PROJECT" \
+	run_gcloud compute \
 	     instances add-metadata --zone $(get_gce_zone "$2") "$2" \
 	     --metadata serial-port-enable=true
+	exit $?
 	;;
     disable-serial)
-	exec gcloud compute --project "$GCE_PROJECT" \
+	run_gcloud compute \
 	     instances add-metadata --zone $(get_gce_zone "$2") "$2" \
 	     --metadata serial-port-enable=false
+	exit $?
 	;;
     describe-vm)
-	exec gcloud compute --project "$GCE_PROJECT" \
-	     instances describe --zone $(get_gce_zone "$2") "$2"
+	run_gcloud compute \
+		   instances describe --zone $(get_gce_zone "$2") "$2"
+	exit $?
 	;;
     describe-image)
-	exec gcloud compute --project "$GCE_PROJECT" \
-	     images describe "$2"
+	run_gcloud compute images describe "$2"
+	exit $?
 	;;
     describe-disk)
-	exec gcloud compute --project "$GCE_PROJECT" \
+	run_gcloud compute \
 	     disks describe --zone $(get_gce_zone_disk "$2") "$2"
+	exit $?
 	;;
     serial)
 	case "$GCE_SERIAL_PORT_DEFAULT" in
@@ -429,8 +442,9 @@ case "$1" in
 	    PORT="--port $2"
 	    shift
 	fi
-	exec gcloud compute --project "$GCE_PROJECT" -q \
+	run_gcloud compute -q \
 	     connect-to-serial-port --zone $(get_gce_zone "$2") $PORT "$2"
+	exit $?
 	;;
     create-image)
 	shift
@@ -439,6 +453,7 @@ case "$1" in
 	    echo "Image creation not supported in this installation"
 	    exit 1
 	fi
+	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-create-image" "$@"
 	exit $?
@@ -450,6 +465,7 @@ case "$1" in
 	    echo "Image export not supported in this installation"
 	    exit 1
 	fi
+	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-export-image" "$@"
 	exit $?
@@ -461,6 +477,7 @@ case "$1" in
 	    echo "Image import not supported in this installation"
 	    exit 1
 	fi
+	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
@@ -472,6 +489,7 @@ case "$1" in
 	    echo "Image copy not supported in this installation"
 	    exit 1
 	fi
+	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
 	"$DIR/test-appliance/gce-copy-image" "$@"
 	exit $?
@@ -483,6 +501,7 @@ case "$1" in
 	    echo "Kernel configuration not supported in this installation"
 	    exit 1
 	fi
+	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
 	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/install-kconfig" "$@"
 	exit $?
@@ -594,6 +613,13 @@ case "$1" in
 	OVERRIDE_KERNEL="none"
 	;;
 esac
+
+# Simulate how parse_cli handles --no-action if this option was specified
+# as the first argument and we are running a test.
+if test -n "$NO_ACTION" ; then
+    NO_ACTION="echo -e Would execute:\n\t"
+    SKIP_LOG=yes
+fi
 
 . "$DIR/util/parse_cli"
 
@@ -871,7 +897,7 @@ function get_machtype_file() {
        [[ $(find "$GCE_MACHTYPE_FILE" -mtime +28 -print 2> /dev/null) ]]; then
 	local NEW_GCE_MACHTYPE_FILE=$GCE_CACHE_DIR/machtype_file.$$
 
-	gcloud compute machine-types list | sed -e 1d | \
+	run_gcloud_always compute machine-types list | sed -e 1d | \
 	    awk '{print $1, $2, $3, int(0.5 + ($4 * 1024))}' > \
 		$NEW_GCE_MACHTYPE_FILE
     else
@@ -993,7 +1019,7 @@ else
     # echo "Using ARG: $ARG"
 fi
 
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" \
+run_gcloud compute \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
        --no-boot-disk-auto-delete \
@@ -1019,6 +1045,6 @@ case "$ARG" in
 		sleep 30
 	    fi
 	fi
-	$NO_ACTION gcloud compute --project "$GCE_PROJECT" ssh "root@$INSTANCE"
+	run_gcloud compute ssh "root@$INSTANCE"
 	;;
 esac

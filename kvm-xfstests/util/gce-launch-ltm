@@ -33,7 +33,7 @@ if test -f "$DIR/.ltm_cookie"; then
 fi
 
 NO_ACTION=
-if gcloud compute instances describe --project $GCE_PROJECT --zone $GCE_ZONE \
+if run_gcloud compute instances describe --zone $GCE_ZONE \
     $INSTANCE >& /dev/null
 then
     if [ -f $DIR/.ltm_instance ]
@@ -96,8 +96,7 @@ touch $DIR/.ltm_instance
 LAUNCH_LTM_EXIT_STATUS=1
 trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance; fi' EXIT
 
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" \
-    instances create "$INSTANCE" --zone "$GCE_ZONE" \
+run_gcloud compute instances create "$INSTANCE" --zone "$GCE_ZONE" \
     --machine-type "$GCE_LTM_MACHTYPE" --network "$GCE_NETWORK" \
     --boot-disk-size 50GB \
     $PREEMPTIBLE \
@@ -136,12 +135,11 @@ function wait_for_command() {
 	sleep 1
     done
 }
-wait_for_command "gcloud compute instances describe \
-    --project $GCE_PROJECT --zone $GCE_ZONE $INSTANCE"
+wait_for_command "run_gcloud compute instances describe \
+    --zone $GCE_ZONE $INSTANCE"
 echo " Done!"
 
-gcloud compute instances describe "$INSTANCE" \
-    --project "$GCE_PROJECT" --zone "$GCE_ZONE" \
+run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
     --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance
 
 # use internal ip if this machine is in the same GCE project
@@ -149,8 +147,7 @@ if test -n "$RUN_INTERNAL"; then
     echo "Runs on same GCE project so grab internal IP"
     echo -n "GCE_LTM_INT_IP=" >> $DIR/.ltm_instance
 
-    gcloud compute instances describe "$INSTANCE" \
-        --project "$GCE_PROJECT" --zone "$GCE_ZONE" \
+    run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
         --format="get(networkInterfaces[0].networkIP)" >> $DIR/.ltm_instance
 fi
 

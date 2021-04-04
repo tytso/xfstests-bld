@@ -15,7 +15,7 @@ function kcs_post_json() {
 }
 
 function kcs_post_failed() {
-    if gcloud compute instances describe "xfstests-kcs" &> /dev/null; then
+    if run_gcloud compute instances describe "xfstests-kcs" &> /dev/null; then
 	echo "The build server instance seems to be running. Try deleting the"
 	echo "$DIR/.kcs_instance file and re-running launch-kcs to recreate"
 	echo "the file. If the issue persists, try relaunching the build server"
@@ -26,9 +26,8 @@ function kcs_post_failed() {
 	echo "instance with launch-kcs. This will recreate the"
 	echo ".kcs_instance file."
     fi
-
-
 }
+
 function send_to_kcs() {
     local cmd_to_send=$1
     shift

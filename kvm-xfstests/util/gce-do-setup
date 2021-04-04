@@ -67,7 +67,7 @@ then
     exit 1
 fi
 
-orig_account=$(gcloud auth list --filter status=ACTIVE --format="value(account)")
+orig_account=$(run_gcloud auth list --filter status=ACTIVE --format="value(account)")
 
 : ${GCE_CONFIGURATION:=gce-xfstests}
 if ! gcloud config configurations activate "${GCE_CONFIGURATION}" >& /dev/null ; then
@@ -93,7 +93,7 @@ fi
 gcloud config set core/project "$GCE_PROJECT"
 gcloud config set compute/zone "$GCE_ZONE"
 
-if ! gcloud projects describe "$GCE_PROJECT" > /dev/null ; then
+if ! run_gcloud_prj projects describe "$GCE_PROJECT" > /dev/null ; then
     echo -e "Invalid GCE project: $GCE_PROJECT\n"
     bad_config=yes
 fi
@@ -122,7 +122,7 @@ else
     project=xfstests-cloud
 fi
 
-if ! gcloud compute images describe-from-family --project $project \
+if ! run_gcloud_prj compute images describe-from-family --project $project \
      xfstests > /dev/null ; then
     if test -n "$GCE_IMAGE_PROJECT" ; then
 	echo "Bad image project: $GCE_IMAGE_PROJECT"
@@ -194,10 +194,10 @@ gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config
 
 for rule in "${GCE_FIREWALL_RULES[@]}"; do
     rule_name=$(echo $rule | cut -d' ' -f1)
-    if test -z "$(gcloud --project "$GCE_PROJECT" compute firewall-rules list $rule_name | sed -e 1d)"
+    if test -z "$(run_gcloud compute firewall-rules list $rule_name | sed -e 1d)"
     then
 	echo "Creating $rule_name firewall rule..."
-	gcloud compute --project "$GCE_PROJECT" firewall-rules create $rule
+	run_gcloud compute firewall-rules create $rule
     fi
 done
 unset rule rule_name

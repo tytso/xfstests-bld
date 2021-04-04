@@ -72,7 +72,8 @@ fi
 echo "Importing from $SRC_URI to $IMAGE_PROJECT/$IMAGE_NAME"
 echo -ne "\n"
 
-$NOACTION gcloud compute --project $IMAGE_PROJECT images create "$IMAGE_NAME" \
+NO_ACTION="$NOACTION"
+run_gcloud_prj compute --project $IMAGE_PROJECT images create "$IMAGE_NAME" \
        --family xfstests --description "$DESC" $LABELS --source-uri "$SRC_URI"
 
-$NOACTION gcloud compute --project $IMAGE_PROJECT images list --no-standard-images
+run_gcloud_prj compute --project $IMAGE_PROJECT images list --no-standard-images

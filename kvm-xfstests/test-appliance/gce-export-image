@@ -34,7 +34,7 @@ IMG_DISK="xfstests-img-$DATECODE"
 TMP_DISK="xfstests-tmp-$DATECODE"
 DEB_IMAGE_FAMILY=debian-9
 DEB_IMAGE_PROJECT=debian-cloud
-NO_ACTION=
+NOACTION=
 
 if ! test -f $TARBALL ; then
    echo $TARBALL does not exist!
@@ -65,7 +65,7 @@ do
 		   ;;
 	--skip-uuid) SKIP_UUID="yes" ;;
 	--debug) DO_DEBUG="yes" ;;
-	--no-action) NO_ACTION="echo" ;;
+	--no-action) NOACTION="echo" ;;
 	*)
 	    echo "unknown option: $1"
 	    exit 1
@@ -92,15 +92,15 @@ echo "Exporting from project $GCE_IMAGE_PROJECT:"
 
 if test "$IMAGE_FLAG" = "--image-family" ; then
     GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
-    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+    run_gcloud_prj compute --project "$GCE_IMAGE_PROJECT" images \
 	   describe-from-family "$ROOT_FS" $format
 elif test "$IMAGE_FLAG" = "--image" ; then
     GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$ROOT_FS.image.tar.gz}"
-    gcloud compute --project "$GCE_IMAGE_PROJECT" images \
+    run_gcloud_prj compute --project "$GCE_IMAGE_PROJECT" images \
 	   describe "$ROOT_FS" $format
 else
     GS_TAR="${GS_TAR:-gs://$GS_BUCKET/$IMG_DISK.image.tar.gz}"
-    gcloud compute --project "$GCE_IMAGE_PROJECT" disks \
+    run_gcloud_prj compute --project "$GCE_IMAGE_PROJECT" disks \
 	   describe "$IMG_DISK" $format
 fi
 
@@ -129,14 +129,15 @@ fi
 gsutil cp $t $GS_SCRIPT
 /bin/rm -f $t
 
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q instances delete "$EXP_INST" \
+NO_ACTION="$NOACTION"
+run_gcloud compute -q instances delete "$EXP_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$EXP_DISK" \
+run_gcloud compute -q disks delete "$EXP_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" -q disks delete "$IMG_DISK" \
+run_gcloud compute -q disks delete "$IMG_DISK" \
        --zone "$GCE_ZONE" 2> /dev/null
 
-$NO_ACTION gcloud compute --project "$GCE_PROJECT" instances create "$EXP_INST" \
+run_gcloud compute instances create "$EXP_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "$GCE_NETWORK" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --metadata "^ ^$METADATA" \
@@ -152,7 +153,7 @@ fi
 echo -n "Waiting for creation image export"
 
 cnt=0
-while gcloud compute --project "$GCE_PROJECT" instances \
+while run_gcloud compute instances \
 	     describe "$EXP_INST" --zone $GCE_ZONE >& /dev/null
 do
     let cnt=$cnt+1

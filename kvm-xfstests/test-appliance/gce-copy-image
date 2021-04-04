@@ -98,7 +98,7 @@ then
 	echo "No source image or image family available"
 	exit 1
     fi
-    SRC_IMAGE=$(gcloud compute images describe-from-family "$SRC_FAMILY" \
+    SRC_IMAGE=$(run_gcloud_prj compute images describe-from-family "$SRC_FAMILY" \
 		       --project "$SRC_PROJECT" --format="value(name)")
 fi
 
@@ -109,14 +109,14 @@ fi
 
 TEMP_DISK="temp-$DEST_IMAGE"
 
-if gcloud compute images describe "$DEST_IMAGE" \
+if run_gcloud_prj compute images describe "$DEST_IMAGE" \
 	  --project "$DEST_PROJECT" >& /dev/null
 then
     echo -e "Error: image $DEST_PROJECT/$DEST_IMAGE already exists.\n"
     exit 1;
 fi
 
-if gcloud compute disks describe "TEMP_DISK" \
+if run_gcloud_prj compute disks describe "TEMP_DISK" \
 	  --project "$DEST_PROJECT" >& /dev/null
 then
     echo -e "Error: disk $DEST_PROJECT/$TEMP_DISK already exists.\n"
@@ -130,7 +130,7 @@ then
     sleep 3
 fi
 
-json=$(gcloud compute images describe "$SRC_IMAGE" --project "$SRC_PROJECT" \
+json=$(run_gcloud_prj compute images describe "$SRC_IMAGE" --project "$SRC_PROJECT" \
 	      --format=json)
 DESCRIPTION=$(echo $json | jq -r ".description")
 keys=$(echo $json | jq -r ".labels | keys[]")
@@ -157,24 +157,25 @@ fi
 
 echo -e "\nCreating disk $TEMP_DISK..."
 
-$NOACTION gcloud compute disks create "$TEMP_DISK" \
+NO_ACTION="$NOACTION"
+run_gcloud_prj compute disks create "$TEMP_DISK" \
 	  --project "$DEST_PROJECT"  --image-project "$SRC_PROJECT" \
 	  --image $SRC_IMAGE --zone "$GCE_ZONE" $ACCOUNT
 
 echo -e "\nCreating image $DEST_IMAGE..."
 
-$NOACTION gcloud compute --project "$DEST_PROJECT" -q images create \
+run_gcloud_prj compute --project "$DEST_PROJECT" -q images create \
 	  "$DEST_IMAGE" --description "$DESCRIPTION" \
 	  --source-disk "$TEMP_DISK" --source-disk-zone "$GCE_ZONE" \
 	   $FAMILY $LABELS $ACCOUNT
 
 echo -e "\nDeleting disk $TEMP_DISK..."
-$NOACTION gcloud compute --project "$DEST_PROJECT" -q disks delete \
+run_gcloud_prj compute --project "$DEST_PROJECT" -q disks delete \
 	  "$TEMP_DISK" --zone "$GCE_ZONE" $ACCOUNT >& /dev/null &
 
 if [ -n "$DEST_FAMILY" ]
 then
     echo -e "\nListing images in $DEST_FAMILY..."
-    $NOACTION gcloud compute --project "$DEST_PROJECT" -q images list \
+    run_gcloud_prj compute --project "$DEST_PROJECT" -q images list \
 	      --filter="family=$DEST_FAMILY"
 fi

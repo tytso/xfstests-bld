@@ -76,3 +76,38 @@ fi
 if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
    GCE_SERIAL_PORT_ACCESS=TRUE
 fi
+
+function run_gcloud ()
+{
+    if test -n "$GCE_ACCOUNT" ; then
+	$NO_ACTION gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
+    else
+	$NO_ACTION gcloud --project "$GCE_PROJECT" "$@"
+    fi
+}
+
+function run_gcloud_always ()
+{
+    if test -n "$NO_ACTION" ; then
+	if test -n "$GCE_ACCOUNT" ; then
+	    echo gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" \
+		 "$@" > /dev/tty
+	else
+	    echo gcloud --project "$GCE_PROJECT" "$@" > /dev/tty
+	fi
+    fi
+    if test -n "$GCE_ACCOUNT" ; then
+	gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
+    else
+	gcloud --project "$GCE_PROJECT" "$@"
+    fi
+}
+
+function run_gcloud_prj ()
+{
+    if test -n "$GCE_ACCOUNT" ; then
+	$NO_ACTION gcloud --account "$GCE_ACCOUNT" "$@"
+    else
+	$NO_ACTION gcloud "$@"
+    fi
+}
