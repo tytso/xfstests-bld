@@ -1,4 +1,7 @@
 etc/fstab
 etc/network
 etc/hostname
+usr/local/lib/src
+usr/local/lib/bin
+usr/local/lib/pkg
 *~

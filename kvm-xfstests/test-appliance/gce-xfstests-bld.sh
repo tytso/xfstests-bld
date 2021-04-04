@@ -231,10 +231,13 @@ fi
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
 gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \
-	gs://$BUCKET/create-image/files.tar.gz /run/
-tar -C /root -xzf /run/xfstests.tar.gz
-tar -C / -xzf /run/files.tar.gz
-rm /run/xfstests.tar.gz /run/files.tar.gz
+       gs://$BUCKET/create-image/go-srcs.tar.gz \
+       gs://$BUCKET/create-image/files.tar.gz /root/
+ls -shF /root
+tar -C /root -xzf /root/xfstests.tar.gz
+tar -C / -xzf /root/files.tar.gz
+tar -C / -xzf /root/go-srcs.tar.gz
+rm -f /root/xfstests.tar.gz /root/files.tar.gz /root/go-srcs.tar.gz
 
 # This installs junitparser and the sendgrid python classes
 pip3 install -r /usr/local/lib/requirements.txt
@@ -286,7 +289,7 @@ rm -rf $GO_TEMP
 
 export GOPATH=/usr/local/lib
 export GOCACHE=/tmp/.cache/go-build
-mkdir /usr/local/lib/src
+mkdir -p /usr/local/lib/src
 cp -r /usr/local/lib/gce-server /usr/local/lib/src/
 /usr/local/lib/go/bin/go get gce-server/...
 /usr/local/lib/go/bin/go build gce-server/kcs
@@ -374,7 +377,7 @@ rm -rf $GCE_STATE_DIR
 
 find /var/cache/man /var/cache/apt /var/lib/apt/lists -type f -print | xargs rm
 rm -f /etc/ssh/ssh_host_key* /etc/ssh/ssh_host_*_key*
-rm -rf /root/.cache/*
+rm -rf /root/.cache/* /tmp/.cache/go-build
 sync
 fstrim /
 gcloud compute -q instances delete "$BLD_INST" --zone $(basename $ZONE) \

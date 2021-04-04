@@ -34,6 +34,11 @@ ROOT_FS=xfstests
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
 
+GZIP=gzip
+if type -P pigz >& /dev/null ; then
+    GZIP="pigz -9"
+fi
+
 setup_for_stretch()
 {
 	IMAGE_FAMILY=debian-9
@@ -152,8 +157,20 @@ tar xzOf "$TARBALL" xfstests/git-versions | grep -v ^xfstests-bld | \
     sort > files/root/xfstests/git-versions
 LABELS=$(get_labels < files/root/xfstests/git-versions )
 
-tar -X gce-exclude-files -C files --owner=root --group=root --mode=go+u-w \
-	-cf $td/files.tar .
+go_base="$(pwd)/files/usr/local/lib"
+mkdir -p "$go_base/src"
+if type -P go >& /dev/null ; then
+    cp -r "$go_base/gce-server" "$go_base/src"
+    GOPATH="$go_base" go get gce-server/...
+    rm -rf "$go_base/src/gce-server"
+fi
+
+tar -X gce-exclude-files -C files --numeric-owner \
+    --owner=root:0 --group=root:0 --mode=go+u-w \
+    -cf $td/files.tar .
+tar -C files --sort=name --mtime="UTC 2021-01-01" --numeric-owner \
+    --owner=root:0 --group=root:0 --mode=go+u-w \
+    -cf - usr/local/lib/src | $GZIP -c -n > $td/go-srcs.tar.gz
 
 # copy the necessary files for gce-xfstests commands, except for configs.
 # Configs will be fetched on LTM launch, and will piggyback on the
@@ -196,8 +213,7 @@ tar -C $td/tmp2 --owner=root --group=root --mode=go+u-w \
 
 rm -rf $td/tmp2
 
-gzip -c -9 -n $td/files.tar > $td/files.tar.gz
-
+$GZIP -c -9 -n $td/files.tar > $td/files.tar.gz
 rm -f $td/files.tar
 
 gsutil -m rsync -c $td gs://$GS_BUCKET/create-image
@@ -220,7 +236,7 @@ run_gcloud compute instances create "$BLD_INST" \
        --network "$GCE_NETWORK" --metadata "^ ^$METADATA" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
        --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
-       --boot-disk-type "pd-standard" --boot-disk-device-name "$BLD_DISK"
+       --boot-disk-type "pd-ssd" --boot-disk-device-name "$BLD_DISK"
 
 start_time=$(date +%s)
 echo -n "Waiting for bootable image setup."

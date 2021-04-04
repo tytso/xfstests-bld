@@ -68,6 +68,9 @@ MAKELOG
 /fsverity/
 /ima-evm-utils/
 /keyutils/
+/kvm-xfstests/test-appliance/files/usr/local/lib/bin/
+/kvm-xfstests/test-appliance/files/usr/local/lib/pkg/
+/kvm-xfstests/test-appliance/files/usr/local/lib/src/
 /nvme-cli
 /popt/.deps/
 /popt/Doxyfile
