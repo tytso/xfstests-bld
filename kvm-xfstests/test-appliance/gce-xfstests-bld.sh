@@ -168,11 +168,6 @@ systemctl start telnet-getty@ttyS1.service
 systemctl start telnet-getty@ttyS2.service
 systemctl start telnet-getty@ttyS3.service
 
-sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
-	/lib/systemd/system/run-rpc_pipefs.mount
-sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
-	/lib/systemd/system/proc-fs-nfsd.mount
-
 apt-get update
 apt-get install -y debconf-utils curl
 debconf-set-selections <<EOF
@@ -209,6 +204,11 @@ apt-get install -y $PACKAGES
 dpkg --remove $PACKAGES_REMOVE
 apt-get -fuy autoremove
 apt-get clean
+
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
+	/lib/systemd/system/run-rpc_pipefs.mount
+sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
+	/lib/systemd/system/proc-fs-nfsd.mount
 
 PHORONIX=$(gce_attribute phoronix)
 if test -z "${PHORONIX}" ; then
