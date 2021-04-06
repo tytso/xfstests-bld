@@ -79,6 +79,8 @@ PACKAGES="bash-completion \
 	perl \
 	procps \
 	psmisc \
+	python-future \
+	python-pip \
 	python3-pip \
 	reiserfsprogs \
 	strace \
