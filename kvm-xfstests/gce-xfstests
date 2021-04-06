@@ -191,8 +191,6 @@ case "$1" in
 	   exit 0
 	fi
 	inst_info=$(mktemp)
-	run_gcloud_always compute instances list --format="value(name,zone)"
-	exit 0
 	run_gcloud_always compute instances list --format="value(name,zone)" | \
 	    while read -r i z
 	do
