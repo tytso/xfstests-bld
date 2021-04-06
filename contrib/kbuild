@@ -51,19 +51,50 @@ else
     BLD_DIR="."
 fi
 
-time nice make $MAKE_ARGS "$@"
-err=$?
+if test "$1" == "--dpkg" ; then
+    shift
+    DO_DPKG=yes
+fi
 
-if test -z "$*" -a "$err" == 0 && \
-	grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
-    TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
-    echo "Generating $BLD_DIR/modules.tar.xz"
-    make $MAKE_ARGS modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
-    tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
-	--mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
-    rm -rf "$TMPMODDIR"
+rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
+   "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
+
+if test -n "$DO_DPKG" ; then
+    time nice make $MAKE_ARGS bindeb-pkg "$@"
+    err=$?
+    REL=$(make $MAKE_ARGS kernelrelease | grep -v ^make)
+    NUM=$(cat $BLD_DIR/.version)
+    arch=$(cat $BLD_DIR/debian/arch)
+    v="${REL}-${NUM}_${arch}"
+    d="$BLD_DIR/.."
+    if test -f "$d/linux-image-${REL}_${v}.deb" ; then
+	mv "$d/linux-image-${REL}_${v}.deb" "$BLD_DIR/linux-image.deb"
+    fi
+    if test -f "$d/linux-image-${REL}-dbg_${v}.deb" ; then
+	mv "$d/linux-image-${REL}-dbg_${v}.deb" "$BLD_DIR/linux-image-dbg.deb"
+    fi
+    if test -f "$d/linux-headers-${REL}_${v}.deb" ; then
+	mv "$d/linux-headers-${REL}_${v}.deb" "$BLD_DIR/linux-headers.deb"
+    fi
+    if test -f "$d/linux-libc-dev_${v}.deb" ; then
+	mv "$d/linux-libc-dev_${v}.deb" "$BLD_DIR/linux-libc-dev.deb"
+    fi
+    rm -f "$d/linux-${REL}_${v}.buildinfo" "$d/linux-${REL}_${v}.changes"
 else
-    rm -f "$BLD_DIR/modules.tar.xz"
+    time nice make $MAKE_ARGS "$@"
+    err=$?
+
+    if test -z "$*" -a "$err" == 0 && \
+	    grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
+	TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
+	echo "Generating $BLD_DIR/modules.tar.xz"
+	make $MAKE_ARGS modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
+	tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
+	    --mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
+	rm -rf "$TMPMODDIR"
+    else
+	rm -f "$BLD_DIR/modules.tar.xz"
+    fi
 fi
 
 cp "$BLD_DIR/.config" .git/kbuild/kernel-config
