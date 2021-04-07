@@ -62,11 +62,12 @@ rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
 if test -n "$DO_DPKG" ; then
     time nice make $MAKE_ARGS bindeb-pkg "$@"
     err=$?
-    REL=$(make $MAKE_ARGS kernelrelease | grep -v ^make)
-    NUM=$(cat $BLD_DIR/.version)
-    arch=$(cat $BLD_DIR/debian/arch)
-    v="${REL}-${NUM}_${arch}"
     d="$BLD_DIR/.."
+    REL=$(make $MAKE_ARGS kernelrelease | grep -v ^make)
+    arch=$(cat $BLD_DIR/debian/arch)
+    NUM=$(cd $d ; /bin/ls -t linux-${REL}_${REL}*.changes | head -1 | \
+	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
+    v="${REL}-${NUM}_${arch}"
     if test -f "$d/linux-image-${REL}_${v}.deb" ; then
 	mv "$d/linux-image-${REL}_${v}.deb" "$BLD_DIR/linux-image.deb"
     fi
