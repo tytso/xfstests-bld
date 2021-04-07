@@ -1020,7 +1020,6 @@ fi
 run_gcloud compute \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
-       --no-boot-disk-auto-delete \
        $SSD_ARG $PREEMPTIBLE \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \

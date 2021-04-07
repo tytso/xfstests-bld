@@ -128,4 +128,7 @@ then
     cp /var/log/syslog /results/setup-syslog
 fi
 
+gcloud compute -q instances set-disk-auto-delete ${instance} \
+       --no-auto-delete --disk ${instance} --zone "$ZONE" &
+
 run_hooks post-setup
