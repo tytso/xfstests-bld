@@ -82,6 +82,7 @@ PACKAGES="bash-completion \
 	python-future \
 	python-pip \
 	python3-pip \
+	python3-future \
 	reiserfsprogs \
 	strace \
 	stress \
