@@ -29,11 +29,17 @@ find_kernel_to_use()
 	    fi
 	fi
 	if test -d "$KERNEL" ; then
-	    if test -f "$KERNEL/modules.tar.xz" -a -z "$OVERRIDE_MODULES"; then
-		MODULES="$KERNEL/modules.tar.xz"
-		OVERRIDE_MODULES="$KERNEL/modules.tar.xz"
+	    if test -f "$KERNEL/linux-image.deb" ; then
+		KERNEL="$KERNEL/linux-image.deb"
+		MODULES=""
+		OVERRIDE_MODULES=""
+	    else
+		if test -f "$KERNEL/modules.tar.xz" -a -z "$OVERRIDE_MODULES"; then
+		    MODULES="$KERNEL/modules.tar.xz"
+		    OVERRIDE_MODULES="$KERNEL/modules.tar.xz"
+		fi
+		KERNEL="$KERNEL/arch/x86/boot/bzImage"
 	    fi
-	    KERNEL="$KERNEL/arch/x86/boot/bzImage"
 	    OVERRIDE_KERNEL="$KERNEL"
 	fi
     fi
