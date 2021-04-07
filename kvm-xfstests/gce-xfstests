@@ -514,6 +514,7 @@ case "$1" in
 		    ;;
 		--kernel) shift
 		    OVERRIDE_KERNEL="$1"
+		    KERNEL=$OVERRIDE_KERNEL
 		    ;;
 		--gs-bucket) shift
 		    GS_BUCKET="$1"
@@ -532,7 +533,11 @@ case "$1" in
 	if test -n "$1" ; then
 	    GS_KERNEL=gs://$GS_BUCKET/$1
 	else
-	    GS_KERNEL=gs://$GS_BUCKET/bzImage
+	    if [[ $KERNEL == *.deb ]]; then
+		GS_KERNEL=gs://$GS_BUCKET/kernel.deb
+	    else
+		GS_KERNEL=gs://$GS_BUCKET/bzImage
+	    fi
 	fi
 	if ! test -f "$KERNEL" ; then
 	    echo "Can't find kernel at $KERNEL"
@@ -683,18 +688,27 @@ case "$OVERRIDE_KERNEL" in
 	GCE_KERNEL=""
 	;;
     "")
-	GS_KERNEL=gs://$GS_BUCKET/bzImage
 	GCE_KERNEL=$KERNEL
+	if [[ "$GCE_KERNEL" == *.deb ]]; then
+	    GS_KERNEL=gs://$GS_BUCKET/kernel.deb
+	else
+	    GS_KERNEL=gs://$GS_BUCKET/bzImage
+	fi
 	;;
     *)
 	GCE_KERNEL=$OVERRIDE_KERNEL
+	if [[ "$GCE_KERNEL" == *.deb ]]; then
+	    KERNEL_TYPE="deb"
+	else
+	    KERNEL_TYPE="bzImage"
+	fi
 	if test -n "$RUN_ON_LTM"; then
 	    # every shard will have to download the image. changing the
 	    # -onetime tag is necessary to not cause the first shard to attempt
 	    # to delete the image.
-	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onerun"
+	    GS_KERNEL="gs://$GS_BUCKET/$TESTRUNID-onerun.$KERNEL_TYPE"
 	else
-	    GS_KERNEL="gs://$GS_BUCKET/bzImage-$TESTRUNID-onetime"
+	    GS_KERNEL="gs://$GS_BUCKET/$TESTRUNID-onetime.$KERNEL_TYPE"
 	fi
 	;;
 esac

@@ -629,7 +629,7 @@ func (sharder *ShardScheduler) packResults() {
 func (sharder *ShardScheduler) clean() {
 	sharder.log.Info("Cleaning up sharder resources")
 
-	if strings.HasSuffix(sharder.gsKernel, "-onerun") {
+	if strings.Contains(sharder.gsKernel, "-onerun") {
 		sharder.log.WithField("gsKernel", sharder.gsKernel).Info("Delete onerun kernel image")
 		sharder.gce.DeleteFiles(sharder.gsKernel)
 	}

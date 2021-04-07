@@ -105,7 +105,7 @@ chmod 644 /var/log/messages /var/log/syslog /var/log/kern.log
 kexec=$(gce_attribute kexec)
 
 case "$kexec" in
-    *-onetime)
+    *-onetime|*-onetime.*)
 	gsutil rm "$kexec" &
 	;;
 esac

@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# gce-set-test-globals: Set global variables for xfstests run from
+# instance metadata
+
+. /usr/local/lib/gce-funcs
+
+export CMD=$(gce_attribute cmd)
+export MNTOPTS=$(gce_attribute mount_opts)
+export PTS_SIZE=$(gce_attribute pts_size)
+export FSTESTCFG=$(gce_attribute fstestcfg | sed -e 's/,/ /g')
+export FSTESTSET=$(gce_attribute fstestset | sed -e 's/,/ /g')
+export FSTESTEXC=$(gce_attribute fstestexc | sed -e 's/,/ /g')
+export FSTESTOPT=$(gce_attribute fstestopt | sed -e 's/,/ /g')
+export timezone=$(gce_attribute fstesttz)
+export FSTESTTYP=$(gce_attribute fstesttyp)
+export FSTESTAPI=$(gce_attribute fstestapi | sed -e 's/,/ /g')
+export FSTESTSTR=$(gce_attribute fsteststr | sed -e 's/,/ /g')
+export ORIG_CMDLINE=$(gce_attribute orig_cmdline)
+export NFSSRV=$(gce_attribute nfssrv)

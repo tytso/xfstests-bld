@@ -17,21 +17,25 @@ ldconfig
 
 . /root/test-config
 
-FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
-FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
-FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
-FSTESTTYP=$(parse fstesttyp)
-FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
-FSTESTSTR=$(parse fsteststr | sed -e 's/\,/ /g')
-ORIG_CMDLINE=$(parse orig_cmdline)
-timezone=$(parse fstesttz)
-MNTOPTS=$(parse mount_opts)
-PTS_SIZE=$(parse pts_size)
-CMD=$(parse cmd)
-FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
-FSTEST_ARCHIVE=$(parse fstestarc | sed -e 's/\./ /g')
-NFSSRV=$(parse nfssrv)
-
+if test -n "$RUN_ON_GCE"
+then
+    . /usr/local/lib/gce-set-test-globals
+else
+    FSTESTCFG=$(parse fstestcfg | sed -e 's/,/ /g')
+    FSTESTSET=$(parse fstestset | sed -e 's/,/ /g')
+    FSTESTOPT=$(parse fstestopt | sed -e 's/,/ /g')
+    FSTESTTYP=$(parse fstesttyp)
+    FSTESTAPI=$(parse fstestapi | sed -e 's/\./ /g')
+    FSTESTSTR=$(parse fsteststr | sed -e 's/\,/ /g')
+    ORIG_CMDLINE=$(parse orig_cmdline)
+    timezone=$(parse fstesttz)
+    MNTOPTS=$(parse mount_opts)
+    PTS_SIZE=$(parse pts_size)
+    CMD=$(parse cmd)
+    FSTESTEXC=$(parse fstestexc | sed -e 's/\./ /g')
+    FSTEST_ARCHIVE=$(parse fstestarc | sed -e 's/\./ /g')
+    NFSSRV=$(parse nfssrv)
+fi
 cat > /run/test-env <<EOF
 FSTESTCFG="$FSTESTCFG"
 FSTESTSET="$FSTESTSET"
@@ -48,7 +52,7 @@ FSTESTEXC="$FSTESTEXC"
 NFSSRV="$NFSSRV"
 EOF
 
-if test -e /usr/local/lib/gce-kexec
+if test -e /usr/local/lib/gce-load-kernel
 then
     . /usr/local/lib/gce-funcs
 
@@ -64,7 +68,7 @@ then
 	exit $?
     fi
 
-    /usr/local/lib/gce-kexec
+    /usr/local/lib/gce-load-kernel
     . /run/test-env
     # for interactive mounting using the fstab entries
     ln -s "$PRI_TST_DEV" /dev/vdb

@@ -1,13 +1,32 @@
 #!/bin/bash
 #
-# gce-kexec -- this script handles switching to the kernel to be
-# tested (using kexec), as well as one-time setups that we want to do
-# as early as possible (such as unpacking any modules or modifications
-# to the test appliance via xfstests.tar.gz and files.tar.gz).
-
-if grep -q fstestcfg /proc/cmdline; then exit 0; fi
+# gce-load-kernel -- this script handles switching to the kernel to be
+# tested (using either kexec or by installing kernel debian packages),
+# as well as one-time setups that we want to do as early as possible
+# (such as unpacking any modules or modifications to the test
+# appliance via xfstests.tar.gz and files.tar.gz).
 
 . /usr/local/lib/gce-funcs
+
+kernel_deb=$(gce_attribute kexec)
+if [[ $kernel_deb == *.deb ]] ; then
+    skip_kexec=1
+    if ! test -f "/root/kernel-deb.deb" ; then
+	gsutil cp $kernel_deb /root/kernel-deb.deb
+	dpkg -i /root/kernel-deb.deb
+	logger "Installation returned $?"
+	kernel=$(dpkg -c kernel-deb.deb  | grep "vmlinuz" | rev | cut -d "/" -f1 | rev | cut -d "-" -f2-)
+	menuline=$(grep -i "menuentry '" /boot/grub/grub.cfg|sed -r "s|--class .*$||g" | grep -ne $kernel | grep -v recovery | cut -f1 -d":")
+	menunum=$(($menuline-2))
+	grub-reboot "1>$menunum"
+	echo "Rebooting..."
+	reboot
+    fi
+fi
+
+if test -z "$skip_kexec" ; then
+    if grep -q fstestcfg /proc/cmdline; then exit 0; fi
+fi
 
 if test -f /root/do_kexec ; then
     /usr/local/lib/gce-logger do_kexec file found, using it
@@ -96,6 +115,10 @@ PTS_SIZE="$pts_size"
 FSTESTEXC="${fstestexc//,/ }"
 NFSSRV="${$nfssrv}"
 EOF
+    exit 0
+fi
+
+if test -n "$skip_kexec" ; then
     exit 0
 fi
 
