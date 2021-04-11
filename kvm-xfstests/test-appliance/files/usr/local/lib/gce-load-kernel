@@ -12,9 +12,20 @@ kernel_deb=$(gce_attribute kexec)
 if [[ $kernel_deb == *.deb ]] ; then
     skip_kexec=1
     if ! test -f "/root/kernel-deb.deb" ; then
-	gsutil cp $kernel_deb /root/kernel-deb.deb
-	dpkg -i /root/kernel-deb.deb
-	logger "Installation returned $?"
+	if ! gsutil cp $kernel_deb /root/kernel-deb.deb ; then
+	    echo "gsutil cp $kernel_deb /root/kernel-deb.deb failed"
+	    exit 1
+	fi
+	retry=0
+	while ! dpkg -i /root/kernel-deb.deb ; do
+	    sleep 5
+	    (( retry++ ))
+	    if test "$retry" -gt 36 ; then
+		logger "Kernel installation failed after multiple retries"
+		exit 1
+	    fi
+	done
+	logger "Installation succeeded ($retry retries required)"
 	kernel=$(dpkg -c kernel-deb.deb  | grep "vmlinuz" | rev | cut -d "/" -f1 | rev | cut -d "-" -f2-)
 	menuline=$(grep -i "menuentry '" /boot/grub/grub.cfg|sed -r "s|--class .*$||g" | grep -ne $kernel | grep -v recovery | cut -f1 -d":")
 	menunum=$(($menuline-2))
@@ -172,4 +183,15 @@ kexec /root/bzImage --command-line="root=/dev/sda1 ro console=ttyS0,38400n8 elev
 /usr/local/lib/gce-logger kexec failed?!?
 exit 1
 EOF
+
+retry=0
+while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
+    sleep 5
+    (( retry++ ))
+    if test "$retry" -gt 36 ; then
+	logger "/var/lib/dpkg/lock held for too long"
+	break
+    fi
+done
+
 . /root/do_kexec

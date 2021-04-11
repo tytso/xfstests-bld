@@ -68,7 +68,7 @@ then
 	exit $?
     fi
 
-    /usr/local/lib/gce-load-kernel
+    script -a -c /usr/local/lib/gce-load-kernel /var/log/gce-load-kernel.org
     . /run/test-env
     # for interactive mounting using the fstab entries
     ln -s "$PRI_TST_DEV" /dev/vdb
@@ -134,7 +134,7 @@ if test "$CMD" = "pts"
 then
     if test -n "$RUN_ON_GCE"
     then
-	/usr/local/lib/gce-setup
+	script -a -c /usr/local/lib/gce-setup /var/log/gce-setup.log
 	. /run/test-env
 	exit 0
 	/root/run-pts.sh >> /results/runtests.log 2>&1
