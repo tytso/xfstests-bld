@@ -1,0 +1,123 @@
+#!/bin/bash
+#
+# kbuild -- covenience script for build kernels
+#
+# This script will build a kernel using an external build directory.
+# To use it, create the directory ".git/kbuild" in the top-level of
+# the kernel sources, and create a file .git/kbuild/config with the
+# following contents:
+#
+# BLD_DIR=/build/ext4
+# KERN_ARCH=x86_64
+#
+# This will deposit the object files into the /build/ext4 directory,
+# and create the modules.tar.gz directory for use with kvm-xfstests
+# and gce-xfstests.
+
+DIR=..
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
+# N=$(($(getconf _NPROCESSORS_ONLN) / 2))
+N=$(($(getconf _NPROCESSORS_ONLN) * 1))
+
+if test ! -f MAINTAINERS ; then
+    echo "Not at top-level of kernel source tree?"
+    exit 1
+fi
+
+mkdir -p .git/kbuild
+if test -f .git/kbuild/config ; then
+    . .git/kbuild/config
+elif test -f .git/kbuild.conf ; then
+    . .git/kbuild.conf
+    mv .git/kbuild.conf .git/kbuild/config
+fi
+
+if test -n "$BLD_DIR" -a ! -d "$BLD_DIR" ; then
+    mkdir -p "$BLD_DIR"
+    if test -f .git/kbuild/kernel-config ; then
+	cp .git/kbuild/kernel-config "$BLD_DIR/.config"
+    fi
+    for i in x509.genkey signing_key.pem signing_key.x509
+    do
+	if test -f ".git/kbuild/$i" ; then
+	    mkdir -p "$BLD_DIR/certs"
+	    cp ".git/kbuild/$i" "$BLD_DIR/certs"
+	fi
+    done
+fi
+
+MAKE_ARGS="ARCH=${KERN_ARCH:-x86_64} -j$N"
+if test -n "$BLD_DIR" ; then
+    MAKE_ARGS="O=$BLD_DIR $MAKE_ARGS"
+else
+    BLD_DIR="."
+fi
+
+if test ! -f "$BLD_DIR/.config" -a -x "$DIR/util/install-kconfig" ; then
+    if test -z "$XFSTESTS_FLAVOR" ; then
+       XFSTESTS_FLAVOR=kvm
+    fi
+    export GCE_XFSTESTS_DIR XFSTESTS_FLAVOR
+    $DIR/util/install-kconfig
+fi
+
+if test "$1" == "--dpkg" ; then
+    shift
+    DO_DPKG=yes
+fi
+
+rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
+   "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
+
+if test -n "$DO_DPKG" ; then
+    time nice make $MAKE_ARGS bindeb-pkg "$@"
+    err=$?
+    d="$BLD_DIR/.."
+    REL=$(make $MAKE_ARGS kernelrelease | grep -v ^make)
+    arch=$(cat $BLD_DIR/debian/arch)
+    NUM=$(cd $d ; /bin/ls -t linux-${REL}_${REL}*.changes | head -1 | \
+	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
+    v="${REL}-${NUM}_${arch}"
+    if test -f "$d/linux-image-${REL}_${v}.deb" ; then
+	mv "$d/linux-image-${REL}_${v}.deb" "$BLD_DIR/linux-image.deb"
+    fi
+    if test -f "$d/linux-image-${REL}-dbg_${v}.deb" ; then
+	mv "$d/linux-image-${REL}-dbg_${v}.deb" "$BLD_DIR/linux-image-dbg.deb"
+    fi
+    if test -f "$d/linux-headers-${REL}_${v}.deb" ; then
+	mv "$d/linux-headers-${REL}_${v}.deb" "$BLD_DIR/linux-headers.deb"
+    fi
+    if test -f "$d/linux-libc-dev_${v}.deb" ; then
+	mv "$d/linux-libc-dev_${v}.deb" "$BLD_DIR/linux-libc-dev.deb"
+    fi
+    rm -f "$d/linux-${REL}_${v}.buildinfo" "$d/linux-${REL}_${v}.changes"
+else
+    time nice make $MAKE_ARGS "$@"
+    err=$?
+
+    if test -z "$*" -a "$err" == 0 && \
+	    grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
+	TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
+	echo "Generating $BLD_DIR/modules.tar.xz"
+	make $MAKE_ARGS modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
+	tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
+	    --mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
+	rm -rf "$TMPMODDIR"
+    else
+	rm -f "$BLD_DIR/modules.tar.xz"
+    fi
+fi
+
+cp "$BLD_DIR/.config" .git/kbuild/kernel-config
+for i in x509.genkey signing_key.pem signing_key.x509
+do
+    if test -f "$BLD_DIR/certs/$i" ; then
+	cp "$BLD_DIR/certs/$i" .git/kbuild
+    fi
+done
+
+exit $err

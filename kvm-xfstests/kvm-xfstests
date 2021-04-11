@@ -36,6 +36,17 @@ case "$1" in
 	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/install-kconfig" "$@"
 	exit $?
 	;;
+    kbuild)
+	shift
+	if test ! -x "$DIR/util/kbuild"
+	then
+	    echo "kbuild not supported in this installation"
+	    exit 1
+	fi
+	export GCE_XFSTESTS_DIR="$DIR"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/kbuild" "$@"
+	exit $?
+	;;
 esac
 
 QUIET="quiet loglevel=0"

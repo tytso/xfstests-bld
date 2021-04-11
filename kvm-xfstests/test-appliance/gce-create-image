@@ -188,6 +188,7 @@ cp ../../kvm-xfstests/util/gce-launch-ltm	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/gce-ltm-funcs	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/get-config		$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/install-kconfig	$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/util/kbuild		$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/parse_cli		$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/parse_opt_funcs	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/gce-xfstests		$kvm_xfs_dir/
