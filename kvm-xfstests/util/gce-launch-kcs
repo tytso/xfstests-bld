@@ -95,7 +95,7 @@ touch $DIR/.kcs_instance
 LAUNCH_KCS_EXIT_STATUS=1
 trap 'if [ $LAUNCH_KCS_EXIT_STATUS != 0 ]; then rm $DIR/.kcs_instance; fi' EXIT
 
-run_gcloud compute --project \
+run_gcloud compute \
     instances create "$INSTANCE" --zone "$GCE_ZONE" \
     --machine-type "$GCE_KCS_MACHTYPE" --network "$GCE_NETWORK" \
     --boot-disk-size 50GB \
