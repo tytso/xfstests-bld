@@ -84,6 +84,7 @@ PACKAGES="bash-completion \
 	python3-pip \
 	python3-future \
 	reiserfsprogs \
+	rsync \
 	strace \
 	stress \
 	thin-provisioning-tools \

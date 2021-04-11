@@ -348,7 +348,7 @@ func (bisector *GitBisector) Build() server.ResultType {
 	bisector.log.WithField("commit", commit).Debug("Git bisect build")
 	newTestID := bisector.testID + "-" + commit[:8]
 
-	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun", bisector.gsBucket, newTestID)
+	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun.deb", bisector.gsBucket, newTestID)
 
 	bisector.testRequest.Options.GsKernel = gsPath
 	bisector.testRequest.Options.CommitID = commit

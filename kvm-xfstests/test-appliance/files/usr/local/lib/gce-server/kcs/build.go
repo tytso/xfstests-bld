@@ -42,7 +42,7 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 
 	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
-	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun", gsBucket, testID)
+	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun.deb", gsBucket, testID)
 
 	id, err := git.ParseURL(c.Options.GitRepo)
 	check.Panic(err, log, "Failed to parse repo url")

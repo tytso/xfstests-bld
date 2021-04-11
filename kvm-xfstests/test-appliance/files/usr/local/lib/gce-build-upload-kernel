@@ -41,6 +41,13 @@ if test -n "$GS_CONFIG" ; then
 else
     install_kconfig
 fi
-time make -j$(nproc) || exit 1
+KERNEL_PATH="$REPO_DIR/arch/x86/boot/bzImage"
+DPKG_FLAGS=
+if [[ $GS_PATH == *.deb ]]; then
+    DPKG_FLAGS=--dpkg
+    KERNEL_PATH="$REPO_DIR/linux-image.deb"
+fi
 
-gsutil cp "$REPO_DIR/arch/x86/boot/bzImage" $GS_PATH
+time gce-xfstests kbuild $DPKG_FLAGS || exit 1
+
+gsutil cp "$KERNEL_PATH" $GS_PATH
