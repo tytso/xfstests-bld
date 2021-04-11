@@ -384,7 +384,7 @@ case "$1" in
     setup)
 	export GCE_XFSTESTS_DIR="$DIR"
 	shift
-	"$DIR/util/gce-do-setup" "$@"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-do-setup" "$@"
 	exit $?
 	;;
     ssh)
@@ -453,7 +453,7 @@ case "$1" in
 	fi
 	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/test-appliance/gce-create-image" "$@"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/test-appliance/gce-create-image" "$@"
 	exit $?
 	;;
     export-image)
@@ -465,7 +465,7 @@ case "$1" in
 	fi
 	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/test-appliance/gce-export-image" "$@"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/test-appliance/gce-export-image" "$@"
 	exit $?
 	;;
     import-image)
@@ -477,7 +477,7 @@ case "$1" in
 	fi
 	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/test-appliance/gce-import-image" "$@"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/test-appliance/gce-import-image" "$@"
 	exit $?
 	;;
     copy-image)
@@ -489,7 +489,7 @@ case "$1" in
 	fi
 	export GCE_PROJECT
 	export GCE_XFSTESTS_DIR="$DIR"
-	"$DIR/test-appliance/gce-copy-image" "$@"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/test-appliance/gce-copy-image" "$@"
 	exit $?
 	;;
     install-kconfig)
@@ -572,7 +572,7 @@ case "$1" in
 	    echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
 	    exit 1
 	fi
-	"$DIR/util/gce-launch-ltm"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-ltm"
 	exit $?
 	;;
     launch-kcs)
@@ -587,7 +587,7 @@ case "$1" in
 		echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
 		exit 1
 	fi
-	"$DIR/util/gce-launch-kcs"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-kcs"
 	exit $?
 	;;
     ltm)
@@ -597,7 +597,6 @@ case "$1" in
 		echo "using this option."
 		exit 1
 	fi
-	NO_ACTION=": "
 	RUN_ON_LTM="yes"
 	GCE_USER="ltm"
 	;;
@@ -608,7 +607,6 @@ case "$1" in
 		echo "using this option."
 		exit 1
 	fi
-	NO_ACTION=": "
 	RUN_ON_KCS="yes"
 	GCE_USER="kcs"
 	OVERRIDE_KERNEL="none"
@@ -620,7 +618,6 @@ case "$1" in
 		echo "using this option."
 		exit 1
 	fi
-	NO_ACTION=": "
 	RUN_ON_LTM="yes"
 	GCE_USER="ltm"
 	LTM_INFO="yes"
@@ -1028,6 +1025,7 @@ fi
 if test -n "$RUN_ON_LTM"; then
     . "$DIR/util/gce-ltm-funcs"
     send_to_ltm $ORIG_CMDLINE_B64
+    exit 0
 elif test -n "$RUN_ON_KCS"; then
     if ! gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
     then
@@ -1037,6 +1035,7 @@ elif test -n "$RUN_ON_KCS"; then
     fi
     . "$DIR/util/gce-kcs-funcs"
     send_to_kcs $ORIG_CMDLINE_B64
+    exit 0
 else
     echo "Launching $INSTANCE using $GCE_MACHTYPE..."
     # echo "Using ARG: $ARG"

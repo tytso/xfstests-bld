@@ -139,6 +139,7 @@ wait_for_command "run_gcloud compute instances describe \
     --zone $GCE_ZONE $INSTANCE"
 echo " Done!"
 
+NO_ACTION=
 run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
     --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance
 
