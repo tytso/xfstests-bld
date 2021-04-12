@@ -4,6 +4,9 @@ DEST=/pub/linux/kernel/people/tytso/kvm-xfstests
 FILES=( README \
 	root_fs.img.amd64 \
 	root_fs.img.i386 \
+	root_fs.img.arm64 \
+	root_fs.amd64.tar.gz \
+	root_fs.i386.tar.gz \
 	root_fs.arm64.tar.gz \
 	xfstests-amd64.tar.gz \
 	xfstests-i386.tar.gz \
