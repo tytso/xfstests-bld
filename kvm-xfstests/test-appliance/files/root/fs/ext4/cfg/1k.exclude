@@ -1,3 +1,7 @@
+# The test fails due to too many block group descriptors when the
+# block size is 1k
+ext4/033
+
 # This test uses dioread_nolock which currently isn't supported when
 # block_size != PAGE_SIZE.
 ext4/034
