@@ -30,9 +30,6 @@ generic/587
 generic/600
 generic/601
 
-# encryption doesn't play well with casefold (at least not yet)
-generic/556
-
 # generic/204 tests ENOSPC handling; it doesn't correctly
 # anticipate the external extended attribute required when
 # using a 1k block size
