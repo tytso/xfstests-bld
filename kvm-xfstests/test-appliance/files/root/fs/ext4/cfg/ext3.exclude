@@ -25,3 +25,6 @@ generic/382
 # after xfstests 4f4b89cdf353 which was fixing the test for 64k block
 # sizes.  Unfortunately it breaks the test which use indirect blocks.
 generic/235
+
+# Ext3 does not support file systems > 16TB
+generic/620
