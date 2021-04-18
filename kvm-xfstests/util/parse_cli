@@ -980,7 +980,7 @@ fi
 FSTESTOPT=${FSTESTOPT/#,/}
 
 case "$FSTESTCFG" in
-    dax|dax,*|*,dax,*|*,dax)
+    dax|dax,*|*,dax,*|*,dax|*/dax|*/dax,*)
 	PMEM_DEVICE=yes
 	;;
     nfs|nfs,*|*,nfs,*|*,nfs)
