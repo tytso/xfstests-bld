@@ -151,7 +151,7 @@ esac
 
 update_xfstests()
 {
-   tar -C $ROOTDIR/root -xf ../../xfstests.tar.gz
+   tar --exclude share/man -C $ROOTDIR/root -xf ../../xfstests.tar.gz
    tar -X kvm-exclude-files -C files \
 	--owner=root --group=root --mode=go+u-w -c . | tar -C $ROOTDIR -x
    rsync -avH ../../xfstests/git-versions $ROOTDIR/root/xfstests

@@ -78,6 +78,17 @@ if test -d bld/usr/bin ; then
     cp bld/usr/bin/* xfstests/bin
 fi
 cp bld/lib/client.txt xfstests/lib
+if test -d bld/share/man ; then
+    mkdir -p xfstests/share/man
+    cp -r bld/share/man/* xfstests/share/man
+fi
+if test -d bld/man ; then
+    mkdir -p xfstests/share/man
+    cp -r bld/man/* xfstests/share/man
+fi
+if test -d xfstests/share/man ; then
+    find xfstests/share/man -type f | xargs gzip -9
+fi
 # ima-evm-utils is optional.
 if test -e bld/lib/libimaevm.so.0.0.0; then
     cp bld/lib/libimaevm.so.0.0.0 xfstests/lib
