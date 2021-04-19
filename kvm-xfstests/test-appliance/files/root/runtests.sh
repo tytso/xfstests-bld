@@ -385,19 +385,23 @@ do
 	if test -n "$DO_AEX" ; then
 	    if test -f "/root/fs/global_exclude" ; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/global_exclude" > "$RESULT_BASE/exclude"
+		    < "/root/fs/global_exclude" > "/tmp/exclude"
 	    else
-		cp /dev/null "$RESULT_BASE/exclude"
+		cp /dev/null "/tmp/exclude"
 	    fi
 	    if test -f "/root/fs/$FS/exclude" ; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/exclude" >> "$RESULT_BASE/exclude"
+		    < "/root/fs/$FS/exclude" >> "/tmp/exclude"
 	    fi
 	    if test -f "/root/fs/$FS/cfg/$TC.exclude"; then
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/cfg/$TC.exclude" >> "$RESULT_BASE/exclude"
+		    < "/root/fs/$FS/cfg/$TC.exclude" >> "/tmp/exclude"
 	    fi
-	    if test $(stat -c %s "$RESULT_BASE/exclude") -gt 0 ; then
+	    if test -s "/tmp/exclude" ; then
+		EXSET=$(sort -u "/tmp/exclude")
+		bash ./check -n $EXSET | \
+		    sed -e '1,/^$/d' -e '/^$/d' | \
+		    sort -u > "$RESULT_BASE/exclude"
 		AEX="-E $RESULT_BASE/exclude"
 	    fi
         fi
