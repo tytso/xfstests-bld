@@ -1,0 +1,12 @@
+# These tests format the scratch file system using the default
+# mkfs.xfs options which now includes reflink, and reflink is not
+# compatible with DAX
+xfs/032
+xfs/205
+xfs/294
+
+# This test formats a file system with a 1k block size, which is not
+# compatible with DAX (at least with systems with a 4k page size).
+xfs/432
+
+
