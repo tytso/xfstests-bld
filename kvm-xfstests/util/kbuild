@@ -14,12 +14,6 @@
 # and create the modules.tar.gz directory for use with kvm-xfstests
 # and gce-xfstests.
 
-DIR=..
-if test -n "$GCE_XFSTESTS_DIR"
-then
-    DIR="$GCE_XFSTESTS_DIR"
-fi
-
 # N=$(($(getconf _NPROCESSORS_ONLN) / 2))
 N=$(($(getconf _NPROCESSORS_ONLN) * 1))
 
@@ -50,19 +44,15 @@ if test -n "$BLD_DIR" -a ! -d "$BLD_DIR" ; then
     done
 fi
 
-MAKE_ARGS="ARCH=${KERN_ARCH:-x86_64} -j$N"
+MAKE_ARGS=("ARCH=${KERN_ARCH:-x86_64}" "-j$N")
 if test -n "$BLD_DIR" ; then
-    MAKE_ARGS="O=$BLD_DIR $MAKE_ARGS"
+    MAKE_ARGS+=("O=$BLD_DIR")
 else
     BLD_DIR="."
 fi
 
-if test ! -f "$BLD_DIR/.config" -a -x "$DIR/util/install-kconfig" ; then
-    if test -z "$XFSTESTS_FLAVOR" ; then
-       XFSTESTS_FLAVOR=kvm
-    fi
-    export GCE_XFSTESTS_DIR XFSTESTS_FLAVOR
-    $DIR/util/install-kconfig
+if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
+    MAKE_ARGS+=("CC=clang")
 fi
 
 if test "$1" == "--dpkg" ; then
@@ -74,10 +64,10 @@ rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
 
 if test -n "$DO_DPKG" ; then
-    time nice make $MAKE_ARGS bindeb-pkg "$@"
+    time nice make "${MAKE_ARGS[@]}" bindeb-pkg "$@"
     err=$?
     d="$BLD_DIR/.."
-    REL=$(make $MAKE_ARGS kernelrelease | grep -v ^make)
+    REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
     arch=$(cat $BLD_DIR/debian/arch)
     NUM=$(cd $d ; /bin/ls -t linux-${REL}_${REL}*.changes | head -1 | \
 	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
@@ -96,14 +86,14 @@ if test -n "$DO_DPKG" ; then
     fi
     rm -f "$d/linux-${REL}_${v}.buildinfo" "$d/linux-${REL}_${v}.changes"
 else
-    time nice make $MAKE_ARGS "$@"
+    time nice make "${MAKE_ARGS[@]}" "$@"
     err=$?
 
     if test -z "$*" -a "$err" == 0 && \
 	    grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
 	TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
 	echo "Generating $BLD_DIR/modules.tar.xz"
-	make $MAKE_ARGS modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
+	make "${MAKE_ARGS[@]}" modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
 	tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
 	    --mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
 	rm -rf "$TMPMODDIR"

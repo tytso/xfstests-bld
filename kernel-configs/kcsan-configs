@@ -1,0 +1,3 @@
+# TAG: kcsan
+CONFIG_KCSAN=y
+CONFIG_CC_IS_CLANG=y

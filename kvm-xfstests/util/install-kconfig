@@ -23,8 +23,17 @@ do
 	--i386)
 	    ARCH=i386
 	    ;;
+	--kasan)
+	    DO_KASAN=yes
+	    ;;
+	--kcsan)
+	    DO_KCSAN=yes
+	    ;;
 	--no-action)
 	    NO_ACTION="echo"
+	    ;;
+	--ubsan)
+	    DO_UBSAN=yes
 	    ;;
 	--debug)
 	    DO_DEBUG=yes
@@ -93,31 +102,55 @@ done
 
 # echo "Config file is $CONFIG_FN"
 
+FILES=("$CONFIG_FN")
+
 if test -n "$DO_BLKTESTS" ; then
-    BLKTESTS_CONFIG="$KCONFIG_DIR/blktests-configs"
-else
-    BLKTESTS_CONFIG=/dev/null
+    FILES+=("$KCONFIG_DIR/blktests-configs")
 fi
 
 if test -n "$DO_DEBUG" ; then
-    DEBUG_CONFIGS="$KCONFIG_DIR/extra-debug-configs"
-else
-    DEBUG_CONFIGS=/dev/null
+    FILES+=("$KCONFIG_DIR/extra-debug-configs")
+fi
+
+if test -n "$DO_KASAN" ; then
+    FILES+=("$KCONFIG_DIR/kasan-configs")
+fi
+
+if test -n "$DO_KCSAN" ; then
+    FILES+=("$KCONFIG_DIR/kcsan-configs")
+fi
+
+if test -n "$DO_UBSAN" ; then
+    FILES+=("$KCONFIG_DIR/ubsan-configs")
 fi
 
 if test -f "$BLD_DIR/.config" ; then
-    mv "$BLD_DIR/.config" "$BLD_DIR/.config.bak"
-fi
-if test -z "$NO_ACTION" ; then
-    cat "$CONFIG_FN" "$BLKTESTS_CONFIG" "$DEBUG_CONFIGS" > "$BLD_DIR/.config"
-else
-    echo cat "$CONFIG_FN" "$BLKTESTS_CONFIG" "$DEBUG_CONFIGS" \> "$BLD_DIR/.config"
+    $NO_ACTION mv "$BLD_DIR/.config" "$BLD_DIR/.config.bak"
 fi
 
-if test -z "$BLD_DIR" ; then
-    $NO_ACTION make "ARCH=$ARCH" olddefconfig
+if test -z "$NO_ACTION" ; then
+    cat "${FILES[@]}"  > "$BLD_DIR/.config"
 else
-    $NO_ACTION make "O=$BLD_DIR" "ARCH=$ARCH" olddefconfig
+    echo cat "${FILES[@]}"  \> "$BLD_DIR/.config"
 fi
+
+tags=$(awk '/^# TAG: / {printf("-%s", $3)}' "$BLD_DIR/.config")
+
+if test -n "$tags" ; then
+    base=$(awk -F\" '/CONFIG_LOCALVERSION/{print $2}' "$BLD_DIR/.config")
+    echo CONFIG_LOCALVERSION=\"${base}${tags}\" >> "$BLD_DIR/.config"
+fi
+
+ARGS=("ARCH=$ARCH")
+
+if test "$BLD_DIR" != "." ; then
+    ARGS+=("O=$BLD_DIR")
+fi
+
+if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
+    ARGS+=("CC=clang")
+fi
+
+$NO_ACTION make "${ARGS[@]}" olddefconfig
 
 exit 0
