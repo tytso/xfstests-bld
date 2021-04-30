@@ -82,6 +82,7 @@ else
     ZONE=$(basename $ZONE)
     echo $ZONE > $GCE_STATE_DIR/gce_zone
 fi
+REGION=$(echo $ZONE | awk -F- '{printf("%s-%s",$1,$2)}')
 
 if test -f $GCE_STATE_DIR/gce_id
 then

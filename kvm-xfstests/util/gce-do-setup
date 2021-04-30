@@ -177,6 +177,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p GCE_PROJECT
     declare -p GCE_IMAGE_PROJECT
     declare -p GCE_ZONE
+    declare -p GCE_ZONE2
     declare -p NR_CPU
     declare -p MEM
     declare -p GS_BUCKET

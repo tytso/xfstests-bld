@@ -1,0 +1,10 @@
+#!/bin/bash
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+. /run/test-env
+
+vgchange -an xt
+gcloud compute instances detach-disk ${instance} --device-name scratch
+gcloud compute disks delete ${instance}-scratch --quiet --zone=${ZONE}
+gcloud compute disks delete ${instance}-scratch --quiet --region=${REGION}

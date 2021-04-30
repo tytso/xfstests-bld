@@ -39,6 +39,7 @@ cmd=$(gce_attribute cmd)
 mem=$(gce_attribute mem)
 cpus=$(gce_attribute nr_cpus)
 mount_opts=$(gce_attribute mount_opts)
+disk_spec=$(gce_attribute disk_spec)
 pts_size=$(gce_attribute pts_size)
 fstestcfg=$(gce_attribute fstestcfg)
 fstestset=$(gce_attribute fstestset)
@@ -93,6 +94,7 @@ FSTESTAPI="${fstestapi//./ }"
 FSTESTSTR="${fsteststr//,/ }"
 timezone="$fstesttz"
 MNTOPTS="$mount_opts"
+DISK_SPEC="$disk_spec"
 PTS_SIZE="$pts_size"
 FSTESTEXC="${fstestexc//,/ }"
 NFSSRV="${$nfssrv}"
@@ -124,6 +126,11 @@ fi
 if test -n "$mount_opts"
 then
     kopt="$kopt mount_opts=$mount_opts"
+fi
+
+if test -n "$disk_spec"
+then
+    kopt="$kopt disk_spec=$disk_spec"
 fi
 
 if test -n "$pts_size"

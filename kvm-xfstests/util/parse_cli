@@ -248,6 +248,7 @@ cpu-type:
 disable-serial
 email:
 enable-serial
+gce-disk-spec:
 gce-network:
 gce-zone:
 gs-bucket:
@@ -552,6 +553,10 @@ while (( $# >= 1 )); do
 	--no-preemptible|--no-preempt)
 	    supported_flavors gce
 	    PREMPTIBLE=
+	    ;;
+	--gce-disk-spec) shift
+	    supported_flavors gce
+	    GCE_DISK_SPEC="$1"
 	    ;;
 	--gce-network) shift
 	    supported_flavors gce

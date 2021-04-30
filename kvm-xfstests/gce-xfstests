@@ -1004,6 +1004,11 @@ then
     ARG="$ARG nr_cpus=$NR_CPU"
 fi
 
+if test -n "$GCE_DISK_SPEC"
+then
+    ARG="$ARG disk_spec=$GCE_DISK_SPEC"
+fi
+
 ARG="$ARG gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
 
 if test -n "$BUCKET_SUBDIR"; then

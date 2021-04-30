@@ -2,6 +2,7 @@
 
 . /usr/local/lib/gce-funcs
 . /root/test-config
+. /run/test-env
 
 logger -i "Entered setup scratch"
 
@@ -20,12 +21,75 @@ fi
 
 if ! test -e $CREATED_SCRATCH_DEV
 then
+    SCOPE=zonal
+    TYPE=pd-ssd
+    SIZE=100
+
+    SPEC_ARRAY=(${DISK_SPEC//\// })
+
+    if test "${#SPEC_ARRAY[@]}" -ge 3 -o "${SPEC_ARRAY[0]}" = zonal -o \
+       "${SPEC_ARRAY[0]}" = regional ; then
+	case "${SPEC_ARRAY[0]}" in
+	    zonal|regional)
+		SCOPE="${SPEC_ARRAY[0]}"
+		;;
+	    *)
+		;;
+	esac
+	SPEC_ARRAY=("${SPEC_ARRAY[@]:1}")
+    fi
+
+    if test -n "${SPEC_ARRAY[0]}" ; then
+	case "${SPEC_ARRAY[0]}" in
+	    balanced|extreme|ssd|standard)
+		TYPE="pd-${SPEC_ARRAY[0]}"
+		;;
+	    pd-balanced|pd-extreme|pd-ssd|pd-standard)
+		TYPE="${SPEC_ARRAY[0]}"
+		;;
+	    *)
+		;;
+	esac
+    fi
+
+    if test -n "${SPEC_ARRAY[1]}" ; then
+	num="${SPEC_ARRAY[1]}"
+	if [[ "$num" =~ ^[0-9]+$ ]] || [[ "$num" =~ ^[0-9]+[GT]B$ ]] ; then
+	    SIZE="$num"
+	fi
+    fi
+
+    if test "$SCOPE" = "regional" ; then
+	if test -n "$GCE_ZONE2" -a "$ZONE" != "$GCE_ZONE" ; then
+	    Z2="$GCE_ZONE"
+	elif test -n "$GCE_ZONE2" -a "$ZONE" != "$GCE_ZONE2" ; then
+	    Z2="$GCE_ZONE2"
+	else
+	    for i in $(gcloud compute zones list \
+			      --filter="name~^${REGION} AND status=UP" \
+			      --format="value(name)") ; do
+		if test "$ZONE" != "$i" ; then
+		   Z2="$i"
+		   break
+		fi
+	    done
+	fi
+	if test -n "$Z2" ; then
+	    CREATE_FLAG="--region $REGION --replica-zones=${ZONE},${Z2}"
+	else
+	    SCOPE=zonal
+	fi
+    fi
+
+    if test "$SCOPE" = "zonal" ; then
+	CREATE_FLAG="--zone $ZONE"
+    fi
+
     gcloud compute -q disks create "$SCRATCH_DSK" \
-	--size "${SCRATCH_SIZE:-100}" \
-	--zone "$ZONE" --type "${SCRATCH_TYPE:-pd-ssd}"
+	--size "${SIZE}" --type "${TYPE}" $CREATE_FLAG
     gcloud compute -q instances attach-disk ${instance} \
 	--disk "$SCRATCH_DSK" \
-	--device-name scratch --zone "$ZONE"
+	--device-name scratch --zone "$ZONE" --disk-scope "$SCOPE"
     gcloud compute -q instances set-disk-auto-delete ${instance} \
 	--auto-delete --device-name scratch --zone "$ZONE" &
 fi
