@@ -67,10 +67,12 @@ rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
 
 if test -n "$DO_DPKG" ; then
-    time nice make "${MAKE_ARGS[@]}" bindeb-pkg "$@"
+    make "${MAKE_ARGS[@]}" prepare
+    REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
+    time nice make "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
+	 bindeb-pkg "$@"
     err=$?
     d="$BLD_DIR/.."
-    REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
     arch=$(cat $BLD_DIR/debian/arch)
     NUM=$(cd $d ; /bin/ls -t linux-${REL}_${REL}*.changes | head -1 | \
 	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
