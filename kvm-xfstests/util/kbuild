@@ -93,18 +93,18 @@ if test -n "$DO_DPKG" ; then
 else
     time nice make "${MAKE_ARGS[@]}" "$@"
     err=$?
+fi
 
-    if test -z "$*" -a "$err" == 0 && \
-	    grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
-	TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
-	echo "Generating $BLD_DIR/modules.tar.xz"
-	make "${MAKE_ARGS[@]}" modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
-	tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
-	    --mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
-	rm -rf "$TMPMODDIR"
-    else
-	rm -f "$BLD_DIR/modules.tar.xz"
-    fi
+if test -z "$*" -a "$err" == 0 && \
+	grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
+    TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
+    echo "Generating $BLD_DIR/modules.tar.xz"
+    make "${MAKE_ARGS[@]}" modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
+    tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
+	--mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
+    rm -rf "$TMPMODDIR"
+else
+    rm -f "$BLD_DIR/modules.tar.xz"
 fi
 
 cp "$BLD_DIR/.config" .git/kbuild/kernel-config
