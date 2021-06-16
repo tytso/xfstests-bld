@@ -73,7 +73,11 @@ if test -n "$DO_DPKG" ; then
 	 bindeb-pkg "$@"
     err=$?
     d="$BLD_DIR/.."
-    arch=$(cat $BLD_DIR/debian/arch)
+    if test -f "$BLD_DIR/debian/arch" ; then
+	arch=$(cat $BLD_DIR/debian/arch)
+    else
+	arch=$(dpkg-architecture -q DEB_TARGET_ARCH)
+    fi
     NUM=$(cd $d ; /bin/ls -t linux-${REL}_${REL}*.changes | head -1 | \
 	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
     v="${REL}-${NUM}_${arch}"
