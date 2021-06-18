@@ -2,6 +2,6 @@ export TEST_DEV=/dev/pmem0
 export TEST_DIR=$SM_TST_MNT
 export SCRATCH_DEV=/dev/pmem1
 export SCRATCH_MNT=$SM_SCR_MNT
-export XFS_MKFS_OPTIONS="-bsize=4096 -mreflink=0"
+export XFS_MKFS_OPTIONS="-bsize=$(getconf PAGE_SIZE) -mreflink=0"
 export XFS_MOUNT_OPTIONS="-o dax"
 TESTNAME="XFS using DAX"
