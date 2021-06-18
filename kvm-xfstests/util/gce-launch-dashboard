@@ -1,0 +1,23 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=.
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
+. "$DIR/util/get-config"
+
+cd $DIR/dashboard
+
+if [ "$1" == "--local" ]; then
+	RESULTS_GS_PATH=gs://$GS_BUCKET/results python3 -m dashboard
+	exit 0
+fi
+
+DASHBOARD_CONTAINER_URI=gcr.io/$GCE_PROJECT/gce-xfstests-dashboard
+
+gcloud builds submit --tag $DASHBOARD_CONTAINER_URI
+gcloud run deploy --image $DASHBOARD_CONTAINER_URI --set-env-vars "RESULTS_GS_PATH=gs://$GS_BUCKET/results" \
+       --service-account "$SERVICE_ACCOUNT_DASH"

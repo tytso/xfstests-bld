@@ -671,6 +671,10 @@ case "$1" in
 	LTM_INFO="yes"
 	OVERRIDE_KERNEL="none"
 	;;
+    launch-dashboard)
+	shift
+	$DIR/util/gce-launch-dashboard $@
+	exit $?
 esac
 
 # Simulate how parse_cli handles --no-action if this option was specified
