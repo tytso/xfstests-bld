@@ -53,3 +53,7 @@ udftools
 uuid-runtime
 udev
 xz-utils
+libnuma-dev
+ndctl
+git
+vim
