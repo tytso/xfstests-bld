@@ -7,10 +7,10 @@ LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
 function ltm_post_json() {
     if test -n "$GCE_LTM_INT_IP"; then
     curl -s --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_INT_IP" -X POST "$@" | jq '.'
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_INT_IP" -X POST "$@" -k | jq '.'
     else
     curl -s --cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@" | jq '.'
+	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@" -k | jq '.'
     fi
 }
 
