@@ -95,6 +95,8 @@ gcloud config set compute/zone "$GCE_ZONE"
 
 gcloud services enable compute.googleapis.com
 gcloud services enable iam.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable run.googleapis.com
 
 function SetupRole () {
     local role="$1"
@@ -121,6 +123,11 @@ function SetupServiceAccount () {
     local name="$3"
     local desc="$4"
 
+    case "$role" in
+	*/*)	;;
+	*)	role="projects/$GCE_PROJECT/roles/$role" ;;
+    esac
+
     if ! run_gcloud iam service-accounts describe "$srv_acct" >& /dev/null ; then
 	run_gcloud iam service-accounts create "$name" \
 		   --description "$desc Service Account" \
@@ -133,11 +140,24 @@ function SetupServiceAccount () {
 	    # Re-run to get error message
 	    run_gcloud projects add-iam-policy-binding "$GCE_PROJECT" \
 		       --member "serviceAccount:$srv_acct" \
-		       --role "projects/$GCE_PROJECT/roles/$role"
+		       --role "$role"
 	    exit 1
 	fi
     fi
     gsutil acl ch -u "${srv_acct}:W" gs://$GS_BUCKET
+}
+
+function SetupServiceAccountCloudBuild () {
+    local GCE_PROJECT_NUMBER=`gcloud projects describe $GCE_PROJECT | grep projectNumber | cut -d ":" -f2 | xargs`
+    local ac_cloudbuild="serviceAccount:${GCE_PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+    if ! run_gcloud projects add-iam-policy-binding $GCE_PROJECT \
+	 --member="$ac_cloudbuild" --role roles/run.viewer >& /dev/null ; then
+	# Re-run to get error message
+	run_gcloud projects add-iam-policy-binding $GCE_PROJECT \
+		   --member="$ac_cloudbuild" --role roles/run.viewer
+	exit 1
+    fi
 }
 
 get_cache_dir
@@ -146,11 +166,15 @@ rm -f "$GCE_CACHE_DIR/service-accounts-opts.$GCE_PROJECT"
 SetupRole TestVM
 SetupRole LTMKCS
 SetupRole ImgCreate
+SetupRole Dashboard
 
 SetupServiceAccount "$SERVICE_ACCOUNT_VM" "forTestVM" "test-vm" "Test VM"
 SetupServiceAccount "$SERVICE_ACCOUNT_LTM" "forLTMKCS" "ltm-kcs" "LTM/KCS"
 SetupServiceAccount "$SERVICE_ACCOUNT_IMG" "forImgCreate" "img-create" \
 		    "Image Creation"
+SetupServiceAccount "$SERVICE_ACCOUNT_DASH" "forDashboard" "dashboard" \
+		    "GCE xfstests dashboard"
+SetupServiceAccountCloudBuild
 
 if ! run_gcloud_prj projects describe "$GCE_PROJECT" > /dev/null ; then
     echo -e "Invalid GCE project: $GCE_PROJECT\n"

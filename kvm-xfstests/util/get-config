@@ -99,9 +99,11 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
 	fi
     }
 
+    GCE_DASHBOARD_SERVICE_IAM=dashboard
     SERVICE_ACCOUNT_VM="test-vm@$GCE_PROJECT.iam.gserviceaccount.com"
     SERVICE_ACCOUNT_LTM="ltm-kcs@$GCE_PROJECT.iam.gserviceaccount.com"
     SERVICE_ACCOUNT_IMG="img-create@$GCE_PROJECT.iam.gserviceaccount.com"
+    SERVICE_ACCOUNT_DASH="dashboard@$GCE_PROJECT.iam.gserviceaccount.com"
 
     # setup a cached set of service account options
     get_cache_dir

@@ -1,0 +1,63 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=.
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
+. "$DIR/util/get-config"
+
+cd $DIR/dashboard
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	--build-only)
+	    SKIP_RUN=yes
+	    ;;
+	--local)
+	    DO_LOCAL=yes
+	    ;;
+	--no-action)
+	    NO_ACTION=echo
+	    ;;
+	--skip-build)
+	    SKIP_BUILD=yes
+	    ;;
+	--region) shift
+	    GCE_REGION=$1
+	    ;;
+	*)
+	    break
+	    ;;
+	-*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if test -n "$DO_LOCAL" ; then
+	RESULTS_GS_PATH=gs://$GS_BUCKET/results python3 -m dashboard
+	exit 0
+fi
+
+if test -z "$GCE_REGION" -a -n "$GCE_ZONE" ; then
+    GCE_REGION=$(echo "$GCE_ZONE" | sed -e 's/-[a-z]$//')
+fi
+
+DASHBOARD_CONTAINER_URI=gcr.io/$GCE_PROJECT/gce-xfstests-dashboard
+
+if test -z "$SKIP_BUILD" ; then
+    run_gcloud builds submit --tag $DASHBOARD_CONTAINER_URI
+fi
+if test -z "$SKIP_RUN" ; then
+    run_gcloud run deploy gce-xfstests-dashboard \
+	       --image $DASHBOARD_CONTAINER_URI \
+	       --set-env-vars "RESULTS_GS_PATH=gs://$GS_BUCKET/results" \
+	       --allow-unauthenticated --region "$GCE_REGION" \
+	       --service-account "$SERVICE_ACCOUNT_DASH"
+fi
