@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-b 65536"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 64k block"
