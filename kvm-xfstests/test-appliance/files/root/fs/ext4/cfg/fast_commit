@@ -1,4 +1,4 @@
 SIZE=small
-export EXT_MKFS_OPTIONS="-I 256 -O fast_commit,64bit"
+export EXT_MKFS_OPTIONS="-b 4096 -I 256 -O fast_commit,64bit"
 export EXT_MOUNT_OPTIONS=""
 TESTNAME="Ext4 4k block w/fast_commit"
