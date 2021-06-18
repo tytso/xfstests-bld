@@ -288,6 +288,12 @@ do
 		export LOGWRITES_DEV=$LG_SCR_DEV
 	    fi
 	fi
+
+	# This is required in case of BTRFS uses SCRATCH_DEV_POOL
+	if [[ -n $SCRATCH_DEV_POOL ]]; then
+		unset SCRATCH_DEV
+	fi
+
 	case "$TEST_DEV" in
 	    */ovl|9p*) ;;
 	    *:/*) ;;
