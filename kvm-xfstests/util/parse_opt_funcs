@@ -2,12 +2,25 @@
 # Handy functions used when parsing command line options
 #
 
+# Is the invoked interface (kvm-xfstests, gce-xfstests, etc.) in the given list?
+flavor_in ()
+{
+    local flavor
+    for flavor ; do
+	if test "$XFSTESTS_FLAVOR" = "$flavor" ; then
+	    return 0
+	fi
+    done
+    return 1
+}
+
 find_kernel_to_use()
 {
     if test -z "$OVERRIDE_KERNEL" ; then
 	if test -f .git/kbuild/config ; then
 	    t=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
 	    if test -n "$t" -a "$KERNEL" != "$t" -a \
+		    "$KERNEL" != "$t/linux-image.deb" -a \
 		    "$KERNEL" != "$t/arch/x86/boot/bzImage" ; then
 		echo "Detected kbuild config; using $t for kernel"
 		KERNEL=$t
@@ -28,19 +41,16 @@ find_kernel_to_use()
 		fi
 	    fi
 	fi
-	if test -d "$KERNEL" ; then
-	    if test -f "$KERNEL/linux-image.deb" ; then
-		KERNEL="$KERNEL/linux-image.deb"
-		MODULES=""
-		OVERRIDE_MODULES=""
-	    else
-		if test -f "$KERNEL/modules.tar.xz" -a -z "$OVERRIDE_MODULES"; then
-		    MODULES="$KERNEL/modules.tar.xz"
-		    OVERRIDE_MODULES="$KERNEL/modules.tar.xz"
-		fi
-		KERNEL="$KERNEL/arch/x86/boot/bzImage"
-	    fi
-	    OVERRIDE_KERNEL="$KERNEL"
+    fi
+    if flavor_in gce && test -d "$KERNEL" -a -f "$KERNEL/linux-image.deb"
+    then
+	KERNEL="$KERNEL/linux-image.deb"
+	MODULES=""
+    fi
+    if test -d "$KERNEL" ; then
+	if test -z "$OVERRIDE_MODULES" -a -f "$KERNEL/modules.tar.xz" ; then
+	    MODULES="$KERNEL/modules.tar.xz"
 	fi
+	KERNEL="$KERNEL/arch/x86/boot/bzImage"
     fi
 }

@@ -58,6 +58,10 @@ if ! test -f "$KERNEL"; then
      exit 1
 fi
 
+if test -n "$NO_ACTION" ; then
+    echo "Using kernel $KERNEL"
+fi
+
 if test -z "$DO_NET" ; then
     echo "Networking disabled."
     NET="-net none "
@@ -152,10 +156,14 @@ then
     rm -rf "$TDIR"
 fi
 
-if test -z "$NO_ACTION" -a -n "$MODULES" -a -f "$MODULES"
+if test -n "$MODULES" -a -f "$MODULES"
 then
-    tar -r -f $VDH -C $(dirname "$MODULES") \
-	--transform="s/.*/modules.tar.xz/" $(basename "$MODULES")
+    if test -z "$NO_ACTION" ; then
+	tar -r -f $VDH -C $(dirname "$MODULES") \
+	    --transform="s/.*/modules.tar.xz/" $(basename "$MODULES")
+    else
+	echo "Using modules from $MODULES"
+    fi
 fi
 
 fallocate -l 128M "$VDH"

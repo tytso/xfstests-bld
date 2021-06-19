@@ -24,18 +24,6 @@ _cleanup()
     fi
 }
 
-# Is the invoked interface (kvm-xfstests, gce-xfstests, etc.) in the given list?
-flavor_in ()
-{
-    local flavor
-    for flavor ; do
-	if test "$XFSTESTS_FLAVOR" = "$flavor" ; then
-	    return 0
-	fi
-    done
-    return 1
-}
-
 supported_flavors ()
 {
     flavor_in "$@" || print_help
@@ -221,17 +209,6 @@ validate_branch_name()
 	exit 1
     fi
 }
-
-if flavor_in gce && test -n "$GCE_KERNEL" ; then
-    KERNEL="$GCE_KERNEL"
-fi
-
-if test -d "$KERNEL" ; then
-    if test -f "$KERNEL/modules.tar.xz" ; then
-	MODULES="$KERNEL/modules.tar.xz"
-    fi
-    KERNEL="$KERNEL/arch/x86/boot/bzImage"
-fi
 
 shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
@@ -469,17 +446,6 @@ while (( $# >= 1 )); do
 	    ;;
 	--kernel) shift
 	    KERNEL="$1"
-	    if test -d "$KERNEL" ; then
-		if test -z "$OVERRIDE_MODULES" ; then
-		    if test -f "$KERNEL/modules.tar.xz" ; then
-			MODULES="$KERNEL/modules.tar.xz"
-			OVERRIDE_MODULES="$MODULES"
-		    else
-			MODULES=""
-		    fi
-		fi
-		KERNEL="$KERNEL/arch/x86/boot/bzImage"
-	    fi
 	    OVERRIDE_KERNEL="$KERNEL"
 	    ;;
 	--modules) shift

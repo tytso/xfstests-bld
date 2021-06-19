@@ -6,7 +6,6 @@ then
     DIR="$GCE_XFSTESTS_DIR"
 fi
 . "$DIR/util/get-config"
-. "$DIR/util/parse_opt_funcs"
 
 TYPE=config
 ARCH=x86_64
