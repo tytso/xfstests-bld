@@ -1,0 +1,3 @@
+SIZE=small
+export XFS_MKFS_OPTIONS="-m crc=0"
+TESTNAME="XFS v4 (crc=0)"

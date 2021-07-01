@@ -1,0 +1,3 @@
+SIZE=small
+export XFS_MKFS_OPTIONS="-m inobtcount=1,bigtime=1,rmapbt=1"
+TESTNAME="XFS advanced features (inobtcount, bigtime, rmapbt)"

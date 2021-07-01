@@ -1,3 +1,0 @@
-SIZE=small
-export XFS_MKFS_OPTIONS="-m rmapbt=1,reflink=1"
-TESTNAME="XFS reflink"
