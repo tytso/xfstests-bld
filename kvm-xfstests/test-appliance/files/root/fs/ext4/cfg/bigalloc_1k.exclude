@@ -36,3 +36,6 @@ generic/273
 # introduced to test a dm-thin bug combined with an XFS bug regression.
 # If it's a problem for ext4, we'll catch it in other ext4 configs.
 generic/500
+
+# Normal configurations don't support dax
+-g dax

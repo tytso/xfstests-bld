@@ -1,3 +1,6 @@
 # The following test is listed as expected failures for NFSv4 per
 # https://wiki.linux-nfs.org/wiki/index.php/Xfstests
 generic/426
+
+# Normal configurations don't support dax
+-g dax

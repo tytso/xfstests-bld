@@ -28,3 +28,6 @@ generic/235
 
 # Ext3 does not support file systems > 16TB
 generic/620
+
+# Normal configurations don't support dax
+-g dax

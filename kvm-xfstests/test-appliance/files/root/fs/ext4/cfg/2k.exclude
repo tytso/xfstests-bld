@@ -8,3 +8,6 @@ ext4/034
 # where it's not clear what it was originally trying to test in the
 # first place.  So let's just skip it for now.
 generic/273
+
+# Normal configurations don't support dax
+-g dax

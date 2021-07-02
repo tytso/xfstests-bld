@@ -20,3 +20,5 @@ generic/273
 # This test creates too many extended attributes to fit in a 1k block
 generic/454
 
+# Normal configurations don't support dax
+-g dax

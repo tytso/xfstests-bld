@@ -29,3 +29,6 @@ generic/601
 ext4/034
 generic/273
 generic/454
+
+# Normal configurations don't support dax
+-g dax

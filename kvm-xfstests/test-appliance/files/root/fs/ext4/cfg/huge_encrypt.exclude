@@ -14,3 +14,6 @@ generic/270
 # anticipate the external extended attribute required when
 # using a 1k block size
 generic/204
+
+# Normal configurations don't support dax
+-g dax

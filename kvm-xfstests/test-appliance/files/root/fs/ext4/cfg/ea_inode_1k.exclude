@@ -11,3 +11,5 @@ ext4/034
 # first place.  So let's just skip it for now.
 generic/273
 
+# Normal configurations don't support dax
+-g dax

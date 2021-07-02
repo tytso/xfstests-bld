@@ -1,1 +1,4 @@
 ext4/004	# dump/restore doesn't handle the ea_inode feature
+
+# Normal configurations don't support dax
+-g dax

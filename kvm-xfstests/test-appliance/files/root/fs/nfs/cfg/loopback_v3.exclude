@@ -5,3 +5,5 @@ generic/258
 generic/375
 generic/444
 
+# Normal configurations don't support dax
+-g dax

@@ -5,3 +5,6 @@ ext4/303
 ext4/304
 ext4/307
 ext4/308
+
+# Normal configurations don't support dax
+-g dax
