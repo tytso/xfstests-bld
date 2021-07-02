@@ -19,3 +19,8 @@ generic/484
 # Unfortunately, xfs_io falls back to read/write if necessary, which
 # causes generic/554 to fail.
 generic/554
+
+# Richacl was proposed in 2017, and is in SuSE(?) kernels, but it's never
+# gone upstream.   Suppress richacl tests to avoid a large number of
+# "skipped test" noise.
+-g richacl
