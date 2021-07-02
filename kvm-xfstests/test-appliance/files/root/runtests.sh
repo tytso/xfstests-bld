@@ -288,6 +288,15 @@ do
 		export LOGWRITES_DEV=$LG_SCR_DEV
 	    fi
 	fi
+	if test -z "$SCRATCH_LOGDEV" -a -n "$USE_EXTERNAL"; then
+	    if test "$TEST_DEV" != "$SM_TST_DEV" ; then
+		export SCRATCH_LOGDEV="$SM_TST_DEV"
+	    elif test "$SCRATCH_DEV" != "$SM_SCR_DEV" ; then
+		export SCRATCH_LOGDEV="$SM_SCR_DEV"
+	    elif test "$SCRATCH_DEV" != "$LG_SCR_DEV" ; then
+		export SCRATCH_LOGDEV="$LG_SCR_DEV"
+	    fi
+	fi
 
 	# This is required in case of BTRFS uses SCRATCH_DEV_POOL
 	if [[ -n $SCRATCH_DEV_POOL ]]; then
@@ -345,6 +354,7 @@ do
 	echo TEST_DIR: $TEST_DIR >> "$RESULT_BASE/config"
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
+	echo SCRATCH_LOGDEV: $SCRATCH_LOGDEV >> "$RESULT_BASE/config"
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then

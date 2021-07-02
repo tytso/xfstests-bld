@@ -79,4 +79,5 @@ function reset_vars()
     unset EXT_MOUNT_OPTIONS
     unset EXT_MKFS_OPTIONS
     unset MKFS_OPTIONS
+    unset USE_EXTERNAL
 }

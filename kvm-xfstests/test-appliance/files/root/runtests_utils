@@ -152,12 +152,15 @@ function compute_partition_sizes()
 	if test -n "$SIZE" ; then
 	    if test "$SIZE" = "large" ; then
 		lg_tst=true
+		sm_tst=true # For SCRATCH_LOGDEV
 	    else
 		if test "$FSTESTTYP" = "$FS" -a \
 		    "$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"; then
 		    pri_tst=true
+		    sm_tst=true # For SCRATCH_LOGDEV
 		else
 		    sm_tst=true
+		    lg_scr=true # For SCRATCH_LOGDEV
 		fi
 	    fi
 	fi
