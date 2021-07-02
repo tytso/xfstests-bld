@@ -403,12 +403,20 @@ echo "fsgqa:x:31415:" >> $ROOTDIR/etc/group
 echo "fsgqa:!::" >> $ROOTDIR/etc/gshadow
 mkdir $ROOTDIR/home/fsgqa
 chown 31415:31415 $ROOTDIR/home/fsgqa
-echo "123456-fsgqa:x:31416:31416:numberic fsgqa user:/home/123456-fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
+
+echo "fsgqa2:x:31416:31416:second fsgqa user:/home/fsgqa2:/bin/bash" >> $ROOTDIR/etc/passwd
+echo "fsgqa2:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "fsgqa2:x:31416:" >> $ROOTDIR/etc/group
+echo "fsgqa2:!::" >> $ROOTDIR/etc/gshadow
+mkdir $ROOTDIR/home/fsgqa2
+chown 31416:31416 $ROOTDIR/home/fsgqa
+
+echo "123456-fsgqa:x:31417:31417:numberic fsgqa user:/home/123456-fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
 echo "123456-fsgqa:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
-echo "123456-fsgqa:x:31416:" >> $ROOTDIR/etc/group
+echo "123456-fsgqa:x:31417:" >> $ROOTDIR/etc/group
 echo "123456-fsgqa:!::" >> $ROOTDIR/etc/gshadow
 mkdir $ROOTDIR/home/123456-fsgqa
-chown 31416:31416 $ROOTDIR/home/123456-fsgqa
+chown 31417:31417 $ROOTDIR/home/123456-fsgqa
 chmod 755 $ROOTDIR/root
 ln -sf ../proc/self/mounts $ROOTDIR/etc/mtab
 fix_symlinks
