@@ -359,6 +359,11 @@ do
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 	    format_filesystem "$TEST_DEV" "$(get_mkfs_opts)"
+	    ret="$?"
+	    if test "$ret" -gt 0 ; then
+		echo "Failed to format file system: exit status $ret"
+		continue
+	    fi
 	fi
 	if test ! -f /.dockerenv ; then
 	    echo 3 > /proc/sys/vm/drop_caches
@@ -434,6 +439,14 @@ do
 	    AEX="$AEX -E /tmp/exclude-tests"
 	fi
 	if test ! -f "$RESULT_BASE/tests-to-run" ; then
+	    bash ./check -n $FSTESTSET >& /tmp/tests-to-run.debug
+	    ret="$?"
+	    echo "Exit status $ret" >> /tmp/tests-to-run.debug
+	    if test "$ret" -gt 0 ; then
+		echo "Failed to run ./check -n $FSTESTSET"
+		cat /tmp/tests-to-run.debug
+		continue
+	    fi
 	    bash ./check -n $FSTESTSET 2> /dev/null | \
 		sed -e '1,/^$/d' -e '/^$/d' | \
 		sort > "$RESULT_BASE/tests-to-run"
