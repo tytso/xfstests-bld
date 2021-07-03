@@ -92,11 +92,11 @@ then
     run_hooks send-email
     if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
     then
-	if test -f /results/report
+	if test -s /results/report
 	then
 	    RESULTS_REPORT=/results/report
 	else
-	    RESULTS_REPORT=/results/failures
+	    RESULTS_REPORT=/results/runtests.log
 	fi
 	subj="$suite results $TESTRUNID - $(uname -r)"
 	if test -z "$GCE_REPORT_SENDER"
