@@ -111,7 +111,8 @@ validate_test_name()
 {
     if test -z "$DO_BLKTESTS" ; then
 	case "$1" in
-	    btrfs*|cifs*|ext4*|f2fs*|generic*|shared*|udf*|xfs*|overlay*) ;;
+	    btrfs*|ceph*|cifs*|ext4*|f2fs*|generic*|nfs*) ;;
+	    ocfs2*|overlay*|perf*|shared*|udf*|xfs*) ;;
 	    *)
 		echo -e "Invalid xfstests test name: $1\n"
 		print_help
