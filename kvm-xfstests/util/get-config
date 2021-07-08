@@ -77,6 +77,8 @@ if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
    GCE_SERIAL_PORT_ACCESS=TRUE
 fi
 
+GCE_DASHBOARD_SERVICE_IAM=gce-xfstests-iam
+
 function run_gcloud ()
 {
     if test -n "$GCE_ACCOUNT" ; then

@@ -462,3 +462,26 @@ example: `ROOT_FS=xfstests-201608130052`, or "gce-xfstests -I
 xfstests-201608130052 smoke".)  You can also use the --image-project
 command line option to override the GCE_IMAGE_PROJECT setting in your
 configuration file.
+
+# Visualizing test results using gce-xfstests dashboard
+
+Test results uploaded to GCS bucket can be visualized in a web based
+GUI. To setup the web dashboard, ensure that you have run
+`gce-xfstests setup` command. If you are upgrading from older
+gce-xfstests version, please re-run `gce-xfstests setup` command to
+setup the dashboard.
+
+Run `gce-xfstests launch-dashboard` command to launch the test
+dashboard on Google cloud run. This may take a while. Once this
+command completes, it will print a URL where the dashboard is live.
+
+You can optionally pass `--local` flag to above command to run
+dashboard locally.
+
+Default deployment of the dashboard allocates 512M RAM and 1 vCPU for
+the container. That may not be sufficient for large result
+buckets. You can pass `--highmem` flag to allocate 4G RAM and 4 vCPUs.
+
+Container building can take a few mins to complete. You can pass
+`--no-build` flag to skip container building phase and directly deploy
+the latest version.

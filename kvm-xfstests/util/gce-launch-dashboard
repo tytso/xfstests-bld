@@ -1,0 +1,45 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=.
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+fi
+
+. "$DIR/util/get-config"
+
+cd $DIR/dashboard
+
+if [ "$1" == "--local" ]; then
+    GS_BUCKET=gs://$GS_BUCKET python3 -m dashboard
+    exit 0
+fi
+
+DASHBOARD_CONTAINER_URI=gcr.io/$GCE_PROJECT/gce-xfstests-dashboard
+
+## This is enabled by default for now. Once we have a login service
+## that validates the users, we can disable this flag.
+ALLOW_UNAUTHENTICATED="--allow-unauthenticated"
+while [ "$1" != "" ]; do
+    case "$1" in
+	"--highmem")
+	    shift
+	    HIGHMEM="--memory 4G --cpu=4.0"
+	    ;;
+	"--allow-unauthenticated")
+	    shift
+	    ALLOW_UNAUTHENTICATED="--allow-unauthenticated"
+	    ;;
+	"--no-build")
+	    shift
+	    NO_BUILD=true
+	    ;;
+    esac
+done
+
+if [ "$NO_BUILD" != "true" ]; then
+    gcloud builds submit --tag $DASHBOARD_CONTAINER_URI
+fi
+gcloud run deploy gce-xfstests-dashboard --image $DASHBOARD_CONTAINER_URI --set-env-vars "GS_BUCKET=gs://$GS_BUCKET" \
+       --service-account $GCE_DASHBOARD_SERVICE_IAM $HIGHMEM $ALLOW_UNAUTHENTICATED

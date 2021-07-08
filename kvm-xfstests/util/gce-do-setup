@@ -49,6 +49,12 @@ function gce_gen_ltm_pass() {
     pwgen -n -s 15 1 | gsutil cp - gs://$GS_BUCKET/ltm-pass
 }
 
+function gce_setup_dashboard() {
+    gcloud services enable cloudbuild.googleapis.com run.googleapis.com --project $GCE_PROJECT
+    gcloud iam service-accounts create $GCE_DASHBOARD_SERVICE_IAM --project $GCE_PROJECT
+    gsutil iam ch serviceAccount:${GCE_DASHBOARD_SERVICE_IAM}@${GCE_PROJECT}.iam.gserviceaccount.com:objectAdmin gs://$GS_BUCKET
+}
+
 if ! type gcloud >& /dev/null ; then
    echo "You apparently do not have the Google Cloud SDK installed"
    echo "Please visit https://cloud.google.com/sdk/docs/quickstart-linux"
@@ -211,5 +217,6 @@ fi
 
 gce_gen_cert
 gce_gen_ltm_pass
+gce_setup_dashboard
 
 exit 0
