@@ -25,7 +25,7 @@ kvm-xfstests/test-appliance directory.
 A 64-bit x86 kernel can use both the 32-bit and 64-bit test appliance
 VM, since you can run 32-bit ELF binaries using a 64-bit kernel.
 However, the reverse is not true; a 32-bit x86 kernel can not run
-64-bit x86 binaries.  This makes the 32-bit test appliance more
+64-bit x86 binaries.  This makes the 64-bit test appliance more
 flexible.  In addition, if you use the 64-bit kernel with 32-bit
 interfaces, it tests the 32-bit compat ioctl code paths, which
 otherwise may not get sufficient testing.
