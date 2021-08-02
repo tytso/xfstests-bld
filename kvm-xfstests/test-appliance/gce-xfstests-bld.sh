@@ -73,6 +73,7 @@ PACKAGES="bash-completion \
 	nbd-server \
 	nfs-common \
 	nfs-kernel-server \
+	ntfs-3g \
 	nvme-cli \
 	openssl \
 	pciutils \

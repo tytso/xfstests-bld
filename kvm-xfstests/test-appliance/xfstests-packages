@@ -33,6 +33,7 @@ mtd-utils
 multipath-tools
 nbd-client
 nbd-server
+ntfs-3g
 nvme-cli
 parted
 perl

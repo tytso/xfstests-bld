@@ -1,0 +1,64 @@
+#
+# Configuration file for ntfs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+    local dev="$1"
+    local ret
+
+    /bin/ntfsfix "$dev"
+    ret="$?"
+    echo ntfsfix exited with status "$ret"
+    return "$ret"
+}
+
+function format_filesystem()
+{
+    local dev="$1"
+    local opts="$2"
+    local ret
+
+    /sbin/mkfs.ntfs -f $opts "$dev"
+    ret="$?"
+    return "$ret"
+}
+
+function setup_mount_opts()
+{
+    if test -n "$MNTOPTS" ; then
+	if test -n "$NTFS_MOUNT_OPTIONS" ; then
+            export NTFS_MOUNT_OPTIONS="$MOUNT_OPTIONS,$MNTOPTS"
+	else
+	    export NTFS_MOUNT_OPTIONS="-o $MNTOPTS"
+	fi
+    fi
+}
+
+function get_mkfs_opts()
+{
+    echo "$NTFS_MKFS_OPTIONS"
+}
+
+function show_mkfs_opts()
+{
+    echo NTFS_MKFS_OPTIONS: "$NTFS_MKFS_OPTIONS"
+}
+
+function show_mount_opts()
+{
+    echo NTFS_MOUNT_OPTIONS: "$NTFS_MOUNT_OPTIONS"
+}
+
+function test_name_alias()
+{
+    echo "$1"
+}
+
+function reset_vars()
+{
+    unset NTFS_MOUNT_OPTIONS
+    unset MKFS_OPTIONS
+}
