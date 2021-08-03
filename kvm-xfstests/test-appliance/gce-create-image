@@ -59,7 +59,7 @@ setup_for_buster()
 	IMAGE_PROJECT=debian-cloud
 	SUITE=buster
 	E2FSPROGS=e2fsprogs/buster-backports
-	LIBCOMERR=libcomerr2/buster-backports
+	LIBCOMERR=libcom-err2/buster-backports
 	LIBSS=libss2/buster-backports
 	BTRFS_PROGS=btrfs-progs/buster-backports
 	F2FS_TOOLS=f2fs-tools/buster-backports
