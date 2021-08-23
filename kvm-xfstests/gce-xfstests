@@ -683,7 +683,7 @@ fi
 
 case "$OVERRIDE_KERNEL" in
     gs://*)
-	GS_KERNEL="$KERNEL"
+	GS_KERNEL="$OVERRIDE_KERNEL"
 	GCE_KERNEL=""
 	;;
     //*)
