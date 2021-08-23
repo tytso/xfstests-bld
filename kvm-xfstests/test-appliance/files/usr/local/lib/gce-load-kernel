@@ -97,7 +97,7 @@ MNTOPTS="$mount_opts"
 DISK_SPEC="$disk_spec"
 PTS_SIZE="$pts_size"
 FSTESTEXC="${fstestexc//,/ }"
-NFSSRV="${$nfssrv}"
+NFSSRV="$nfssrv"
 EOF
     exit 0
 fi
