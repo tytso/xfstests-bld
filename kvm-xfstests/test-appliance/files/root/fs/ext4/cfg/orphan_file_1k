@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-b 1024 -O orphan_file"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 1k w/ orphan_file)"
