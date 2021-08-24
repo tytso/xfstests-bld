@@ -1,4 +1,4 @@
 SIZE=small
-export EXT_MKFS_OPTIONS="-I 256 -O inline_data,metadata_csum,64bit"
+export EXT_MKFS_OPTIONS="-O inline_data,fast_commit"
 export EXT_MOUNT_OPTIONS=""
-TESTNAME="Ext4 advanced features (inline_data, metadata_csum, 64bit)"
+TESTNAME="Ext4 advanced features (inline_data, fast_commit)"
