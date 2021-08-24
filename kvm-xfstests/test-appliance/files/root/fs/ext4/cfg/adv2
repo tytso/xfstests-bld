@@ -1,0 +1,4 @@
+SIZE=small
+export EXT_MKFS_OPTIONS="-O inline_data,fast_commit,orphan_file"
+export EXT_MOUNT_OPTIONS=""
+TESTNAME="Ext4 advanced features requiring development e2fsprogs (inline_data, fast_commit, orphan_file)"
