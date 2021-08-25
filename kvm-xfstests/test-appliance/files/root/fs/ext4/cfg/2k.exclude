@@ -1,7 +1,3 @@
-# This test uses dioread_nolock which currently isn't supported when
-# block_size != PAGE_SIZE.
-ext4/034
-
 # This test creates too many inodes on when the block size is 1k
 # without using special mkfs.ext4 options to change the inode size.
 # This test is a bit bogus anyway, and uses a bunch of magic calculations

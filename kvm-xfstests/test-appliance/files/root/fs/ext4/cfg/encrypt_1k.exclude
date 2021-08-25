@@ -26,7 +26,6 @@ generic/601
 
 # These tests are also excluded in 1k.exclude.
 # See there for the reasons.
-ext4/034
 generic/273
 generic/454
 
