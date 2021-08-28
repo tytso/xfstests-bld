@@ -165,10 +165,16 @@ additional windows to capture traces using ftrace.
 You can also access the qemu monitor on port 7498, and you can debug the
 kernel using remote gdb on localhost port 7499.  Just run "gdb
 /path/to/vmlinux", and then use the command "target remote
-localhost:7499".  (Pro tip: it's helpful to temporarily add
-"EXTRA_CFLAGS += -O0" to fs/{ext4,jbd2}/Makefile, and to make sure you
-have CONFIG_DEBUG_INFO, CONFIG_DEBUG_INFO_DWARF4, and
-CONFIG_FRAME_POINTER enabled.)
+localhost:7499".
+
+Pro tips for using remote gdb: it's helpful to temporarily add
+"EXTRA_CFLAGS += -O0" to fs/{ext4,jbd2}/Makefile, and use a kernel
+config with debug features enabled via "kvm-xfstests install-kconfig
+--debug".  In addition, you may need to add to your $HOME/.gdbinit the
+line "add-auto-load-safe-path /path/to", where /path/to is the
+directory containing the compiled vmlinux executable.  See
+[Documentation/dev-tools/gdb-kernel-debugging.rst](https://www.kernel.org/doc/html/latest/dev-tools/gdb-kernel-debugging.html)
+in the kernel sources for more information.
 
 ## Log files
 
