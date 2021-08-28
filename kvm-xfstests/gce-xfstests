@@ -389,8 +389,23 @@ case "$1" in
 	exit $?
 	;;
     ssh)
-	run_gcloud compute -q ssh root@"$2" \
-	    --zone $(get_gce_zone "$2") $RUN_INTERNAL
+	user=root
+	shift
+	while (( $# >= 1 )); do
+	    case $1 in
+		--user|-u) shift
+			   user="$1"
+			   ;;
+		-*)	echo "Unknown option $1"
+			exit 1
+			;;
+		*)	host="$1"
+			;;
+	    esac
+	    shift
+	done
+	run_gcloud compute -q ssh $user@"$host" \
+	    --zone $(get_gce_zone "$host") $RUN_INTERNAL
 	exit $?
 	;;
     scp)
