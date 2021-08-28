@@ -16,7 +16,6 @@ LIBCOMERR="@LIBCOMERR@"
 LIBSS="@LIBSS@"
 BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
-DUPEREMOVE="@DUPEREMOVE@"
 # Hardcoded go version
 GO_VERSION=1.14.15
 
@@ -38,7 +37,7 @@ PACKAGES="bash-completion \
 	dbus \
 	dmsetup \
 	dosfstools \
-	$DUPEREMOVE \
+	duperemove \
 	$E2FSPROGS \
 	dump \
 	e3 \
@@ -57,6 +56,7 @@ PACKAGES="bash-completion \
 	libcap2-bin \
 	$LIBCOMERR \
 	libelf-dev \
+	libgdbm6 \
 	libsasl2-modules \
 	$LIBSS \
 	liblzo2-2 \
@@ -80,8 +80,6 @@ PACKAGES="bash-completion \
 	perl \
 	procps \
 	psmisc \
-	python-future \
-	python-pip \
 	python3-pip \
 	python3-future \
 	reiserfsprogs \
@@ -202,7 +200,7 @@ else
 fi
 
 if test "$NEW_SUITE" = "buster" ; then
-    PACKAGES="$PACKAGES duperemove libgdbm6"
+    PACKAGES="$PACKAGES python-future python-pip"
 fi
 
 apt-get install -y $PACKAGES

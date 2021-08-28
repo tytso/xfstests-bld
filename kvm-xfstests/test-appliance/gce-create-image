@@ -39,20 +39,6 @@ if type -P pigz >& /dev/null ; then
     GZIP="pigz -9"
 fi
 
-setup_for_stretch()
-{
-	IMAGE_FAMILY=debian-9
-	IMAGE_PROJECT=debian-cloud
-	E2FSPROGS=e2fsprogs/stretch-backports
-	LIBCOMERR=libcomerr2/stretch-backports
-	LIBSS=libss2/stretch-backports
-	BTRFS_PROGS=btrfs-progs/stretch-backports
-	F2FS_TOOLS=f2fs-tools/stretch-backports
-	DUPEREMOVE=
-	SUITE=stretch
-	BACKPORTS=/stretch-backports
-}
-
 setup_for_buster()
 {
 	IMAGE_FAMILY=debian-10
@@ -63,11 +49,23 @@ setup_for_buster()
 	LIBSS=libss2/buster-backports
 	BTRFS_PROGS=btrfs-progs/buster-backports
 	F2FS_TOOLS=f2fs-tools/buster-backports
-	DUPEREMOVE=duperemove
 	BACKPORTS=/buster-backports
 }
 
-setup_for_stretch
+setup_for_bullseye()
+{
+	IMAGE_FAMILY=debian-11
+	IMAGE_PROJECT=debian-cloud
+	SUITE=bullseye
+	E2FSPROGS=e2fsprogs
+	LIBCOMERR=libcom-err2
+	LIBSS=libss2
+	BTRFS_PROGS=btrfs-progs
+	F2FS_TOOLS=f2fs-tools
+	BACKPORTS=/buster-backports
+}
+
+setup_for_buster
 
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
 TARBALL=../../xfstests.tar.gz
@@ -80,11 +78,11 @@ fi
 if test -f ../../xfstests/build-distro ; then
     distro=$(cat ../../xfstests/build-distro)
     case "$distro" in
-	stretch)
-	    setup_for_stretch
-	    ;;
 	buster)
 	    setup_for_buster
+	    ;;
+	bullseye)
+	    setup_for_bullseye
 	    ;;
 	*)
 	    echo "No support for build gce image for $distro"
@@ -96,9 +94,6 @@ fi
 while [ "$1" != "" ];
 do
     case "$1" in
-	--stretch)
-	    setup_for_stretch
-	    ;;
 	--buster)
 	    setup_for_buster
 	    ;;

@@ -76,6 +76,8 @@ select_packages()
     uuid-dev
     )
     case "$DEBIAN_RELEASE" in
+	bullseye)
+	    BUILD_PACKAGES+=(golang-1.15-go) ;;
 	buster)
 	    BUILD_PACKAGES+=(golang-1.11-go) ;;
 	stretch)

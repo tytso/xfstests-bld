@@ -4,7 +4,7 @@
 
 SAVE_ARGS=("$@")
 
-SUITE=stretch
+SUITE=buster
 MIRROR=http://mirrors.kernel.org/debian
 DIR=$(pwd)
 ROOTDIR=$DIR/rootdir
@@ -25,10 +25,10 @@ fi
 
 if test -f ../../xfstests/build-distro ; then
     distro=$(cat ../../xfstests/build-distro)
-    if test "$distro" = buster ; then
-	SUITE=buster
+    if test "$distro" = bullseye ; then
+	SUITE=bullseye
     else
-	SUITE=stretch
+	SUITE=buster
     fi
 fi
 
