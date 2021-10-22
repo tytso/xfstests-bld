@@ -37,6 +37,23 @@ function copy_xunit_results()
     fi
 }
 
+# check to see if a device is assigned to be used
+function is_dev_free() {
+    local device="$1"
+
+    for dev in "$TEST_DEV" \
+	       "$SCRATCH_DEV" \
+	       "$SCRATCH_LOGDEV" \
+	       "$LOGWRITES_DEV" \
+	       "$SCRATCH_RTDEV"
+    do
+	if test "$dev" == "$1" ; then
+	    return 1
+	fi
+    done
+    return 0
+}
+
 while [ "$1" != "" ]; do
     case $1 in
 	--run-once)
@@ -288,13 +305,32 @@ do
 		export LOGWRITES_DEV=$LG_SCR_DEV
 	    fi
 	fi
-	if test -z "$SCRATCH_LOGDEV" -a -n "$USE_EXTERNAL"; then
+
+	if test "$SCRATCH_LOGDEV" = "/dev/XXX" ; then
+	    export USE_EXTERNAL=yes
 	    if test "$TEST_DEV" != "$SM_TST_DEV" ; then
 		export SCRATCH_LOGDEV="$SM_TST_DEV"
 	    elif test "$SCRATCH_DEV" != "$SM_SCR_DEV" ; then
 		export SCRATCH_LOGDEV="$SM_SCR_DEV"
 	    elif test "$SCRATCH_DEV" != "$LG_SCR_DEV" ; then
 		export SCRATCH_LOGDEV="$LG_SCR_DEV"
+	    fi
+	fi
+
+	if test "$SCRATCH_RTDEV" = "/dev/XXX" ; then
+	    export USE_EXTERNAL=yes
+	    if is_dev_free "$SM_SCR_DEV" ; then
+		export SCRATCH_RTDEV="$SM_SCR_DEV"
+	    elif is_dev_free "$LG_SCR_DEV" ; then
+		export SCRATCH_RTDEV="$LG_SCR_DEV"
+	    elif is_dev_free "$SM_TST_DEV" ; then
+		export SCRATCH_RTDEV="$SM_TST_DEV"
+	    elif is_dev_free "$LG_TST_DEV"; then
+		export SCRATCH_RTDEV="$LG_TST_DEV"
+	    elif is_dev_free "$PRI_TST_DEV" ; then
+		export SCRATCH_RTDEV="$PRI_TST_DEV"
+	    else
+		echo "WARNING: no available disk for SCRATCH_RTDEV"
 	    fi
 	fi
 
@@ -355,6 +391,7 @@ do
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
 	echo SCRATCH_LOGDEV: $SCRATCH_LOGDEV >> "$RESULT_BASE/config"
+	echo SCRATCH_RTDEV: $SCRATCH_RTDEV >> "$RESULT_BASE/config"
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
