@@ -1,0 +1,5 @@
+SIZE=small
+export SCRATCH_LOGDEV=/dev/XXX
+export SCRATCH_RTDEV=/dev/XXX
+export MKFS_OPTIONS='-d rtinherit=1 -m reflink=0,rmapbt=0 -l size=1g '
+TESTNAME="XFS realtime with external log"

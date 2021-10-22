@@ -1,0 +1,3 @@
+SIZE=small
+export MOUNT_OPTIONS='-o usrquota,grpquota,prjquota'
+TESTNAME="XFS defaults plus quota"
