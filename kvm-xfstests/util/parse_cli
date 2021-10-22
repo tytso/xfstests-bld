@@ -260,6 +260,7 @@ numa:
 pmem-device
 pts-size:
 preemptible
+primary_fstype:
 repo:
 stress-mem:
 stress-opts:
@@ -512,6 +513,9 @@ while (( $# >= 1 )); do
 	--preemptible|--preempt)
 	    supported_flavors gce
 	    PREEMPTIBLE=yes
+	    ;;
+	--primary_fstype) shift
+	    PRIMARY_FSTYPE="$1"
 	    ;;
 	--pts-size) shift
 	    supported_flavors gce
