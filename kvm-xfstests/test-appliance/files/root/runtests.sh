@@ -455,6 +455,10 @@ do
 		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
 		    < "/root/fs/$FS/cfg/$TC.exclude" >> "/tmp/exclude"
 	    fi
+	    if test -f "/root/fs/exclude.$XFSTESTS_FLAVOR" ; then
+		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+		    < "/root/fs/exclude.$XFSTESTS_FLAVOR" >> "/tmp/exclude"
+	    fi
 	    if test -s "/tmp/exclude" ; then
 		EXSET=$(sort -u "/tmp/exclude")
 		bash ./check -n $EXSET | \

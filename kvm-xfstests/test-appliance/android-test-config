@@ -11,3 +11,4 @@ export LG_SCR_MNT=/vde
 export LG_TST_MNT=/vdf
 
 PATH="/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export XFSTESTS_FLAVOR=android

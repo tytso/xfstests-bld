@@ -274,7 +274,8 @@ cat /etc/lighttpd/ltm.conf >> /etc/lighttpd/lighttpd.conf
 systemctl stop lighttpd.service
 systemctl disable lighttpd.service
 
-sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
+sed -e 's;/dev/;/dev/mapper/xt-;' -e '/XFSTESTS_FLAVOR=/s/kvm/gce/' \
+    < /root/test-config > /tmp/test-config
 echo "export RUN_ON_GCE=yes" >> /tmp/test-config
 mv /tmp/test-config /root/test-config
 rm -f /root/*~
