@@ -45,12 +45,14 @@ elif test -f "/run/do_blktests" ; then
 else
     logger -i "compute partition sizes"
     # pass pri_tst size as 0, so TOTAL_SIZE doesn't include it.
-    if compute_partition_sizes "/root/fs" 5 5 5 20 20; then
+    if compute_partition_sizes "/root/fs" 5 5 5 20 20 1 1; then
 	VDB_SIZE="${REQUIRED_PARTITION_SIZE["PRI_TST"]:-0}""g"
 	VDC_SIZE="${REQUIRED_PARTITION_SIZE["SM_SCR"]:-0}""g"
 	VDD_SIZE="${REQUIRED_PARTITION_SIZE["SM_TST"]:-0}""g"
 	VDE_SIZE="${REQUIRED_PARTITION_SIZE["LG_TST"]:-0}""g"
 	VDF_SIZE="${REQUIRED_PARTITION_SIZE["LG_SCR"]:-0}""g"
+	VDI_SIZE="${REQUIRED_PARTITION_SIZE["TINY_TST"]:-0}""g"
+	VDJ_SIZE="${REQUIRED_PARTITION_SIZE["TINY_SCR"]:-0}""g"
 	SCRATCH_SIZE=${REQUIRED_PARTITION_SIZE["TOTAL_SIZE"]}
 	if test "$SCRATCH_SIZE" -gt 0 ; then
 	    ((SCRATCH_SIZE+=1)) # Add 1gb for overhead.
@@ -58,6 +60,7 @@ else
 	logger -i "Computed partition sizes successfully:"
 	logger -i "VDB: $VDB_SIZE  VDC: $VDC_SIZE  VDD: $VDD_SIZE"
 	logger -i "VDE: $VDE_SIZE  VDF: $VDF_SIZE"
+	logger -i "VDI: $VDI_SIZE  VDJ: $VDJ_SIZE"
 	logger -i "Total disk size: $SCRATCH_SIZE"
 	export VDB_SIZE VDC_SIZE VDD_SIZE VDE_SIZE VDF_SIZE \
 	       SCRATCH_SIZE CREATE_FILESTORE

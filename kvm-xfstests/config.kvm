@@ -19,6 +19,8 @@ VDD=$DIR/disks/vdd
 VDE=$DIR/disks/vde
 VDF=$DIR/disks/vdf
 VDG=$DIR/disks/vdg
+VDI=$DIR/disks/vdi
+VDJ=$DIR/disks/vdj
 CACHE=none
 
 IFUP=$DIR/util/qemu-ifup

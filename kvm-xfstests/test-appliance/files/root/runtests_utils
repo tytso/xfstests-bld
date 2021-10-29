@@ -104,6 +104,8 @@ function get_one_fs_config() {
 # Arg 4 - size of sm_tst (vdd), defaults to 5
 # Arg 5 - size of lg_tst (vde), defaults to 20
 # Arg 6 - size of lg_scr (vdf), defaults to 20
+# Arg 7 - size of tiny_tst (vdi), defaults to 1
+# Arg 8 - size of tiny_scr (vdj), defaults to 1
 # REQUIRED_PARTITION_SIZE - associative array with keys:
 #     "PRI_TST", "SM_SCR", "SM_TST", "LG_TST", "LG_SCR"
 #     "TOTAL_SIZE" - sum of above 5 values.
@@ -129,12 +131,16 @@ function compute_partition_sizes()
     local sm_tst_in_use_size="${4:-5}"
     local lg_tst_in_use_size="${5:-20}"
     local lg_scr_in_use_size="${6:-20}"
+    local tiny_tst_in_use_size="${7:-1}"
+    local tiny_scr_in_use_size="${8:-1}"
 
     local pri_tst=true # PRI_TST_DEV PRI_TST_MNT
     local sm_scr=true # SM_SCR_DEV SM_SCR_MNT
     local sm_tst=true # SM_TST_DEV SM_TST_MNT
     local lg_tst=true # LG_TST_DEV LG_TST_MNT
     local lg_scr=true # LG_SCR_DEV LG_SCR_MNT
+    local tiny_tst=true # TINY_TST_DEV TINY_TST_MNT
+    local tiny_scr=true # TINY_SCR_DEV TINY_SCR_MNT
 
     if $pri_tst; then
 	((scratch_size+=$pri_tst_in_use_size))
@@ -155,6 +161,14 @@ function compute_partition_sizes()
     if $lg_scr; then
 	((scratch_size+=$lg_scr_in_use_size))
 	REQUIRED_PARTITION_SIZE["LG_SCR"]="$lg_scr_in_use_size"
+    fi
+    if $tiny_tst; then
+	((scratch_size+=$tiny_tst_in_use_size))
+	REQUIRED_PARTITION_SIZE["TINY_TST"]="$tiny_tst_in_use_size"
+    fi
+    if $tiny_scr; then
+	((scratch_size+=$tiny_scr_in_use_size))
+	REQUIRED_PARTITION_SIZE["TINY_SCR"]="$tiny_scr_in_use_size"
     fi
     clear_fs_config
 

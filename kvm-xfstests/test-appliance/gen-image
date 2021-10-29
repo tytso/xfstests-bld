@@ -391,7 +391,7 @@ then
     fi
 fi
 update_xfstests
-for i in vda vdb vdc vdd vde vdf results test scratch mnt/test mnt/scratch
+for i in vda vdb vdc vdd vde vdf vdi vdj results test scratch mnt/test mnt/scratch
 do
 	mkdir -p $ROOTDIR/$i
 done

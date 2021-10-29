@@ -89,13 +89,14 @@ if test -n "$INITRD" ; then
     INITRD="--initrd $INITRD"
 fi
 
-if ! test -e $VDB -a -e $VDC -a -e $VDD -a -e $VDE -a -e $VDF -a -e $VDG
+if ! test -e $VDB -a -e $VDC -a -e $VDD -a -e $VDE -a -e $VDF -a -e $VDG \
+     -a -e $VDI -a -e $VDJ
 then
 	echo "Test disks don't exist, running setup..."
 	$DIR/setup
 fi
 
-for i in "$VDB" "$VDC" "$VDD" "$VDE" "$VDF" "$VDG"
+for i in "$VDB" "$VDC" "$VDD" "$VDE" "$VDF" "$VDG" "$VDI" "$VDJ"
 do
     if ! test -e "$i"
     then
@@ -181,6 +182,8 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
 	-drive file=$VDH,if=virtio,format=raw \
+	-drive file=$VDI,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDJ,cache=$CACHE,if=virtio,format=raw$AIO \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
 	$VIRTFS \
 	$VIRTIO_RNG \

@@ -302,7 +302,7 @@ cp -r /usr/local/lib/gce-server /usr/local/lib/src/
 . /root/test-config
 
 mkdir -p $PRI_TST_MNT $SM_SCR_MNT $SM_TST_MNT $LG_TST_MNT $LG_SCR_MNT \
-      /results /test /scratch /mnt/test /mnt/scratch
+      $TINY_TST_MNT $TINY_SCR_MNT /results /test /scratch /mnt/test /mnt/scratch
 touch /results/runtests.log
 
 cat >> /etc/fstab <<EOF

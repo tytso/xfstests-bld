@@ -131,6 +131,14 @@ then
     then
 	lvcreate -L "${VDF_SIZE:-20g}"  -n vdf xt
     fi
+    if [ "$VDI_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDI_SIZE:-1g}"  -n vdi xt
+    fi
+    if [ "$VDJ_SIZE" != '0g' ]
+    then
+	lvcreate -L "${VDJ_SIZE:-1g}"  -n vdj xt
+    fi
 fi
 wait
 exit 0

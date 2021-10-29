@@ -14,6 +14,8 @@ v_tmp		/vtmp	9p	trans=virtio,version=9p2000.L,msize=262144,nofail,x-systemd.devi
 /dev/vde	/vde	auto	defaults,noauto		0	0
 /dev/vdf	/vdf	auto	defaults,noauto		0	0
 /dev/vdg	/results auto	defaults		0	2
+/dev/vdi	/vdi	auto	defaults,noauto		0	0
+/dev/vdj	/vdj	auto	defaults,noauto		0	0
 
 localhost:/test	/mnt/test nfs 	defaults,noauto		0	0
 localhost:/scratch /mnt/scratch nfs defaults,noauto	0	0
