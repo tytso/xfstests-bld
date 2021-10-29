@@ -8,8 +8,13 @@ function check_filesystem()
 {
     local dev="$1"
     local ret
+    local logdev_opt
 
-    /sbin/e2fsck -fy "$dev"
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_LOGDEV" ]; then
+        logdev_opt="-j $TEST_LOGDEV"
+    fi
+
+    /sbin/e2fsck $logdev_opt -fy "$dev"
     ret="$?"
     echo e2fsck exited with status "$ret"
     return "$ret"
@@ -20,8 +25,13 @@ function format_filesystem()
     local dev="$1"
     local opts="$2"
     local ret
+    local logdev_opt
 
-    /sbin/mke2fs -F -q -t ext4 $opts "$dev"
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_LOGDEV" ]; then
+        logdev_opt="-O journal_dev $TEST_LOGDEV"
+    fi
+
+    /sbin/mke2fs -F -q -t ext4 $opts $logdev_opt "$dev"
     ret="$?"
     return "$ret"
 }

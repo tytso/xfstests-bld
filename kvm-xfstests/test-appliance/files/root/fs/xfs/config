@@ -9,7 +9,18 @@ function check_filesystem()
     local dev="$1"
     local ret
 
-    xfs_repair "$dev"
+    local logdev_opt
+    local rt_opt
+
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_LOGDEV" ]; then
+        logdev_opt="-l $TEST_LOGDEV"
+    fi
+
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_RTDEV" ]; then
+        rt_opt="-r $TEST_RTDEV"
+    fi
+
+    xfs_repair $logdev_opt $rt_opt "$dev"
     ret="$?"
     echo xfs_repair exited with status "$ret"
     return "$ret"
@@ -20,8 +31,18 @@ function format_filesystem()
     local dev="$1"
     local opts="$2"
     local ret
+    local logdev_opt
+    local rt_opt
 
-    mkfs.xfs -f $opts "$dev"
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_LOGDEV" ]; then
+        logdev_opt="-l logdev=$TEST_LOGDEV"
+    fi
+
+    if [ "$dev" = "$TEST_DEV" ] && [ -n "$TEST_RTDEV" ]; then
+        rt_opt="-r rtdev=$TEST_RTDEV"
+    fi
+
+    mkfs.xfs -f $opts $logdev_opt $rt_opt "$dev"
     ret="$?"
     return "$ret"
 }
