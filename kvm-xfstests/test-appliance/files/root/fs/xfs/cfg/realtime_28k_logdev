@@ -1,5 +1,7 @@
 SIZE=small
 export SCRATCH_RTDEV=/dev/XXX
-export MKFS_OPTIONS='-d rtinherit=1 -m reflink=0,rmapbt=0 -r extsize=28k -l size=1g '
+export TEST_RTDEV=/dev/XXX
+export MKFS_OPTIONS='-d rtinherit=1 -m reflink=0,rmapbt=0 -r extsize=28k '
 export SCRATCH_LOGDEV=/dev/XXX
+export TEST_LOGDEV=/dev/XXX
 TESTNAME="XFS realtime with external log and 28K blocks"

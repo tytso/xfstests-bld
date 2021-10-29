@@ -2,4 +2,5 @@ SIZE=small
 export EXT_MKFS_OPTIONS="-b 4096"
 export EXT_MOUNT_OPTIONS=""
 export SCRATCH_LOGDEV=/dev/XXX
+export TEST_LOGDEV=/dev/XXX
 TESTNAME="Ext4 4k block"
