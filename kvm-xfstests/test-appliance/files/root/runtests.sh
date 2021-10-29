@@ -44,8 +44,10 @@ function is_dev_free() {
     for dev in "$TEST_DEV" \
 	       "$SCRATCH_DEV" \
 	       "$SCRATCH_LOGDEV" \
+	       "$TEST_LOGDEV" \
 	       "$LOGWRITES_DEV" \
-	       "$SCRATCH_RTDEV"
+	       "$SCRATCH_RTDEV" \
+	       "$TEST_RTDEV"
     do
 	if test "$dev" == "$1" ; then
 	    return 1
@@ -307,14 +309,23 @@ do
 	fi
 
 	if test "$SCRATCH_LOGDEV" = "/dev/XXX" ; then
-	    export USE_EXTERNAL=yes
-	    if test "$TEST_DEV" != "$SM_TST_DEV" ; then
-		export SCRATCH_LOGDEV="$SM_TST_DEV"
-	    elif test "$SCRATCH_DEV" != "$SM_SCR_DEV" ; then
-		export SCRATCH_LOGDEV="$SM_SCR_DEV"
-	    elif test "$SCRATCH_DEV" != "$LG_SCR_DEV" ; then
-		export SCRATCH_LOGDEV="$LG_SCR_DEV"
-	    fi
+		if [ -z "$TINY_SCR_DEV" ]; then
+			echo "Error: No TINY_SCR_DEV set, skipping config $FS/$TC"
+			continue
+		fi
+
+		export SCRATCH_LOGDEV="$TINY_SCR_DEV"
+		export USE_EXTERNAL=yes
+	fi
+
+	if test "$TEST_LOGDEV" = "/dev/XXX" ; then
+		if [ -z "$TINY_TST_DEV" ]; then
+			echo "Error: No TINY_SCR_DEV set, skipping config $FS/$TC"
+			continue
+		fi
+
+		export TEST_LOGDEV="$TINY_TST_DEV"
+		export USE_EXTERNAL=yes
 	fi
 
 	if test "$SCRATCH_RTDEV" = "/dev/XXX" ; then
@@ -329,6 +340,23 @@ do
 		export SCRATCH_RTDEV="$LG_TST_DEV"
 	    elif is_dev_free "$PRI_TST_DEV" ; then
 		export SCRATCH_RTDEV="$PRI_TST_DEV"
+	    else
+		echo "WARNING: no available disk for SCRATCH_RTDEV"
+	    fi
+	fi
+
+	if test "$TEST_RTDEV" = "/dev/XXX" ; then
+	    export USE_EXTERNAL=yes
+	    if is_dev_free "$SM_SCR_DEV" ; then
+		export TEST_RTDEV="$SM_SCR_DEV"
+	    elif is_dev_free "$LG_SCR_DEV" ; then
+		export TEST_RTDEV="$LG_SCR_DEV"
+	    elif is_dev_free "$SM_TST_DEV" ; then
+		export TEST_RTDEV="$SM_TST_DEV"
+	    elif is_dev_free "$LG_TST_DEV"; then
+		export TEST_RTDEV="$LG_TST_DEV"
+	    elif is_dev_free "$PRI_TST_DEV" ; then
+		export TEST_RTDEV="$PRI_TST_DEV"
 	    else
 		echo "WARNING: no available disk for SCRATCH_RTDEV"
 	    fi
@@ -391,7 +419,9 @@ do
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
 	echo SCRATCH_LOGDEV: $SCRATCH_LOGDEV >> "$RESULT_BASE/config"
+	echo TEST_LOGDEV: $TEST_LOGDEV >> "$RESULT_BASE/config"
 	echo SCRATCH_RTDEV: $SCRATCH_RTDEV >> "$RESULT_BASE/config"
+	echo TEST_RTDEV: $TEST_RTDEV >> "$RESULT_BASE/config"
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
