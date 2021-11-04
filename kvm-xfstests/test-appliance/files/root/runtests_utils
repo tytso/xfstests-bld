@@ -22,6 +22,7 @@ function clear_fs_config()
     unset SIZE REQUIRE_FEATURE
     unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
     unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
+    unset TEST_LOGDEV SCRATCH_LOGDEV TEST_RTDEV SCRATCH_RTDEV
     type reset_vars &> /dev/null && reset_vars
 }
 
@@ -35,6 +36,7 @@ function clear_fs_config()
 # variables modified include SIZE REQUIRE_FEATURE
 # FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
 # TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
+# TEST_LOGDEV SCRATCH_LOGDEV TEST_RTDEV SCRATCH_RTDEV
 # The variables explicitly set by the func are FS, TC, and FSTESTCFG
 
 # If return value is 1, no config was successfully sourced, and
