@@ -18,9 +18,9 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
 
-FIO_COMMIT=fio-3.23
-QUOTA_COMMIT=7b89abbc983d6cf7f1baf52a9ad90211eee02103
-XFSPROGS_COMMIT=v5.9.0
+FIO_COMMIT=fio-3.28
+QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
+XFSPROGS_COMMIT=v5.13.0
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
