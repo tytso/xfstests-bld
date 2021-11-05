@@ -1,0 +1,2 @@
+# Normal configurations don't support dax
+-g dax
