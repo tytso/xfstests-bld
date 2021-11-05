@@ -1,2 +1,16 @@
 # Normal configurations don't support dax
 -g dax
+
+# On a 5.15-rc4 kernel, xfs/170 reliably causes a soft lockup in
+# xfs_alloc_read_agf()+0x41/0x110.  Call stack:
+#
+# xfs_alloc_pagf_init+0x27/0x60
+# xfs_filestream_pick_ag+0x280/0x530
+# xfs_filestream_new_ag+0x87/0x100
+# xfs_bmap_btalloc_filestreams.constprop.0+0xe0/0x120
+# xfs_bmap_btalloc+0x3e6/0x700
+# xfs_bmapi_allocate+0xe4/0x310
+# xfs_bmapi_convert_delalloc+0x26c/0x480
+# xfs_map_blocks+0x1b5/0x510
+# ...
+xfs/170
