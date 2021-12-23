@@ -569,7 +569,7 @@ run_in_chroot()
 
 create_chroot()
 {
-    mkdir -p "$CHROOT_DIR"
+    mkdir -p -m0755 "$CHROOT_DIR"
 
     test -z "${PROXY}" || export http_proxy=${PROXY}
     if ! run_cmd debootstrap --arch "$DEBIAN_ARCH" ${QEMU:+--foreign} \
