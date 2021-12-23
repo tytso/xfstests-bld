@@ -18,10 +18,10 @@ package main
 import (
 	"net/http"
 
-	"gce-server/util/check"
-	"gce-server/util/logging"
-	"gce-server/util/mymath"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/logging"
+	"thunk.org/gce-server/util/mymath"
+	"thunk.org/gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )

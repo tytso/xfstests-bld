@@ -1,7 +1,7 @@
 package git
 
 import (
-	"gce-server/util/check"
+	"thunk.org/gce-server/util/check"
 	"io/ioutil"
 	"os"
 	"testing"

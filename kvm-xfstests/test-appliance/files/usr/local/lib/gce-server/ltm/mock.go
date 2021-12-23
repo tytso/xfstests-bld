@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"gce-server/util/gcp"
-	"gce-server/util/logging"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/gcp"
+	"thunk.org/gce-server/util/logging"
+	"thunk.org/gce-server/util/server"
 )
 
 type JsonSharder struct {

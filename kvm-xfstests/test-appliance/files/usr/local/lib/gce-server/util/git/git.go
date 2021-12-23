@@ -17,8 +17,8 @@ import (
 	"strings"
 	"sync"
 
-	"gce-server/util/check"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/server"
 )
 
 // configurable constants for git utility functions

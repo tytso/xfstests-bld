@@ -7,7 +7,7 @@ package parser
 import (
 	"encoding/base64"
 	"fmt"
-	"gce-server/util/check"
+	"thunk.org/gce-server/util/check"
 	"strings"
 )
 

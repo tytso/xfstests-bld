@@ -1,7 +1,7 @@
 package email
 
 import (
-	"gce-server/util/gcp"
+	"thunk.org/gce-server/util/gcp"
 	"os"
 	"testing"
 )

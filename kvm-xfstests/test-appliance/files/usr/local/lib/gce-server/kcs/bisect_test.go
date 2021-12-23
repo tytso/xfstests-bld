@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/server"
 )
 
 func TestBisect(t *testing.T) {

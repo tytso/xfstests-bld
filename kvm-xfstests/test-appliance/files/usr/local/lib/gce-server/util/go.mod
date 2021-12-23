@@ -1,4 +1,4 @@
-module gce-server
+module thunk.org/gce-server/util
 
 go 1.14
 

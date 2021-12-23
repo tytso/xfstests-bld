@@ -234,13 +234,11 @@ fi
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
 gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \
-       gs://$BUCKET/create-image/go-srcs.tar.gz \
        gs://$BUCKET/create-image/files.tar.gz /root/
 ls -shF /root
 tar -C /root -xzf /root/xfstests.tar.gz
 tar -C / -xzf /root/files.tar.gz
-tar -C / -xzf /root/go-srcs.tar.gz
-rm -f /root/xfstests.tar.gz /root/files.tar.gz /root/go-srcs.tar.gz
+rm -f /root/xfstests.tar.gz /root/files.tar.gz
 
 # This installs junitparser and the sendgrid python classes
 pip3 install -r /usr/local/lib/requirements.txt
@@ -294,10 +292,13 @@ rm -rf $GO_TEMP
 export GOPATH=/usr/local/lib
 export GOCACHE=/tmp/.cache/go-build
 mkdir -p /usr/local/lib/src
-cp -r /usr/local/lib/gce-server /usr/local/lib/src/
-/usr/local/lib/go/bin/go get gce-server/...
-/usr/local/lib/go/bin/go build gce-server/kcs
-/usr/local/lib/go/bin/go build gce-server/ltm
+mkdir -p /usr/local/lib/bin
+for i in kcs ltm ; do
+    cd /usr/local/lib/gce-server/$i
+    /usr/local/lib/go/bin/go get .
+    /usr/local/lib/go/bin/go build .
+    mv $i /usr/local/lib/bin
+done
 
 . /root/test-config
 

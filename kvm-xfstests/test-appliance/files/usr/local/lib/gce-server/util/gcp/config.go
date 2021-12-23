@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"sync"
 
-	"gce-server/util/check"
+	"thunk.org/gce-server/util/check"
 )
 
 // config file locations on multiple machines

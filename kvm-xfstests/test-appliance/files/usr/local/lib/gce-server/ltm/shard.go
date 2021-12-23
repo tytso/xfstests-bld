@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"gce-server/util/check"
-	"gce-server/util/gcp"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/gcp"
+	"thunk.org/gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/compute/v1"

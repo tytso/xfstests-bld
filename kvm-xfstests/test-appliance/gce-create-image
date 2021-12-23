@@ -152,20 +152,9 @@ tar xzOf "$TARBALL" xfstests/git-versions | grep -v ^xfstests-bld | \
     sort > files/root/xfstests/git-versions
 LABELS=$(get_labels < files/root/xfstests/git-versions )
 
-go_base="$(pwd)/files/usr/local/lib"
-mkdir -p "$go_base/src"
-if type -P go >& /dev/null ; then
-    cp -r "$go_base/gce-server" "$go_base/src"
-    GOPATH="$go_base" go get gce-server/...
-    rm -rf "$go_base/src/gce-server"
-fi
-
 tar -X gce-exclude-files -C files --numeric-owner \
     --owner=root:0 --group=root:0 --mode=go+u-w \
     -cf $td/files.tar .
-tar -C files --sort=name --mtime="UTC 2021-01-01" --numeric-owner \
-    --owner=root:0 --group=root:0 --mode=go+u-w \
-    -cf - usr/local/lib/src | $GZIP -c -n > $td/go-srcs.tar.gz
 
 # copy the necessary files for gce-xfstests commands, except for configs.
 # Configs will be fetched on LTM launch, and will piggyback on the

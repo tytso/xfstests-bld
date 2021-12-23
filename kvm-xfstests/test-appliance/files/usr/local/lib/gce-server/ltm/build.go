@@ -1,10 +1,10 @@
 package main
 
 import (
-	"gce-server/util/check"
-	"gce-server/util/email"
-	"gce-server/util/logging"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/email"
+	"thunk.org/gce-server/util/logging"
+	"thunk.org/gce-server/util/server"
 )
 
 // ForwardKCS forwards a build or git bisect start task to KCS.

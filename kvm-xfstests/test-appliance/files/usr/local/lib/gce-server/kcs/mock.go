@@ -1,9 +1,9 @@
 package main
 
 import (
-	"gce-server/util/check"
-	"gce-server/util/git"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/git"
+	"thunk.org/gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )

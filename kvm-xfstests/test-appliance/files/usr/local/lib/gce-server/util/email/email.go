@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"runtime/debug"
 
-	"gce-server/util/check"
-	"gce-server/util/gcp"
-	"gce-server/util/logging"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/gcp"
+	"thunk.org/gce-server/util/logging"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"

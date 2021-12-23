@@ -11,14 +11,14 @@ import (
 	"sync"
 	"time"
 
-	"gce-server/util/check"
-	"gce-server/util/email"
-	"gce-server/util/gcp"
-	"gce-server/util/git"
-	"gce-server/util/logging"
-	"gce-server/util/mymath"
-	"gce-server/util/parser"
-	"gce-server/util/server"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/email"
+	"thunk.org/gce-server/util/gcp"
+	"thunk.org/gce-server/util/git"
+	"thunk.org/gce-server/util/logging"
+	"thunk.org/gce-server/util/mymath"
+	"thunk.org/gce-server/util/parser"
+	"thunk.org/gce-server/util/server"
 
 	"github.com/sirupsen/logrus"
 )
