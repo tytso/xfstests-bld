@@ -1,4 +1,4 @@
 SIZE=small
-export MKFS_OPTIONS='-n size=8192'
-export MOUNT_OPTIONS='-o usrquota,grpquota,prjquota'
+export XFS_MKFS_OPTIONS='-n size=8192'
+export XFS_MOUNT_OPTIONS='-o usrquota,grpquota,prjquota'
 TESTNAME="XFS with 8K directory blocks"

@@ -1,5 +1,5 @@
 SIZE=small
-export MOUNT_OPTIONS='-o usrquota,grpquota,prjquota'
+export XFS_MOUNT_OPTIONS='-o usrquota,grpquota,prjquota'
 export SCRATCH_LOGDEV=/dev/XXX
 export TEST_LOGDEV=/dev/XXX
 TESTNAME="XFS with external log"
