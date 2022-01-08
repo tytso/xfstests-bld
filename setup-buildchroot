@@ -68,6 +68,7 @@ select_packages()
     libssl-dev
     libsystemd-dev
     libtool-bin
+    liburcu-dev
     lsb-release
     pkg-config
     qemu-utils
