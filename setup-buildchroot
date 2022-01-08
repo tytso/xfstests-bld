@@ -75,6 +75,7 @@ select_packages()
     rsync
     symlinks
     uuid-dev
+    zlib1g-dev
     )
     case "$DEBIAN_RELEASE" in
 	bullseye)
