@@ -92,8 +92,8 @@ Afterwards, it will behave just like a native chroot.
 Once you're created a chroot, you should be able to use the `schroot`
 program to enter it, e.g.:
 
-    $ schroot -c buster-amd64         # enter chroot as regular user
-    $ schroot -c buster-amd64 -u root # enter chroot as root
+    $ schroot -c bullseye-amd64         # enter chroot as regular user
+    $ schroot -c bullseye-amd64 -u root # enter chroot as root
 
 The `-c` option must specify the name of the chroot as listed in
 `/etc/schroot/schroot.conf`.  By default `setup-buildchroot` names the
