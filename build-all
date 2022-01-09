@@ -4,6 +4,7 @@ set -e
 
 if type lsb_release >& /dev/null ; then
     lsb_release -c | awk '{print $2}' > build-distro
+    echo "zz_build-distro	$(cat build-distro)" > zz_build-distro.ver
 else
     rm -f build-distro
 fi
