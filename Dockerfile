@@ -7,29 +7,38 @@
 # privileges.
 #
 # VERSION 0.1
-FROM debian:stretch
+FROM debian:bullseye
 
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y \
 	    autoconf \
 	    automake \
+	    autopoint \
 	    bc \
+	    bison \
 	    build-essential \
 	    curl \
 	    gettext \
 	    git \
+	    libblkid-dev \
+	    libdbus-1-3 \
 	    libkeyutils-dev \
 	    libtool \
+	    libgdbm-dev \
+	    libkeyutils-dev \
+	    libssl-dev \
 	    libtool-bin \
+	    liburcu-dev \
 	    pkg-config \
 	    pigz \
 	    uuid-dev \
-	    libssl-dev \
-	    autopoint  \
+	    zlib1g-dev \
 	    procps \
-	    python \
-	    python-future && \
+	    python3 \
+	    python3-future \
+	    rsync \
+	    symlinks && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \

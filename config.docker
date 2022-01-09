@@ -1,27 +1,27 @@
 XFSTESTS_GIT=https://github.com/tytso/xfstests
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-XFSPROGS_COMMIT=v4.19.0
+XFSPROGS_COMMIT=b42033308360655616fc9bd77678c46bf518b7c8 # v5.13.0
 
-FIO_GIT=http://git.kernel.dk/fio.git
-FIO_COMMIT=fio-3.2
+FIO_GIT=https://git.kernel.dk/fio.git
+FIO_COMMIT=9b46661c289d01dbfe5182189a7abea9ce2f9e04 # fio-3.29
 
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
-QUOTA_COMMIT=59b280ebe22eceaf4250cb3b776674619a4d4ece
+QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
 
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # SYZKALLER_COMMIT=2f93b54f26aa40233a0a584ce8714e55c8dd159a
 
 FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
-FSVERITY_COMMIT=bdebc45b4527d64109723ad5753fa514bac47c9f
+FSVERITY_COMMIT=ddc6bc9daeb79db932aa12edb85c7c2f4647472a
 
 IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
-IMA_EVM_UTILS_COMMIT=0267fa16990fd0ddcc89984a8e55b27d43e80167
+IMA_EVM_UTILS_COMMIT=00a0e66a14d3663edd9d37c8a01db6d182c88bdd # v1.3.2
 
 BLKTESTS_GIT=https://github.com/tytso/blktests.git
 
 NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
-NVME_CLI_COMMIT=eb58f548342f477d02da555cb939b3e6a5609269
+NVME_CLI_COMMIT=deee9cae1ac94760deebd71f8e5449061338666c # v1.16
 
 #EXEC_LDFLAGS=-static
 #EXEC_LLDFLAGS=-all-static
