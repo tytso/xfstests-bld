@@ -1,16 +1,17 @@
 ARCH_LIST=(amd64 i386 arm64)
-MIRROR=https://snapshot.debian.org/archive/debian/20211104T150851Z/
+MIRROR=https://snapshot.debian.org/archive/debian/20220108T035927Z/
+DISTRO=bullseye
 
 #BEGIN CONFIG.CUSTOM
 
 XFSTESTS_GIT=https://github.com/tytso/xfstests
-XFSTESTS_COMMIT=df8f6dbc5d981d6a9dddeaa4841d33c1a0fbf3fa # 2021-11-04 release
+XFSTESTS_COMMIT=f0a05db9bc68455b00c1363369211d39ab41df7a # 2022-01-09 release
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 XFSPROGS_COMMIT=b42033308360655616fc9bd77678c46bf518b7c8 # v5.13.0
 
 FIO_GIT=http://git.kernel.dk/fio.git
-FIO_COMMIT=d83ac9d3d30d5f5dc6d0e425e4ba945a772839f6 # fio-3.28
+FIO_COMMIT=9b46661c289d01dbfe5182189a7abea9ce2f9e04 # fio-3.29
 
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
@@ -28,7 +29,7 @@ BLKTESTS_GIT=https://github.com/tytso/blktests.git
 BLKTESTS_COMMIT=3be78490def51cc477a659412a8b369af434bddc
 
 NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
-NVME_CLI_COMMIT=00e93879605449cabd525a85b1f8cd467e224aca # v1.15
+NVME_CLI_COMMIT=deee9cae1ac94760deebd71f8e5449061338666c # v1.16
 
 UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
 UTIL_LINUX_COMMIT=f59c8fd38dfee24b93ed54a6984f879499c34ec7 # v2.37.2
