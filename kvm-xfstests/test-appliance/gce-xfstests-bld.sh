@@ -17,7 +17,7 @@ LIBSS="@LIBSS@"
 BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
 # Hardcoded go version
-GO_VERSION=1.14.15
+GO_VERSION=1.17.6
 
 PACKAGES="bash-completion \
 	bc \

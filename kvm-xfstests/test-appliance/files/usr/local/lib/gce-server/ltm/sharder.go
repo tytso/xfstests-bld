@@ -188,7 +188,7 @@ func (sharder *ShardScheduler) initLocalSharding() {
 	configs := splitConfigs(numShards, sharder.configs)
 
 	for i, config := range configs {
-		shardID := string(i/26+int('a')) + string(i%26+int('a'))
+		shardID := string(rune(i)/26 + 'a') + string(rune(i)%26 + 'a')
 		shard := NewShardWorker(sharder, shardID, config, sharder.zone)
 		allShards = append(allShards, shard)
 	}
@@ -245,7 +245,7 @@ func (sharder *ShardScheduler) initRegionSharding() {
 	configs := splitConfigs(len(usedZones), sharder.configs)
 
 	for i, config := range configs {
-		shardID := string(i/26+int('a')) + string(i%26+int('a'))
+		shardID := string(rune(i)/26 + 'a') + string(rune(i)%26 + 'a')
 		shard := NewShardWorker(sharder, shardID, config, usedZones[i])
 		allShards = append(allShards, shard)
 	}
