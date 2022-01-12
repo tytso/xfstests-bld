@@ -405,31 +405,8 @@ validate_binfmt_misc()
     fi
 
     QEMU=$(awk '/^interpreter/{print $2}' "$binfmt_file")
-    full_version=$("$QEMU" -version \
-	| grep -E -m1 -o 'version +[0-9]+(\.[0-9]+)+.*' \
-	| sed -r 's/^version +//;s/, Copyright[^.]*$//')
-    version=$(echo "$full_version" | grep -E -o '^+[0-9]+(\.[0-9]+)+')
-    major=$(echo "$version" | cut -d. -f1)
-    minor=$(echo "$version" | cut -d. -f2)
-    if (( major < 2 || ( major == 2 && minor < 8 ) )); then
-	die "$QEMU is too old!" \
-	    "" \
-	    "Version: $full_version" \
-	    "" \
-	    "Due to bugs in old QEMU versions, we require at least QEMU 2.8.0.  On" \
-	    "Debian-based systems, try installing the qemu-user-static package from" \
-	    "Debian stretch:" \
-	    "" \
-	    "    https://packages.debian.org/stretch/qemu-user-static" \
-	    "" \
-	    "Note that you must update the file $QEMU, or else" \
-	    "update the binfmt entry.  (Just putting a newer $(basename "$QEMU")" \
-	    "binary somewhere else on your \$PATH isn't sufficient, since schroot" \
-	    "will take the binary listed as the binfmt interpreter, currently" \
-	    "\"$QEMU\", and bind-mount it into the chroot.)"
-    fi
 
-    log "Detected foreign chroot, using user-mode emulation with $QEMU version $full_version"
+    log "Detected foreign chroot, using user-mode emulation with $QEMU"
 }
 
 # Get the schroot configuration from either schroot.conf or entries in
