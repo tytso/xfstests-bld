@@ -388,13 +388,18 @@ Gce-xfstests also provides a way to build kernel images remotely on the Kernel C
 
         gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ... [--repo <url>] --commit <rev>
 
-If you've set `GIT_REPO` in `~/.config/gce-xfstests`, then `--repo
-<url>` can be omitted. The LTM server will launch the KCS server in a
-separate VM to build the kernel and use the built image to run
-xfstests. KCS builds your kernel using a kernel config installed via
-`gce-xfstests install-kconfig` feature.  Options can be passed to
-install-kconfig via `--kconfig-opts <opts>`.  Alternatively, you can
-specify a custom kernel config using `--config <filepath>`.
+The `--repo <url>` specifies the Git repository that should used to
+find the specified commit (or branch, or tag).  If `--repo` is not
+specified, the repository that will be used is the value of `GIT_REPO`
+in `~/.config/gce-xfstests`, or Linus Torvalds' linux top-level git
+repository if GIT_REPO is not configured in the user's config file.
+
+The LTM server will launch the KCS server in a separate VM to build
+the kernel and use the built image to run xfstests. KCS builds your
+kernel using a kernel config installed via `gce-xfstests
+install-kconfig` feature.  Options can be passed to install-kconfig
+via `--kconfig-opts <opts>`.  Alternatively, you can specify a custom
+kernel config using `--config <filepath>`.
 
 Under rare conditions you might want to build the kernel image only. First make sure the KCS server is running with the command:
 

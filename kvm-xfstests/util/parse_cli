@@ -563,7 +563,11 @@ while (( $# >= 1 )); do
 	    ;;
 	--repo) shift
 	    supported_flavors gce
-	    GIT_REPO="$1"
+	    if test -n "${GIT_REPOS[$1]}" ; then
+		GIT_REPO="${GIT_REPOS[$1]}"
+	    else
+		GIT_REPO="$1"
+	    fi
 	    ;;
 	--commit) shift
 	    supported_flavors gce

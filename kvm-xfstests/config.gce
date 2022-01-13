@@ -39,3 +39,13 @@ GCE_MIN_SCR_SIZE=100
 # Enable serial port access by default
 #
 GCE_SERIAL_PORT_ACCESS=TRUE
+GIT_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+
+declare -A GIT_REPOS
+GIT_REPOS[stable.git]=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+GIT_REPOS[next.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+GIT_REPOS[next-history.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next-history.git
+GIT_REPOS[ext4.git]=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+GIT_REPOS[xfs.git]=https://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+GIT_REPOS[btrfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux.git
+GIT_REPOS[f2fs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
