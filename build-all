@@ -181,6 +181,12 @@ while [ "$1" != "" ]; do
 	--clean-first)
 	    MAKE_CLEAN="make clean"
 	    ;;
+	--static)
+	    ALL_STATIC=-all-static
+	    ;;
+	--debug)
+	    set -vx
+	    ;;
 	*)
 	    echo "Unknown option: $1"
 	    exit 1
@@ -188,6 +194,13 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
+
+if test -n "$ALL_STATIC" ; then
+    STATIC=-static
+    DISABLE_LIBICU="--disable-libicu"
+    DISABLE_RPC="--disable-rpc"
+    HAVE_SYSTEMD_STATIC="HAVE_SYSTEMD=1"
+fi
 
 nr_cpus=$(getconf _NPROCESSORS_ONLN)
 J=-j$(expr $nr_cpus \* 1)
@@ -232,7 +245,7 @@ if test -z "$SKIP_ATTR" ; then
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" ; \
+     make $J LLDFLAGS="$ALL_STATIC" ; \
      make $J install-dev ; make $J install)
 fi
 
@@ -241,9 +254,9 @@ if test -z "$SKIP_ACL" ; then
     (cd acl; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS $ALL_STATIC -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -static -L$DESTDIR/lib" ; \
+     make $J ; \
      make $J install)
 fi
 
@@ -252,9 +265,9 @@ if test -z "$SKIP_POPT" ; then
     (cd popt; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF -static -L$DESTDIR/lib" \
+     LDFLAGS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LLDFLAGS=-all-static ; \
+     make $J LLDFLAGS="$ALL_STATIC" ; \
      make $J install)
 fi
 
@@ -300,9 +313,9 @@ if test -z "$SKIP_IMA_EVM_UTILS" ; then
      ver=$(git describe --always --dirty); echo "ima-evm-utils	$ver ($(git log -1 --pretty=%cD))" > ../ima-evm-utils.ver ; \
      mv INSTALL INSTALL.save ; ./autogen.sh; mv INSTALL.save INSTALL ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR ; $MAKE_CLEAN ; \
-     make $J LDFLAGS="$LLF $EXEC_LLDFLAGS -L$DESTDIR/lib" dist_man_MANS= ; \
+     make $J dist_man_MANS= ; \
      make $J install dist_man_MANS= )
 fi
 
@@ -361,7 +374,7 @@ if test -z "$SKIP_DBENCH" ; then
      autoheader ; autoconf ; \
      CFLAGS="$LCF -I$DESTDIR/include" \
      CPPFLAGS="-I$DESTDIR/include" \
-     LDFLAGS="$EXEC_LDFLAGS" \
+     LDFLAGS="$EXEC_LDFLAGS $STATIC" \
      LIBS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --datadir=/root/xfstests/lib; \
      $MAKE_CLEAN ; make $J ; cp dbench $DESTDIR/bin ; cp client.txt $DESTDIR/lib)
@@ -382,14 +395,14 @@ if test -z "$SKIP_XFSPROGS" ; then
     (cd xfsprogs-dev; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
-     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LDFLAGS="$LLF -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext --disable-libicu --without-selinux $disable_blkid" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext $DISABLE_LIBICU --without-selinux $disable_blkid" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
      ./configure $LOCAL_CONFIGURE_OPTIONS ; \
-     make $J LLDFLAGS=-all-static V=1 PLDLIBS="$android_compat" ; \
+     make $J LLDFLAGS="$ALL_STATIC" V=1 PLDLIBS="$android_compat" ; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install-dev)
     unset disable_blkid
@@ -402,7 +415,7 @@ if test -z "$SKIP_FIO"; then
     (cd fio; \
      ver=$(git describe --always --dirty); echo "fio		$ver ($(git log -1 --pretty=%cD))" > ../fio.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
-     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" ; \
      $MAKE_CLEAN ; ./configure $crossfio --disable-native --extra-cflags="$CFLAGS"; make V=1 prefix=/ $J; make prefix=/ V=1 DESTDIR=$DESTDIR $J install)
 fi
 
@@ -413,12 +426,12 @@ if test -z "$SKIP_XFSTESTS" ; then
      autoreconf --include=m4 ; \
      export CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
-     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
+     export LDFLAGS="$LLF $STATIC -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
      export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
      libtoolize -i ; $MAKE_CLEAN ; \
      ./configure $cross ; \
-     make $J LLDFLAGS=$EXEC_LLDFLAGS PLDLIBS="$android_compat" BUILD_VERBOSE=1)
+     make $J LLDFLAGS="$EXEC_LLDFLAGS $ALL_STATIC" PLDLIBS="$android_compat" BUILD_VERBOSE=1)
 fi
 
 if test -z "$SKIP_QUOTA"; then
@@ -439,11 +452,11 @@ EOF
     (cd quota; \
      ver=$(git describe --always --dirty); echo "quota		$ver ($(git log -1 --pretty=%cD))" > ../quota.ver ; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
-     export LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
+     export LDFLAGS="$LLF $EXEC_LDFLAGS $STATIC -L$DESTDIR/lib $EXEC_LDFLAGS" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      autoreconf -fvi ; \
-     ./configure $cross --enable-ext2direct=no --enable-nls=no --prefix=$DESTDIR ; \
-     $MAKE_CLEAN ; make AM_LDFLAGS="" V=1 $J; make V=1 $J install)
+     ./configure $cross --enable-ext2direct=no --enable-nls=no $DISABLE_RPC --prefix=$DESTDIR ; \
+     $MAKE_CLEAN ; make AM_LDFLAGS="$STATIC" V=1 $J; make V=1 $J install)
 fi
 
 if test -z "$SKIP_SYZKALLER"; then
@@ -461,14 +474,14 @@ fi
 
 if test -z "$SKIP_NVME_CLI"; then
     build_start "nvme-cli"
-    (cd nvme-cli ; $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" ; \
+    (set -vx ; cd nvme-cli ; $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
+     LDFLAGS="$LLF $EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" $HAVE_SYSTEMD_STATIC ; \
      install -D -m 0755 nvme $DESTDIR/bin/nvme ; \
      ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../nvme-cli.ver)
 fi
 
 if test -z "$SKIP_KVM_UTILS"; then
     build_start "misc VM utils"
-    (cd misc ; LDFLAGS="$EXEC_LDFLAGS -L$DESTDIR/lib" ./configure $cross ; \
+    (cd misc ; LDFLAGS="$EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" ./configure $cross ; \
      $MAKE_CLEAN ; make $J ; make install DESTDIR=$DESTDIR)
 fi

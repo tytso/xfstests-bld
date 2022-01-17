@@ -64,6 +64,7 @@ select_packages()
     libblkid-dev
     libdbus-1-3
     libgdbm-dev
+    libicu-dev
     libkeyutils-dev
     libssl-dev
     libsystemd-dev
