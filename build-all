@@ -257,7 +257,7 @@ if test -z "$SKIP_ACL" ; then
      LDFLAGS="$LLF $EXEC_LDFLAGS $ALL_STATIC -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J ; \
-     make $J install)
+     make $J install ; rm -f $DESTDIR/lib/*.so)
 fi
 
 if test -z "$SKIP_POPT" ; then
@@ -268,7 +268,7 @@ if test -z "$SKIP_POPT" ; then
      LDFLAGS="$LLF -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J LLDFLAGS="$ALL_STATIC" ; \
-     make $J install)
+     make $J install ; rm -f $DESTDIR/lib/*.so)
 fi
 
 if test -z "$SKIP_AIO" ; then
@@ -316,7 +316,7 @@ if test -z "$SKIP_IMA_EVM_UTILS" ; then
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR ; $MAKE_CLEAN ; \
      make $J dist_man_MANS= ; \
-     make $J install dist_man_MANS= )
+     make $J install dist_man_MANS= ; rm -f $DESTDIR/lib/*.so)
 fi
 
 if test -z "$SKIP_UTIL_LINUX" ; then
@@ -404,7 +404,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      ./configure $LOCAL_CONFIGURE_OPTIONS ; \
      make $J LLDFLAGS="$ALL_STATIC" V=1 PLDLIBS="$android_compat" ; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install; \
-     DIST_ROOT=$DESTDIR make prefix=/ $J install-dev)
+     DIST_ROOT=$DESTDIR make prefix=/ $J install-dev ; rm -f $DESTDIR/lib/*.so)
     unset disable_blkid
 fi
 
