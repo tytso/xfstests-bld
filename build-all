@@ -254,7 +254,7 @@ if test -z "$SKIP_ACL" ; then
     (cd acl; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS $ALL_STATIC -L$DESTDIR/lib" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -static $ALL_STATIC -L$DESTDIR/lib" \
      ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
      make $J ; \
      make $J install ; rm -f $DESTDIR/lib/*.so)
@@ -395,7 +395,7 @@ if test -z "$SKIP_XFSPROGS" ; then
     (cd xfsprogs-dev; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
-     export LDFLAGS="$LLF -L$DESTDIR/lib" ; \
+     export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
      export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext $DISABLE_LIBICU --without-selinux $disable_blkid" ; \
      make $J realclean ; make $J configure ; \
