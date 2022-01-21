@@ -265,6 +265,13 @@ fi
 
 while test -n "$FSTESTCFG"
 do
+	# set primary fstype if provided (ex. ext4:overlay)
+	primary_fstype="${FSTESTCFG%%:*}"
+	if ! test -z "$primary_fstype" ; then
+		export PRIMARY_FSTYPE=$primary_fstype
+		FSTESTCFG="${FSTESTCFG#*:}"
+	fi
+
 	if ! get_one_fs_config "/root/fs"; then
           continue
         fi

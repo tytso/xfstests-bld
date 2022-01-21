@@ -136,6 +136,12 @@ validate_config_name()
     local arg="$1"
     local fs
     local cfg
+    local primary_fs
+
+    if [[ "$arg" == *":"* ]]; then
+	primary_fs="${arg%%:*}"
+	arg="${arg#*:}"
+    fi
 
     CONFDIR="$DIR/test-appliance/files/root/fs"
     if test -d "$CONFDIR"
@@ -158,6 +164,12 @@ validate_config_name()
 	esac
 	if test ! -d "$CONFDIR/$fs" ; then
 	    echo -e "Invalid file system type: $fs\n"
+	    print_help
+	    exit 1
+	fi
+	# use fs types in CONFDIR as valid options for primary fs
+	if test ! -d "$CONFDIR/$primary_fs" ; then
+	    echo -e "Invalid file system type for primary fs: $primary_fs\n"
 	    print_help
 	    exit 1
 	fi
