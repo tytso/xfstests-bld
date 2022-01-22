@@ -423,13 +423,13 @@ if test -z "$SKIP_XFSTESTS" ; then
     build_start "xfstests"
     (cd xfstests-dev; \
      ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
-     autoreconf --include=m4 ; \
+     autoreconf --install --include=m4 ; \
      export CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $STATIC -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
      export LOCAL_CONFIGURE_OPTIONS="$cross" ; \
-     libtoolize -i ; $MAKE_CLEAN ; \
+     $MAKE_CLEAN ; \
      ./configure $cross ; \
      make $J LLDFLAGS="$EXEC_LLDFLAGS $ALL_STATIC" PLDLIBS="$android_compat" BUILD_VERBOSE=1)
 fi
