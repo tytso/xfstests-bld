@@ -252,6 +252,7 @@ fi
 if test -z "$SKIP_ACL" ; then
     build_start "ACL library"
     (cd acl; \
+     autoreconf -vi ; autoheader ; \
      CPPFLAGS="-I$DESTDIR/include" \
      CFLAGS="$LCF -I$DESTDIR/include" \
      LDFLAGS="$LLF $EXEC_LDFLAGS -static $ALL_STATIC -L$DESTDIR/lib" \
