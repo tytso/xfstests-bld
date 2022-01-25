@@ -424,7 +424,7 @@ if test -z "$SKIP_XFSTESTS" ; then
     build_start "xfstests"
     (cd xfstests-dev; \
      ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../xfstests.ver ; \
-     autoreconf --install --include=m4 ; \
+     autoreconf -f -v -i --include=m4 ; libtoolize -c -i ; \
      export CFLAGS="$LCF -I$DESTDIR/include -fno-stack-protector" ; \
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF $STATIC -L$DESTDIR/lib" ; \
