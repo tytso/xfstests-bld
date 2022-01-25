@@ -391,7 +391,12 @@ if test -z "$SKIP_XFSPROGS" ; then
     if test -f $DESTDIR/lib/libblkid.a -a ! -d util-linux; then
 	 export disable_blkid="--disable-blkid"
     fi
-    (cd libinih ; $MAKE_CLEAN ; make CFLAGS="$LCF -I$DESTDIR/include" ; \
+    (cd libinih ; \
+     if [ -n "$CROSS_COMPILE" ]; then
+	export CC="$CROSS_COMPILE-gcc"
+	export AR="$CROSS_COMPILE-ar"
+     fi
+     $MAKE_CLEAN ; make CFLAGS="$LCF -I$DESTDIR/include" ; \
      make install DESTDIR=$DESTDIR)
     (cd xfsprogs-dev; \
      export CFLAGS="$LCF -I$DESTDIR/include" ; \

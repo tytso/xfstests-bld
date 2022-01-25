@@ -5,6 +5,8 @@
 REPOS =		fio \
 		keyutils \
 		fsverity \
+		ima-evm-utils \
+		nvme-cli \
 		quota \
 		stress-ng \
 		util-linux \
@@ -18,6 +20,7 @@ SUBDIRS =	acl \
 		dbench \
 		e2fsprogs-libs \
 		libaio \
+		libinih \
 		misc \
 		popt \
 		$(REPOS)
@@ -29,7 +32,7 @@ SCRIPTS =	android-xfstests.sh \
 
 all: $(SCRIPTS)
 	./get-all
-	./build-all
+	./build-all $(DEBUG)
 
 all-clean-first: $(SCRIPTS)
 	./get-all
