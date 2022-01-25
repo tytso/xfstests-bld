@@ -263,9 +263,7 @@ func getConfigs(origCmd string) ([]string, []string, error) {
 	configStrings := []string{}
 	for fs := range configs {
 		for _, cfg := range configs[fs] {
-			if cfg != "dax" {
-				configStrings = append(configStrings, fs+"/"+cfg)
-			}
+			configStrings = append(configStrings, fs+"/"+cfg)
 		}
 	}
 	return validArgs, configStrings, nil
