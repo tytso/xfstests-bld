@@ -52,62 +52,68 @@ if test -n "$GCE_ACCOUNT" -a -f "$DIR/config-$GCE_ACCOUNT" ; then
     . "$DIR/config-$GCE_ACCOUNT"
 fi
 
-# check whether this machine runs in the same GCE project
-if test "$XFSTESTS_FLAVOR" = "gce" && \
-    ping -c 1 -q metadata.google.internal >& /dev/null ; then
-    # We must be running on an GCE VM since a DNS resolution of
-    # metadata.google.internal succeeded.
-    if test -f /usr/local/lib/gce-funcs ; then
-        . /usr/local/lib/gce-funcs
-        if test "$(get_metadata_value project-id)" = "$GCE_PROJECT" ; then
-            RUN_INTERNAL="--internal-ip"
-        fi
-    else
-        # fall back to check with internal ip
-        INT_IP=$(hostname -I)
-        if gcloud compute instances list \
-            --project "$GCE_PROJECT" \
-            --filter="networkInterfaces[0].networkIP:$INT_IP" &> /dev/null; then
-            RUN_INTERNAL="--internal-ip"
-        fi
-    fi
-fi
+if test "$XFSTESTS_FLAVOR" = "gce" ; then
 
-if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
-   GCE_SERIAL_PORT_ACCESS=TRUE
-fi
+    SERVICE_ACCOUNT_VM="test-vm@$GCE_PROJECT.iam.gserviceaccount.com"
+    SERVICE_ACCOUNT_LTM="ltm-kcs@$GCE_PROJECT.iam.gserviceaccount.com"
+    SERVICE_ACCOUNT_IMG="img-create@$GCE_PROJECT.iam.gserviceaccount.com"
 
-function run_gcloud ()
-{
-    if test -n "$GCE_ACCOUNT" ; then
-	$NO_ACTION gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
-    else
-	$NO_ACTION gcloud --project "$GCE_PROJECT" "$@"
-    fi
-}
-
-function run_gcloud_always ()
-{
-    if test -n "$NO_ACTION" ; then
-	if test -n "$GCE_ACCOUNT" ; then
-	    echo gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" \
-		 "$@" > /dev/tty
+    # check whether this machine runs in the same GCE project
+    if ping -c 1 -q metadata.google.internal >& /dev/null ; then
+        # We must be running on an GCE VM since a DNS resolution of
+        # metadata.google.internal succeeded.
+	if test -f /usr/local/lib/gce-funcs ; then
+	    . /usr/local/lib/gce-funcs
+	    if test "$(get_metadata_value project-id)" = "$GCE_PROJECT" ; then
+		RUN_INTERNAL="--internal-ip"
+            fi
 	else
-	    echo gcloud --project "$GCE_PROJECT" "$@" > /dev/tty
+            # fall back to check with internal ip
+            INT_IP=$(hostname -I)
+            if gcloud compute instances list \
+		      --project "$GCE_PROJECT" \
+		      --filter="networkInterfaces[0].networkIP:$INT_IP" &> /dev/null; then
+		RUN_INTERNAL="--internal-ip"
+            fi
 	fi
     fi
-    if test -n "$GCE_ACCOUNT" ; then
-	gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
-    else
-	gcloud --project "$GCE_PROJECT" "$@"
-    fi
-}
 
-function run_gcloud_prj ()
-{
-    if test -n "$GCE_ACCOUNT" ; then
-	$NO_ACTION gcloud --account "$GCE_ACCOUNT" "$@"
-    else
-	$NO_ACTION gcloud "$@"
+    if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
+	GCE_SERIAL_PORT_ACCESS=TRUE
     fi
-}
+
+    function run_gcloud ()
+    {
+	if test -n "$GCE_ACCOUNT" ; then
+	    $NO_ACTION gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
+	else
+	    $NO_ACTION gcloud --project "$GCE_PROJECT" "$@"
+	fi
+    }
+
+    function run_gcloud_always ()
+    {
+	if test -n "$NO_ACTION" ; then
+	    if test -n "$GCE_ACCOUNT" ; then
+		echo gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" \
+		     "$@" > /dev/tty
+	    else
+		echo gcloud --project "$GCE_PROJECT" "$@" > /dev/tty
+	    fi
+	fi
+	if test -n "$GCE_ACCOUNT" ; then
+	    gcloud --account "$GCE_ACCOUNT" --project "$GCE_PROJECT" "$@"
+	else
+	    gcloud --project "$GCE_PROJECT" "$@"
+	fi
+    }
+
+    function run_gcloud_prj ()
+    {
+	if test -n "$GCE_ACCOUNT" ; then
+	    $NO_ACTION gcloud --account "$GCE_ACCOUNT" "$@"
+	else
+	    $NO_ACTION gcloud "$@"
+	fi
+    }
+fi

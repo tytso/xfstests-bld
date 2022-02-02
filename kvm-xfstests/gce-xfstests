@@ -1072,6 +1072,7 @@ run_gcloud compute \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
        $SSD_ARG $PREEMPTIBLE \
+       --service-account "$SERVICE_ACCOUNT_VM" \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server,https-server \

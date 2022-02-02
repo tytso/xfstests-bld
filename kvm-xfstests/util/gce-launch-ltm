@@ -100,6 +100,7 @@ run_gcloud compute instances create "$INSTANCE" --zone "$GCE_ZONE" \
     --machine-type "$GCE_LTM_MACHTYPE" --network "$GCE_NETWORK" \
     --boot-disk-size 50GB \
     $PREEMPTIBLE \
+    --service-account "$SERVICE_ACCOUNT_LTM" \
     --scopes "$SCOPES" \
     --metadata "^ ^$ARG" \
     --tags http-server,https-server \

@@ -140,7 +140,7 @@ run_gcloud compute -q disks delete "$IMG_DISK" \
 run_gcloud compute instances create "$EXP_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE --network "$GCE_NETWORK" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
-       --metadata "^ ^$METADATA" \
+       --service-account "$SERVICE_ACCOUNT_IMG" --metadata "^ ^$METADATA" \
        --image-family "$DEB_IMAGE_FAMILY" --image-project "$DEB_IMAGE_PROJECT" \
        --boot-disk-type "pd-standard" --boot-disk-device-name "$EXP_DISK"
 

@@ -220,6 +220,7 @@ run_gcloud compute instances create "$BLD_INST" \
        --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
        --network "$GCE_NETWORK" --metadata "^ ^$METADATA" \
        --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
+       --service-account "$SERVICE_ACCOUNT_IMG" \
        --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
        --boot-disk-type "pd-ssd" --boot-disk-device-name "$BLD_DISK"
 

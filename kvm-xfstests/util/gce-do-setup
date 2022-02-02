@@ -93,6 +93,62 @@ fi
 gcloud config set core/project "$GCE_PROJECT"
 gcloud config set compute/zone "$GCE_ZONE"
 
+gcloud services enable compute.googleapis.com
+gcloud services enable iam.googleapis.com
+
+function SetupRole () {
+    local role="$1"
+
+    if ! run_gcloud iam roles describe "for$role" >& /dev/null ; then
+	run_gcloud iam roles create "for$role"
+    else
+	run_gcloud iam roles undelete "for$role" >& /dev/null
+    fi
+
+    if ! run_gcloud iam roles update "for$role" --file "$DIR/roles-$role.yaml" \
+	 --quiet >& /dev/null ; then
+	echo "Failed to update role for$role!"
+	# Re-run to get error message
+	run_gcloud iam roles update "for$role" --file "$DIR/roles-$role.yaml" \
+		   --quiet
+	exit 1
+    fi
+}
+
+function SetupServiceAccount () {
+    local srv_acct="$1"
+    local role="$2"
+    local name="$3"
+    local desc="$4"
+
+    if ! run_gcloud iam service-accounts describe "$srv_acct" >& /dev/null ; then
+	run_gcloud iam service-accounts create "$name" \
+		   --description "$desc Service Account" \
+		   --display-name "$name"
+	if ! run_gcloud projects add-iam-policy-binding "$GCE_PROJECT" \
+	     --member "serviceAccount:$srv_acct" \
+	     --role "projects/$GCE_PROJECT/roles/$role" \
+	     --verbosity none >& /dev/null ; then
+	    echo "Failed to add iam policy binding for roles/$role"
+	    # Re-run to get error message
+	    run_gcloud projects add-iam-policy-binding "$GCE_PROJECT" \
+		       --member "serviceAccount:$srv_acct" \
+		       --role "projects/$GCE_PROJECT/roles/$role"
+	    exit 1
+	fi
+    fi
+    gsutil acl ch -u "${srv_acct}:W" gs://gce-xfstests
+}
+
+SetupRole TestVM
+SetupRole LTMKCS
+SetupRole ImgCreate
+
+SetupServiceAccount "$SERVICE_ACCOUNT_VM" "forTestVM" "test-vm" "Test VM"
+SetupServiceAccount "$SERVICE_ACCOUNT_LTM" "forLTMKCS" "ltm-kcs" "LTM/KCS"
+SetupServiceAccount "$SERVICE_ACCOUNT_IMG" "forImgCreate" "img-create" \
+		    "Image Creation"
+
 if ! run_gcloud_prj projects describe "$GCE_PROJECT" > /dev/null ; then
     echo -e "Invalid GCE project: $GCE_PROJECT\n"
     bad_config=yes
