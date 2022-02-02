@@ -9,3 +9,4 @@ realtime
 realtime_28k_logdev
 realtime_logdev
 logdev
+dax

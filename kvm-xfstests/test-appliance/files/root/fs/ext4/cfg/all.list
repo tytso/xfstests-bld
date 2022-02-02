@@ -9,3 +9,4 @@ dioread_nolock
 data_journal
 bigalloc
 bigalloc_1k
+dax
