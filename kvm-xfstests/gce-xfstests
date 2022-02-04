@@ -921,17 +921,6 @@ function get_machtype_stats() {
     esac
 }
 
-function get_cache_dir() {
-    for i in $HOME/.cache /tmp/$USER-cache ; do
-	GCE_CACHE_DIR=$i/gce-xfstests
-	mkdir -p $GCE_CACHE_DIR 2> /dev/null
-	if test -d $GCE_CACHE_DIR -a -w $GCE_CACHE_DIR ; then
-	    return
-	fi
-    done
-    GCE_CACHE_DIR=/tmp
-}
-
 function get_machtype_file() {
     get_cache_dir
     GCE_MACHTYPE_FILE=$GCE_CACHE_DIR/machtype_file
@@ -1072,7 +1061,7 @@ run_gcloud compute \
        instances create "$INSTANCE" --zone "$GCE_ZONE" \
        --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
        $SSD_ARG $PREEMPTIBLE \
-       --service-account "$SERVICE_ACCOUNT_VM" \
+       $SERVICE_ACCOUNT_OPT_VM \
        --scopes "$SCOPES" \
        --metadata "^ ^$ARG" \
        --tags http-server,https-server \

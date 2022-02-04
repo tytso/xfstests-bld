@@ -140,6 +140,9 @@ function SetupServiceAccount () {
     gsutil acl ch -u "${srv_acct}:W" gs://gce-xfstests
 }
 
+get_cache_dir
+rm -f "$GCE_CACHE_DIR/service-accounts-opts.$GCE_PROJECT"
+
 SetupRole TestVM
 SetupRole LTMKCS
 SetupRole ImgCreate
