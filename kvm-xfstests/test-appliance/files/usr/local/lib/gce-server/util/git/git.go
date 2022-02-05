@@ -145,8 +145,13 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 		return fmt.Errorf("directory %s does not exist", repo.dir)
 	}
 
-	cmd := exec.Command("git", "fetch", "-q", "--all")
+	cmd := exec.Command("git", "checkout", "-q", "-f", commit)
 	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	if err == nil {
+		return nil
+	}
+	cmd = exec.Command("git", "fetch", "-q", "--all")
+	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
 	}
