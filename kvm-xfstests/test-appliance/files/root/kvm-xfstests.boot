@@ -56,13 +56,13 @@ then
 
     if gce_attribute gce_xfs_ltm
     then
-	/usr/local/lib/gce-ltm.boot
+	script -a -c /usr/local/lib/gce-ltm.boot /var/log/gce-ltm-boot.log
 	exit $?
     fi
 
     if gce_attribute gce_xfs_kcs
     then
-	/usr/local/lib/gce-kcs.boot
+	script -a -c /usr/local/lib/gce-kcs.boot /var/log/gce-kcs-boot.log
 	exit $?
     fi
 

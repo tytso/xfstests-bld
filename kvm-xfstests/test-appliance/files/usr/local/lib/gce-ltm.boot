@@ -43,3 +43,5 @@ then
     systemctl enable gce-ltm.service
     systemctl start gce-ltm.service
 fi
+
+/usr/local/sbin/gce-xfstests cache-machtype-file
