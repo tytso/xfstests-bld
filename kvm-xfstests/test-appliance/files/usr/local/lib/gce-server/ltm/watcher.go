@@ -277,7 +277,8 @@ func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, 
 		watcher.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
 
 		url := fmt.Sprintf("gs://%s/%s", watcher.gsBucket, resultFiles[0])
-		cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+		cmd := exec.Command("gce-xfstests", "get-results",
+				    "--unpack-dir", watcher.logDir, url)
 		cmdLog := watcher.log.WithField("cmd", cmd.String())
 		w := cmdLog.Writer()
 		defer w.Close()
@@ -286,7 +287,8 @@ func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, 
 			return "", err
 		}
 
-		tmpResultsDir := fmt.Sprintf("/tmp/results-%s-%s", server.LTMUserName, testID)
+		tmpResultsDir := fmt.Sprintf("%s/results-%s-%s",
+				watcher.logDir, server.LTMUserName, testID)
 		unpackedResultsDir := watcher.logDir + "results/" + testID + "/"
 
 		if check.DirExists(tmpResultsDir) {

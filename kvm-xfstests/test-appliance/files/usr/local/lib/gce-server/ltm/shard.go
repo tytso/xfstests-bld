@@ -44,7 +44,6 @@ type ShardWorker struct {
 	cmdLogPath         string
 	serialOutputPath   string
 	resultsName        string
-	tmpResultsDir      string
 	unpackedResultsDir string
 }
 
@@ -77,7 +76,6 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		cmdLogPath:         logPath + ".cmdlog",
 		serialOutputPath:   logPath + ".serial",
 		resultsName:        fmt.Sprintf("%s-%s-%s", server.LTMUserName, sharder.testID, shardID),
-		tmpResultsDir:      fmt.Sprintf("/tmp/results-%s-%s-%s", server.LTMUserName, sharder.testID, shardID),
 		unpackedResultsDir: fmt.Sprintf("%sresults-%s-%s-%s", sharder.logDir, server.LTMUserName, sharder.testID, shardID),
 	}
 
@@ -297,18 +295,15 @@ func (shard *ShardWorker) finish() {
 		return
 	}
 
-	cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+	cmd := exec.Command("gce-xfstests", "get-results", "--unpack-dir",
+			    shard.sharder.logDir, url)
 	cmdLog := shard.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
 	err := check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, w, w)
 	check.Panic(err, cmdLog, "Failed to run get-results")
 
-	if check.DirExists(shard.tmpResultsDir) {
-		os.RemoveAll(shard.unpackedResultsDir)
-		err = os.Rename(shard.tmpResultsDir, shard.unpackedResultsDir)
-		check.Panic(err, shard.log, "Failed to move dir")
-	} else {
+	if !check.DirExists(shard.unpackedResultsDir) {
 		shard.log.Panic("Failed to find unpacked result files")
 	}
 

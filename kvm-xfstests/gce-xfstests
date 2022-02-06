@@ -119,7 +119,7 @@ do_get_results()
     fi
     if test -n "$do_unpack"
     then
-	DIRNAME=/tmp/$(basename "$URI" | sed -e 's/\(results.[0-9A-Za-z-]*\).*/\1/' -e s'/\./-/')
+	DIRNAME="$unpack_dir"/$(basename "$URI" | sed -e 's/\(results.[0-9A-Za-z-]*\).*/\1/' -e s'/\./-/')
 	/bin/rm -rf "$DIRNAME" 2> /dev/null
 	mkdir -p "$DIRNAME"
 	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
@@ -372,14 +372,11 @@ case "$1" in
 	;;
     get-results)
 	shift
-	case $1 in
-	    --bucket-subdir) shift
-		BUCKET_SUBDIR=$1
-		shift ;;
-	esac
-	for i in "$@"
-	do
-	    case $i in
+	while (( $# >= 1 )); do
+	    case $1 in
+		--bucket-subdir) shift
+		    BUCKET_SUBDIR=$1
+		    ;;
 		--checksum|-c)
 		    do_checksum=yes
 		    ;;
@@ -387,6 +384,11 @@ case "$1" in
 		    get_syslog=yes
 		    ;;
 		--unpack)
+		    unpack_dir="/tmp"
+		    do_unpack=yes
+		    ;;
+		--unpack-dir) shift
+		    unpack_dir="$1"
 		    do_unpack=yes
 		    ;;
 		--summary|-s)
@@ -396,8 +398,9 @@ case "$1" in
 		    do_summary="-F"
 		    ;;
 		*)
-		    do_get_results "$i"
+		    do_get_results "$1"
 	    esac
+	    shift
 	done
 	exit 0
 	;;

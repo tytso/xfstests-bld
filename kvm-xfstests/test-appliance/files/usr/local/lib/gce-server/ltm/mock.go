@@ -97,7 +97,6 @@ func (shard *ShardWorker) Dump() JsonShard {
 		CmdLogPath:         shard.cmdLogPath,
 		SerialOutputPath:   shard.serialOutputPath,
 		ResultsName:        shard.resultsName,
-		TmpResultsDir:      shard.tmpResultsDir,
 		UnpackedResultsDir: shard.unpackedResultsDir,
 		VMTimeout:          shard.vmTimeout,
 	}
@@ -115,7 +114,6 @@ func (mock JsonShard) Read(sharder *ShardScheduler) *ShardWorker {
 		cmdLogPath:         mock.CmdLogPath,
 		serialOutputPath:   mock.SerialOutputPath,
 		resultsName:        mock.ResultsName,
-		tmpResultsDir:      mock.TmpResultsDir,
 		unpackedResultsDir: mock.UnpackedResultsDir,
 		vmTimeout:          mock.VMTimeout,
 	}

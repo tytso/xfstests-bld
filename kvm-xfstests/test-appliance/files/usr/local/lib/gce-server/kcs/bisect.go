@@ -248,7 +248,8 @@ func (bisector *GitBisector) getResults(testID string, gce *gcp.Service) (string
 		bisector.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
 
 		url := fmt.Sprintf("gs://%s/%s", bisector.gsBucket, resultFiles[0])
-		cmd := exec.Command("gce-xfstests", "get-results", "--unpack", url)
+		cmd := exec.Command("gce-xfstests", "get-results",
+				    "--unpack-dir", bisector.logDir, url)
 		cmdLog := bisector.log.WithField("cmd", cmd.String())
 		w := cmdLog.Writer()
 		defer w.Close()
@@ -257,7 +258,8 @@ func (bisector *GitBisector) getResults(testID string, gce *gcp.Service) (string
 			return "", err
 		}
 
-		tmpResultsDir := fmt.Sprintf("/tmp/results-%s-%s", server.LTMUserName, testID)
+		tmpResultsDir := fmt.Sprintf("%s/results-%s-%s",
+				bisector.logDir, server.LTMUserName, testID)
 		unpackedResultsDir := bisector.logDir + "results/" + testID + "/"
 
 		if check.DirExists(tmpResultsDir) {
