@@ -1,0 +1,8 @@
+[Unit]
+Description=KCS repository cleanup
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/gce-repo-cleanup
+TimeoutSec=0
+StandardOutput=tty

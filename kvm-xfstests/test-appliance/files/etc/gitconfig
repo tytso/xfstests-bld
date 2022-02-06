@@ -1,0 +1,6 @@
+[gc]
+    autoPackLimit = 4
+    autoDetach = false
+
+[pack]
+    compression = 9

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+if test ! -d /cache/repositories ; then
+    exit 0
+fi
+
+while test -f /run/kernel-building
+do
+    sleep 1
+done
+
+cd /cache/repositories
+
+REPOS=$(find . -maxdepth 1 -type d -print | grep -v "^.$" | \
+	    grep -v "./linux.reference")
+
+if test -d linux.reference ; then
+    pushd linux.reference > /dev/null
+    if [ ! -f last-fetch ] ||
+	   [[ $(find last-fetch -mtime +7 -print 2> /dev/null) ]] ; then
+	echo Updating linux.reference
+	git fetch -q --all
+	touch last-fetch
+    fi
+    git gc --auto
+    popd > /dev/null
+fi
+
+for i in $REPOS ; do
+    if [[ $(find $i/last-used -mtime +30 -print 2> /dev/null) ]] ; then
+	echo "Removing stale repository $i"
+	rm -rf $i
+	continue
+    fi
+    pushd $i > /dev/null
+    if [ ! -f last-touched ] ||
+	   [[ $(find last-touched -mtime +7 -print 2> /dev/null) ]] ; then
+	echo "Cleaning repository $i"
+	git clean -xf -e /last-\*
+	touch last-touched
+    fi
+    git gc --auto
+    popd > /dev/null
+done
+
+fstrim -v /cache

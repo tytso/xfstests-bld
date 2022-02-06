@@ -1,0 +1,11 @@
+[Unit]
+Description=KCS repository cleanup timer
+
+[Timer]
+OnBootSec=15m
+OnCalendar=*-*-* 03:00
+RandomizedDelaySec=1h
+Unit=gce-repo-cleanup.service
+
+[Install]
+WantedBy=timers.target

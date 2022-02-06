@@ -37,4 +37,6 @@ then
 
     systemctl enable gce-kcs.service
     systemctl start gce-kcs.service
+    systemctl enable gce-repo-cleanup.timer
+    systemctl start gce-repo-cleanup.timer
 fi
