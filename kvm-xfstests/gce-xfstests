@@ -151,7 +151,7 @@ get_gce_zone()
 	    ;;
     esac
     z=$(run_gcloud_always compute instances list \
-	       --filter="name <= $1 and name >= $1" --format="value(zone)")
+	       --filter="name <= $1 AND name >= $1" --format="value(zone)")
     if test -z "$z" ; then
 	z="$GCE_ZONE"
     fi
