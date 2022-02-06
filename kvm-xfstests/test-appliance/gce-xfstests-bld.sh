@@ -360,6 +360,8 @@ systemctl enable telnet-getty@ttyS2.service
 systemctl enable telnet-getty@ttyS3.service
 systemctl stop multipathd
 systemctl disable multipathd
+cp /usr/share/systemd/tmp.mount /etc/systemd/system/
+systemctl enable tmp.mount
 
 if test -f /etc/default/nfs-kernel-server ; then
     ed /etc/default/nfs-kernel-server <<EOF
