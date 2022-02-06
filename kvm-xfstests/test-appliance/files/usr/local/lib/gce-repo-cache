@@ -8,7 +8,7 @@ logger -i "Entered kcs cache scratch"
 set -vx
 KCS_DSK=kcs-cache-disk
 CREATED_KCS_DEV=/dev/disk/by-id/google-kcs-cache
-KCS_SIZE=200
+KCS_SIZE=60
 
 d="$(gcloud compute --project $GCE_PROJECT disks list --filter="name = $KCS_DSK")"
 if test -z "$d"
@@ -16,8 +16,8 @@ then
     logger -s "Create kcs cache PD"
 
     gcloud compute -q disks create "$KCS_DSK" \
-    --size "${KCS_SIZE:-200}" \
-    --zone "$ZONE" --type "${KCS_TYPE:-pd-standard}"
+    --size "${KCS_SIZE:-60}" \
+    --zone "$ZONE" --type "${KCS_TYPE:-pd-balanced}"
 fi
 
 # attach the disk & turn off auto-delete
@@ -41,6 +41,7 @@ mkdir -p /cache
 mount $CREATED_KCS_DEV /cache
 
 mkdir -p /cache/ccache
+echo export CCACHE_DIR=/cache/ccache >> /root/.bashrc
 
 wait
 exit 0
