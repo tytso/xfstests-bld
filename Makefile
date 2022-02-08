@@ -2,7 +2,8 @@
 # A simple makefile for xfstests-bld
 #
 
-REPOS =		fio \
+REPOS =		blktests \
+		fio \
 		keyutils \
 		fsverity \
 		ima-evm-utils \
