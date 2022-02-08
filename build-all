@@ -474,7 +474,12 @@ fi
 
 if test -z "$SKIP_BLKTESTS"; then
     build_start "blktests"
-    (cd blktests ; $MAKE_CLEAN ; make ; \
+    (cd blktests ; \
+     if [ -n "$CROSS_COMPILE" ]; then \
+	export CC="$CROSS_COMPILE-gcc" ; \
+	export CXX="$CROSS_COMPILE-g++" ; \
+     fi ; \
+     $MAKE_CLEAN ; make ; \
      ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../blktests.ver)
 fi
 
