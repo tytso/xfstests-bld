@@ -485,7 +485,11 @@ fi
 
 if test -z "$SKIP_NVME_CLI"; then
     build_start "nvme-cli"
-    (set -vx ; cd nvme-cli ; $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
+    (cd nvme-cli ; \
+     if [ -n "$CROSS_COMPILE" ]; then \
+	export CC="$CROSS_COMPILE-gcc" ; \
+     fi ; \
+     $MAKE_CLEAN ; make CFLAGS="$LCF -I. -I$DESTDIR/include " \
      LDFLAGS="$LLF $EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" $HAVE_SYSTEMD_STATIC ; \
      install -D -m 0755 nvme $DESTDIR/bin/nvme ; \
      ver=$(git describe --always --dirty --tags); echo "nvme-cli	$ver ($(git log -1 --pretty=%cD))" > ../nvme-cli.ver)
@@ -493,6 +497,10 @@ fi
 
 if test -z "$SKIP_KVM_UTILS"; then
     build_start "misc VM utils"
-    (cd misc ; LDFLAGS="$EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" ./configure $cross ; \
+    (cd misc ; \
+     if [ -n "$CROSS_COMPILE" ]; then \
+	export CC="$CROSS_COMPILE-gcc" ; \
+     fi ; \
+     LDFLAGS="$EXEC_LDFLAGS $STATIC -L$DESTDIR/lib" ./configure $cross ; \
      $MAKE_CLEAN ; make $J ; make install DESTDIR=$DESTDIR)
 fi
