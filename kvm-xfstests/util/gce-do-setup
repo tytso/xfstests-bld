@@ -137,7 +137,7 @@ function SetupServiceAccount () {
 	    exit 1
 	fi
     fi
-    gsutil acl ch -u "${srv_acct}:W" gs://gce-xfstests
+    gsutil acl ch -u "${srv_acct}:W" gs://$GS_BUCKET
 }
 
 get_cache_dir
