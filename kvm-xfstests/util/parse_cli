@@ -975,10 +975,11 @@ case "$FSTESTCFG" in
     dax|dax,*|*,dax,*|*,dax|*/dax|*/dax,*)
 	PMEM_DEVICE=yes
 	;;
-    nfs|nfs,*|*,nfs,*|*,nfs)
+    filestore*|*filestore|*filestore*)
 	if test -z "$NFSSRV" ; then
 	    NFSSRV=filestore
 	fi
+	;;
 esac
 
 if test "$SKIP_LOG" = no ; then
