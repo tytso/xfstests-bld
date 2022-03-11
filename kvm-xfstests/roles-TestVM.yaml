@@ -113,6 +113,17 @@ includedPermissions:
 - compute.zoneOperations.list
 - compute.zones.get
 - compute.zones.list
+- file.instances.create
+- file.instances.update
+- file.instances.delete
+- file.instances.get
+- file.instances.list
+- file.locations.get
+- file.locations.list
+- file.operations.cancel
+- file.operations.delete
+- file.operations.get
+- file.operations.list
 - iam.roles.get
 - iam.roles.list
 - iam.serviceAccounts.actAs
