@@ -7,16 +7,17 @@ logger -i "Entered nfs setup"
 
 set -vx
 filestore_info=$(mktemp)
-if ! gcloud beta filestore instances describe nfstest \
-     --location="$ZONE" --format=json > "$filestore_info" ; then
+if ! gcloud filestore instances describe "$FILESTORE_NAME" \
+     --location="$FILESTORE_LOCATION" --format=json > "$filestore_info" ; then
     network=$(gcloud compute instances describe $instance --format=json | \
 		  jq ".networkInterfaces[].network" | \
 		  sed -e 's;^".*/;;' -e 's/"$//')
-    gcloud beta filestore instances create nfstest \
-	   --file-share=capacity=1TB,name=nfstest \
-	   --network=name="$network" --location="$ZONE"
-    if ! gcloud beta filestore instances describe nfstest \
-	 --location="$ZONE" --format=json > "$filestore_info" ; then
+    gcloud filestore instances create "$FILESTORE_NAME" \
+	   --file-share=capacity="$FILESTORE_SIZE",name=nfstest \
+	   --tier="$FILESTORE_TIER" --network=name="$network" \
+	   --location="$FILESTORE_LOCATION"
+    if ! gcloud filestore instances describe "$FILESTORE_NAME" \
+	 --location="$FILESTORE_LOCATION" --format=json > "$filestore_info" ; then
 	logger -i "Couldn't start filestore"
 	exit 1
     fi
@@ -31,5 +32,8 @@ mkdir -p /mnt/$FILESTORE_SUBDIR/scratch
 touch /mnt/busy-$FILESTORE_SUBDIR
 umount /mnt
 echo export FILESTORE_TOP FILESTORE_SUBDIR >> /run/test-env
+echo FILESTORE_NAME=\"$FILESTORE_NAME\" >> /run/test-env
+echo FILESTORE_LOCATION=\"$FILESTORE_LOCATION\" >> /run/test-env
+echo FILESTORE_TIER=\"$FILESTORE_TIER\" >> /run/test-env
 echo FILESTORE_TOP=\"$FILESTORE_TOP\" >> /run/test-env
 echo FILESTORE_SUBDIR=\"$instance\" >> /run/test-env

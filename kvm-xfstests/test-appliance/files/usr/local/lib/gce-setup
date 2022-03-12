@@ -17,17 +17,40 @@ if ! test -f "$GCE_CONFIG_FILE" ; then
     gsutil cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
 fi
 
+if test -n "$RUN_ON_GCE" ; then
+    case "$NFSSRV" in
+	filestore)
+	    export FILESTORE_NAME=nfstest
+	    export FILESTORE_TIER=basic-hdd
+	    export FILESTORE_LOCATION="$ZONE"
+	    export FILESTORE_SIZE=1024GB
+	    ;;
+	filestore-ssd)
+	    export FILESTORE_NAME=nfstest-ssd
+	    export FILESTORE_TIER=basic-ssd
+	    export FILESTORE_LOCATION="$ZONE"
+	    export FILESTORE_SIZE=2560GB
+	    ;;
+	filestore-enterprise)
+	    export FILESTORE_NAME=nfstest-enterprise
+	    export FILESTORE_TIER=enterprise
+	    export FILESTORE_LOCATION="$REGION"
+	    export FILESTORE_SIZE=1024GB
+	    ;;
+    esac
+fi
+
 if test -f /results/setup-syslog ; then
     echo "---------" >> /results/dmesg
     dmesg 2>&1 >> /results/dmesg
     # We need to remount the filestore NFS server after a reboot
-    if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
+    if test -n "$FILESTORE_NAME" ; then
 	script -a -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log
     fi
     # We need to remount the pts directory after a reboot
     if test "$CMD" = "pts" ; then
 	SCRATCH_SIZE=0
-	script -a -c /usr/local/lib/gce-setup-pts /var/log/gce-setup-pts.log
+	script -c /usr/local/lib/gce-setup-pts /var/log/gce-setup-pts.log
     fi
     exit 0
 fi
@@ -81,7 +104,7 @@ script -c /usr/local/lib/gce-setup-results /var/log/gce-setup-results.log &
 if test "$SCRATCH_SIZE" -gt 0 ; then
     script -c /usr/local/lib/gce-setup-scratch /var/log/gce-setup-scratch.log &
 fi
-if test -n "$CREATE_FILESTORE" -o "$NFSSRV" = "filestore" ; then
+if test -n "$FILESTORE_NAME" ; then
     script -c /usr/local/lib/gce-setup-filestore /var/log/gce-setup-filestore.log &
 fi
 

@@ -123,8 +123,8 @@ if test -f /run/test-env ; then
 	fi
 	umount /mnt
 	if test -z "$busy" ; then
-	    gcloud beta filestore instances delete nfstest \
-		   --quiet --async --location="$ZONE"
+	    gcloud filestore instances delete "$FILESTORE_NAME" \
+		   --quiet --async --location="$FILESTORE_LOCATION"
 	fi
     fi
 fi
