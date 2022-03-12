@@ -458,6 +458,13 @@ case "$1" in
 	exit $?
 	;;
     describe-image)
+	if test -z "$2" ; then
+	    if test "$IMAGE_FLAG" = "--image-family" ; then
+		run_gcloud compute images describe-from-family "$ROOT_FS"
+	    else
+		run_gcloud compute images describe "$ROOT_FS"
+	    fi
+	fi
 	run_gcloud compute images describe "$2"
 	exit $?
 	;;
