@@ -31,9 +31,8 @@ mkdir -p /mnt/$FILESTORE_SUBDIR/test
 mkdir -p /mnt/$FILESTORE_SUBDIR/scratch
 touch /mnt/busy-$FILESTORE_SUBDIR
 umount /mnt
-echo export FILESTORE_TOP FILESTORE_SUBDIR >> /run/test-env
-echo FILESTORE_NAME=\"$FILESTORE_NAME\" >> /run/test-env
-echo FILESTORE_LOCATION=\"$FILESTORE_LOCATION\" >> /run/test-env
-echo FILESTORE_TIER=\"$FILESTORE_TIER\" >> /run/test-env
-echo FILESTORE_TOP=\"$FILESTORE_TOP\" >> /run/test-env
-echo FILESTORE_SUBDIR=\"$instance\" >> /run/test-env
+echo FILESTORE_NAME=\"$FILESTORE_NAME\" > /run/filestore-param
+echo FILESTORE_LOCATION=\"$FILESTORE_LOCATION\" >> /run/filestore-param
+echo FILESTORE_TIER=\"$FILESTORE_TIER\" >> /run/filestore-param
+echo FILESTORE_TOP=\"$FILESTORE_TOP\" >> /run/filestore-param
+echo FILESTORE_SUBDIR=\"$instance\" >> /run/filestore-param

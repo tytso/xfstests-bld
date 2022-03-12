@@ -1,7 +1,14 @@
-if test -n "$RUN_ON_GCE" -a "$NFSSRV" = "filestore" ; then
+if test -f /run/filestore-param ; then
+   . /run/filestore-param
+fi
+
+if test -n "$FILESTORE_NAME" ; then
     TEST_DEV="$FILESTORE_TOP/$FILESTORE_SUBDIR/test"
     SCRATCH_DEV="$FILESTORE_TOP/$FILESTORE_SUBDIR/scratch"
-else
+    TESTNAME="nfs client running against GCE filestore"
+    USE_FILESTORE=yes
+    extra_opts="nosharecache"
+elif test -n "$NFSSRV" ; then
     case "$NFSSRV" in
 	*:|*:/*)
 	    TEST_DEV="$NFSSRV/test"
@@ -12,23 +19,28 @@ else
 	    SCRATCH_DEV="$NFSSRV:/scratch"
 	    ;;
     esac
+    TESTNAME="nfs client-only"
+else
+    SIZE=small
+    TEST_DEV=localhost:/test
+    SCRATCH_DEV=localhost:/scratch
+    TESTNAME="nfs loopback"
 fi
-export TEST_DEV SCRATCH_DEV
 
+export TEST_DEV SCRATCH_DEV
 export TEST_DIR=/mnt/test
 export SCRATCH_MNT=/mnt/scratch
 case "$TC" in
      *v4)
-	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=4"
+	 export NFS_MOUNT_OPTIONS="-o rw,$extra_opts,relatime,nfsvers=4"
 	 ;;
      *v3)
-	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=3"
+	 export NFS_MOUNT_OPTIONS="-o rw,$extra_opts,relatime,nfsvers=3"
 	 ;;
      *v2)
-	 export NFS_MOUNT_OPTIONS="-o rw,relatime,nfsvers=2"
+	 export NFS_MOUNT_OPTIONS="-o rw,$extra_opts,relatime,nfsvers=2"
 	 ;;
      *)
-	 export NFS_MOUNT_OPTIONS="-o rw,relatime"
+	 export NFS_MOUNT_OPTIONS="-o rw,$extra_opts,relatime"
 	 ;;
 esac
-TESTNAME="nfs client-only"

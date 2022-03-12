@@ -1,1 +1,9 @@
-loopback_v3.exclude
+# The following tests are listed as expected failures for NFSv3 per
+# https://wiki.linux-nfs.org/wiki/index.php/Xfstests
+generic/099
+generic/258
+generic/375
+generic/444
+
+# Normal configurations don't support dax
+-g dax

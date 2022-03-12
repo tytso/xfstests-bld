@@ -112,8 +112,8 @@ then
 	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
 fi
 
-if test -f /run/test-env ; then
-    . /run/test-env
+if test -f /run/filestore-param ; then
+    . /run/filestore-param
     if test -n "$FILESTORE_TOP" ; then
 	mount -t nfs "$FILESTORE_TOP" /mnt
 	rm -rf /mnt/$FILESTORE_SUBDIR /mnt/busy-$FILESTORE_SUBDIR
