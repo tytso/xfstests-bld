@@ -136,10 +136,10 @@ validate_config_name()
     local arg="$1"
     local fs
     local cfg
-    local primary_fs
+    local base_fstype
 
     if [[ "$arg" == *":"* ]]; then
-	primary_fs="${arg%%:*}"
+	base_fstype="${arg%%:*}"
 	arg="${arg#*:}"
     fi
 
@@ -167,9 +167,9 @@ validate_config_name()
 	    print_help
 	    exit 1
 	fi
-	# use fs types in CONFDIR as valid options for primary fs
-	if test ! -d "$CONFDIR/$primary_fs" ; then
-	    echo -e "Invalid file system type for primary fs: $primary_fs\n"
+	# use fs types in CONFDIR as valid options for the base fstype
+	if test ! -d "$CONFDIR/$base_fstype" ; then
+	    echo -e "Invalid file system type for base fstype: $base_fstype\n"
 	    print_help
 	    exit 1
 	fi

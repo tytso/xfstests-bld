@@ -8,7 +8,7 @@ function __fsck()
 {
 	local dev="$1"
 
-	case "$FSTESTTYP" in
+	case "$BASE_FSTYPE" in
 	    ext4)
 		/sbin/e2fsck -fy "$dev"
 		;;
@@ -28,14 +28,14 @@ function __check_filesystem()
 	umount $tst_dev >& /dev/null
 	__fsck "$tst_dev"
 	ret="$?"
-	mount -t $FSTESTTYP $tst_dev $tst_mnt
-	echo fsck for "$FSTESTTYP" on test device exited with status "$ret"
+	mount -t $BASE_FSTYPE $tst_dev $tst_mnt
+	echo fsck for "$BASE_FSTYPE" on test device exited with status "$ret"
 
 	umount $scr_dev >& /dev/null
 	__fsck "$scr_dev"
 	ret2="$?"
-	mount -t $FSTESTTYP $scr_dev $scr_mnt
-	echo fsck for "$FSTESTTYP" on scratch device exited with status "$ret"
+	mount -t $BASE_FSTYPE $scr_dev $scr_mnt
+	echo fsck for "$BASE_FSTYPE" on scratch device exited with status "$ret"
 
 	if test "$ret" -eq 0 ; then
 		ret=$ret2
@@ -53,7 +53,7 @@ function __mkfs()
 {
 	local dev="$1"
 
-	case "$FSTESTTYP" in
+	case "$BASE_FSTYPE" in
 	    ext4)
 		/sbin/mke2fs -F -q -t ext4 "$dev"
 		;;
@@ -72,12 +72,12 @@ function __format_filesystem()
 
 	umount $tst_dev >& /dev/null
 	__mkfs $tst_dev
-	mount -t $FSTESTTYP $tst_dev $tst_mnt
+	mount -t $BASE_FSTYPE $tst_dev $tst_mnt
 	mkdir -p $tst_mnt/ovl $tst_mnt/testarea
 
 	umount $scr_dev >& /dev/null
 	__mkfs $scr_dev
-	mount -t $FSTESTTYP $scr_dev $scr_mnt
+	mount -t $BASE_FSTYPE $scr_dev $scr_mnt
 	mkdir -p $scr_mnt/ovl $scr_mnt/testarea
 
 	return 0
@@ -114,6 +114,7 @@ function show_mkfs_opts()
 function show_mount_opts()
 {
     echo OVERLAY_MOUNT_OPTIONS: "$OVERLAY_MOUNT_OPTIONS"
+    echo BASE_FSTYPE: "$BASE_FSTYPE"
 }
 
 function test_name_alias()

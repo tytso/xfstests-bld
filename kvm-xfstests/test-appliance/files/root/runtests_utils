@@ -19,7 +19,7 @@ function get_fs_config()
 
 function clear_fs_config()
 {
-    unset SIZE REQUIRE_FEATURE PRIMARY_FSTYPE
+    unset SIZE REQUIRE_FEATURE
     unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
     unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
     unset TEST_LOGDEV SCRATCH_LOGDEV TEST_RTDEV SCRATCH_RTDEV
@@ -55,7 +55,15 @@ function get_one_fs_config() {
 	*\ *) FSTESTCFG="${FSTESTCFG#* }" ;;
 	*)    FSTESTCFG=""
     esac
+    export BASE_FSTYPE="$FSTESTTYP"
     case "$TC" in
+        *:*/*)
+	    # set primary fstype if provided (ex. ext4:overlay)
+	    BASE_FSTYPE="${TC%%:*}"
+	    TC="${TC#*:}"
+	    FS="${TC%%/*}"
+	    TC="${TC#*/}"
+	    ;;
 	*/*)
 	    FS="${TC%%/*}"
 	    TC="${TC#*/}"
