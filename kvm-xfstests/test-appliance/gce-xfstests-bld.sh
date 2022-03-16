@@ -29,6 +29,7 @@ PACKAGES="bash-completion \
 	build-essential \
 	bzip2 \
 	ccache \
+	clang \
 	cpio \
 	cryptsetup \
 	curl \
@@ -47,6 +48,7 @@ PACKAGES="bash-completion \
 	file \
 	flex \
 	gawk \
+	gcc-9 \
 	git	\
 	jfsutils \
 	jq \
