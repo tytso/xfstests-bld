@@ -36,6 +36,6 @@ then
     gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance
 fi
 touch $DIR/config.common
-cp "$GCE_CONFIG_FILE" $DIR/config.gce
+cat "$GCE_CONFIG_FILE" >> $DIR/config.gce
 
 exit 0
