@@ -175,6 +175,7 @@ cp ../../kvm-xfstests/util/install-kconfig	$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/kbuild		$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/parse_cli		$kvm_xfs_dir/util/
 cp ../../kvm-xfstests/util/parse_opt_funcs	$kvm_xfs_dir/util/
+cp ../../kvm-xfstests/config.gce		$kvm_xfs_dir/
 cp ../../kvm-xfstests/gce-xfstests		$kvm_xfs_dir/
 cp ../../kvm-xfstests/get-results		$kvm_xfs_dir/
 cp -r ../../kernel-configs			$xfs_bld_dir/
