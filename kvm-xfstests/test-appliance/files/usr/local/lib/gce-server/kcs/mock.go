@@ -9,7 +9,7 @@ import (
 )
 
 // MockRunBuild runs a mock build. It reads mock.txt from repo to mock the test result.
-func MockRunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig string, kConfigOpts string, testID string, buildLog string, log *logrus.Entry) server.ResultType {
+func MockRunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig string, kConfigOpts string, kbuildOpts string, testID string, buildLog string, log *logrus.Entry) server.ResultType {
 	log.Info("Start building mock kernel")
 
 	lines, _ := check.ReadLines(repo.Dir() + "mock.txt")

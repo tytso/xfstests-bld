@@ -129,6 +129,7 @@ type UserOptions struct {
 	GoodCommit    string `json:"good_commit"`
 	KConfig	      string `json:"kconfig"`
 	KConfigOpts   string `json:"kconfig_opts"`
+	KbuildOpts    string `json:"kbuild_opts"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally.

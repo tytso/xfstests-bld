@@ -301,7 +301,7 @@ func (repo *Repository) BisectReset(writer io.Writer) error {
 
 // BuildUpload builds the current kernel code and uploads image to GS.
 // Script output is written into a given writer.
-func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig string, kConfigOpts string, writer io.Writer) error {
+func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig string, kConfigOpts string, kbuildOpts string, writer io.Writer) error {
 	repo.lock.Lock()
 	defer repo.lock.Unlock()
 	if !check.DirExists(repo.dir) {
@@ -315,6 +315,7 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig str
 		"GS_PATH":   gsPath,
 		"GS_CONFIG": gsConfig,
 		"KCONFIG_OPTS": kConfigOpts,
+		"KBUILD_OPTS": kbuildOpts,
 	}
 
 	err := check.Run(cmd, repo.dir, env, writer, writer)

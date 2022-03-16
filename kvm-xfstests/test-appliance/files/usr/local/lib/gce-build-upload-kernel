@@ -51,7 +51,7 @@ fi
 status=1
 trap "rm -f /run/kernel-building; exit \$status" EXIT HUP INT QUIT TERM
 touch "$REPO_DIR/last-used" "$REPO_DIR/last-touched" /run/kernel-building
-(cd "$REPO_DIR" ; time gce-xfstests kbuild $DPKG_FLAGS) || exit 1
+(cd "$REPO_DIR" ; time gce-xfstests kbuild $DPKG_FLAGS $KBUILD_OPTS) || exit 1
 status=0
 rm -f /run/kernel-building
 gsutil cp "$KERNEL_PATH" $GS_PATH

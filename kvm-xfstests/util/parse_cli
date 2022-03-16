@@ -249,6 +249,7 @@ image-project:
 initrd:
 instance-name:
 kernel:
+kbuild-opts:
 kconfig-opts:
 local-ssd
 local-ssd-nvme
@@ -630,6 +631,10 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    KCONFIG_OPTS="$1"
 	    ;;
+	--kbuild-opts) shift
+	    supported_flavors gce
+	    KBUILD_OPTS="$1"
+	    ;;
 	--testrunid) shift
 	    supported_flavors gce
 	    TESTRUNID="$1"
@@ -919,6 +924,12 @@ fi
 if test -n "$KCONFIG_OPTS" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
 then
     echo "--kconfig-opts only is supported with LTM or KCS"
+    exit 1
+fi
+
+if test -n "$KBUILD_OPTS" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+then
+    echo "--kbuild-opts only is supported with LTM or KCS"
     exit 1
 fi
 

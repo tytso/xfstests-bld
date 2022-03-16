@@ -63,7 +63,7 @@ func StartTracker(instance *server.Instance, finished chan bool) {
 
 // RunBuild builds the kernel and upload the kernel image.
 // It signals the server tracker to reset the timeout timer.
-func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig string, kConfigOpts string, testID string, buildLog string) error {
+func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig string, kConfigOpts string, kbuildOpts string, testID string, buildLog string) error {
 	buildLock.Lock()
 	defer buildLock.Unlock()
 	newBuild <- true
@@ -73,7 +73,7 @@ func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig str
 		return err
 	}
 	defer file.Close()
-	err = repo.BuildUpload(gsBucket, gsPath, gsConfig, kConfigOpts, file)
+	err = repo.BuildUpload(gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, file)
 
 	return err
 }
