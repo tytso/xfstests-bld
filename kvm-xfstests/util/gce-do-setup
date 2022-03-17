@@ -145,7 +145,18 @@ function SetupServiceAccount () {
 	    exit 1
 	fi
     fi
-    gsutil acl ch -u "${srv_acct}:W" gs://$GS_BUCKET
+
+    # when uniform bucket-level access is enabled, acl does not work
+    if gsutil acl get gs://$GS_BUCKET &> /dev/null -eq 0; then
+	    # set via acl
+	    gsutil acl ch -u "${srv_acct}:W" gs://$GS_BUCKET
+    else
+	    # set via iams
+	    if ! gsutil iam ch "serviceAccount:${srv_acct}:legacyBucketWriter" \
+		    gs://$GS_BUCKET &> /dev/null; then
+		echo "Error setting up gs://$GS_BUCKET write permissions for ${srv_acct}"
+	    fi
+    fi
 }
 
 function SetupServiceAccountCloudBuild () {
