@@ -206,6 +206,14 @@ if test "$NEW_SUITE" = "buster" ; then
 fi
 
 apt-get install -y $PACKAGES
+# n.b. we have to install git$BACKPORTS separately afer installing git
+# because otherwise apt will complain about dependency problems.
+# Apparently other packages we install have dependency on git and if we
+# include git$BACKPORTS instead of git in the $PACKAGES list, this will
+# cause dependency failures.  So for now, we install git and then below
+# install git$BACKPORTS which is a bit wasteful, but it's the cleanest way
+# to deal with the dependency problem.
+apt-get install -y git$BACKPORTS
 dpkg --remove $PACKAGES_REMOVE
 apt-get -fuy autoremove
 apt-get clean

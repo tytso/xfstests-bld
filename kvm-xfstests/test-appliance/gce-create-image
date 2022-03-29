@@ -62,7 +62,7 @@ setup_for_bullseye()
 	LIBSS=libss2
 	BTRFS_PROGS=btrfs-progs
 	F2FS_TOOLS=f2fs-tools
-	BACKPORTS=/buster-backports
+	BACKPORTS=/bullseye-backports
 }
 
 setup_for_buster
