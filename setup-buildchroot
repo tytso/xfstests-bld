@@ -357,12 +357,11 @@ is_native_chroot()
     esac
 }
 
-# Validate that binfmt_misc support for the requested architecture is enabled
-# and lists a sufficiently new QEMU binary as the interpreter.  Then set $QEMU
-# to the path to the QEMU binary which should be used.
+# Validate that binfmt_misc support for the requested architecture is enabled,
+# then set $QEMU to the path to the QEMU binary that should be used.
 validate_binfmt_misc()
 {
-    local qemu_arch binfmt binfmt_file full_version version major minor
+    local qemu_arch binfmt binfmt_file
 
     case "$DEBIAN_ARCH" in
     armhf)	qemu_arch=arm ;;
