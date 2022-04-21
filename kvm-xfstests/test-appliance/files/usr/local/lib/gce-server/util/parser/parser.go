@@ -23,7 +23,6 @@ var invalidOpts = []string{
 	"--gs-bucket",
 	"--email",
 	"--gce-zone",
-	"--image-project",
 	"--testrunid",
 	"--hooks",
 	"--update-xfstests-tar",

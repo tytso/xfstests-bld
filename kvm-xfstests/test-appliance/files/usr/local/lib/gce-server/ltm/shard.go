@@ -86,13 +86,24 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--instance-name", shard.name,
 		"--gce-zone", shard.zone,
 		"--gs-bucket", sharder.gsBucket,
-		"--image-project", sharder.projID,
 		"--kernel", sharder.gsKernel,
 		"--bucket-subdir", sharder.bucketSubdir,
 		"--no-email",
 		"-c", config,
 	}
 	shard.args = append(shard.args, sharder.validArgs...)
+
+	var defaultProj bool = true
+	for _, arg := range shard.args {
+		if arg == "--image-project" {
+			defaultProj = false
+			break
+		}
+	}
+
+	if defaultProj {
+		shard.args = append(shard.args, "--image-project", sharder.projID)
+	}
 
 	return &shard
 }
