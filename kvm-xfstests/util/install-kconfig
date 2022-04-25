@@ -28,6 +28,9 @@ do
 	--kcsan)
 	    DO_KCSAN=yes
 	    ;;
+	--lockdep)
+	    DO_LOCKDEP=yes
+	    ;;
 	--no-action)
 	    NO_ACTION="echo"
 	    ;;
@@ -117,6 +120,10 @@ fi
 
 if test -n "$DO_KCSAN" ; then
     FILES+=("$KCONFIG_DIR/kcsan-configs")
+fi
+
+if test -n "$DO_LOCKDEP" ; then
+    FILES+=("$KCONFIG_DIR/lockdep-configs")
 fi
 
 if test -n "$DO_UBSAN" ; then
