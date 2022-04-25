@@ -33,5 +33,13 @@ generic/273
 # If it's a problem for ext4, we'll catch it in other ext4 configs.
 generic/500
 
+# These tests assume that the directory will get expanded when
+# additional entries are added.  With bigalloc and with htree
+# directories, this is not the case.  Since no blocks are added,
+# there is no attempted block allocation and so the expected
+# EDQUOT failure didn't happen.
+generic/681
+generic/682
+
 # Normal configurations don't support dax
 -g dax
