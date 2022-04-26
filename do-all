@@ -40,6 +40,7 @@ longopts+=",chroot:"
 longopts+=",out-tar"
 longopts+=",no-out-tar"
 longopts+=",update"
+longopts+=",gce"
 
 if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
     usage 1>&2
@@ -66,6 +67,9 @@ while (( $# >= 0 )); do
 	;;
     --update)
 	UPDATE=true
+	;;
+    --gce)
+	DO_GCE=yes
 	;;
     --)
 	shift
@@ -98,5 +102,17 @@ case "$OUT_TAR" in
     yes)  gen_image_args+=" --out-tar" ;;
 esac
 
-cd kvm-xfstests/test-appliance
+cd kvm-xfstests
+if test -n "$DO_GCE"; then
+    ./gce-xfstests create-image >& /tmp/gce-xfstests-create.$$ &
+fi
+
+cd test-appliance
 $SUDO_ENV ./gen-image $gen_image_args
+
+if test -n "$DO_GCE"; then
+    tail -n +1 -f /tmp/gce-xfstests-create.$$ &
+    wait %./gce-xfstests
+    kill %tail
+    rm -f /tmp/gce-xfstests-create.$$
+fi
