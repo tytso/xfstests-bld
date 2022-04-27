@@ -606,32 +606,12 @@ case "$1" in
 	;;
     launch-ltm)
 	shift
-	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
-	then
-	    echo "The gce-xfstests LTM requires that you build the gce-xfstests image"
-	    echo "and put it in your own project."
-	    echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
-	    echo "in your ~/.config/gce-xfstests file.\n"
-	    echo "See the instructions on building an image:"
-	    echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
-	    exit 1
-	fi
-	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-ltm"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-ltm" "$@"
 	exit $?
 	;;
     launch-kcs)
 	shift
-	if test "$GCE_IMAGE_PROJECT" != "$GCE_PROJECT"
-	then
-		echo "The gce-xfstests compile server requires that you build the gce-xfstests image"
-		echo "and put it in your own project."
-		echo "Ensure that the GCE_IMAGE_PROJECT flag is set equal to GCE_PROJECT"
-		echo "in your ~/.config/gce-xfstests file.\n"
-		echo "See the instructions on building an image:"
-		echo "\thttps://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md#creating-a-new-gce-test-appliance-image"
-		exit 1
-	fi
-	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-kcs"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-launch-kcs" "$@"
 	exit $?
 	;;
     refresh-machtype-file)

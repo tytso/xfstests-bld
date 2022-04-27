@@ -25,6 +25,16 @@ fi
 
 . "$DIR/util/get-config"
 
+case $1 in
+    --image-project) shift
+    GCE_IMAGE_PROJECT="$1"
+    shift ;;
+esac
+
+if [ -z "$GCE_IMAGE_PROJECT" ]; then
+    GCE_IMAGE_PROJECT="xfstests-cloud"
+fi
+
 INSTANCE="xfstests-kcs"
 
 if test -f "$DIR/.kcs_cookie"; then

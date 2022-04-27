@@ -25,6 +25,16 @@ fi
 
 . "$DIR/util/get-config"
 
+case $1 in
+    --image-project) shift
+    GCE_IMAGE_PROJECT="$1"
+    shift ;;
+esac
+
+if [ -z "$GCE_IMAGE_PROJECT" ]; then
+    GCE_IMAGE_PROJECT="xfstests-cloud"
+fi
+
 INSTANCE="xfstests-ltm"
 
 if test -f "$DIR/.ltm_cookie"; then
