@@ -29,5 +29,18 @@ generic/235
 # Ext3 does not support file systems > 16TB
 generic/620
 
+# The generic/635 test tries to call the shutdown ioctl with the
+# LOGFLUSH flag, which unfortunately will does not work well with
+# nodelalloc mount option (which the conv configuration uses).
+# This is because once we are in shutdown state, any attempt to write
+# an inode fails with an EIO --- but this means that the data=ordered
+# writeback will fail with an EIO and this causes the LOGFLUSH commit
+# fail, which in turn means the $SCRATCH_MNT/t_* files do not survive
+# the shutdown, causing generic/635 to fail.  We are not likely going
+# to fix this before we rework ext4's writeback strategy to remove the
+# data=ordered writeback entirely, so let's just exclude this test for
+# now.
+generic/635
+
 # Normal configurations don't support dax
 -g dax
