@@ -10,6 +10,7 @@ gen_image_args=
 OUT_TAR=
 BUILD_ENV=
 SUDO_ENV=sudo
+DO_GCE=
 
 if test -f config.custom ; then
     . config.custom
