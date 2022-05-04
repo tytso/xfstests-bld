@@ -37,12 +37,16 @@ do
 	--ubsan)
 	    DO_UBSAN=yes
 	    ;;
-	--debug)
+	--full-debug-info|--debug-info)
+	    DO_FULL_DEBUG_INFO=yes
+	    ;;
+	--exxtra-debug|debug)
 	    DO_DEBUG=yes
 	    ;;
 	--help|help)
-	    echo "Usage: install-kconfig [--i386] [--perf] [--blktests]"
-	    echo "	[--debug] [--no-action]"
+	    echo "Usage: install-kconfig [--i386] [--perf] [--blktests]" \
+		 "[--extra-debug]"
+	    echo "	[--lockdep] [--full-debug-info] [--no-action]"
 	    exit 0
 	    ;;
 	*)
@@ -112,6 +116,10 @@ fi
 
 if test -n "$DO_DEBUG" ; then
     FILES+=("$KCONFIG_DIR/extra-debug-configs")
+fi
+
+if test -n "$DO_FULL_DEBUG_INFO" ; then
+    FILES+=("$KCONFIG_DIR/full-debug-info-configs")
 fi
 
 if test -n "$DO_KASAN" ; then
