@@ -252,6 +252,7 @@ rm -f /root/xfstests.tar.gz /root/files.tar.gz
 
 # This installs junitparser and the sendgrid python classes
 pip3 install -r /usr/local/lib/requirements.txt
+pip3 install drgn
 
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log

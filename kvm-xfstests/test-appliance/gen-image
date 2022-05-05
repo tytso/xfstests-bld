@@ -16,6 +16,7 @@ DO_GCE=no
 DO_UPDATE=no
 DO_NETWORKING=no
 DO_IMAGE=no
+DO_DRGN=no
 RESUME=0
 
 if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
@@ -58,6 +59,9 @@ while [ "$1" != "" ]; do
       if test -z "$OUT_TAR" ; then
 	  OUT_TAR="$DIR/root_fs.tar.gz"
       fi
+      ;;
+    --drgn)
+      DO_DRGN=yes;
       ;;
     --networking)
       DO_NETWORKING=yes;
@@ -138,6 +142,9 @@ LIBSSL=$(apt-cache depends libssl-dev | grep 'Depends: libssl1' |\
 		awk '{print $2};')
 if test $DO_NETWORKING = "yes"; then
     PACKAGES="$PACKAGES $(cat net-packages)"
+fi
+if test $DO_DRGN = "yes" ; then
+    PACKAGES="$PACKAGES python3-pip"
 fi
 PACKAGES="$PACKAGES $(cat xfstests-packages) $LIBSSL"
 if test -f xfstests-packages.$SUITE ; then
@@ -324,7 +331,7 @@ if test -z "$DO_FAKECHROOT"; then
     if test "$RESUME" -le 1 ; then
 	stage_start "stage 1: format file system"
 	cp /dev/null $RAW_ROOT_FS
-	mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 1g
+	mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 2g
     fi
    mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
 fi
@@ -445,11 +452,11 @@ run_in_chroot "systemctl enable telnet-getty@ttyS1.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS2.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS3.service"
 run_in_chroot "systemctl disable multipathd"
-find $ROOTDIR/usr/share/doc -type f | grep -v copyright | xargs rm
-find $ROOTDIR/usr/share/doc -mindepth 2 -type l | xargs rm
-find $ROOTDIR/usr/share/doc -type d | xargs rmdir --ignore-fail-on-non-empty -p
+find $ROOTDIR/usr/share/doc -type f -print0 ! -name copyright | xargs -0 rm
+find $ROOTDIR/usr/share/doc -mindepth 2 -type l -print0 | xargs -0 rm
+find $ROOTDIR/usr/share/doc -type d -print0 | xargs -0 rmdir --ignore-fail-on-non-empty -p
 rm -rf $ROOTDIR/usr/share/man
-find $ROOTDIR/var/log -type f | xargs rm
+find $ROOTDIR/var/log -type f -print0 | xargs -0 rm
 if test -n "$DO_FAKECHROOT"; then
     rm -f $ROOTDIR/dev $ROOTDIR/proc
     mkdir $ROOTDIR/dev $ROOTDIR/proc
@@ -492,6 +499,10 @@ RPCNFSDCOUNT="8 --nfs-version 2"
 w
 q
 EOF
+fi
+
+if test $DO_DRGN = "yes" ; then
+    run_in_chroot "pip3 install drgn"
 fi
 
 if test -n "$PAUSE_DEBUG"
