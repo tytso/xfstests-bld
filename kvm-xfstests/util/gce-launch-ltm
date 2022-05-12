@@ -69,7 +69,7 @@ then
     exit 1
 fi
 
-GCE_LTM_MACHTYPE="e2-small"
+GCE_LTM_MACHTYPE="e2-standard-2"
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 LOG_WR=https://www.googleapis.com/auth/logging.write
