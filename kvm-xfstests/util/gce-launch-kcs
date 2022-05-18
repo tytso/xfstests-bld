@@ -25,6 +25,16 @@ fi
 
 . "$DIR/util/get-config"
 
+case $1 in
+    --image-project) shift
+    GCE_IMAGE_PROJECT="$1"
+    shift ;;
+esac
+
+if [ -z "$GCE_IMAGE_PROJECT" ]; then
+    GCE_IMAGE_PROJECT="xfstests-cloud"
+fi
+
 INSTANCE="xfstests-kcs"
 
 if test -f "$DIR/.kcs_cookie"; then
@@ -58,7 +68,9 @@ then
     exit 1
 fi
 
-GCE_KCS_MACHTYPE="n2-standard-4"
+if [ -z "$GCE_KCS_MACHTYPE" ]; then
+	GCE_KCS_MACHTYPE="n2-standard-4"
+fi
 
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 LOG_WR=https://www.googleapis.com/auth/logging.write
