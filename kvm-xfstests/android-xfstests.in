@@ -1,7 +1,0 @@
-#!/bin/sh
-
-DIR=@DIR@
-
-ANDROID_XFSTESTS_DIR=$DIR/kvm-xfstests
-export ANDROID_XFSTESTS_DIR
-exec $ANDROID_XFSTESTS_DIR/android-xfstests "$@"

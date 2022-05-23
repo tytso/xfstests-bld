@@ -1,0 +1,534 @@
+#!/bin/bash -e
+#
+# This shell script must be run as root
+
+SAVE_ARGS=("$@")
+
+SUITE=buster
+MIRROR=http://mirrors.kernel.org/debian
+DIR=$(pwd)
+ROOTDIR=$DIR/rootdir
+RAW_ROOT_FS=$DIR/root_fs.raw
+ROOT_FS=$DIR/root_fs.img
+COMPAT="-o compat=0.10"
+SAVE_RAW_ROOT=no
+DO_GCE=no
+DO_UPDATE=no
+DO_NETWORKING=no
+DO_IMAGE=no
+DO_DRGN=no
+RESUME=0
+
+if test $(df -k /tmp | tail -1 | awk '{print $4}') -gt 350000
+then
+    RAW_ROOT_FS=/tmp/root_fs.raw.$$
+fi
+
+if test -f ../fstests-bld/xfstests/build-distro ; then
+    distro=$(cat ../fstests-bld/xfstests/build-distro)
+    if test "$distro" = bullseye ; then
+	SUITE=bullseye
+    else
+	SUITE=buster
+    fi
+fi
+
+if test -r config.custom ; then
+   . $(pwd)/config.custom
+fi
+
+while [ "$1" != "" ]; do
+  case $1 in
+    --save_raw_root)
+      SAVE_RAW_ROOT=yes;
+      ;;
+    --raw_root_fs) shift
+      RAW_ROOT_FS="$1"
+      ;;
+    --resume) shift
+      RESUME="$1"
+      ;;
+    --suite) shift
+      SUITE=$1
+      ;;
+    --mirror) shift
+      MIRROR=$1
+      ;;
+    --both)
+      DO_IMAGE=yes;
+      if test -z "$OUT_TAR" ; then
+	  OUT_TAR="$DIR/root_fs.tar.gz"
+      fi
+      ;;
+    --drgn)
+      DO_DRGN=yes;
+      ;;
+    --networking)
+      DO_NETWORKING=yes;
+      ;;
+    --update)
+      DO_UPDATE=yes
+      ;;
+    --pause)
+      PAUSE_DEBUG=yes
+      ;;
+    --out_tar|--out-tar)
+      OUT_TAR="$DIR/root_fs.tar.gz"
+      ;;
+    --out_tar=*|--out-tar=*)
+      OUT_TAR="$(echo $1 | sed 's/--out[-_]tar=//')"
+      ;;
+    --log)
+      DO_LOG="$DIR/gen-image.log"
+      ;;
+    --log=*)
+      DO_LOG="$(echo $1 | sed 's/--log=//')"
+      ;;
+    -a|--add_packages) shift
+      PACKAGES="$PACKAGES $1"
+      ;;
+    *)
+      echo "usage: gen-image [--save_raw_root] [--update] [--mirror MIRROR_LOC]"
+      echo "                 [-a|--add_packages packages] [--networking] "
+      echo "                 [--suite SUITE] [--out_tar[=DIR]]"
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+if test -z "$OUT_TAR" ; then
+    DO_IMAGE=yes
+fi
+
+function stage_start () {
+    echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): gen-image: Starting $*"
+}
+
+if test -z "$SOURCE_DATE_EPOCH" ; then
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+fi
+
+if test -n "$DO_LOG" ; then
+    if test -z "$GEN_IMAGE_LOG" ; then
+	export GEN_IMAGE_LOG="$DO_LOG"
+	set -- "${SAVE_ARGS[@]}"
+	exec script -c "$0 $*" "$DO_LOG"
+    fi
+fi
+
+if test -n "$OUT_TAR" -a "$EUID" -ne 0 ; then
+    export DO_FAKECHROOT=yes
+fi
+
+if test -n "$DO_FAKECHROOT" ; then
+    if test "$FAKECHROOT" != "true" ; then
+	set -- "${SAVE_ARGS[@]}"
+	exec fakechroot $0 "$@"
+    fi
+    if test -z "$FAKEROOTKEY" ; then
+	set -- "${SAVE_ARGS[@]}"
+	exec fakeroot $0 "$@"
+    fi
+    PATH="/sbin:/usr/sbin:$PATH"
+else
+    if test "$EUID" -ne 0 ; then
+	echo "You must run this script as root (or use --out_tar)"
+	exit 1;
+    fi
+fi
+
+LIBSSL=$(apt-cache depends libssl-dev | grep 'Depends: libssl1' |\
+		awk '{print $2};')
+if test $DO_NETWORKING = "yes"; then
+    PACKAGES="$PACKAGES $(cat net-packages)"
+fi
+if test $DO_DRGN = "yes" ; then
+    PACKAGES="$PACKAGES python3-pip"
+fi
+PACKAGES="$PACKAGES $(cat xfstests-packages) $LIBSSL"
+if test -f xfstests-packages.$SUITE ; then
+    PACKAGES="$PACKAGES $(cat xfstests-packages.$SUITE)"
+fi
+PACKAGES=$(echo $PACKAGES | sed 's/ /,/g')
+case $PACKAGES in
+     apt,*|*,apt,*|*,apt)	EXCLUDE="" ;;
+     *)				EXCLUDE="--exclude=apt"
+esac
+
+update_xfstests()
+{
+   tar --exclude share/man -C $ROOTDIR/root -xf ../fstests-bld/xfstests.tar.gz
+   tar -X kvm-exclude-files -C files \
+	--owner=root --group=root --mode=go+u-w -c . | tar -C $ROOTDIR -x
+   rsync -avH ../fstests-bld/xfstests/git-versions $ROOTDIR/root/xfstests
+   chown -R root:root $ROOTDIR/root
+   chmod -R go+u-w $ROOTDIR/root
+}
+
+fix_symlinks()
+{
+    if test -n "$DO_FAKECHROOT"; then
+	symlinks -crd rootdir
+    fi
+}
+
+finalize_rootfs()
+{
+    stage_start "to create image file"
+    # the stretch version of e2fsck will return 1 if it optimized any
+    # directories, which is the return value for "we changed something but
+    # everything is a-ok".  If we fail just continue if our return value was 1,
+    # otherwise bail.
+    e2fsck -fyD $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
+    e2fsck -fy -E discard $RAW_ROOT_FS || [ $? -eq 1 ] || exit 1
+    qemu-img convert -f raw -O qcow2 $COMPAT -c $RAW_ROOT_FS $ROOT_FS
+}
+
+cleanup_package_dirs()
+{
+    if test -z "$DO_FAKECHROOT" ; then
+	umount $ROOTDIR/var/cache/apt/archives
+	umount $ROOTDIR/var/lib/apt/lists
+	for i in debs imgdir ;
+	do
+	    umount $ROOTDIR/$i
+	    rmdir $ROOTDIR/$i
+	done
+    else
+	(cd $ROOTDIR/var/cache/apt/archives ; \
+	 for i in * ; do \
+	     if test ! -f $DIR/var.cache.apt.archives/$i ; then \
+		 echo caching $i ; \
+		 ln $i $DIR/var.cache.apt.archives/ ; \
+	     fi ; \
+	 done)
+	(cd $ROOTDIR/var/lib/apt/lists ; \
+	 for i in * ; do \
+	     if test ! -f $DIR/var.lib.apt.lists/$i ; then \
+		 echo caching $i ; \
+		 ln $i $DIR/var.lib.apt.lists/ ; \
+	     fi ; \
+	 done)
+	find $ROOTDIR/var/cache/apt/archives $ROOTDIR/var/lib/apt/lists \
+	     $ROOTDIR/debs -type f | xargs rm
+	rmdir $ROOTDIR/debs
+	rmdir $ROOTDIR/imgdir
+    fi
+}
+
+unmount_rootdir()
+{
+    if test -z "$DO_FAKECHROOT" ; then
+	umount $ROOTDIR
+	rmdir $ROOTDIR
+    fi
+}
+
+delete_rootdir()
+{
+    if test -z "$DO_FAKECHROOT" ; then
+	if test "$SAVE_RAW_ROOT" = "yes" ; then
+	    echo "Raw root image has been saved at" $RAW_ROOT_FS
+	else
+	    rm -f $RAW_ROOT_FS
+	fi
+    else
+	if test "$SAVE_RAW_ROOT" = "yes" ; then
+	    echo "Raw root directory has been saved at" $ROOTDIR
+	else
+	    rm -rf $ROOTDIR
+	fi
+    fi
+}
+
+run_in_chroot()
+{
+    echo "Running in chroot: $1"
+    # Note: we execute the command in a login shell rather than execute it
+    # directly because this makes the $PATH get set up correctly.
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+	LC_ALL=C LANGUAGE=C LANG=C chroot "$ROOTDIR" /bin/sh -l -c "$1"
+}
+
+cleanup_on_abort()
+{
+    cleanup_package_dirs
+    unmount_rootdir
+    delete_rootdir
+    trap - INT TERM
+}
+
+if test -n "$OUT_TAR" ; then
+    if test $DO_UPDATE = "yes" ; then
+	echo "Incompatible options: --out-tar and --update"
+	exit 1
+    fi
+    rm -rf "$ROOTDIR"
+fi
+
+mkdir -p $ROOTDIR
+if test $DO_UPDATE = "yes" ; then
+   qemu-img convert -f qcow2 -O raw $ROOT_FS $RAW_ROOT_FS
+   mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+   rm -rf $ROOTDIR/xfstests
+   update_xfstests
+   umount $ROOTDIR
+   rmdir $ROOTDIR
+   finalize_rootfs
+   exit 0
+fi
+
+detect_foreign_chroot()
+{
+    local BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
+
+    if [ ! -d "$BINFMT_MISC_MNT" ]; then
+	# binfmt_misc disabled in kernel
+	return
+    fi
+
+    if test -n "$DO_FAKECHROOT" ; then
+	return
+    fi
+
+    if ! mountpoint "$BINFMT_MISC_MNT" &>/dev/null; then
+	mount binfmt_misc -t binfmt_misc "$BINFMT_MISC_MNT"
+	trap "umount \"$BINFMT_MISC_MNT\"" EXIT
+    fi
+
+    if [ "$(<"$BINFMT_MISC_MNT/status")" = "disabled" ]; then
+	return
+    fi
+
+    local arch="$(uname -m)"
+    case "$arch" in
+	armv7l|armv6l)
+	    arch="arm"
+	    ;;
+	*)
+    esac
+    local binfmt="qemu-$arch"
+    local binfmt_file="$BINFMT_MISC_MNT/$binfmt"
+
+    if [ ! -e "$binfmt_file" ]; then
+	return
+    fi
+
+    QEMU="$(awk '/^interpreter/{print $2}' "$binfmt_file")"
+    FOREIGN="--foreign"
+    echo "Detected foreign chroot, using user-mode emulation with $QEMU"
+}
+
+QEMU=
+FOREIGN=
+detect_foreign_chroot
+
+mkdir -p var.cache.apt.archives
+mkdir -p var.lib.apt.lists
+mkdir -p debs
+if test -z "$DO_FAKECHROOT"; then
+    if test "$RESUME" -le 1 ; then
+	stage_start "stage 1: format file system"
+	cp /dev/null $RAW_ROOT_FS
+	mke2fs -t ext4 -O ^has_journal -Fq $RAW_ROOT_FS 2g
+    fi
+   mount -t ext4 -o loop $RAW_ROOT_FS $ROOTDIR
+fi
+mkdir -p $ROOTDIR/var/cache/apt/archives
+mkdir -p $ROOTDIR/var/lib/apt/lists
+mkdir -p $ROOTDIR/debs
+mkdir -p $ROOTDIR/imgdir
+mkdir -p $ROOTDIR/vtmp
+if test -z "$DO_FAKECHROOT"; then
+   mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
+   mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
+   mount --bind debs $ROOTDIR/debs
+   mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
+else
+   ln var.cache.apt.archives/* $ROOTDIR/var/cache/apt/archives
+   ln var.lib.apt.lists/* $ROOTDIR/var/lib/apt/lists
+   if ! find debs -maxdepth 0 -empty | grep -q . > /dev/null ; then
+       ln debs/* $ROOTDIR/debs
+   fi
+   export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
+fi
+trap cleanup_on_abort INT TERM
+if test "$RESUME" -le 2 ; then
+    stage_start "stage 2: debootstrap"
+    debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE \
+		$FOREIGN $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
+else
+    true
+fi
+if test $? -ne 0 ; then
+    echo "Deboostrap failed, aborting."
+    cleanup_on_abort
+    exit 1
+fi
+if test -n "$QEMU" ; then
+    cp $QEMU $ROOTDIR/usr/bin/
+    if test "$RESUME" -le 3 ; then
+	stage_start "stage 3: second-stage debootstrap"
+	run_in_chroot "/debootstrap/debootstrap --second-stage"
+    fi
+    if test "$RESUME" -le 4 ; then
+	stage_start "stage 4: dpkg --configure -a"
+	run_in_chroot "dpkg --configure -a"
+    fi
+    mkdir -p "$ROOTDIR/run/shm"
+    chmod 1777 "$ROOTDIR/run/shm"
+fi
+if test "$RESUME" -le 5 -a -f "backport-packages-$SUITE" ; then
+    stage_start "stage 5: Installing backports"
+    ./get-backports-pkgs "$SUITE" "$ROOTDIR"
+    if test -f "$ROOTDIR/debootstrap/debpaths" ; then
+        DEBS=$(while read pkg path; do echo -n "$path " ; done <"$ROOTDIR/debootstrap/debpaths")
+        run_in_chroot "dpkg --ignore-depends=e2fsprogs --auto-deconfigure -i $DEBS"
+    fi
+    rm -rf "$ROOTDIR/debootstrap"
+fi
+DEBIAN_ARCH="$(dpkg --print-architecture)"
+DEBS="$(find debs -name "*_${DEBIAN_ARCH}.deb" -o -name "*_all.deb")"
+if test -n "$DEBS"
+then
+    if test "$RESUME" -le 6 ; then
+	stage_start "stage 6: Installing manual debs"
+	run_in_chroot "dpkg --ignore-depends=e2fsprogs --auto-deconfigure -i $(echo $DEBS)"
+    fi
+fi
+update_xfstests
+for i in vda vdb vdc vdd vde vdf vdi vdj results test scratch mnt/test mnt/scratch
+do
+	mkdir -p $ROOTDIR/$i
+done
+
+stage_start "to do final VM configuration"
+echo "fsgqa:x:31415:31415:fsgqa user:/home/fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
+echo "fsgqa:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "fsgqa:x:31415:" >> $ROOTDIR/etc/group
+echo "fsgqa:!::" >> $ROOTDIR/etc/gshadow
+mkdir $ROOTDIR/home/fsgqa
+chown 31415:31415 $ROOTDIR/home/fsgqa
+
+echo "fsgqa2:x:31416:31416:second fsgqa user:/home/fsgqa2:/bin/bash" >> $ROOTDIR/etc/passwd
+echo "fsgqa2:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "fsgqa2:x:31416:" >> $ROOTDIR/etc/group
+echo "fsgqa2:!::" >> $ROOTDIR/etc/gshadow
+mkdir $ROOTDIR/home/fsgqa2
+chown 31416:31416 $ROOTDIR/home/fsgqa
+
+echo "123456-fsgqa:x:31417:31417:numberic fsgqa user:/home/123456-fsgqa:/bin/bash" >> $ROOTDIR/etc/passwd
+echo "123456-fsgqa:!::0:99999:7:::" >> $ROOTDIR/etc/shadow
+echo "123456-fsgqa:x:31417:" >> $ROOTDIR/etc/group
+echo "123456-fsgqa:!::" >> $ROOTDIR/etc/gshadow
+mkdir $ROOTDIR/home/123456-fsgqa
+chown 31417:31417 $ROOTDIR/home/123456-fsgqa
+chmod 755 $ROOTDIR/root
+ln -sf ../proc/self/mounts $ROOTDIR/etc/mtab
+fix_symlinks
+
+if [ -f "$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount" ]; then
+	sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/sunrpc' \
+	    "$ROOTDIR/lib/systemd/system/run-rpc_pipefs.mount"
+fi
+if [ -f "$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount" ]; then
+	sed -i -e '/Conflicts=/iConditionPathExists=/sys/module/nfsd' \
+	    "$ROOTDIR/lib/systemd/system/proc-fs-nfsd.mount"
+fi
+
+cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
+	$ROOTDIR/etc/systemd/system/telnet-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
+    -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
+	$ROOTDIR/lib/systemd/system/serial-getty@.service
+sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
+    -e '/ExecStart/s/-p/-p -f/' \
+    -e 's/After=rc.local.service/After=network.target/' \
+	$ROOTDIR/etc/systemd/system/telnet-getty@.service
+run_in_chroot "systemctl enable kvm-xfstests.service"
+run_in_chroot "systemctl enable telnet-getty@ttyS1.service"
+run_in_chroot "systemctl enable telnet-getty@ttyS2.service"
+run_in_chroot "systemctl enable telnet-getty@ttyS3.service"
+run_in_chroot "systemctl disable multipathd"
+find $ROOTDIR/usr/share/doc -type f -print0 ! -name copyright | xargs -0 rm
+find $ROOTDIR/usr/share/doc -mindepth 2 -type l -print0 | xargs -0 rm
+find $ROOTDIR/usr/share/doc -type d -print0 | xargs -0 rmdir --ignore-fail-on-non-empty -p
+rm -rf $ROOTDIR/usr/share/man
+find $ROOTDIR/var/log -type f -print0 | xargs -0 rm
+if test -n "$DO_FAKECHROOT"; then
+    rm -f $ROOTDIR/dev $ROOTDIR/proc
+    mkdir $ROOTDIR/dev $ROOTDIR/proc
+    mknod -m 622 $ROOTDIR/dev/console c 5 1
+    mknod -m 666 $ROOTDIR/dev/null c 1 3
+    mknod -m 666 $ROOTDIR/dev/zero c 1 5
+    mknod -m 666 $ROOTDIR/dev/ptmx c 5 2
+    mknod -m 666 $ROOTDIR/dev/tty c 5 0
+    mknod -m 444 $ROOTDIR/dev/random c 1 8
+    mknod -m 444 $ROOTDIR/dev/urandom c 1 9
+    chown root:tty $ROOTDIR/dev/{console,ptmx,tty}
+    if test "$(uname -m)" = x86_64 ; then
+	rm $ROOTDIR/lib64/ld-linux-x86-64.so.2
+	mkdir -p $ROOTDIR/lib64
+	ln -s /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 $ROOTDIR/lib64/
+    fi
+    if test -f $ROOTDIR/sbin/ldconfig.REAL ; then
+	mv $ROOTDIR/sbin/ldconfig.REAL $ROOTDIR/sbin/ldconfig
+	ed $ROOTDIR/var/lib/dpkg/diversions <<EOF > /dev/null 2>&1
+/^\/sbin\/ldconfig.REAL$/
+.-1,.+1d
+wq
+EOF
+    fi
+    if test -f $ROOTDIR/usr/bin/ldd.REAL ; then
+	mv $ROOTDIR/usr/bin/ldd.REAL $ROOTDIR/usr/bin/ldd
+	ed $ROOTDIR/var/lib/dpkg/diversions <<EOF > /dev/null 2>&1
+/^\/usr\/bin\/ldd.REAL$/
+.-1,.+1d
+wq
+EOF
+    fi
+fi
+
+if test -f $ROOTDIR/etc/default/nfs-kernel-server ; then
+    ed $ROOTDIR/etc/default/nfs-kernel-server <<EOF
+/RPCNFSDCOUNT/c
+RPCNFSDCOUNT="8 --nfs-version 2"
+.
+w
+q
+EOF
+fi
+
+if test $DO_DRGN = "yes" ; then
+    run_in_chroot "pip3 install drgn"
+fi
+
+if test -n "$PAUSE_DEBUG"
+then
+    ${SHELL:-/bin/sh}
+fi
+
+rm -rf $ROOTDIR/var/cache/apt/archives/partial \
+	$ROOTDIR/var/lib/apt/lists/partial
+trap - INT TERM
+cleanup_package_dirs
+
+if test -n "$OUT_TAR"; then
+    case "$OUT_TAR" in
+	*.gz)	ZCMD="gzip -9n" ;;
+	*)	ZCMD="cat" ;
+    esac
+    fix_symlinks
+    stage_start "to create tarfile"
+    (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
+	 tar -c --null --no-recursion -T - --numeric-owner \
+	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
+fi
+unmount_rootdir
+if test "$DO_IMAGE" = "yes" ; then
+    finalize_rootfs
+fi
+delete_rootdir
+stage_start "gen-image complete"

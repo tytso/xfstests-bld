@@ -1,0 +1,59 @@
+#
+# Default configuration for kvm-xfstests
+#
+# Variables set here may be overridden in ~/.config/kvm-xfstests
+#
+
+NR_CPU=2
+MEM=2048
+CPU_TYPE=host
+
+#QEMU=/usr/local/bin/qemu-system-x86_64
+QEMU=/usr/bin/kvm
+KERNEL=$HOME/linux
+ROOT_FS=$(dirname $DIR)/test-appliance/root_fs.img
+ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.amd64"
+ROOT_DEV=/dev/vda
+VDB=$DIR/disks/vdb
+VDC=$DIR/disks/vdc
+VDD=$DIR/disks/vdd
+VDE=$DIR/disks/vde
+VDF=$DIR/disks/vdf
+VDG=$DIR/disks/vdg
+VDI=$DIR/disks/vdi
+VDJ=$DIR/disks/vdj
+CACHE=none
+
+IFUP=$DIR/util/qemu-ifup
+IFDOWN=$DIR/util/qemu-ifdown
+
+SERIAL="-serial telnet:localhost:7500,server,nowait \
+        -serial telnet:localhost:7501,server,nowait \
+        -serial telnet:localhost:7502,server,nowait"
+
+GDB="-gdb tcp:localhost:7499"
+
+MONITOR="-monitor telnet:localhost:7498,server,nowait"
+
+# The advantage of mon:stdio is that you can use Control-a followed
+# by a 'b' character to send a break (magic-sysrq) character.
+# The disadvantage is that in order to send a Control-a, you have to type
+# C-a C-a, and an accidental "C-a c" will dump you into the qemu monitor,
+# which is confusing to some users --- although a second "C-a c" will
+# switch you back to the console.  If you never use magic-sysrq, you might
+# want to enable the second console command, which will disable the C-a
+# interception entirely.
+CONSOLE=" -serial mon:stdio"
+#CONSOLE=" -chardev stdio,id=console,signal=off -serial chardev:console"
+
+# Lost IOs have been observed with the default aio=threads with
+# QEMU 2.5.0 when running crash consistency tests.
+# The issue has not been observed with QEMU 2.9.0.
+# Native AIO is probably better for our goal which is test proofing
+# production systems.
+AIO=",aio=native"
+
+# Exported test/scratch dirs for 9p test in kvm guest, and virtfs security model
+#VIRTFS_TEST_PATH=/tmp/9ptest
+#VIRTFS_SCRATCH_PATH=/tmp/9pscratch
+#VIRTFS_MODEL=mapped

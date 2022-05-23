@@ -1,0 +1,209 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=kvm
+t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
+eval DIR="\$$t"
+if test -z "$DIR"
+then
+    DIR="$(dirname "$0")"
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
+fi
+
+. "$DIR/util/get-config"
+. "$DIR/util/parse_opt_funcs"
+
+case "$1" in
+    install-kconfig)
+	shift
+	export KBUILD_DIR="$(dirname $DIR)/kernel-build"
+	if test ! -x "$KBUILD_DIR/install-kconfig"
+	then
+	    echo "Kernel configuration not supported in this installation"
+	    exit 1
+	fi
+	"$KBUILD_DIR/install-kconfig" "$@"
+	exit $?
+	;;
+    kbuild)
+	shift
+	export KBUILD_DIR="$(dirname $DIR)/kernel-build"
+	if test ! -x "$KBUILD_DIR/kbuild"
+	then
+	    echo "kbuild not supported in this installation"
+	    exit 1
+	fi
+	"$KBUILD_DIR/kbuild" "$@"
+	exit $?
+	;;
+    setup)
+	shift
+	export KVM_XFSTESTS_DIR="$DIR"
+	XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/kvm-do-setup" "$@"
+	exit $?
+	;;
+esac
+
+QUIET="quiet loglevel=0"
+
+. $DIR/util/parse_cli
+
+if ! test -f "$KERNEL"; then
+     echo "$KERNEL: kernel not found"
+     exit 1
+fi
+
+if test -n "$NO_ACTION" ; then
+    echo "Using kernel $KERNEL"
+fi
+
+if test -z "$DO_NET" ; then
+    echo "Networking disabled."
+    NET="-net none "
+else
+    ARG="$ARG net.ifnames=0"
+    if test $(whoami) = "root" ; then
+	NET="-net nic,model=virtio -net tap,script=$IFUP,downscript=$IFDOWN "
+    else
+	NET="-netdev user,id=mynet0,net=172.20.0.0/24 -device virtio-net,netdev=mynet0 "
+    fi
+fi
+
+EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
+
+DATE=$(date +%Y%m%d%H%M)
+if test -n "$SKIP_LOG" ; then
+    LOGFILE=/tmp/log.$DATE
+else
+    mkdir -p "$DIR/logs"
+    LOGFILE="$DIR/logs/log.$DATE"
+    RESULTFILE="$DIR/logs/results-$DATE.tar.xz"
+fi
+
+if test -n "$INITRD" ; then
+    INITRD="--initrd $INITRD"
+fi
+
+if ! test -e $VDB -a -e $VDC -a -e $VDD -a -e $VDE -a -e $VDF -a -e $VDG \
+     -a -e $VDI -a -e $VDJ
+then
+	echo "Test disks don't exist, running setup..."
+	$DIR/util/kvm-do-setup
+fi
+
+for i in "$VDB" "$VDC" "$VDD" "$VDE" "$VDF" "$VDG" "$VDI" "$VDJ"
+do
+    if ! test -e "$i"
+    then
+	echo "Fatal error: disk $i does not exit.  Config error?"
+	exit 1;
+    fi
+done
+
+if ionice -h > /dev/null ; then
+    IONICE="ionice -n 5"
+fi
+
+if test -z "$VIRTFS_PATH"; then
+    VIRTFS_PATH=/tmp/kvm-xfstests-$USER
+fi
+VIRTFS="-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none "
+VIRTFS+="-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp "
+
+if test -z "$VIRTFS_MODEL"; then
+    VIRTFS_MODEL=none
+fi
+if test -n "$VIRTFS_TEST_PATH"; then
+    VIRTFS+="-fsdev local,id=p9test,path=$VIRTFS_TEST_PATH,"
+    VIRTFS+="security_model=$VIRTFS_MODEL "
+    VIRTFS+="-device virtio-9p-pci,fsdev=p9test,mount_tag=9ptest "
+fi
+if test -n "$VIRTFS_SCRATCH_PATH"; then
+    VIRTFS+=" -fsdev local,id=p9scratch,path=$VIRTFS_SCRATCH_PATH,"
+    VIRTFS+="security_model=$VIRTFS_MODEL "
+    VIRTFS+="-device virtio-9p-pci,fsdev=p9scratch,mount_tag=9pscratch "
+fi
+
+VDH="$ourtmp/kvm-vdh"
+tar -c -f "$VDH" -T /dev/null
+
+if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
+then
+    tar -r -f $VDH -C "$DIR/.." xfstests.tar.gz
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_EXTRA_TESTS" = "yes"
+then
+    tar -r -f $VDH -C "$ourtmp" extra-tests.tar.gz
+fi
+
+if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
+then
+    TDIR=$(mktemp -d /tmp/files.XXXXXXXX)
+    if test -z "$TDIR"; then
+	echo "Couldn't create temp directory"
+	exit 1
+    fi
+    (cd "$DIR/test-appliance"; \
+     tar -X kvm-exclude-files -C files \
+		--owner=root --group=root --mode=go+u-w -cf - . | \
+	 gzip -9n > "$TDIR/files.tar.gz")
+    tar -r -f $VDH -C "$TDIR" files.tar.gz
+    rm -rf "$TDIR"
+fi
+
+if test -n "$MODULES" -a -f "$MODULES"
+then
+    if test -z "$NO_ACTION" ; then
+	tar -r -f $VDH -C $(dirname "$MODULES") \
+	    --transform="s/.*/modules.tar.xz/" $(basename "$MODULES")
+    else
+	echo "Using modules from $MODULES"
+    fi
+fi
+
+fallocate -l 128M "$VDH"
+chmod 600 "$VDH"
+
+mkdir -p /tmp/kvm-xfstests-$USER
+
+$NO_ACTION $IONICE $QEMU -boot order=c $NET \
+	-machine type=pc,accel=kvm:tcg $CPU_TYPE \
+	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
+	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDD,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDE,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
+	-drive file=$VDH,if=virtio,format=raw \
+	-drive file=$VDI,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDJ,cache=$CACHE,if=virtio,format=raw$AIO \
+	-vga none -nographic -smp $NR_CPU -m $MEM \
+	$VIRTFS \
+	$VIRTIO_RNG \
+	$CONSOLE \
+	$MONITOR \
+	$SERIAL \
+	$GDB \
+	$NUMA \
+	--kernel $KERNEL \
+	$INITRD \
+	--append "$QUIET root=$ROOT_DEV console=ttyS0,115200 nokaslr $ARG $EXTRA_ARG" |\
+tee $LOGFILE
+
+if test -n "$DO_ARCHIVE"; then
+    tar -O -xf "$VDH" results.tar.xz > $RESULTFILE
+    echo "result  in $RESULTFILE"
+fi
+if test -n "$SKIP_LOG" ; then
+    rm $LOGFILE
+else
+    sed -i -e '/^-------------------- Summary report/,$d' $LOGFILE
+    echo "logfile in $LOGFILE"
+fi
+# Fix line wrap from qemu
+echo -ne '\e[?7h'

@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+# This script should be run once after the commit which moves the
+# top-level directories has been pulled or merged.
+#
+
+CLEAN_DIRS="acl android-compat attr dbench e2fsprogs-libs libaio \
+	libinih misc popt"
+
+TO_MOVE="fio quota xfsprogs-dev xfstests-dev fsverity blktests \
+	   ima-evm-utils keyutils stress-ng util-linux go nvme-cli"
+
+NO_ACTION=
+
+if test "$1" = "--no-action" ; then
+    NO_ACTION=echo
+fi
+
+if test ! -d fstests-bld ; then
+   echo "This should be run on a xfstests-bld repo after it has "
+   echo "commit moving the top-level directories around has been merged"
+   echo "Aborting..."
+   exit 1
+fi
+
+#
+# config.custom should getting split between what is in the top-level
+# directory, for the build-action script, and the fstests-bld
+# directory.  See the config file in those two directories to see
+# how they should be 
+#
+if test -e config.custom -a ! -e fstests-bld/config.custom ; then
+    echo " "
+    echo "config.custom is getting split between what is in the"
+    echo "top-level directory, for the build-appliance script, and"
+    echo "the fstests-bld directory, for the build-all script."
+    echo "See the config file in those two directories to see"
+    echo "how they should be divvied up.  For now, this script"
+    echo "will copy config.custom to fststs-bld/ and keep"
+    echo "a copy in the top-level directory."
+    echo " "
+    $NO_ACTION cp config.custom fstests-bld
+fi
+
+for i in $TO_MOVE ; do
+    if test -e $i ; then
+       $NO_ACTION mv $i fstests-bld
+    fi
+done
+for i in debs var.cache.apt.archives var.lib.apt.lists ; do
+    if test -d kvm-xfstests/test-appliance/$i ; then
+	$NO_ACTION mv kvm-xfstests/test-appliance/$i test-appliance
+    fi
+done
+if test -e kvm-xfstests/test-appliance/config.custom ; then
+    $NO_ACTION mv kvm-xfstests/test-appliance/config.custom test-appliance
+fi
+for i in logs disks ; do
+    if test -d kvm-xfstests/$i ; then
+	$NO_ACTION mv kvm-xfstests/$i run-fstests
+    fi
+done
+if test -d kvm-xfstests ; then
+    $NO_ACTION mv kvm-xfstests kvm-xfstests.dir.old
+fi
+if test -n "$NO_ACTION" ; then
+    echo git clean -fdx $CLEAR_DIRS
+    git clean -ndx $CLEAR_DIRS
+else
+    git clean -fdx $CLEAN_DIRS
+fi
+$NO_ACTION rm -f *.ver xfstests.tar.gz gce-xfstests.sh kvm-xfstests.sh android-xfstests.sh
+$NO_ACTION rm -rf bld xfstests

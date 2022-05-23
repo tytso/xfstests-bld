@@ -1,35 +1,6 @@
 #
-# Configuration file for building xfstests and root filesystem images
+# Configuration file for root filesystem images
 #
-
-XFSTESTS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
-XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-FIO_GIT=http://git.kernel.dk/fio.git
-QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
-FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
-BLKTESTS_GIT=https://github.com/osandov/blktests.git
-
-# Optional repositories, uncomment only if needed
-#
-# IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
-# KEYUTILS_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
-# STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
-# UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
-# SYZKALLER_GIT=https://github.com/google/syzkaller
-# NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
-
-FIO_COMMIT=fio-3.28
-QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
-XFSPROGS_COMMIT=v5.13.0
-
-# TOOLCHAIN_DIR=/u1/arm64-toolchain
-# CROSS_COMPILE=aarch64-linux-android
-
-EXEC_LDFLAGS=
-EXEC_LLDFLAGS=
-# Uncomment these to statically link the binaries to the system libraries
-#EXEC_LDFLAGS=-static
-#EXEC_LLDFLAGS=-all-static
 
 BUILD_ENV=
 SUDO_ENV=sudo

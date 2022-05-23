@@ -1,0 +1,14 @@
+debs
+root_fs.img*
+root_fs.raw
+root_fs.tar.gz
+rootdir
+var.cache.apt.archives
+var.lib.apt.lists
+mirror
+config.custom
+/files/root/xfstests/git-versions
+/files/usr/local/lib/bin/
+/files/usr/local/lib/pkg/
+/files/usr/local/lib/src/
+!xfstests

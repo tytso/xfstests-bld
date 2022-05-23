@@ -1,0 +1,254 @@
+#!/bin/bash
+
+XFSTESTS_FLAVOR=gce
+DIR=..
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+else
+    DIR="$(dirname "$(dirname "$0")")"/run-fstests
+fi
+. "$DIR/util/get-config"
+. "$DIR/util/image-utils"
+
+cd "$(dirname $DIR)/test-appliance"
+
+if test -r config.custom ; then
+   . ./config.custom
+fi
+
+if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
+then
+	echo "You must configure GS_BUCKET, GCE_PROJECT, and GCE_ZONE in"
+	echo "your config file"
+	exit 1
+fi
+
+GS_RW=https://www.googleapis.com/auth/devstorage.read_write
+GS_RO=https://www.googleapis.com/auth/devstorage.read_only
+LOG_WR=https://www.googleapis.com/auth/logging.write
+COMPUTE_RW=https://www.googleapis.com/auth/compute
+DATECODE=$(date +%Y%m%d%H%M)
+
+SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
+
+ROOT_FS=xfstests
+BLD_INST=xfstests-bld
+BLD_DISK=xfstests-bld
+
+GZIP=gzip
+if type -P pigz >& /dev/null ; then
+    GZIP="pigz -9"
+fi
+
+setup_for_buster()
+{
+	IMAGE_FAMILY=debian-10
+	IMAGE_PROJECT=debian-cloud
+	SUITE=buster
+	E2FSPROGS=e2fsprogs/buster-backports
+	LIBCOMERR=libcom-err2/buster-backports
+	LIBSS=libss2/buster-backports
+	BTRFS_PROGS=btrfs-progs/buster-backports
+	F2FS_TOOLS=f2fs-tools/buster-backports
+	BACKPORTS=/buster-backports
+}
+
+setup_for_bullseye()
+{
+	IMAGE_FAMILY=debian-11
+	IMAGE_PROJECT=debian-cloud
+	SUITE=bullseye
+	E2FSPROGS=e2fsprogs
+	LIBCOMERR=libcom-err2
+	LIBSS=libss2
+	BTRFS_PROGS=btrfs-progs
+	F2FS_TOOLS=f2fs-tools
+	BACKPORTS=/bullseye-backports
+}
+
+setup_for_buster
+
+GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
+TARBALL=../fstests-bld/xfstests.tar.gz
+
+if ! test -f $TARBALL ; then
+   echo $TARBALL does not exist!
+   exit 1
+fi
+
+if test -f ../fstests-bld/xfstests/build-distro ; then
+    distro=$(cat ../fstests-bld/xfstests/build-distro)
+    case "$distro" in
+	buster)
+	    setup_for_buster
+	    ;;
+	bullseye)
+	    setup_for_bullseye
+	    ;;
+	*)
+	    echo "No support for build gce image for $distro"
+	    exit 1
+	    ;;
+    esac
+fi
+
+while [ "$1" != "" ];
+do
+    case "$1" in
+	--buster)
+	    setup_for_buster
+	    ;;
+	--phoronix) shift
+	    PHORONIX="$1"
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    BLD_INST="xfstests-bld-$1"
+	    BLD_DISK="xfstests-bld-$1"
+	    GS_TAR="gs://$GS_BUCKET/gce-xfstests-$1.image.tar.gz"
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
+METADATA="startup-script-url=$GS_SCRIPT suite=$SUITE"
+GCE_MACHTYPE=n1-standard-1
+
+if test -n "${PHORONIX}" ; then
+    url="http://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_${PHORONIX}_all.deb"
+    code=$(curl -o /dev/null --silent --head --write-out '%{http_code}' $url)
+    if test $code -ne 200 ; then
+	echo "Can't find Phoronix version ${PHORONIX}"
+	echo "  (url $url returned http code $code)"
+	exit 1
+    fi
+    METADATA="$METADATA phoronix=${PHORONIX}"
+fi
+
+td=$(mktemp -d /tmp/gce-create.XXXXXXXX)
+
+cp $TARBALL $td/xfstests.tar.gz
+sed -e "s/@BUCKET@/$GS_BUCKET/" \
+    -e "s;@GS_TAR@;$GS_TAR;" \
+    -e "s/@BLD_INST@/$BLD_INST/" \
+    -e "s;@BACKPORTS@;$BACKPORTS;" \
+    -e "s;@E2FSPROGS@;$E2FSPROGS;" \
+    -e "s;@LIBCOMERR@;$LIBCOMERR;" \
+    -e "s;@LIBSS@;$LIBSS;" \
+    -e "s;@BTRFS_PROGS@;$BTRFS_PROGS;" \
+    -e "s;@F2FS_TOOLS@;$F2FS_TOOLS;" \
+    -e "s;@DUPEREMOVE@;$DUPEREMOVE;" \
+    < gce-xfstests-bld.sh > $td/gce-xfstests-bld.sh
+
+# Update the git-versions file
+mkdir -p files/root/xfstests
+tar xzOf "$TARBALL" xfstests/git-versions | grep -v ^xfstests-bld | \
+    cat - <(echo "xfstests-bld	$(git describe --always --dirty)" \
+		 "($(git log -1 --pretty=%cD))") | \
+    sort > files/root/xfstests/git-versions
+LABELS=$(get_labels < files/root/xfstests/git-versions )
+
+tar -X gce-exclude-files -C files --numeric-owner \
+    --owner=root:0 --group=root:0 --mode=go+u-w \
+    -cf $td/files.tar .
+
+# copy the necessary files for gce-xfstests commands, except for configs.
+# Configs will be fetched on LTM launch, and will piggyback on the
+# config file stored in the gce_xfstests bucket.
+
+xfs_bld_dir="$td/tmp2/root/xfstests_bld"
+kvm_xfs_dir="$xfs_bld_dir/run-fstests"
+mkdir -p $kvm_xfs_dir/util		# for gce-xfstests dependencies
+mkdir -p $xfs_bld_dir/test-appliance	# for a symlink
+mkdir -p $td/tmp2/usr/local/sbin	# for the gce-xfstests bash executable
+
+cp ../run-fstests/util/gce-kcs-funcs	$kvm_xfs_dir/util/
+cp ../run-fstests/util/gce-launch-kcs	$kvm_xfs_dir/util/
+cp ../run-fstests/util/gce-launch-ltm	$kvm_xfs_dir/util/
+cp ../run-fstests/util/gce-ltm-funcs	$kvm_xfs_dir/util/
+cp ../run-fstests/util/get-config		$kvm_xfs_dir/util/
+cp ../run-fstests/util/parse_cli		$kvm_xfs_dir/util/
+cp ../run-fstests/util/parse_opt_funcs	$kvm_xfs_dir/util/
+cp ../run-fstests/config.gce		$kvm_xfs_dir/
+cp ../run-fstests/gce-xfstests		$kvm_xfs_dir/
+cp ../run-fstests/get-results		$kvm_xfs_dir/
+cp -r ../kernel-build			$xfs_bld_dir/
+
+# create a symlink so that util/parse_cli works properly.
+# under test-appliance/, the link "files" should refer back to the root, "/".
+# This way, test-appliance/files/root/fs/* will find the correct config files.
+ln -s / $xfs_bld_dir/test-appliance/files
+
+# essentially, we run a "make gce-xfstests.sh" here, except with a hardcoded
+# DIR replacement path because we know where we're putting kvm-xfstests and
+# the rest of xfstests_bld in the test appliance.
+sed -e "s;@DIR@;/root/xfstests_bld;" < ../run-fstests/gce-xfstests.sh.in > \
+    $td/tmp2/usr/local/sbin/gce-xfstests
+chmod +x $td/tmp2/usr/local/sbin/gce-xfstests
+
+# tar the root/xfstests_bld for gce-xfstests, the symlink and
+# usr/local/sbin/gce-xfstests, and append it all to the tarfile.
+tar -C $td/tmp2 --owner=root --group=root --mode=go+u-w \
+	-rf $td/files.tar .
+
+rm -rf $td/tmp2
+
+$GZIP -c -9 -n $td/files.tar > $td/files.tar.gz
+rm -f $td/files.tar
+
+gsutil -m rsync -c $td gs://$GS_BUCKET/create-image
+
+if test -f files/root/xfstests/git-versions
+then
+    rm -f files/root/xfstests/git-versions
+fi
+rm -rf $td
+
+mkdir -p debs
+gsutil -m rsync -cd debs gs://$GS_BUCKET/debs
+
+run_gcloud compute -q instances delete "$BLD_INST" \
+       --zone "$GCE_ZONE" 2> /dev/null
+run_gcloud compute -q disks delete "$BLD_DISK" 2> /dev/null
+
+run_gcloud compute instances create "$BLD_INST" \
+       --zone "$GCE_ZONE" --machine-type $GCE_MACHTYPE \
+       --network "$GCE_NETWORK" --metadata "^ ^$METADATA" \
+       --maintenance-policy "MIGRATE" --scopes "$SCOPES" \
+       $SERVICE_ACCOUNT_OPT_IMG \
+       --image-family "$IMAGE_FAMILY" --image-project "$IMAGE_PROJECT" \
+       --boot-disk-type "pd-ssd" --boot-disk-device-name "$BLD_DISK"
+
+start_time=$(date +%s)
+echo -n "Waiting for bootable image setup."
+
+cnt=0
+while run_gcloud compute instances \
+	     describe "$BLD_INST" --zone $GCE_ZONE >& /dev/null
+do
+    let cnt=$cnt+1
+    if test $cnt -ge 10
+    then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
+done
+stop_time=$(date +%s)
+echo " Done!"
+echo Time to run xfststs-bld: $((stop_time - start_time))
+
+echo "Creating new image $ROOT_FS-$DATECODE"
+run_gcloud compute -q images create "$ROOT_FS-$DATECODE" \
+	--description "Linux Kernel File System Test Appliance" \
+	--source-disk "$BLD_DISK" --source-disk-zone "$GCE_ZONE" \
+	--family "$ROOT_FS" --labels "$LABELS"
+run_gcloud compute -q disks delete "$BLD_DISK" \
+	--zone "$GCE_ZONE" >& /dev/null &
+run_gcloud compute -q images list --filter="family=$ROOT_FS"

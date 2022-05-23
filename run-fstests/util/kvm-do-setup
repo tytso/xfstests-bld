@@ -1,0 +1,39 @@
+#!/bin/sh
+
+DIR=.
+if test -n "$KVM_XFSTESTS_DIR"
+then
+    DIR="$KVM_XFSTESTS_DIR"
+else
+    DIR="$(dirname "$(dirname "$0")")"
+fi
+
+mkdir -p $DIR/disks
+if test ! -f "$DIR/disks/vdb" ; then
+    qemu-img create -f raw "$DIR/disks/vdb" 5g
+    /sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdb"
+fi
+if test ! -f "$DIR/disks/vdc" ; then
+    qemu-img create -f raw "$DIR/disks/vdc" 5g
+fi
+if test ! -f "$DIR/disks/vdd" ; then
+    qemu-img create -f raw "$DIR/disks/vdd" 5g
+fi
+if test ! -f "$DIR/disks/vde" ; then
+    qemu-img create -f raw "$DIR/disks/vde" 20g
+fi
+if test ! -f "$DIR/disks/vdf" ; then
+    qemu-img create -f raw "$DIR/disks/vdf" 20g
+fi
+if test ! -f "$DIR/disks/vdg" ; then
+    qemu-img create -f raw "$DIR/disks/vdg" 5g
+    /sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdg"
+fi
+if test ! -f "$DIR/disks/vdi" ; then
+    qemu-img create -f raw "$DIR/disks/vdi" 1g
+fi
+if test ! -f "$DIR/disks/vdj" ; then
+    qemu-img create -f raw "$DIR/disks/vdj" 1g
+fi
+
+

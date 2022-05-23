@@ -18,7 +18,7 @@ The xfstests-bld package depends on a number of external git trees:
 
 The first time you run "make", the build system will clone these
 repositories by running ./get-all.  Their remote URLs are set in the
-top-level "config" file.  If you wish to make changes, copy "config"
+file fstests-bld/config file.  If you wish to make changes, copy "config"
 to "config.custom" and make changes there.
 
 The config file can also specify the commit to use for each

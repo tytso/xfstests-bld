@@ -35,7 +35,7 @@ If you want to build your own test appliance VM, see
 
 ## Setup and configuration
 
-The configuration file for kvm-xfstests is found in the kvm-xfstests
+The configuration file for kvm-xfstests is found in the run-fstests
 directory and is named config.kvm.  You can edit this file directly,
 but the better thing to do is to place override values in
 ~/.config/kvm-xfstests.  Please look at the kvm-xfstests/config.kvm
@@ -49,21 +49,15 @@ kvm-xfstests is run from the top-level of a kernel build or source
 tree where there is a built kernel, kvm-xfstests will use it.
 Otherwise, it will use the kernel specified by the KERNEL variable.
 
-The kernel for kvm-xfstests must not use modules, and it must include
-the paravirtual device drivers needed for qemu.  To build a correctly
-configured kernel, base your configuration on one of the files in the
-kernel-configs directory.  That is, copy the config for the desired
-architecture and kernel version (or the closest available version) to
-.config in your kernel build tree, then run 'make olddefconfig' ('make
-oldnoconfig' for pre-3.7 kernels).  This can be automated via the
-command:
+To build a correctly configured kernel for use with kvm-xfstests, run
+the command:
 
         kvm-xfstests install-kconfig [--i386]
 
 (Add the --i386 option if you wish to build a 32-bit kernel.)
 
 By default, the scratch disks used by test-appliance will be set up
-automatically, and are stored in the kvm-xfstests directory with the
+automatically, and are stored in the run-fstests directory with the
 names vdb, vdc, vdd, ... up to vdg.  However, it is slightly faster to
 use logical volumes.  To do this override the VDB..VDG variables:
 
@@ -83,14 +77,14 @@ system created using the mkfs.ext4 command before you try running kvm-xfstests.
 
 ## Running kvm-xfstests
 
-The kvm-xfstests shell script is in the kvm-xfstests directory, and it
+The kvm-xfstests shell script is in the run-fstests directory, and it
 is designed to be run with the current working directory to be in the
-kvm-xfstests directory.  For convenience's sake, the Makefile in the
-top-level directory of xfstests-bld will create a kvm-xfstests.sh
+run-fstests directory.  For convenience's sake, the Makefile in the
+top-level directory of xfstests-bld will create a kvm-xfstests
 shell script which can be copied into a convenient directory in your
 PATH.  This shell script will set the KVM_XFSTESTS_DIR environment
 variable so the auxiliary files can be found and then runs the
-kvm-xfstests/kvm-xfstests shell script.
+run-fstests/kvm-xfstests shell script.
 
 Please run "kvm-xfstests help" to get a quick summary of the available
 command-line syntax.  Not all of the available command-line options
@@ -178,7 +172,7 @@ in the kernel sources for more information.
 
 ## Log files
 
-By default, when test results are saved in the kvm-xfstests directory
+By default, when test results are saved in the run-fstests directory
 with the filename log.<DATECODE>.
 
 The get-results command will summarize the output from the log file.

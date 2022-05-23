@@ -38,7 +38,7 @@ devices.  If you encounter a problem, please submit a fix!
   or build one yourself as described in
   [building-rootfs](building-rootfs.md).  Then, either put the chroot
   tarball in the default location of
-  `kvm-xfstests/test-appliance/root_fs.tar.gz`, or specify it with
+  `test-appliance/root_fs.tar.gz`, or specify it with
   `ROOT_FS` in your `~/.config/android-xfstests` or the `-I` option to
   android-xfstests.
 

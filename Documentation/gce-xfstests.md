@@ -108,15 +108,15 @@ need to do so now:
 
 The gce-xfstests driver script needs to be customized so it can find
 the "real" gce-xfstests script, which is located in
-fstests/kvm-xfstests/gce-xfstests.  To do this:
+fstests/run-fstests/gce-xfstests.  To do this:
 
         cd fstests
-        make gce-xfstests.sh
+        make
 
 And then copy this script to a directory in your PATH.  For example,
 if ~/bin is in your shell's search path:
 
-        cp gce-xfstests.sh ~/bin/gce-xfstests
+        cp gce-xfstests ~/bin/gce-xfstests
 
 ## Install software required by gce-xfstests
 
@@ -372,7 +372,7 @@ It launches a VM named "xfstests-ltm" in your GCE project. Then you can run test
 
       	gce-xfstests ltm [-c <cfg>] [-g <group>]|[<tests>] ...
 
-The LTM server attempts to split your config into smaller tests, one `cfg` for each. For example, it splits the config `full` into `-c ext4/data_journal full, -c ext4/encrypt full, -c ext4/ext3 full...` For more details about how LTM splits the config, check [parser.go](../kvm-xfstests/test-appliance/files/usr/local/lib/gce-server/util/parser/parser.go).
+The LTM server attempts to split your config into smaller tests, one `cfg` for each. For example, it splits the config `full` into `-c ext4/data_journal full, -c ext4/encrypt full, -c ext4/ext3 full...` For more details about how LTM splits the config, check [parser.go](../test-appliance/files/usr/local/lib/gce-server/util/parser/parser.go).
 
 Then the LTM server will launch these tests in parallel and monitor the status of each test VM. If a single test makes no progress in an hour, it will kill that test VM early. After all tests finish, the LTM server aggregates the test results into one tarball and upload it to the GCS bucket.
 
@@ -449,7 +449,7 @@ was created (in this case, August 13, 2016 at 22:26).
 
 As with kvm-xfstests, if you want to include any additional Debian
 packages, place them in the directory
-kvm-xfstests/test-appliance/debs.  See the [documentation for building
+test-appliance/debs.  See the [documentation for building
 kvm-xfstests appliances](building-rootfs.md) for more information.
 Note that gce-xfstests requires packages for the amd64 architecture;
 packages for other architectures will not be installed.

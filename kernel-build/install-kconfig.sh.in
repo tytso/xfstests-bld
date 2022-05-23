@@ -1,0 +1,7 @@
+#!/bin/sh
+
+DIR=@DIR@
+
+KBUILD_DIR=$DIR/kernel-build
+export KBUILD_DIR
+exec $KBUILD_DIR/install-kconfig "$@"
