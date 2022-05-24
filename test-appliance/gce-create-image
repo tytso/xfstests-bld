@@ -11,7 +11,7 @@ fi
 . "$DIR/util/get-config"
 . "$DIR/util/image-utils"
 
-cd "$(dirname $DIR)/test-appliance"
+cd "$(dirname $DIR)/../test-appliance"
 
 if test -r config.custom ; then
    . ./config.custom
