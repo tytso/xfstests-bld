@@ -66,8 +66,17 @@ fi
 if test -n "$NO_ACTION" ; then
     echo git clean -fdx $CLEAR_DIRS
     git clean -ndx $CLEAR_DIRS
+    for i in util-linux xfsprogs-dev xfstests-dev ; do
+	if test -d fstests-bld ; then
+	    echo fstests-bld/cd $i \; git clean -fX \; cd ../..
+	    cd fstests-bld/$i ; git clean -nX ; cd ../..
+	fi
+    done
 else
     git clean -fdx $CLEAN_DIRS
+    for i in util-linux xfsprogs-dev xfstests-dev ; do
+	cd fstests-bld/$i ; git clean -fX ; cd ../..
+    done
 fi
 $NO_ACTION rm -f *.ver xfstests.tar.gz gce-xfstests.sh kvm-xfstests.sh android-xfstests.sh
 $NO_ACTION rm -rf bld xfstests
