@@ -4,18 +4,14 @@
 
 BUILD_ENV=
 SUDO_ENV=sudo
-# Uncomment these to make the do-all script use the specified
-# Debian chroot by default
+# Uncomment these to use the specified Debian chroot by default
 #
 #BUILD_ENV="schroot -c bullseye-amd64 --"
 #SUDO_ENV="schroot -c bullseye-amd64 -u root --"
 
-# Uncomment this to make the do-all script build a
-# root_fs.tar.gz by default rather than a root_fs.img
+# Uncomment this to build a root_fs.tar.gz by default rather than a root_fs.img
 #
 # OUT_TAR=yes
 
-# Uncomment this to make a kvm-xfstests VM appliance with networking
-# support enabled.
-#
+# Comment this to build kvm-xfstests appliances with networking support disabled
 gen_image_args="--networking"

@@ -19,8 +19,8 @@ You will find there a 32-bit test appliance named
 [root_fs.img.i386](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386)
 and a 64-bit test appliance named
 [root_fs.img.amd64](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.amd64).
-This file should be installed as root_fs.img in the
-kvm-xfstests/test-appliance directory.
+This file should be installed as root_fs.img in the test-appliance
+directory.
 
 A 64-bit x86 kernel can use both the 32-bit and 64-bit test appliance
 VM, since you can run 32-bit ELF binaries using a 64-bit kernel.
@@ -35,11 +35,9 @@ If you want to build your own test appliance VM, see
 
 ## Setup and configuration
 
-The configuration file for kvm-xfstests is found in the run-fstests
-directory and is named config.kvm.  You can edit this file directly,
-but the better thing to do is to place override values in
-~/.config/kvm-xfstests.  Please look at the kvm-xfstests/config.kvm
-file to see the shell variables you can set.
+The configuration file for kvm-xfstests is run-fstests/config.kvm.
+You can edit this file directly, but the better thing to do is to
+place override values in ~/.config/kvm-xfstests.
 
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
@@ -90,7 +88,7 @@ Please run "kvm-xfstests help" to get a quick summary of the available
 command-line syntax.  Not all of the available command-line options
 are documented; some of the more specialized options will require that
 you Read The Fine Source --- in particular, in the auxiliary script
-file found in kvm-xfstests/util/parse_cli.
+file found in run-fstests/util/parse_cli.
 
 ### Running file system tests
 

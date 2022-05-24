@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# do-all - build or update a test appliance
+# build-appliance - build or update a test appliance
 #
 # For details, see usage() and Documentation/building-rootfs.md
 
@@ -21,7 +21,7 @@ fi
 usage()
 {
     cat <<EOF
-Usage: do-all [OPTION]...
+Usage: build-appliance [OPTION]...
 Build or update a test appliance.
 
 Options:

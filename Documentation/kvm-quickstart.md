@@ -14,12 +14,12 @@
         wget -O test-appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
 
 3.  In the top-level directory of your checked out xfstests-bld
-    repository, run "make kvm-xfstests.sh" and then copy this
-    generated file to a directory which is your shell's PATH.  This
-    allows you to run the kvm-xfstests binary without needing to set
-    the working directory to the kvm-xfstests directory.
+    repository, run "make kvm-xfstests" and then copy this generated
+    file to a directory which is your shell's PATH.  This allows you
+    to run the kvm-xfstests binary without needing to set the
+    working directory to the kvm-xfstests directory.
 
-        make
+        make kvm-xfstests
         cp kvm-xfstests ~/bin/kvm-xfstests
 
 4.  In the fstests/run-fstests/ directory, take a look at the

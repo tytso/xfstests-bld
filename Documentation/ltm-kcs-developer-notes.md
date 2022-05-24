@@ -4,7 +4,7 @@ These notes are for debugging the LTM and KCS servers.
 
 ## Overview
 
-The LTM and KCS go source code is located at [gce-server/](../kvm-xfstests/test-appliance/files/usr/local/lib/gce-server) in this repo. When you use the default GCE test appliance VM image or build your own image, the source code is located at `/usr/local/lib/gce-server/`, and pre-compiled into binary file `ltm` and `kcs` at `/usr/local/lib/bin/`. They are executed when LTM or KCS server is launched respectively.
+The LTM and KCS go source code is located at [gce-server/](../test-appliance/files/usr/local/lib/gce-server) in this repo. When you use the default GCE test appliance VM image or build your own image, the source code is located at `/usr/local/lib/gce-server/`, and pre-compiled into binary file `ltm` and `kcs` at `/usr/local/lib/bin/`. They are executed when LTM or KCS server is launched respectively.
 
 ## SSH into LTM or KCS server to check logs
 
@@ -44,7 +44,7 @@ On the KCS server:
         cd /usr/local/lib/gce-server/kcs
         go run .
 
-To run the server in debug mode, set `DEBUG = true` in [logging.go](../kvm-xfstests/test-appliance/files/usr/local/lib/gce-server/util/logging/logging.go) at `/usr/local/lib/gce-server/util/logging/logging.go` before you execute these commands.
+To run the server in debug mode, set `DEBUG = true` in [logging.go](../test-appliance/files/usr/local/lib/gce-server/util/logging/logging.go) at `/usr/local/lib/gce-server/util/logging/logging.go` before you execute these commands.
 
 In debug mode, logs are redirected to the console with human-friendly format, and KCS server will not shut down itself automatically.
 

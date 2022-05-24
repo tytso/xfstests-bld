@@ -640,8 +640,9 @@ setup_mtab
 install_build_dependencies
 
 log "Build chroot was successfully set up.  To use it to build a test" \
-    "appliance, run './do-all --chroot=$CHROOT_NAME'; or to have do-all use" \
-    "this chroot by default, add the following to your config.custom file:" \
+    "appliance, run './build-appliance --chroot=$CHROOT_NAME'; or to have" \
+    "build-appliance use this chroot by default, add the following to the" \
+    "config.custom file in the top-level directory:" \
     "" \
     "    BUILD_ENV=\"schroot -c $CHROOT_NAME --\"" \
     "    SUDO_ENV=\"schroot -c $CHROOT_NAME -u root --\"" \

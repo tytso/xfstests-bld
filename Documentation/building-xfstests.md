@@ -130,9 +130,9 @@ optionally `TOOLCHAIN_DIR` in your `config.custom` file as follows:
 ## Building the xfstests tarball
 
 You may skip explicitly building the xfstests tarball if you are using
-the `do-all` convenience script to build a test appliance, as
-described in [building-rootfs](building-rootfs.md).  Otherwise, you
-can build the tarball as follows:
+the `build-appliance` script to build a test appliance, as described
+in [building-rootfs](building-rootfs.md).  Otherwise, you can build
+the tarball as follows:
 
     $BUILD_ENV make clean
     $BUILD_ENV make
