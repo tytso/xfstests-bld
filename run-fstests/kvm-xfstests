@@ -147,7 +147,7 @@ then
 	echo "Couldn't create temp directory"
 	exit 1
     fi
-    (cd "$DIR/test-appliance"; \
+    (cd "$DIR/../test-appliance"; \
      tar -X kvm-exclude-files -C files \
 		--owner=root --group=root --mode=go+u-w -cf - . | \
 	 gzip -9n > "$TDIR/files.tar.gz")
