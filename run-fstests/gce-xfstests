@@ -821,12 +821,12 @@ if test -z "$NO_ACTION" -a "$UPDATE_FILES" = "yes"
 then
     LOCAL_FILES=$(mktemp /tmp/files.XXXXXXXX)
     GS_FILES="gs://$GS_BUCKET/files.tar.gz"
-    if ! test -d "$DIR/test-appliance"
+    if ! test -d "$DIR/../test-appliance"
     then
 	echo "Can't find the test-appliance directory!"
 	exit 1
     fi
-    (cd "$DIR/test-appliance"; \
+    (cd "$DIR/../test-appliance"; \
      tar -X gce-exclude-files --exclude=etc -C files \
 		--owner=root --group=root --mode=go+u-w -cf - . | \
 	 gzip -9n > $LOCAL_FILES)
