@@ -58,13 +58,19 @@ fi
 if test "$1" == "--dpkg" ; then
     shift
     DO_DPKG=yes
+    DPKG_EXPLICIT=yes
 elif test "$1" == "--no-dpkg" ; then
     shift
     DO_DPKG=
+    DPKG_EXPLICIT=yes
 fi
 
 rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
+
+if test -n "$1" -a -z "$DPKG_EXPLICIT" ; then
+    DO_DPKG=
+fi
 
 if test -n "$DO_DPKG" ; then
     make "${MAKE_ARGS[@]}" prepare
