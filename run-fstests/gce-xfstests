@@ -1041,7 +1041,7 @@ elif test -n "$RUN_ON_KCS"; then
     then
         echo "Couldn't find build config in $GS_BUCKET"
         echo "Using default build config for kernel build"
-        gsutil cp "$DIR/../kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
+        gsutil cp "$DIR/../kernel-build/kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
     fi
     . "$DIR/util/gce-kcs-funcs"
     send_to_kcs $ORIG_CMDLINE_B64
