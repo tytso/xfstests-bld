@@ -5,7 +5,7 @@ t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
 eval DIR="\$$t"
 if test -z "$DIR"
 then
-    DIR="$(dirname "$0")"
+    DIR="$(dirname "$(readlink -f "$0")")"
 fi
 if test ! -f "$DIR/util/get-config"
 then
