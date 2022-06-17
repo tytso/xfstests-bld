@@ -71,7 +71,9 @@ select_packages()
     libtool-bin
     liburcu-dev
     lsb-release
+    meson
     pkg-config
+    python3-setuptools
     qemu-utils
     rsync
     symlinks
