@@ -402,17 +402,15 @@ while (( $# >= 1 )); do
 	    supported_flavors kvm gce
 	    UPDATE_XFSTESTS_TAR=yes
 	    UPDATE_XFSTESTS=yes
-	    UPDATE_XFSTESTS_DIR="$DIR/.."
 	    ;;
 	--update-xfstests)
 	    supported_flavors kvm gce
-	    if ! test -f "$DIR/../xfstests.tar.gz"
+	    if ! test -f "$DIR/../fstests-bld/xfstests.tar.gz"
 	    then
 		echo "The xfstests.tar.gz file has not been built!"
 		exit 1
 	    fi
 	    UPDATE_XFSTESTS=yes
-	    UPDATE_XFSTESTS_DIR="$DIR/.."
 	    ;;
 	--update-files)
 	    supported_flavors kvm gce
@@ -1032,7 +1030,7 @@ fi
 find_kernel_to_use
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
-    (cd $DIR/.. ; ./gen-tarball --fast)
+    (cd "$DIR/../fstests-bld" ; ./gen-tarball --fast)
 fi
 
 if test -n "$PMEM_DEVICE" ; then

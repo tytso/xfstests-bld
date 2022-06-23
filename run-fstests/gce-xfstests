@@ -806,7 +806,7 @@ fi
 
 if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
 then
-    LOCAL_XFSTESTS="$DIR/../xfstests.tar.gz"
+    LOCAL_XFSTESTS="$DIR/../fstests-bld/xfstests.tar.gz"
     GS_XFSTESTS="gs://$GS_BUCKET/xfstests.tar.gz"
     get_local_hash "$LOCAL_XFSTESTS"
     get_remote_hash "$GS_XFSTESTS"

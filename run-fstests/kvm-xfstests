@@ -132,7 +132,7 @@ tar -c -f "$VDH" -T /dev/null
 
 if test -z "$NO_ACTION" -a "$UPDATE_XFSTESTS" = "yes"
 then
-    tar -r -f $VDH -C "$DIR/.." xfstests.tar.gz
+    tar -r -f $VDH -C "$DIR/../fstests-bld" xfstests.tar.gz
 fi
 
 if test -z "$NO_ACTION" -a "$UPDATE_EXTRA_TESTS" = "yes"
