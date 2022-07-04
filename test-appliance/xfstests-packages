@@ -5,6 +5,7 @@ bsdmainutils
 btrfs-progs
 bzip2
 cpio
+cpp
 cryptsetup
 dc
 dbench

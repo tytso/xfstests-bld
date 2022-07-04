@@ -56,6 +56,27 @@ function is_dev_free() {
     return 0
 }
 
+gen_version_header ()
+{
+    local version patchlevel sublevel
+
+    read version patchlevel sublevel <<< \
+	 $(uname -r | sed -e 's/-.*$//' | tr . ' ')
+
+    echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + \
+	((c) > 255 ? 255 : (c)))'
+    echo \#define LINUX_VERSION_MAJOR $version
+    echo \#define LINUX_VERSION_PATCHLEVEL $patchlevel
+    echo \#define LINUX_VERSION_SUBLEVEL $sublevel
+    if [ $sublevel -gt 255 ]; then
+	sublevel=255
+    fi
+    echo \#define LINUX_VERSION_CODE \
+	$(expr $version \* 65536 + $patchlevel \* 256 + $sublevel)
+    test -n "$FS" && echo \#define FC $FS
+    test -n "$TC" && echo \#define TC $TC
+}
+
 while [ "$1" != "" ]; do
     case $1 in
 	--run-once)
@@ -480,9 +501,15 @@ do
 	    done
 	    if [ ${#files[@]} -ge 0 ]; then
 		sed -e 's;//.*;;' -e 's/[ \t]*$//' -e '/^$/d' \
-		    ${files[@]} > /tmp/exclude
+		    ${files[@]} > /tmp/exclude.cpp
 	    else
-		cp /dev/null /tmp/exclude
+		cp /dev/null /tmp/exclude.cpp
+	    fi
+	    if test -s "/tmp/exclude.cpp" ; then
+		gen_version_header > /tmp/header.cpp
+		cat /tmp/header.cpp /tmp/exclude.cpp | cpp | \
+		    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
+			> /tmp/exclude
 	    fi
 	    if test -s "/tmp/exclude" ; then
 		EXSET=$(sort -u "/tmp/exclude")
