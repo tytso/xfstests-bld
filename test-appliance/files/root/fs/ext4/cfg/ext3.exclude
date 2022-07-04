@@ -1,46 +1,46 @@
-# ext4/023 tests the populate function which needs to require files with
-# extents.  This doesn't work with ext3, naturally.
+// ext4/023 tests the populate function which needs to require files with
+// extents.  This doesn't work with ext3, naturally.
 ext4/023
 
-# ext4/044 tries to mount the file system as ext3 explicitly, but
-# since we pass nodelalloc, this test will fail.
+// ext4/044 tries to mount the file system as ext3 explicitly, but
+// since we pass nodelalloc, this test will fail.
 ext4/044
 
-# ext4/033 creates a special file system using dmhugedisk to test for
-# inode overflow when online resizing.  With an ext3 config, this takes
-# too much space, so test VM will hang or abort the test run.  We
-# don't need to test this for all file system configs, so just skip it here.
+// ext4/033 creates a special file system using dmhugedisk to test for
+// inode overflow when online resizing.  With an ext3 config, this takes
+// too much space, so test VM will hang or abort the test run.  We
+// don't need to test this for all file system configs, so just skip it here.
 ext4/033
 
-# This takes a *long* time and doesn't add much value to run on all
-# configurations.  So we're going to be selective where we run it.
+// This takes a *long* time and doesn't add much value to run on all
+// configurations.  So we're going to be selective where we run it.
 generic/027
 
-# The generic/382 test fails on ext3 because the indirect blocks
-# are included in the quota report, and so the resulting quota
-# report output is different from what is expected in the 382.out file
+// The generic/382 test fails on ext3 because the indirect blocks
+// are included in the quota report, and so the resulting quota
+// report output is different from what is expected in the 382.out file
 generic/382
 
-# The generic/235 test fails for the same rason as generic/382 above
-# after xfstests 4f4b89cdf353 which was fixing the test for 64k block
-# sizes.  Unfortunately it breaks the test which use indirect blocks.
+// The generic/235 test fails for the same rason as generic/382 above
+// after xfstests 4f4b89cdf353 which was fixing the test for 64k block
+// sizes.  Unfortunately it breaks the test which use indirect blocks.
 generic/235
 
-# Ext3 does not support file systems > 16TB
+// Ext3 does not support file systems > 16TB
 generic/620
 
-# The generic/635 test tries to call the shutdown ioctl with the
-# LOGFLUSH flag, which unfortunately will does not work well with
-# nodelalloc mount option (which the conv configuration uses).
-# This is because once we are in shutdown state, any attempt to write
-# an inode fails with an EIO --- but this means that the data=ordered
-# writeback will fail with an EIO and this causes the LOGFLUSH commit
-# fail, which in turn means the $SCRATCH_MNT/t_* files do not survive
-# the shutdown, causing generic/635 to fail.  We are not likely going
-# to fix this before we rework ext4's writeback strategy to remove the
-# data=ordered writeback entirely, so let's just exclude this test for
-# now.
+// The generic/635 test tries to call the shutdown ioctl with the
+// LOGFLUSH flag, which unfortunately will does not work well with
+// nodelalloc mount option (which the conv configuration uses).
+// This is because once we are in shutdown state, any attempt to write
+// an inode fails with an EIO --- but this means that the data=ordered
+// writeback will fail with an EIO and this causes the LOGFLUSH commit
+// fail, which in turn means the $SCRATCH_MNT/t_* files do not survive
+// the shutdown, causing generic/635 to fail.  We are not likely going
+// to fix this before we rework ext4's writeback strategy to remove the
+// data=ordered writeback entirely, so let's just exclude this test for
+// now.
 generic/635
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

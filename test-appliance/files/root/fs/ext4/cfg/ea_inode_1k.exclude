@@ -1,11 +1,11 @@
-ext4/004	# dump/restore doesn't handle the ea_inode feature
+ext4/004	// dump/restore doesn't handle the ea_inode feature
 
-# This test creates too many inodes on when the block size is 1k
-# without using special mkfs.ext4 options to change the inode size.
-# This test is a bit bogus anyway, and uses a bunch of magic calculations
-# where it's not clear what it was originally trying to test in the
-# first place.  So let's just skip it for now.
+// This test creates too many inodes on when the block size is 1k
+// without using special mkfs.ext4 options to change the inode size.
+// This test is a bit bogus anyway, and uses a bunch of magic calculations
+// where it's not clear what it was originally trying to test in the
+// first place.  So let's just skip it for now.
 generic/273
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

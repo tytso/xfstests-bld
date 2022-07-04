@@ -1,12 +1,12 @@
-ext4/004	# dump/restore doesn't handle inline data
+ext4/004	// dump/restore doesn't handle inline data
 
-# ext4/044 tries to mount the file system as ext3 explicitly.  This will
-# fail because ext3 and the inline_data feature are incompatible.
+// ext4/044 tries to mount the file system as ext3 explicitly.  This will
+// fail because ext3 and the inline_data feature are incompatible.
 ext4/044
 
-# This takes a *long* time and doesn't add much value to run on all
-# configurations.  So we're going to be selective where we run it.
+// This takes a *long* time and doesn't add much value to run on all
+// configurations.  So we're going to be selective where we run it.
 generic/027
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

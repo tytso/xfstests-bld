@@ -1,25 +1,25 @@
-ext4/004	# dump/restore doesn't handle quotas
+ext4/004	// dump/restore doesn't handle quotas
 
-# These tests try to create extended attributes which are
-# large enough to stress the limits of the available
-# xattr size.  This causes problems with encryption
-# which requires its own xattrs which take space.
+// These tests try to create extended attributes which are
+// large enough to stress the limits of the available
+// xattr size.  This causes problems with encryption
+// which requires its own xattrs which take space.
 ext4/022
 ext4/023
 ext4/026
 ext4/028
 
-# file systems with encryption enabled can't be mounted with ext3
+// file systems with encryption enabled can't be mounted with ext3
 ext4/044
 
-# This test to make sure ext4 directory entries are appropriately
-# wiped after a file is deleted, or after htree operations is
-# incompatible with an encrypted directory.
+// This test to make sure ext4 directory entries are appropriately
+// wiped after a file is deleted, or after htree operations is
+// incompatible with an encrypted directory.
 ext4/048
 
-# These tests use the old-style quota support where the quota files are user
-# files instead of hidden inodes.  This isn't compatible with
-# test_dummy_encryption, as it causes the quota files to be encrypted.
+// These tests use the old-style quota support where the quota files are user
+// files instead of hidden inodes.  This isn't compatible with
+// test_dummy_encryption, as it causes the quota files to be encrypted.
 generic/082
 generic/219
 generic/230
@@ -35,10 +35,10 @@ generic/587
 generic/600
 generic/601
 
-# generic/204 tests ENOSPC handling; it doesn't correctly
-# anticipate the external extended attribute required when
-# using a 1k block size
+// generic/204 tests ENOSPC handling; it doesn't correctly
+// anticipate the external extended attribute required when
+// using a 1k block size
 generic/204
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

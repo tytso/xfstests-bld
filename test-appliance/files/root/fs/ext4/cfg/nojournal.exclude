@@ -1,13 +1,13 @@
-# Without a journal, tests for log state won't pass
+// Without a journal, tests for log state won't pass
 generic/050
 generic/052
 
-# Without a journal, tests which do a shutdown won't pass
+// Without a journal, tests which do a shutdown won't pass
 generic/530
 
-# This takes a *long* time and doesn't add much value to run on all
-# configurations.  So we're going to be selective where we run it.
+// This takes a *long* time and doesn't add much value to run on all
+// configurations.  So we're going to be selective where we run it.
 generic/027
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

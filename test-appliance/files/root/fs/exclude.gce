@@ -1,5 +1,5 @@
-# This test takes hotplug CPU's off-line and this apparently causes
-# an instant reboot.  This doesn't happen on KVM, but it does happen
-# when running the same kernel on GCE.
-#
+// This test takes hotplug CPU's off-line and this apparently causes
+// an instant reboot.  This doesn't happen on KVM, but it does happen
+// when running the same kernel on GCE.
+//
 generic/650

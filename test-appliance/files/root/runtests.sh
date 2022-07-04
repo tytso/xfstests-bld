@@ -471,23 +471,18 @@ do
 	export FSTYP=$FS
 	AEX=""
 	if test -n "$DO_AEX" ; then
-	    if test -f "/root/fs/global_exclude" ; then
-		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/global_exclude" > "/tmp/exclude"
+	    files=()
+	    for i in "/root/fs/global_exclude" \
+			"/root/fs/$FS/exclude" \
+			"/root/fs/$FS/cfg/$TC.exclude" \
+			"/root/fs/exclude.$XFSTESTS_FLAVOR" ; do
+		test -f "$i" && files+=("$i")
+	    done
+	    if [ ${#files[@]} -ge 0 ]; then
+		sed -e 's;//.*;;' -e 's/[ \t]*$//' -e '/^$/d' \
+		    ${files[@]} > /tmp/exclude
 	    else
-		cp /dev/null "/tmp/exclude"
-	    fi
-	    if test -f "/root/fs/$FS/exclude" ; then
-		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/exclude" >> "/tmp/exclude"
-	    fi
-	    if test -f "/root/fs/$FS/cfg/$TC.exclude"; then
-		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/$FS/cfg/$TC.exclude" >> "/tmp/exclude"
-	    fi
-	    if test -f "/root/fs/exclude.$XFSTESTS_FLAVOR" ; then
-		sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
-		    < "/root/fs/exclude.$XFSTESTS_FLAVOR" >> "/tmp/exclude"
+		cp /dev/null /tmp/exclude
 	    fi
 	    if test -s "/tmp/exclude" ; then
 		EXSET=$(sort -u "/tmp/exclude")

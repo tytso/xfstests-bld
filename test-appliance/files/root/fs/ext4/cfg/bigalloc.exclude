@@ -1,44 +1,44 @@
-ext4/004	# dump/restore doesn't handle the bigalloc feature
+ext4/004	// dump/restore doesn't handle the bigalloc feature
 
-# ext4/033 creates a special file system using dmhugedisk to test for
-# inode overflow when online resizing.  With a bigalloc config, this takes
-# too much space, so test VM will hang or abort the test run.  We
-# don't need to test this for all file system configs, so just skip it here.
+// ext4/033 creates a special file system using dmhugedisk to test for
+// inode overflow when online resizing.  With a bigalloc config, this takes
+// too much space, so test VM will hang or abort the test run.  We
+// don't need to test this for all file system configs, so just skip it here.
 ext4/033
 
-# This takes a *long* time and doesn't add much value to run on all
-# configurations.  So we're going to be selective where we run it.
+// This takes a *long* time and doesn't add much value to run on all
+// configurations.  So we're going to be selective where we run it.
 generic/027
 
-# This test needs to know the inode size and block size for the file
-# system; for bigalloc, we need to use the cluster size instead of the
-# block size.
+// This test needs to know the inode size and block size for the file
+// system; for bigalloc, we need to use the cluster size instead of the
+// block size.
 generic/204
 
-# This test is a quota accounting test.  For bigalloc, the cluster
-# size of 64k is way too big to deal with the artificial fudge used
-# in the test to deal with wrong block sizes.  The test really needs
-# to be rewritten to understand block/allocation sizes....
+// This test is a quota accounting test.  For bigalloc, the cluster
+// size of 64k is way too big to deal with the artificial fudge used
+// in the test to deal with wrong block sizes.  The test really needs
+// to be rewritten to understand block/allocation sizes....
 generic/219
 
-# This test uses the block size to figure out how many files to
-# create; for bigalloc, we need to use the cluster size instead of the
-# block size.
+// This test uses the block size to figure out how many files to
+// create; for bigalloc, we need to use the cluster size instead of the
+// block size.
 generic/273
 
-# This test creates a very small file system on a dm-thin device.
-# The file system is too small for bigalloc, so skip it.  It was
-# introduced to test a dm-thin bug combined with an XFS bug regression.
-# If it's a problem for ext4, we'll catch it in other ext4 configs.
+// This test creates a very small file system on a dm-thin device.
+// The file system is too small for bigalloc, so skip it.  It was
+// introduced to test a dm-thin bug combined with an XFS bug regression.
+// If it's a problem for ext4, we'll catch it in other ext4 configs.
 generic/500
 
-# These tests assume that the directory will get expanded when
-# additional entries are added.  With bigalloc and with htree
-# directories, this is not the case.  Since no blocks are added,
-# there is no attempted block allocation and so the expected
-# EDQUOT failure didn't happen.
+// These tests assume that the directory will get expanded when
+// additional entries are added.  With bigalloc and with htree
+// directories, this is not the case.  Since no blocks are added,
+// there is no attempted block allocation and so the expected
+// EDQUOT failure didn't happen.
 generic/681
 generic/682
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

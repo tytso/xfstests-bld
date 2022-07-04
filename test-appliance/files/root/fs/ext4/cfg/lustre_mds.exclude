@@ -1,4 +1,4 @@
-ext4/004	# dump/restore doesn't handle largedir
+ext4/004	// dump/restore doesn't handle largedir
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax

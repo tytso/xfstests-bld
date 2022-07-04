@@ -1,20 +1,20 @@
-# This test tries to create 65536 directories, and with 1k blocks,
-# and long names, we run out of htree depth
+// This test tries to create 65536 directories, and with 1k blocks,
+// and long names, we run out of htree depth
 ext4/045
 
-# This takes a *long* time and doesn't add much value to run on all
-# configurations.  So we're going to be selective where we run it.
+// This takes a *long* time and doesn't add much value to run on all
+// configurations.  So we're going to be selective where we run it.
 generic/027
 
-# This test creates too many inodes on when the block size is 1k
-# without using special mkfs.ext4 options to change the inode size.
-# This test is a bit bogus anyway, and uses a bunch of magic calculations
-# where it's not clear what it was originally trying to test in the
-# first place.  So let's just skip it for now.
+// This test creates too many inodes on when the block size is 1k
+// without using special mkfs.ext4 options to change the inode size.
+// This test is a bit bogus anyway, and uses a bunch of magic calculations
+// where it's not clear what it was originally trying to test in the
+// first place.  So let's just skip it for now.
 generic/273
 
-# This test creates too many extended attributes to fit in a 1k block
+// This test creates too many extended attributes to fit in a 1k block
 generic/454
 
-# Normal configurations don't support dax
+// Normal configurations don't support dax
 -g dax
