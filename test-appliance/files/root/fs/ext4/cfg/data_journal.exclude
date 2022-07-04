@@ -1,3 +1,5 @@
+// exclude file for ext4/data_journal
+
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
@@ -18,6 +20,3 @@ generic/537
 // This test uses dioread_nolock which currently isn't supported with
 // data=journal
 ext4/034
-
-// Normal configurations don't support dax
--g dax

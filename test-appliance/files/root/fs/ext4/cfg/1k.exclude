@@ -1,3 +1,5 @@
+// exclude file for ext4/1k
+
 // The test fails due to too many block group descriptors when the
 // block size is 1k
 ext4/033
@@ -15,6 +17,3 @@ generic/273
 
 // This test creates too many extended attributes to fit in a 1k block
 generic/454
-
-// Normal configurations don't support dax
--g dax

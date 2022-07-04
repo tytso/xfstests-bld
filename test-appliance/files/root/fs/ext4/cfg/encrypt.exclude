@@ -1,3 +1,5 @@
+// exclude file for ext4/encrypt
+
 ext4/004	// dump/restore doesn't handle quotas
 
 // These tests try to create extended attributes which are
@@ -39,6 +41,3 @@ generic/601
 // anticipate the external extended attribute required when
 // using a 1k block size
 generic/204
-
-// Normal configurations don't support dax
--g dax

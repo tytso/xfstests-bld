@@ -19,3 +19,8 @@ generic/554
 // gone upstream.   Suppress richacl tests to avoid a large number of
 // "skipped test" noise.
 -g richacl
+
+#ifndef IS_DAX_CONFIG
+// Unless we are testing the dax config, we can exclude all dax tests
+-g dax
+#endif

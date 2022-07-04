@@ -1,5 +1,4 @@
-// Normal configurations don't support dax
--g dax
+// exclude file for xfs/realtime
 
 // The xfs/076 test takes well over an hour (80 minutes using 100GB GCE
 // PD/SSD) when run with an external realtime device, which triggers

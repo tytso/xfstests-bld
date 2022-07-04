@@ -1,5 +1,4 @@
-// Normal configurations don't support dax
--g dax
+// exclude file for xfs/v4
 
 // On a 5.15-rc4 kernel, xfs/170 reliably causes a soft lockup in
 // xfs_alloc_read_agf()+0x41/0x110.  Call stack:

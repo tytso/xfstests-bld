@@ -1,3 +1,5 @@
+// exclude file for ext4/nojournal
+
 // Without a journal, tests for log state won't pass
 generic/050
 generic/052
@@ -8,6 +10,3 @@ generic/530
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
-
-// Normal configurations don't support dax
--g dax

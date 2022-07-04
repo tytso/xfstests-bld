@@ -1,3 +1,5 @@
+// exclude file for ext4/dioread_nolock_1k
+
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
@@ -11,6 +13,3 @@ generic/273
 
 // This test creates too many extended attributes to fit in a 1k block
 generic/454
-
-// Normal configurations don't support dax
--g dax

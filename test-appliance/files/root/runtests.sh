@@ -75,6 +75,7 @@ gen_version_header ()
 	$(expr $version \* 65536 + $patchlevel \* 256 + $sublevel)
     test -n "$FS" && echo \#define FC $FS
     test -n "$TC" && echo \#define TC $TC
+    test "$TC" = dax && echo \#define IS_DAX_CONFIG
 }
 
 while [ "$1" != "" ]; do
@@ -507,7 +508,8 @@ do
 	    fi
 	    if test -s "/tmp/exclude.cpp" ; then
 		gen_version_header > /tmp/header.cpp
-		cat /tmp/header.cpp /tmp/exclude.cpp | cpp | \
+		cat /tmp/header.cpp /tmp/exclude.cpp | \
+		    cpp -I /root/fs/$FS/cfg | \
 		    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
 			> /tmp/exclude
 	    fi

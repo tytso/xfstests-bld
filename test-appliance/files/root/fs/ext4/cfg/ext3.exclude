@@ -1,3 +1,5 @@
+// exclude file for ext4/ext3
+
 // ext4/023 tests the populate function which needs to require files with
 // extents.  This doesn't work with ext3, naturally.
 ext4/023
@@ -31,7 +33,7 @@ generic/620
 
 // The generic/635 test tries to call the shutdown ioctl with the
 // LOGFLUSH flag, which unfortunately will does not work well with
-// nodelalloc mount option (which the conv configuration uses).
+// nodelalloc mount option (which the ext3 configuration uses).
 // This is because once we are in shutdown state, any attempt to write
 // an inode fails with an EIO --- but this means that the data=ordered
 // writeback will fail with an EIO and this causes the LOGFLUSH commit
@@ -41,6 +43,3 @@ generic/620
 // data=ordered writeback entirely, so let's just exclude this test for
 // now.
 generic/635
-
-// Normal configurations don't support dax
--g dax

@@ -1,33 +1,10 @@
-// These tests are also excluded in encrypt.exclude.
-// See there for the reasons.
-//
-// Due to the 1k block size, ext4/023 and ext4/028 also fail for a second reason:
-// they use _scratch_populate_cached() which tries to create a 1023-byte symlink,
-// which fails with encrypt_1k because encrypted symlinks are limited to
-// blocksize-3 bytes, not blocksize-1 as is the case for no encryption.
-ext4/004
-ext4/022
-ext4/023
-ext4/026
-ext4/028
-generic/082
-generic/219
-generic/230
-generic/231
-generic/232
-generic/233
-generic/235
-generic/270
-generic/382
-generic/204
-generic/587
-generic/600
-generic/601
+// exclude file for ext4/encrypt_1k
 
-// These tests are also excluded in 1k.exclude.
-// See there for the reasons.
-generic/273
-generic/454
+// n.b.  Due to the 1k block size, ext4/023 and ext4/028 also fail for a
+// second reason: they use _scratch_populate_cached() which tries to
+// create a 1023-byte symlink, which fails with encrypt_1k because
+// encrypted symlinks are limited to blocksize-3 bytes, not
+// blocksize-1 as is the case for no encryption.
+#include "encrypt.exclude"
 
-// Normal configurations don't support dax
--g dax
+#include "1k.exclude"

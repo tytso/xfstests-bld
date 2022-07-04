@@ -1,3 +1,5 @@
+// exclude file for ext4/ea_inode_1k
+
 ext4/004	// dump/restore doesn't handle the ea_inode feature
 
 // This test creates too many inodes on when the block size is 1k
@@ -6,6 +8,3 @@ ext4/004	// dump/restore doesn't handle the ea_inode feature
 // where it's not clear what it was originally trying to test in the
 // first place.  So let's just skip it for now.
 generic/273
-
-// Normal configurations don't support dax
--g dax

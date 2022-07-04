@@ -1,3 +1,5 @@
+// exclude file for ext4/ext3conv
+
 // ext4/044 tries to mount the file system as ext3 explicitly, but
 // since we pass nodelalloc, this test will fail.
 ext4/044
@@ -18,6 +20,3 @@ generic/027
 // data=ordered writeback entirely, so let's just exclude this test for
 // now.
 generic/635
-
-// Normal configurations don't support dax
--g dax

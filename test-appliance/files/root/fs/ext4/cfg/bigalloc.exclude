@@ -1,3 +1,5 @@
+// exclude file for ext4/bigalloc
+
 ext4/004	// dump/restore doesn't handle the bigalloc feature
 
 // ext4/033 creates a special file system using dmhugedisk to test for
@@ -39,6 +41,3 @@ generic/500
 // EDQUOT failure didn't happen.
 generic/681
 generic/682
-
-// Normal configurations don't support dax
--g dax
