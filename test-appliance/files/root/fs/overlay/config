@@ -98,6 +98,8 @@ function setup_mount_opts()
 	    export OVERLAY_MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
+    export OVERLAY=true
+    export OVL_BASE_FSTYP=$BASE_FSTYPE
 }
 
 function get_mkfs_opts()
@@ -128,4 +130,10 @@ function test_name_alias()
 function reset_vars()
 {
     unset TMPFS_MOUNT_OPTIONS
+    unset OVERLAY
+    unset OVL_BASE_FSTYP
+    unset OVL_BASE_SCRATCH_DEV
+    unset OVL_BASE_SCRATCH_MNT
+    unset OVL_BASE_TEST_DEV
+    unset OVL_BASE_TEST_DIR
 }
