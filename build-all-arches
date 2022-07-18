@@ -2,7 +2,8 @@
 
 . build_config.sh
 
-BUILD_DIR=build-release
+TOP_DIR=build-release
+BUILD_DIR=$TOP_DIR/fstests-bld
 
 function usage()
 {
@@ -67,20 +68,23 @@ for i in "${ARCH_LIST[@]}" ; do
     echo "CHROOT=$DISTRO-$i" > $BUILD_DIR/config.custom
     sed -e '1,/^#BEGIN CONFIG.CUSTOM/d' < build_config.sh \
 	>> $BUILD_DIR/config.custom
+    echo "CHROOT=$DISTRO-$i" > $TOP_DIR/config.custom
+    sed -e '1,/^#BEGIN BUILD-CONFIG/d' < build_config.sh \
+	>> $TOP_DIR/config.custom
     case $i in
 	arm*)
 	    echo export ACCEL_BIN=/usr/local/bin-accel \
 		 >> $BUILD_DIR/config.custom
 	    ;;
     esac
-    echo "MIRROR=$MIRROR" > $BUILD_DIR/kvm-xfstests/test-appliance/config.custom
+    echo "MIRROR=$MIRROR" > $TOP_DIR/test-appliance/config.custom
 
-    if ! (cd $BUILD_DIR ; ./do-all) ; then
+    if ! (cd $TOP_DIR ; ./build-appliance) ; then
 	echo "Build of $i failed!"
 	exit 1
     fi
-    cp $BUILD_DIR/kvm-xfstests/test-appliance/root_fs.tar.gz out_dir/root_fs.$i.tar.gz
-    cp $BUILD_DIR/kvm-xfstests/test-appliance/root_fs.img out_dir/root_fs.img.$i
+    cp $TOP_DIR/test-appliance/root_fs.tar.gz out_dir/root_fs.$i.tar.gz
+    cp $TOP_DIR/test-appliance/root_fs.img out_dir/root_fs.img.$i
     cp $BUILD_DIR/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
     cp $BUILD_DIR/xfstests/git-versions out_dir/git-versions-$i
     if test ! -f out_dir/README ; then

@@ -26,7 +26,7 @@ IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
 IMA_EVM_UTILS_COMMIT=00a0e66a14d3663edd9d37c8a01db6d182c88bdd # v1.3.2
 
 BLKTESTS_GIT=https://github.com/tytso/blktests.git
-BLKTESTS_COMMIT=3be78490def51cc477a659412a8b369af434bddc
+BLKTESTS_COMMIT=af97b557d52aebd94c0d9d1d2f1bbf759bbc75df
 
 NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
 NVME_CLI_COMMIT=deee9cae1ac94760deebd71f8e5449061338666c # v1.16
@@ -40,6 +40,8 @@ UTIL_LINUX_LIBS_ONLY=yes
 export PATH=$HOME/bin-ccache:/bin:/usr/bin
 export CCACHE_DIR=/var/cache/ccache
 export CCACHE_COMPRESS=t
+
+#BEGIN BUILD-CONFIG
 
 BUILD_ENV="schroot -c $CHROOT --"
 SUDO_ENV="schroot -c $CHROOT -u root --"
