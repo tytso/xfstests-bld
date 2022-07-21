@@ -10,3 +10,14 @@ generic/477
 // failing in the expected output of the linux-nfs Wiki page.  So we'll
 // suppress this failure for now.
 generic/294
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,4,0)
+// There appears to be a regression that shows up sometime after 5.4.
+// LTS kernels for 4.14, 4.19, and 5.4 will terminate successfully,
+// but newer kernels will spin forever in some kind of deadlock or livelock
+// This apparently does not happen if the scratch device is > 27GB, so it
+// may be some kind of ENOSPC-related bug.
+// For more information see the e-mail thread starting at:
+// https://lore.kernel.org/r/CAHLe9YaAVyBmmM8T27dudvoeAxbJ_JMQmkz7tdM1ZLnpeQW4UQ@mail.gmail.com/
+generic/476
+#endif
