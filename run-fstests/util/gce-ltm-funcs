@@ -1,4 +1,4 @@
-. $DIR/.ltm_instance
+. $DIR/.ltm_instance_$GCE_PROJECT
 
 # The hostname has to match the common name field of the certificate, as set
 # in util/gce-do-setup when running openssl to create a self-signed cert.
@@ -17,14 +17,14 @@ function ltm_post_json() {
 function ltm_post_failed() {
     if run_gcloud compute instances describe "xfstests-ltm" &> /dev/null; then
 	echo "The ltm instance seems to be running. Try deleting the"
-	echo "$DIR/.ltm_instance file and re-running launch-ltm to recreate"
+	echo "$DIR/.ltm_instance_$GCE_PROJECT file and re-running launch-ltm to recreate"
 	echo "the file. If the issue persists, try relaunching the LTM"
 	echo "If configuration changes have been made, it may be necessary"
 	echo "to delete and re-launch the LTM."
     else
 	echo "The ltm doesn't seem to be running. Try launching the ltm"
 	echo "instance with launch-ltm. This will recreate the"
-	echo ".ltm_instance file."
+	echo ".ltm_instance_$GCE_PROJECT file."
     fi
 }
 
@@ -32,9 +32,9 @@ function send_to_ltm() {
     local cmd_to_send=$1
     shift
 
-    if test ! -f "$DIR/.ltm_cookie"; then
+    if test ! -f "$DIR/.ltm_cookie_$GCE_PROJECT"; then
         # just create a new login session and store it in the cookie
-        ltm_post_json -c $DIR/.ltm_cookie -d "{\"password\":\"$GCE_LTM_PWD\"}" \
+        ltm_post_json -c $DIR/.ltm_cookie_$GCE_PROJECT -d "{\"password\":\"$GCE_LTM_PWD\"}" \
             "https://$LTM_HOSTNAME/login"
 
         if [ ! $? = 0 ]; then
@@ -46,7 +46,7 @@ function send_to_ltm() {
     fi
 
     if test -n "$LTM_INFO"; then
-        ltm_post_json -b $DIR/.ltm_cookie "https://$LTM_HOSTNAME/status"
+        ltm_post_json -b $DIR/.ltm_cookie_$GCE_PROJECT "https://$LTM_HOSTNAME/status"
         if [ $? != 0 ]; then
         echo "Request failed."
         ltm_post_failed
@@ -99,7 +99,7 @@ function send_to_ltm() {
     fi
     # Create OPTS.
 
-    ltm_post_json -b $DIR/.ltm_cookie -d \
+    ltm_post_json -b $DIR/.ltm_cookie_$GCE_PROJECT -d \
 	"{\"orig_cmdline\": \"$cmd_to_send\"${LTM_OPTS:+, $LTM_OPTS}}" \
 	"https://$LTM_HOSTNAME/gce-xfstests"
 

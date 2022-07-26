@@ -29,22 +29,22 @@ fi
 
 INSTANCE="xfstests-kcs"
 
-if test -f "$DIR/.kcs_cookie"; then
+if test -f "$DIR/.kcs_cookie_$GCE_PROJECT"; then
     echo "Removing old cookies..."
-    rm -f "$DIR/.kcs_cookie"
+    rm -f "$DIR/.kcs_cookie_$GCE_PROJECT"
 fi
 
 NO_ACTION=
 if run_gcloud compute instances describe --zone $GCE_ZONE \
     $INSTANCE >& /dev/null
 then
-    if [ -f $DIR/.kcs_instance ]
+    if [ -f $DIR/.kcs_instance_$GCE_PROJECT ]
     then
 	echo "The KCS instance already exists!"
 	exit 1
     else
-	echo "The KCS server instance already exists, but .kcs_instance is not present."
-	echo "Re-creating .kcs_instance..."
+	echo "The KCS server instance already exists, but .kcs_instance_$GCE_PROJECT is not present."
+	echo "Re-creating .kcs_instance_$GCE_PROJECT..."
 	NO_ACTION=": "
     fi
 fi
@@ -95,9 +95,9 @@ then
 fi
 
 echo "Launching build server..."
-touch $DIR/.kcs_instance
+touch $DIR/.kcs_instance_$GCE_PROJECT
 LAUNCH_KCS_EXIT_STATUS=1
-trap 'if [ $LAUNCH_KCS_EXIT_STATUS != 0 ]; then rm $DIR/.kcs_instance; fi' EXIT
+trap 'if [ $LAUNCH_KCS_EXIT_STATUS != 0 ]; then rm $DIR/.kcs_instance_$GCE_PROJECT; fi' EXIT
 
 run_gcloud compute \
     instances create "$INSTANCE" --zone "$GCE_ZONE" \
@@ -117,14 +117,14 @@ then
     exit 1
 fi
 
-if [ ! -f $DIR/.gce_xfstests_cert.pem ]
+if [ ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem ]
 then
-    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert.pem
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
 fi
 
-echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.kcs_instance
-echo "GCE_KCS_NAME=$INSTANCE" >> $DIR/.kcs_instance
-echo -n "GCE_KCS_EXT_IP=" >> $DIR/.kcs_instance
+echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.kcs_instance_$GCE_PROJECT
+echo "GCE_KCS_NAME=$INSTANCE" >> $DIR/.kcs_instance_$GCE_PROJECT
+echo -n "GCE_KCS_EXT_IP=" >> $DIR/.kcs_instance_$GCE_PROJECT
 echo -n "Waiting for VM to boot to grab external IP..."
 
 function wait_for_command() {
@@ -146,20 +146,20 @@ echo " Done!"
 
 NO_ACTION=
 run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.kcs_instance
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.kcs_instance_$GCE_PROJECT
 
 # use internal ip if this machine is in the same GCE project
 if test -n "$RUN_INTERNAL"; then
     echo "Runs on same GCE project so grab internal IP"
-    echo -n "GCE_KCS_INT_IP=" >> $DIR/.kcs_instance
+    echo -n "GCE_KCS_INT_IP=" >> $DIR/.kcs_instance_$GCE_PROJECT
 
     run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.kcs_instance
+        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.kcs_instance_$GCE_PROJECT
 fi
 
 echo -n "Fetching password..."
 wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
-echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance
-gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance
+echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance_$GCE_PROJECT
+gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance_$GCE_PROJECT
 LAUNCH_KCS_EXIT_STATUS=0
 echo "Done!"

@@ -618,8 +618,8 @@ case "$1" in
 	;;
     ltm)
 	shift
-	if [ ! -f "$DIR/.ltm_instance" ]; then
-		echo "The .ltm_instance file is not present! Please launch the LTM before"
+	if [ ! -f "$DIR/.ltm_instance_$GCE_PROJECT" ]; then
+		echo "The .ltm_instance_$GCE_PROJECT file is not present! Please launch the LTM before"
 		echo "using this option."
 		exit 1
 	fi
@@ -628,8 +628,8 @@ case "$1" in
 	;;
     kcs)
 	shift
-	if [ ! -f "$DIR/.kcs_instance" ]; then
-		echo "The .kcs_instance file is not present! Please launch the compile server before"
+	if [ ! -f "$DIR/.kcs_instance_$GCE_PROJECT" ]; then
+		echo "The .kcs_instance_$GCE_PROJECT file is not present! Please launch the compile server before"
 		echo "using this option."
 		exit 1
 	fi
@@ -639,8 +639,8 @@ case "$1" in
 	;;
     ltm-info)
 	shift
-	if [ ! -f "$DIR/.ltm_instance" ]; then
-		echo "The .ltm_instance file is not present! Please launch the LTM before"
+	if [ ! -f "$DIR/.ltm_instance_$GCE_PROJECT" ]; then
+		echo "The .ltm_instance_$GCE_PROJECT file is not present! Please launch the LTM before"
 		echo "using this option."
 		exit 1
 	fi

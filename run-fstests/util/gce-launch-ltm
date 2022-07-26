@@ -29,23 +29,23 @@ fi
 
 INSTANCE="xfstests-ltm"
 
-if test -f "$DIR/.ltm_cookie"; then
+if test -f "$DIR/.ltm_cookie_$GCE_PROJECT"; then
     echo "Removing old cookies..."
-    rm -f "$DIR/.ltm_cookie"
+    rm -f "$DIR/.ltm_cookie_$GCE_PROJECT"
 fi
 
 NO_ACTION=
 if run_gcloud compute instances describe --zone $GCE_ZONE \
     $INSTANCE >& /dev/null
 then
-    if [ -f $DIR/.ltm_instance ]
+    if [ -f $DIR/.ltm_instance_$GCE_PROJECT ]
     then
 	echo "The LTM instance already exists!"
 	echo "Launch new tests on the ltm with gce-xfstests ltm <more>"
 	exit 1
     else
-	echo "The LTM instance already exists, but .ltm_instance is not present."
-	echo "Re-creating .ltm_instance..."
+	echo "The LTM instance already exists, but .ltm_instance_$GCE_PROJECT is not present."
+	echo "Re-creating .ltm_instance_$GCE_PROJECT..."
 	NO_ACTION=": "
     fi
 fi
@@ -96,9 +96,9 @@ then
 fi
 
 echo "Launching LTM server..."
-touch $DIR/.ltm_instance
+touch $DIR/.ltm_instance_$GCE_PROJECT
 LAUNCH_LTM_EXIT_STATUS=1
-trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance; fi' EXIT
+trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance_$GCE_PROJECT; fi' EXIT
 
 run_gcloud compute instances create "$INSTANCE" --zone "$GCE_ZONE" \
     --machine-type "$GCE_LTM_MACHTYPE" --network "$GCE_NETWORK" \
@@ -117,14 +117,14 @@ then
     exit 1
 fi
 
-if [ ! -f $DIR/.gce_xfstests_cert.pem ]
+if [ ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem ]
 then
-    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert.pem
+    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
 fi
 
-echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.ltm_instance
-echo "GCE_LTM_NAME=$INSTANCE" >> $DIR/.ltm_instance
-echo -n "GCE_LTM_EXT_IP=" >> $DIR/.ltm_instance
+echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.ltm_instance_$GCE_PROJECT
+echo "GCE_LTM_NAME=$INSTANCE" >> $DIR/.ltm_instance_$GCE_PROJECT
+echo -n "GCE_LTM_EXT_IP=" >> $DIR/.ltm_instance_$GCE_PROJECT
 echo -n "Waiting for VM to boot to grab external IP..."
 
 function wait_for_command() {
@@ -146,20 +146,20 @@ echo " Done!"
 
 NO_ACTION=
 run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance_$GCE_PROJECT
 
 # use internal ip if this machine is in the same GCE project
 if test -n "$RUN_INTERNAL"; then
     echo "Runs on same GCE project so grab internal IP"
-    echo -n "GCE_LTM_INT_IP=" >> $DIR/.ltm_instance
+    echo -n "GCE_LTM_INT_IP=" >> $DIR/.ltm_instance_$GCE_PROJECT
 
     run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.ltm_instance
+        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.ltm_instance_$GCE_PROJECT
 fi
 
 echo -n "Fetching password..."
 wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
-echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance
-gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance
+echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance_$GCE_PROJECT
+gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
 LAUNCH_LTM_EXIT_STATUS=0
 echo "Done!"

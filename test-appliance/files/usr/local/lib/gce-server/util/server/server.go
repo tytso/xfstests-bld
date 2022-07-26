@@ -40,7 +40,6 @@ const (
 	// KCSServer defines the instance name for KCS server
 	KCSServer = "xfstests-kcs"
 	// file paths for certificates and keys
-	certPath        = "/root/xfstests_bld/run-fstests/.gce_xfstests_cert.pem"
 	secretPath      = "/etc/lighttpd/server.pem"
 	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
 
@@ -171,10 +170,12 @@ type Instance struct {
 }
 
 // server maintained secrets and mutex to avoid race conditions.
+// also, path to cert file, path must be genereated at runtime
 var (
 	key        []byte
 	password   string
 	launchLock sync.Mutex
+	certPath   string
 )
 
 func init() {
@@ -206,6 +207,12 @@ func init() {
 		panic(err)
 	}
 
+	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	if err != nil || projID == "" {
+		panic("Failed to get project config in init()")
+	}
+
+	certPath =  "/root/xfstests_bld/run-fstests/.gce_xfstests_cert_" + projID + ".pem"
 }
 
 // New sets up a new https server.
