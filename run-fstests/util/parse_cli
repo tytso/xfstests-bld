@@ -238,6 +238,7 @@ cpu-type:
 disable-serial
 email:
 enable-serial
+fail-loop-count:
 gce-disk-spec:
 gce-network:
 gce-zone:
@@ -397,6 +398,9 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
+	    ;;
+	--fail-loop-count) shift
+	    FSTESTOPT="$FSTESTOPT,fail_loop_count,$1"
 	    ;;
 	--update-xfstests-tar)
 	    supported_flavors kvm gce

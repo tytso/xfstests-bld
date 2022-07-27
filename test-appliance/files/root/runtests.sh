@@ -125,6 +125,7 @@ else
 fi
 
 RPT_COUNT=1
+FAIL_LOOP_COUNT=4
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -133,6 +134,9 @@ while [ "$1" != "" ]; do
 	;;
     count) shift
 	RPT_COUNT=$1
+	;;
+    fail_loop_count) shift
+	FAIL_LOOP_COUNT=$1
 	;;
     no_punch)
 	ALL_FSSTRESS_AVOID="$ALL_FSSTRESS_AVOID -f punch=0"
@@ -277,6 +281,17 @@ else
 fi
 
 touch "$RESULTS/fstest-completed"
+
+./check --help > /tmp/check-help
+report_fmt=xunit
+if grep -q xunit-quiet /tmp/check-help ; then
+    report_fmt=xunit-quiet
+fi
+fail_test_loop=
+if test $RPT_COUNT -eq 1 && test $FAIL_LOOP_COUNT -gt 0 && \
+	grep -q -- "-L <n>" /tmp/check-help ; then
+    fail_test_loop="-L $FAIL_LOOP_COUNT"
+fi
 
 [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
 cp /proc/meminfo "$RESULTS/meminfo.before"
@@ -577,8 +592,11 @@ do
 	    fi
 	    if test -s /tmp/tests-to-run
 	    then
-		bash ./check -R xunit -T $EXTRA_OPT $AEX $TEST_SET_EXCLUDE \
-		     $(cat /tmp/tests-to-run)
+		echo ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
+		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run) \
+		     > "$RESULT_BASE/check-cmd"
+		bash ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
+		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run)
 		copy_xunit_results
 	    else
 		echo "No tests to run"
