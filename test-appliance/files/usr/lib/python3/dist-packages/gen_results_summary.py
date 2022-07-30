@@ -18,6 +18,39 @@ import time
 from datetime import datetime
 from junitparser import JUnitXml, Property, Properties, Failure, Error, Skipped
 
+class TestStats:
+    def __init__(self):
+        self.failed = 0
+        self.skipped = 0
+        self.error = 0
+        self.total = 0
+
+class wrapped_print:
+    def __init__(self, f, label, sep):
+        self.f = f
+        self.label = label
+        self.sep = sep
+        self.first = True
+        self.pos = 0
+
+    def write(self, str):
+        if self.first:
+            self.f.write('  %s: ' % self.label)
+            self.pos = len(self.label) + 4
+            self.first = False
+        else:
+            self.f.write(self.sep)
+        l = len(str) + len(self.sep)
+        self.pos += l
+        if self.pos > 76:
+            self.f.write('\n    ')
+            self.pos = l + 5
+        self.f.write(str)
+
+    def done(self):
+        if not self.first:
+            self.f.write('\n')
+
 def get_results(dirroot):
     """Return a list of files named results.xml in a directory hierarchy"""
     for dirpath, _dirs, filenames in os.walk(dirroot):
@@ -64,8 +97,7 @@ def remove_properties(props, key):
 
 def print_tests(out_f, testsuite, result_type, type_label):
     """Print all of the tests which match a particular result_type"""
-    found = False
-    pos = 0
+    wp = wrapped_print(out_f, type_label, ' ')
     for testcase in testsuite:
         match = False
         for entry in testcase.result:
@@ -73,18 +105,8 @@ def print_tests(out_f, testsuite, result_type, type_label):
                 match = True
         if not match:
             continue
-        if not found:
-            out_f.write('  %s: ' % type_label)
-            pos = len(type_label) + 4
-            found = True
-        name_len = len(testcase.name) + 1
-        pos += name_len + 1
-        if pos > 76:
-            out_f.write('\n    ')
-            pos = name_len + 5
-        out_f.write(testcase.name + ' ')
-    if found:
-        out_f.write('\n')
+        wp.write(testcase.name)
+    wp.done()
 
 def total_tests(testsuites):
     """Print the total number of tests in an array of testsuites"""
@@ -153,10 +175,50 @@ def print_summary(out_f, testsuite, verbose):
             out_f.write("  %-12s %-8s %ds\n" %
                         (test_case.name, status, test_case.time))
     else:
-        if failures > 0:
-            print_tests(out_f, testsuite, Failure, 'Failures')
-            if errors > 0:
-                print_tests(out_f, testsuite, Error, 'Errors')
+        Stats = {}
+        for test_case in testsuite:
+            isFail = False
+            isSkipped = False
+            isError = False
+            for entry in test_case.result:
+                if isinstance(entry, Failure):
+                    isFail = True
+                if isinstance(entry, Skipped):
+                    isSkipped = True
+                if isinstance(entry, Error):
+                    isError = True
+            if test_case.name in Stats:
+                s = Stats[test_case.name]
+            else:
+                s = TestStats()
+                Stats[test_case.name] = s
+            s.total += 1
+            if isFail:
+                s.failed += 1
+            if isSkipped:
+                s.skipped += 1
+            if isError:
+                s.error += 1
+
+        wp = wrapped_print(out_f, 'Failures', ' ')
+        for t in Stats:
+            s = Stats[t]
+            if s.failed == 0 or s.total != s.failed:
+                continue
+            wp.write(t)
+        wp.done()
+
+        wp = wrapped_print(out_f, 'Flaky', '   ')
+        for t in Stats:
+            s = Stats[t]
+            if s.failed == 0 or s.total == s.failed:
+                continue
+            wp.write('%s: %2.0f%% (%d/%d)' % (t, s.failed / s.total * 100,
+                                              s.failed, s.total))
+        wp.done()
+
+        if errors > 0:
+            print_tests(out_f, testsuite, Error, 'Errors')
 
 def print_property_line(out_f, props, key):
     """Print a line containing the given property."""
