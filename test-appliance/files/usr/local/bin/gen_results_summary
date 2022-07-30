@@ -12,10 +12,13 @@ def main():
     parser.add_argument('--output_file', help='Combined text output file')
     parser.add_argument('--verbose', help='Generate a verbose output',
                         action='store_true')
+    parser.add_argument('--verbosity_threshold', help='Threshold limit for verbose output',
+                        action='store', type=int, default=30)
     args = parser.parse_args()
 
     if gen_results_summary(args.results_dir, args.output_file,
-                           args.merge_file, args.verbose) == 0:
+                           args.merge_file, args.verbose,
+                           args.verbosity_threshold) == 0:
         sys.exit('No results file found in ' + args.results_dir)
 
 if __name__ == "__main__":

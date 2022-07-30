@@ -211,7 +211,7 @@ def check_for_ltm(results_dir, props):
         return False
 
 def gen_results_summary(results_dir, output_fn=None, merge_fn=None,
-                        verbose=False):
+                        verbose=False, verbosity_threshold=30):
     """Scan a results directory and generate a summary file"""
     reports = []
     combined = JUnitXml()
@@ -237,7 +237,7 @@ def gen_results_summary(results_dir, output_fn=None, merge_fn=None,
     if ltm:
         sort_by = lambda ts: ts.hostname
 
-    if total_tests(reports) < 30:
+    if total_tests(reports) < verbosity_threshold:
         verbose = True
 
     for testsuite in sorted(reports, key=sort_by):
