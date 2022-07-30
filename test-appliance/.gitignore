@@ -7,6 +7,7 @@ var.cache.apt.archives
 var.lib.apt.lists
 mirror
 config.custom
+__pycache__
 /files/root/xfstests/git-versions
 /files/usr/local/lib/bin/
 /files/usr/local/lib/pkg/

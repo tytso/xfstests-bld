@@ -4,4 +4,6 @@ etc/hostname
 usr/local/lib/src
 usr/local/lib/bin
 usr/local/lib/pkg
+usr/lib/python3/dist-packages/__pycache__
+usr/lib/python3/dist-packages/junitparser/__pycache__
 *~

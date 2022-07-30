@@ -1,6 +1,8 @@
 root/xfstests/local.config
 etc/hostname
 etc/lighttpd
+usr/lib/python3/dist-packages/__pycache__
+usr/lib/python3/dist-packages/junitparser/__pycache__
 var/www
 gce-*
 *~
