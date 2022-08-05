@@ -241,9 +241,6 @@ gce-xfstests, but more importantly, it will sanity check the
 configuration parameters for gce-xfstests.  If there are any problems
 or potential problems, it will report them so you can fix them.
 
-> **_NOTE:_** Whenever you make changes to `~/.config/gce-xfstests`,
-you will need to run `gce-xfstests setup` again.
-
 # Running gce-xfstests
 
 Once you have completed all of the set up tasks listed above, you can

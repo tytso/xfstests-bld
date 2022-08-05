@@ -3,7 +3,6 @@
 # For a more fool-proof gce-xfstests setup,,,
 #
 
-set -vx
 XFSTESTS_FLAVOR=gce
 if test -n "$GCE_XFSTESTS_DIR"
 then
@@ -240,9 +239,6 @@ if test -n "$bad_config"; then
     exit 1
 fi
 
-tmpf=$(mktemp /tmp/gce_xfstests.config.XXXXXXXX)
-trap "rm -f $tmpf" EXIT
-
 if test -n "$GCE_REPORT_EMAIL" ; then
     if test -z "$GCE_SG_API" ; then
 	echo "Missing Sendgrid API key; you need to set GCE_SG_API"
@@ -268,32 +264,6 @@ if test -n "$GCE_REPORT_EMAIL" ; then
 	echo -e "rejected as spam.\n"
     fi
 fi
-
-SENDGRID_API_KEY="$GCE_SG_API"
-{
-    declare -p GCE_REPORT_SENDER
-    declare -p GCE_REPORT_EMAIL
-    declare -p SENDGRID_API_KEY
-    declare -p GCE_UPLOAD_SUMMARY
-    declare -p PRIMARY_FSTYPE
-    declare -p GCE_PROJECT
-    declare -p GCE_IMAGE_PROJECT
-    declare -p GCE_ZONE
-    declare -p GCE_ZONE2
-    declare -p NR_CPU
-    declare -p MEM
-    declare -p GS_BUCKET
-    declare -p ROOT_FS
-    declare -p IMAGE_FLAG
-    declare -p BUCKET_SUBDIR
-    declare -p GCE_MIN_SCR_SIZE
-    declare -p GCE_LTM_KEEP_DEAD_VM
-    declare -p GCE_NETWORK
-    declare -p GCE_SERIAL_PORT_ACCESS
-    declare -p TZ
-} 2>/dev/null > $tmpf
-
-gsutil cp $tmpf gs://$GS_BUCKET/gce_xfstests.config
 
 for rule in "${GCE_FIREWALL_RULES[@]}"; do
     rule_name=$(echo $rule | cut -d' ' -f1)

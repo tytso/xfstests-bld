@@ -655,6 +655,54 @@ case "$1" in
 	exit $?
 esac
 
+GS_CONFIG="gs://$GS_BUCKET/gce_xfstests.config"
+
+if ! gsutil -q stat "$GS_CONFIG"
+then
+    export GCE_XFSTESTS_DIR="$DIR"
+    if ! XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-do-setup"; then
+	echo "GCE setup failed, exiting"
+	exit 1
+    fi
+fi
+
+# compare current config with config in bucket
+TMP_CONFIG=$(mktemp /tmp/gce_xfstests.config.XXXXXXXX)
+trap "rm -f $TMP_CONFIG" EXIT
+
+{
+    declare -p GCE_REPORT_SENDER
+    declare -p GCE_REPORT_EMAIL
+    declare -p SENDGRID_API_KEY
+    declare -p GCE_UPLOAD_SUMMARY
+    declare -p PRIMARY_FSTYPE
+    declare -p GCE_PROJECT
+    declare -p GCE_IMAGE_PROJECT
+    declare -p GCE_ZONE
+    declare -p GCE_ZONE2
+    declare -p NR_CPU
+    declare -p MEM
+    declare -p GS_BUCKET
+    declare -p ROOT_FS
+    declare -p IMAGE_FLAG
+    declare -p BUCKET_SUBDIR
+    declare -p GCE_MIN_SCR_SIZE
+    declare -p GCE_LTM_KEEP_DEAD_VM
+    declare -p GCE_NETWORK
+    declare -p GCE_SERIAL_PORT_ACCESS
+    declare -p TZ
+    declare -p GCE_LTM_MACHTYPE
+    declare -p GCE_KCS_MACHTYPE
+} 2>/dev/null > $TMP_CONFIG
+
+get_local_hash "$TMP_CONFIG"
+get_remote_hash "$GS_CONFIG"
+if test "$LOCAL_HASH" != "$REMOTE_HASH"
+  then
+	echo "Updating config file at $GS_CONFIG"
+	gsutil cp "$TMP_CONFIG" "$GS_CONFIG"
+fi
+
 # Simulate how parse_cli handles --no-action if this option was specified
 # as the first argument and we are running a test.
 if test -n "$NO_ACTION" ; then
@@ -686,13 +734,6 @@ if [ -z ${TESTRUNID:+x} ]; then
 	# prepend GCE_USER, or the current $USER if GCE_USER is unset
 	TESTRUNID="${GCE_USER-$USER}-$TESTRUNID"
     fi
-fi
-
-if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
-then
-    echo "You must run gce-xfstests setup to upload a .config file"
-    echo "to your GCS bucket."
-    exit 1
 fi
 
 INSTANCE="xfstests-$TESTRUNID"
