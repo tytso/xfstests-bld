@@ -40,13 +40,15 @@ do
 	--full-debug-info|--debug-info)
 	    DO_FULL_DEBUG_INFO=yes
 	    ;;
-	--exxtra-debug|debug)
+	--extra-debug|debug)
 	    DO_DEBUG=yes
 	    ;;
 	--help|help)
 	    echo "Usage: install-kconfig [--i386] [--perf] [--blktests]" \
 		 "[--extra-debug]"
-	    echo "	[--lockdep] [--full-debug-info] [--no-action]"
+	    echo "	[--kasan] [--kcsan] [--ubsan] [--lockdep]" \
+		 "[--full-debug-info]"
+	    echo "	[--no-action]"
 	    exit 0
 	    ;;
 	*)

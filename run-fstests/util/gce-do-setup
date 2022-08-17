@@ -3,6 +3,7 @@
 # For a more fool-proof gce-xfstests setup,,,
 #
 
+set -vx
 XFSTESTS_FLAVOR=gce
 if test -n "$GCE_XFSTESTS_DIR"
 then
