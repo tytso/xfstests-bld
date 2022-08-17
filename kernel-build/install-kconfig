@@ -43,12 +43,15 @@ do
 	--extra-debug|debug)
 	    DO_DEBUG=yes
 	    ;;
+	--get-config-fn)
+	    DO_GET_CONFIG_FN=yes
+	    ;;
 	--help|help)
 	    echo "Usage: install-kconfig [--i386] [--perf] [--blktests]" \
 		 "[--extra-debug]"
 	    echo "	[--kasan] [--kcsan] [--ubsan] [--lockdep]" \
 		 "[--full-debug-info]"
-	    echo "	[--no-action]"
+	    echo "	[--get-config-fn] [--no-action]"
 	    exit 0
 	    ;;
 	*)
@@ -103,12 +106,15 @@ while test -z "$CONFIG_FN" ; do
 	SUBVERSION=20
     fi
     if test $VERSION = 2 ; then
-	echo "Can't find configuration file?"
+	echo "Can't find configuration file?" 1>&2
 	exit 1
     fi
 done
 
-# echo "Config file is $CONFIG_FN"
+if test -n "$DO_GET_CONFIG_FN" ; then
+    echo "$CONFIG_FN"
+    exit 0
+fi
 
 FILES=("$CONFIG_FN")
 
