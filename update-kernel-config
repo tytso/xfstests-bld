@@ -1,53 +1,66 @@
 #!/bin/bash
 
-VER="$1"
+# TODO: add getopt parsing so we can support the --perf option
 
-if test -z "$VER" ; then
-    echo "Usage: $0 <version>"
+ADD_FILE=$1
+
+if test -z "$ADD_FILE" ; then
+    echo "Usage: $0 <add-file>"
     exit 1
 fi
 
-XFSTESTS_BLD_DIR=/usr/projects/xfstests-bld/build-64
-BUILD64_DIR=/build/ext4-$VER-64
-BUILD32_DIR=/build/ext4-$VER
+function check_program {
+    prog=$1
 
-cd /usr/projects/linux/ext4-$VER
+    if ! type $prog >& /dev/null ; then
+	echo "Can't find the $prog script in the search path."
+	echo "Please copy it from the xfstests-bld directory"
+	echo "to a local bin directory."
+	exit 1
+    fi
+}
+
+check_program kbuild
+check_program install-kconfig
 
 function add_config() {
 
-    if test -d $BUILD_DIR ; then
-        cp $BUILD_DIR/.config /tmp/config.save
-	cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER $BUILD_DIR/.config
-    else
-        cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER .git/kbuild/$KCONF
+    BLD_DIR=$($KBUILD --get-build-dir)
+    if test -z "$BLD_DIR" ; then
+	echo "Can't find kernel build directory"
+	exit 1
     fi
-	
+    if ! test -d "$BLD_DIR" ; then
+	echo "Build directory $BLD_DIR does not exist"
+	exit 1
+    fi
+
+    if test -f "$BLD_DIR/.config" ; then
+	cp "$BLD_DIR/.config" /tmp/config-save.$$
+    fi
+
+    DEFCONFIG=$(install-kconfig $INSTALL_KCONFIG_OPTS --get-config-fn)
+    if test -z "$DEFCONFIG" ; then
+	echo "Can't find defconfig file"
+	exit 1
+    fi
+    if ! test -f "$DEFCONFIG" ; then
+	echo "Defocnfig file $DEFCONFIG does not exist"
+	exit 1
+    fi
+
+    cp "$DEFCONFIG" "$BLD_DIR/.config"
+    cat "$ADD_FILE" >> "$BLD_DIR/.config"
     $KBUILD olddefconfig >& /dev/null
-    cp $BUILD_DIR/.config /tmp/config.orig
-
-    cp $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER $BUILD_DIR/.config
-    cat /tmp/config-add >> $BUILD_DIR/.config
-    $KBUILD olddefconfig
-
-    diff -u /tmp/config.orig $BUILD_DIR/.config
     $KBUILD savedefconfig >& /dev/null
-    diff -u $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER \
-    	$BUILD_DIR/defconfig
-    cp $BUILD_DIR/defconfig $XFSTESTS_BLD_DIR/kernel-configs/$ARCH-config-$VER
+    cp "$BLD_DIR/defconfig" "$DEFCONFIG"
 }
 
-ARCH=x86_64
-BUILD_DIR=$BUILD64_DIR
 KBUILD=kbuild
-KCONF=kernel-config
-
+INSTALL_KCONFIG_OPTS=
 add_config
-
-echo ---------- 32-bit
-
-ARCH=i386
-BUILD_DIR=$BUILD32_DIR
 KBUILD=kbuild32
-KCONF=kernel-config-32
-
+INSTALL_KCONFIG_OPTS=--i386
 add_config
+
+exit 0
