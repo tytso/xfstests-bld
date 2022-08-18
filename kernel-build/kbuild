@@ -18,7 +18,7 @@
 N=$(($(getconf _NPROCESSORS_ONLN) * 1))
 
 if test ! -f MAINTAINERS ; then
-    echo "Not at top-level of kernel source tree?"
+    echo "Not at top-level of kernel source tree?" 1>&2
     exit 1
 fi
 
@@ -40,6 +40,14 @@ if test "$1" == "--32" -o "$1" == "-32" ; then
     else
 	KERN_ARCH=i386
     fi
+fi
+
+if test "$1" == "--get-build-dir" ; then
+    if test -z "$BLD_DIR" ; then
+	BLD_DIR=.
+    fi
+    echo $BLD_DIR
+    exit 0
 fi
 
 if test -n "$BLD_DIR" -a ! -d "$BLD_DIR" ; then
