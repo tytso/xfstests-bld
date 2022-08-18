@@ -63,12 +63,11 @@ test reports show up in your inbox once they are finished.
 
 The gce-xfstests system uses sendgrid, so if you would like to get
 e-mailed reports, you will need to sign up for a free Sendgrid
-account.  Sendgrid is designed for companies who want to do bulk
-mailings, so the free account provides 40,000 e-mails for the
-first 30 days and 100/day afterwards --- and it's highly unlikely that
-you will be running more than 100 test runs per month.  To start, visit
-the [Sendgrid website](http://www.sendgrid.com) and click on the "Start
-for Free" button. It may take a day or two
+account.  The Sendgrid free account provides 100 e-mails per day and
+it's unlikely that you will be running more than 100 test runs per day.
+
+To start, visit the [Sendgrid website](http://www.sendgrid.com) and
+click on the "Start for Free" button. It may take a day or two
 for sendgrid to decide you are a not a robot spammer, so please start
 the process right away while you familiarize yourself with the rest of
 gce-xfstests.
@@ -80,10 +79,10 @@ verify their Sender Identities before using the service. You could check
 Once you have set up a Sendgrid account, get a new API key by going to
 the url
 [https://app.sendgrid.com/settings/api_keys](https://app.sendgrid.com/settings/api_keys)
-and click on the blue "Create API Key" button and select "General API
-Key".  Pick a name such as "gce-xfstests" and enter it into the "Name
-of this key".  Then click on the Mail Send's "Full Access" bubble and
-then click on the blue "Save" button.  Copy the API key that was
+and click on the blue "Create API Key" button.
+Pick a name such as "gce-xfstests" and enter it into "API Key Name".
+Then click on the Mail Send's "Full Access" bubble and
+then click on the blue "Create & View" button.  Copy the API key that was
 generated and use it to set the `GCE_SG_API` configuration variable in
 gce-xfstests's config file.
 
@@ -126,7 +125,7 @@ https://cloud.google.com/sdk/docs/quickstart-linux
 2.  Install the following packages (debian package names
 used):
 
-        % sudo apt-get install jq xz-utils dnsutils python-crcmod
+        % sudo apt-get install jq xz-utils dnsutils python3-crcmod
 
 ## Configure gce-xfstests
 
