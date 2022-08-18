@@ -144,9 +144,9 @@ function SetupServiceAccount () {
 		   --display-name "$name"
 	if ! run_gcloud projects add-iam-policy-binding "$GCE_PROJECT" \
 	     --member "serviceAccount:$srv_acct" \
-	     --role "projects/$GCE_PROJECT/roles/$role" \
+	     --role "$role" \
 	     --verbosity none >& /dev/null ; then
-	    echo "Failed to add iam policy binding for roles/$role"
+	    echo "Failed to add iam policy binding for role $role"
 	    # Re-run to get error message
 	    run_gcloud projects add-iam-policy-binding "$GCE_PROJECT" \
 		       --member "serviceAccount:$srv_acct" \
