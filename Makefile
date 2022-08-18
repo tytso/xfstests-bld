@@ -2,7 +2,7 @@ SCRIPTS =	android-xfstests \
 		gce-xfstests \
 		kvm-xfstests
 
-KBUILD_SCRIPTS = kbuild install-kconfig
+KBUILD_SCRIPTS = kbuild kbuild32 install-kconfig
 
 prefix= $(HOME)/bin
 

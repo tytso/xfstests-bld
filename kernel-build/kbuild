@@ -30,6 +30,18 @@ elif test -f .git/kbuild.conf ; then
     mv .git/kbuild.conf .git/kbuild/config
 fi
 
+if test "$1" == "--32" -o "$1" == "-32" ; then
+    shift
+    if test -n "$BLD_DIR_32" ; then
+	BLD_DIR=$BLD_DIR_32
+    fi
+    if test -n "$KERN_ARCH_32" ; then
+	KERN_ARCH=$KERN_ARCH_32
+    else
+	KERN_ARCH=i386
+    fi
+fi
+
 if test -n "$BLD_DIR" -a ! -d "$BLD_DIR" ; then
     mkdir -p "$BLD_DIR"
     if test -f .git/kbuild/kernel-config ; then

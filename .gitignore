@@ -15,4 +15,5 @@ MAKELOG
 /kvm-xfstests
 /gce-xfstests
 /kbuild
+/kbuild32
 /install-kconfig
