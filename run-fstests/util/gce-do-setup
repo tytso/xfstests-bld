@@ -105,6 +105,9 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable file.googleapis.com
 
+run_gcloud compute project-info add-metadata \
+	--metadata=enable-guest-attributes=TRUE
+
 function SetupRole () {
     local role="$1"
 
