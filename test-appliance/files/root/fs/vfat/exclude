@@ -1,0 +1,11 @@
+// generic/014 results in a hang --- need to debug
+generic/014
+
+// generic/129 results in a hang --- need to debug
+generic/129
+
+// generic/239 results in a hang --- need to debug
+generic/239
+
+// generic/308 results in fsck.vfat hanging
+generic/308

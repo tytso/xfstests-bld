@@ -31,6 +31,7 @@ function setup_mount_opts()
 	    export MOUNT_OPTIONS="-o $MNTOPTS"
 	fi
     fi
+    export DISABLE_UDF_TEST=1
 }
 
 function get_mkfs_opts()
@@ -57,4 +58,5 @@ function reset_vars()
 {
     unset MOUNT_OPTIONS
     unset UDF_MKFS_OPTIONS
+    unset DISABLE_UDF_TEST
 }

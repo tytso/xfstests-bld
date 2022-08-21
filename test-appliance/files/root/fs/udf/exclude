@@ -1,0 +1,25 @@
+// generic/074 results in a hang --- need to debug
+generic/074
+
+// generic/299 results in a hang -- need to debug
+generic/299
+
+// generic/344 results in a hang -- need to debug
+generic/344
+
+// generic/346 runs for at least 90 minutes or hangs
+generic/346
+
+// generic/466 results in a soft lockup -- need to debug
+// stack trace:
+//   udf_update_tag+0x80/0x190
+//   udf_write_aext+0x440/0x850
+//   __udf_add_aext+0x1ac/0x7a0
+//   udf_add_aext+0x1bc/0x280
+//   udf_do_extend_file+0x35e/0x7a0
+//   ...
+generic/466
+
+// The generic/558 tries to consume all of the inodes in
+// the file system which will take far more than 60 minutes.
+generic/558
