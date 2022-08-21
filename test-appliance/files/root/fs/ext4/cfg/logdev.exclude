@@ -1,0 +1,5 @@
+// exclude file for ext4/logdev
+
+// ext4/059 causes resize2fs to hang (interruptibly) forever
+// need to debug -- only in djwong-wtf test run
+ext4/059
