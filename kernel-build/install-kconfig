@@ -89,7 +89,7 @@ if test -z "$KVER" ; then
 fi
 
 VERSION=$(echo $KVER | awk -F. '{print $1}')
-SUBVERSION=$(echo $KVER | awk -F. '{print $2}')
+SUBVERSION=$(echo $KVER | awk -F. '{print $2}' | sed -e 's/-.*//')
 
 # echo "Kernel version is $KVER - $VERSION $SUBVERSION"
 
@@ -99,11 +99,13 @@ while test -z "$CONFIG_FN" ; do
     fn="$KCONFIG_DIR/$ARCH-$TYPE-$VERSION.$SUBVERSION"
     if test -f "$fn" ; then
 	CONFIG_FN=$fn
+	break
     fi
-    SUBVERSION=$(($SUBVERSION - 1))
-    if test $SUBVERSION = 0 ; then
+    if test $SUBVERSION -eq 0 ; then
 	VERSION=$(($VERSION - 1))
 	SUBVERSION=20
+    else
+	SUBVERSION=$(($SUBVERSION - 1))
     fi
     if test $VERSION = 2 ; then
 	echo "Can't find configuration file?" 1>&2
