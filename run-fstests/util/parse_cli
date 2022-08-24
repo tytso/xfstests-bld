@@ -315,7 +315,8 @@ while (( $# >= 1 )); do
 	    FSTESTCFG="$1"
 	    ;;
 	-C) shift
-	    FSTESTOPT="$FSTESTOPT,count,$1"
+	    LOOP_COUNT="$1"
+	    LOOP_COUNT_EXPLICIT=yes
 	    ;;
 	-m) shift
 	    MNTOPTS="$1"
@@ -400,7 +401,8 @@ while (( $# >= 1 )); do
 	    IMAGE_FLAG="--image-family"
 	    ;;
 	--fail-loop-count) shift
-	    FSTESTOPT="$FSTESTOPT,fail_loop_count,$1"
+	    FAIL_LOOP_COUNT="$1"
+	    FAIL_LOOP_COUNT_EXPLICIT=yes
 	    ;;
 	--update-xfstests-tar)
 	    supported_flavors kvm gce
@@ -915,6 +917,33 @@ if test -n "$COMMIT" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
 then
     echo "Commit id only works with LTM or KCS"
     exit 1
+fi
+
+if test -z "$FAIL_LOOP_COUNT_EXPLICIT" -a -n "$LOOP_COUNT"
+then
+    FAIL_LOOP_COUNT=
+fi
+
+if test -z "$LOOP_COUNT_EXPLICIT" -a -n "$FAIL_LOOP_COUNT"
+then
+    LOOP_COUNT=
+fi
+
+if test -n "$FAIL_LOOP_COUNT" -a -n "$LOOP_COUNT"
+then
+    echo "The options -C and --fail-loop-count are mutually exclusive"
+    exit 1
+fi
+
+if test -n "$FAIL_LOOP_COUNT" ; then
+    FSTESTOPT="$FSTESTOPT,fail_loop_count,$FAIL_LOOP_COUNT"
+fi
+
+if test -n "$LOOP_COUNT" ; then
+    FSTESTOPT="$FSTESTOPT,count,$LOOP_COUNT"
+    # Older test appliances don't clear fail_loop_count default
+    # This can be removed in the future...
+    FSTESTOPT="$FSTESTOPT,fail_loop_count,0"
 fi
 
 if test -n "$KCONFIG" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
