@@ -695,12 +695,22 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p GCE_KCS_MACHTYPE
 } 2>/dev/null > $TMP_CONFIG
 
-get_local_hash "$TMP_CONFIG"
-get_remote_hash "$GS_CONFIG"
-if test "$LOCAL_HASH" != "$REMOTE_HASH"
-  then
+local_config="/tmp/.gce_xfststs.config.$USER-$GCE_PROJECT"
+if test -z "$SKIP_GS_CONFIG_UPDATE" && \
+	! cmp -s "$TMP_CONFIG" "$local_config"
+then
+    get_local_hash "$TMP_CONFIG"
+    get_remote_hash "$GS_CONFIG"
+    if test "$LOCAL_HASH" != "$REMOTE_HASH"
+    then
 	echo "Updating config file at $GS_CONFIG"
 	gsutil cp "$TMP_CONFIG" "$GS_CONFIG"
+	mv "$TMP_CONFIG" "$local_config"
+    else
+	if ! test -f "$local_config" ; then
+	    mv "$TMP_CONFIG" "$local_config"
+	fi
+    fi
 fi
 
 # Simulate how parse_cli handles --no-action if this option was specified

@@ -37,5 +37,6 @@ then
 fi
 touch $DIR/config.common
 cat "$GCE_CONFIG_FILE" >> $DIR/config.gce
+echo SKIP_GS_CONFIG_UPDATE=yes >> $DIR/config.gce
 
 exit 0
