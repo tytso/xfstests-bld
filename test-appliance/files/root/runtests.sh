@@ -134,6 +134,7 @@ while [ "$1" != "" ]; do
 	;;
     count) shift
 	RPT_COUNT=$1
+	FAIL_LOOP_COUNT=0
 	;;
     fail_loop_count) shift
 	FAIL_LOOP_COUNT=$1
