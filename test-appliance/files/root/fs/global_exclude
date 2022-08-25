@@ -1,3 +1,9 @@
+// "The test is just broken.  It made some odd assumptions on
+// what RWF_NOMAIT means with buffered writes..." -- Jens Axboe
+// https://lore.kernel.org/r/b2865bd6-2346-8f4d-168b-17f06bbedbed@kernel.dk
+//
+generic/471
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
 // The proposed fix for generic/484, "locks: change POSIX lock
 // ownership on execve when files_struct is displaced" would break NFS
