@@ -1,5 +1,5 @@
 ARCH_LIST=(amd64 i386 arm64)
-MIRROR=https://snapshot.debian.org/archive/debian/20220108T035927Z/
+MIRROR=https://snapshot.debian.org/archive/debian/20220823T031903Z/
 DISTRO=bullseye
 
 #BEGIN CONFIG.CUSTOM
