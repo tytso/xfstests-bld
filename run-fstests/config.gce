@@ -27,8 +27,15 @@ MEM=7680
 # Name of the GCE image or image family from which the test instances
 # will be created.
 # This can also be set by the -I or --image-family options.
-ROOT_FS="xfstests"
-IMAGE_FLAG="--image-family"
+# If this is not set, will default to using image family xfstests-$ARCH
+# ROOT_FS="xfstests-amd64"
+# IMAGE_FLAG="--image-family"
+
+# TODO: this is what the docs say is default behavior
+# by default, if only ROOT_FS is set, assume ROOT_F is an image
+IMAGE_FLAG="--image"
+
+ARCH="amd64"
 
 # By default use a minimum scratch result of 100G because the disk
 # space saved isn't worth the additional VM time to run certain

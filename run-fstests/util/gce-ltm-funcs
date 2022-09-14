@@ -94,6 +94,9 @@ function send_to_ltm() {
     if [ -n "$KBUILD_OPTS" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kbuild_opts\":\"$KBUILD_OPTS\""
     fi
+    if [ -n "$ARCH" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"arch\":\"$ARCH\""
+    fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"
     fi

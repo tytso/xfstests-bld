@@ -8,7 +8,16 @@ else
 fi
 
 TYPE=config
-ARCH=x86_64
+
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)
+	ARCH=x86_64
+	;;
+    aarch64)
+	ARCH=arm64
+	;;
+esac
 
 while [ "$1" != "" ];
 do

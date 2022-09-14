@@ -28,6 +28,18 @@ if test -z "$GS_PATH"; then
     GS_PATH="gs://$GS_BUCKET/bzImage"
 fi
 
+#TODO: why was this using x86 and not x86_64?
+# x86_64 works better with new changes, is that OK to use?
+BUILD_ARCH=$(uname -m)
+case "$BUILD_ARCH" in
+    x86_64)
+	BUILD_ARCH=x86_64
+	;;
+    aarch64)
+	BUILD_ARCH=arm64
+	;;
+esac
+
 if test -n "$GS_CONFIG" ; then
     if gsutil cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
 	if test $(stat -c %s "$REPO_DIR/.config") -gt 16384 ; then
@@ -41,7 +53,7 @@ if test -n "$GS_CONFIG" ; then
 else
     install_kconfig
 fi
-KERNEL_PATH="$REPO_DIR/arch/x86/boot/bzImage"
+KERNEL_PATH="$REPO_DIR/arch/$BUILD_ARCH/boot/bzImage"
 DPKG_FLAGS=
 if [[ $GS_PATH == *.deb ]]; then
     DPKG_FLAGS=--dpkg

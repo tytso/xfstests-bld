@@ -26,8 +26,6 @@ DATECODE=$(date +%Y%m%d%H%M)
 SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
 DATECODE=$(date +%Y%m%d%H%M)
-ROOT_FS=xfstests
-IMAGE_FLAG="--image-family"
 EXP_INST="xfstests-exp-$DATECODE"
 EXP_DISK="xfstests-exp-$DATECODE"
 IMG_DISK="xfstests-img-$DATECODE"

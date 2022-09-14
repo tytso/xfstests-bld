@@ -129,6 +129,7 @@ type UserOptions struct {
 	KConfig	      string `json:"kconfig"`
 	KConfigOpts   string `json:"kconfig_opts"`
 	KbuildOpts    string `json:"kbuild_opts"`
+	Arch          string `json:"arch"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally.
@@ -422,7 +423,7 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	var config *gcp.Config
 	if toKCS {
-		accessKCS(log, true)
+		accessKCS(c.Options.Arch, log, true)
 		gcp.Update()
 		config = gcp.KCSConfig
 
@@ -517,7 +518,7 @@ if launch is true, it attempts to launch KCS if it's not running.
 KCS is assumed to be always launched by LTM instead of user.
 It checks KCS's metadata to ensure it's not in the process of shutting down.
 */
-func accessKCS(log *logrus.Entry, launch bool) bool {
+func accessKCS(arch string, log *logrus.Entry, launch bool) bool {
 	log.Info("Launching KCS server")
 
 	zone, err := gcp.GceConfig.Get("GCE_ZONE")
@@ -535,7 +536,7 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 			if gcp.NotFound(err) {
 				if launch {
 					log.Info("KCS is not running, launching it")
-					runLaunchKCS(log)
+					runLaunchKCS(arch, log)
 					return true
 				}
 				log.Info("KCS is not running")
@@ -558,7 +559,7 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 		if active {
 			log.Info("KCS is running")
 			if gcp.KCSConfig == nil {
-				runLaunchKCS(log)
+				runLaunchKCS(arch, log)
 			}
 			return true
 		} else if !launch {
@@ -571,18 +572,28 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 	return false
 }
 
-func runLaunchKCS(log *logrus.Entry) {
+func runLaunchKCS(arch string, log *logrus.Entry) {
 	launchLock.Lock()
 	defer launchLock.Unlock()
+	var cmd *exec.Cmd
 
-	cmd := exec.Command("gce-xfstests", "launch-kcs")
+	if arch != "" {
+		cmd = exec.Command("gce-xfstests", "launch-kcs", "--arch", arch)
+	} else {
+		cmd = exec.Command("gce-xfstests", "launch-kcs")
+	}
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil && !strings.HasPrefix(output, "The KCS instance already exists!") {
-		cmdLog.WithField("output", output).WithError(err).Panic(
+	if err != nil {
+		if strings.HasPrefix(output, "KCS server is already running on") {
+			cmdLog.WithField("output", output).WithError(err).Panic(
+			"KCS server already running but with wrong architecture")
+		} else if !strings.HasPrefix(output, "The KCS instance already exists!") {
+			cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")
+		}
 	}
 }
 

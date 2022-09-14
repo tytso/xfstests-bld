@@ -41,7 +41,6 @@ PACKAGES="bash-completion \
 	duperemove \
 	$E2FSPROGS \
 	dump \
-	e3 \
 	ed \
 	exfat-utils \
 	$F2FS_TOOLS \
@@ -292,7 +291,18 @@ chown root:root /root
 
 # build go server
 GO_TEMP=$(mktemp -d)
-curl -o "$GO_TEMP/go.tar.gz" https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz
+
+GO_ARCH=$(uname -m)
+case "$GO_ARCH" in
+    x86_64)
+	GO_ARCH=amd64
+	;;
+    aarch64)
+	GO_ARCH=arm64
+	;;
+esac
+
+curl -o "$GO_TEMP/go.tar.gz" https://storage.googleapis.com/golang/go$GO_VERSION.linux-$GO_ARCH.tar.gz
 if [ $? -ne 0 ]; then
     echo "Go download failed! Exiting."
     exit 1
@@ -384,6 +394,7 @@ q
 EOF
 fi
 
+# TODO: what does this do? / do we need to do this for arm64?
 if gsutil -m cp gs://$BUCKET/debs/*_amd64.deb /run
 then
     dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
