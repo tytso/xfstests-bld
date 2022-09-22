@@ -17,11 +17,28 @@ fi
 
 . "$DIR/util/get-config"
 
-case $1 in
-    --image-project) shift
-    GCE_IMAGE_PROJECT="$1"
-    shift ;;
-esac
+while (( $# >= 1 )); do
+    case $1 in
+	--image-project) shift
+	    GCE_IMAGE_PROJECT="$1"
+	    ;;
+	--image-family) shift
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image-family"
+	    unset USING_DEFAULT_FAMILY
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    IMAGE_FLAG="--image"
+	    unset USING_DEFAULT_FAMILY
+	    ;;
+	*)
+	    echo "Invalid option \"$1\""
+	    shift
+	    ;;
+    esac
+    shift
+done
 
 if [ -z "$GCE_IMAGE_PROJECT" ]; then
     GCE_IMAGE_PROJECT="xfstests-cloud"
@@ -70,8 +87,6 @@ COMPUTE_RW=https://www.googleapis.com/auth/compute
 SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
 
 PREEMPTIBLE="--maintenance-policy MIGRATE"
-ROOT_FS="xfstests"
-IMAGE_FLAG="--image-family"
 
 ARG="gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
 ARG="$ARG gce_xfs_kcs=YES"
