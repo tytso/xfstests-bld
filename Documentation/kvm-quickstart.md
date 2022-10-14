@@ -9,7 +9,7 @@
     32-bit test appliance here since it can support both 32-bit and
     64-bit kernels.
 
-        git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+        git clone https://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
         cd fstests
         wget -O test-appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
 

@@ -103,7 +103,7 @@ The gce-xfstests and its associated helper scripts are part of the
 xfstests-bld git repository.  If you have not fetched it, you will
 need to do so now:
 
-        git clone git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+        git clone https://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
 
 The gce-xfstests driver script needs to be customized so it can find
 the "real" gce-xfstests script, which is located in

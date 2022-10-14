@@ -11,7 +11,7 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 
 # Optional repositories, uncomment only if needed
 #
-# IMA_EVM_UTILS_GIT=git://git.code.sf.net/p/linux-ima/ima-evm-utils.git
+# IMA_EVM_UTILS_GIT=https://git.code.sf.net/p/linux-ima/ima-evm-utils.git
 # KEYUTILS_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
 # STRESS_NG_GIT=https://github.com/ColinIanKing/stress-ng
 # UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
