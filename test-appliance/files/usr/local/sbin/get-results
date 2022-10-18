@@ -21,12 +21,12 @@ then
     IN=-
 fi
 
-egrep "$REGEXP" "$IN"
+grep -E "$REGEXP" "$IN"
 if test -n "$do_failure"; then
-    b=$(egrep ^BEGIN "$IN" | wc -l)
-    e=$(egrep ^END "$IN" | wc -l)
+    b=$(grep -E ^BEGIN "$IN" | wc -l)
+    e=$(grep -E ^END "$IN" | wc -l)
     if test "$b" -gt "$e" ; then
-	l=$(egrep ^BEGIN "$IN" | tail -n 1 | sed -e 's/BEGIN //')
+	l=$(grep -E ^BEGIN "$IN" | tail -n 1 | sed -e 's/BEGIN //')
 	echo " "
 	echo Missing END "$l"
     fi

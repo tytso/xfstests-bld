@@ -421,7 +421,7 @@ get_schroot_config()
     then
 	(cd $SCHROOT_CHROOT_D ;
 	 find . -maxdepth 1 -type f |
-	     egrep '^./[a-ZA-Z0-9_-][a-ZA-Z0-9_.-]*$' |
+	     grep -E '^./[a-ZA-Z0-9_-][a-ZA-Z0-9_.-]*$' |
 	     xargs cat)
     fi
 }

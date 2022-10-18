@@ -57,7 +57,7 @@ pprint_bytes()
 get_partition_number()
 {
     local dev=$1
-    echo $dev | egrep -o '[0-9]+$'
+    echo $dev | grep -E -o '[0-9]+$'
 }
 
 # Get the size in bytes of the given partition, as stored in the partition table
@@ -108,7 +108,7 @@ find_userdata_partition()
     if [ ! -b $dev ]; then
 	die "Unable to find the userdata partition"
     fi
-    if ! echo $dev | egrep -q '[0-9]+$'; then
+    if ! echo $dev | grep -E -q '[0-9]+$'; then
 	die "Name of userdata device node has an unexpected format: \"$dev\""
     fi
     echo $dev
@@ -118,7 +118,7 @@ find_userdata_partition()
 find_dm_device_by_name()
 {
     local dm_device_name=$1
-    if ls /sys/class/block/ | egrep -q 'dm-[0-9]+$'; then
+    if ls /sys/class/block/ | grep -E -q 'dm-[0-9]+$'; then
 	for dir in /sys/class/block/dm-*; do
 	    if [ $dm_device_name = $(< $dir/dm/name) ]; then
 		local dev=/dev/block/$(basename $dir)
@@ -173,8 +173,8 @@ validate_dm_device()
 	;;
     esac
 
-    if ! echo "$start_sector" | egrep -q '^[0-9]+$' ||
-       ! echo "$raw_devno" | egrep -q '^[0-9]+:[0-9]+$'; then
+    if ! echo "$start_sector" | grep -E -q '^[0-9]+$' ||
+       ! echo "$raw_devno" | grep -E -q '^[0-9]+:[0-9]+$'; then
 	die "device-mapper device \"$dm_devname\" uses target with" \
 	    "unsupported table format: ${table[@]}"
     fi

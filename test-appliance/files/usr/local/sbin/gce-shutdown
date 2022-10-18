@@ -24,13 +24,13 @@ REGEXP_FAILURE="(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^Fail
 
 function gen_xfstests_summary()
 {
-    egrep "$REGEXP" < /results/runtests.log > /results/summary
+    grep -E "$REGEXP" < /results/runtests.log > /results/summary
 
-    egrep "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
+    grep -E "$REGEXP_FAILURE" < /results/runtests.log > /results/failures
     printf "\n" >> /results/failures
     sed -n -f /usr/local/lib/get-check-failures.sed < /results/runtests.log >> /results/failures
     printf "\n" >> /results/failures
-    egrep "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
+    grep -E "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
 }
 
 BLK_REGEXP="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(^MEM:)|(^BEGIN)|(^MOUNT_OPTIONS)|(^MKFS_OPTIONS)|(^EXT4-fs error)|(WARNING)|(^_check_)|(inconsistent)|(^Shutdown reason)"
@@ -38,24 +38,24 @@ BLK_REGEXP_FAILURE="( Linux version )|(^CMDLINE)|(^FSTEST)|(^MNTOPTS)|(^CPUS:)|(
 
 function gen_blktests_summary()
 {
-    run_tests=$(egrep "(\[failed\])|(\[passed\])" < /results/runtests.log | awk '{print $1}')
-    failed_tests=$(egrep "\[failed\]" < /results/runtests.log | awk '{print $1}')
+    run_tests=$(grep -E "(\[failed\])|(\[passed\])" < /results/runtests.log | awk '{print $1}')
+    failed_tests=$(grep -E "\[failed\]" < /results/runtests.log | awk '{print $1}')
 
     nr_run="$(echo $run_tests | wc -w)"
     nr_failed="$(echo $failed_tests | wc -w)"
 
-    egrep "$BLK_REGEXP" < /results/runtests.log > /results/summary
+    grep -E "$BLK_REGEXP" < /results/runtests.log > /results/summary
     echo "Run: $(echo $run_tests)" >> /results/summary
     echo "Failures: $(echo $failed_tests)" >> /results/summary
     echo "Failed $nr_failed of $nr_run tests" >> /results/summary
     grep ^END < /results/runtests.log >> /results/summary
 
-    egrep "$BLK_REGEXP_FAILURE" < /results/runtests.log >> /results/failures
+    grep -E "$BLK_REGEXP_FAILURE" < /results/runtests.log >> /results/failures
     echo "Run: $(echo $run_tests)" >> /results/failures
     echo "Failures: $(echo $failed_tests)" >> /results/failures
     echo "Failed $nr_failed of $nr_run tests" >> /results/failures
     grep ^END < /results/runtests.log >> /results/failures
-    egrep "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
+    grep -E "$SYSLOG_RE_FAILURE" < /results/syslog >> /results/failures
 }
 
 reason=$(gce_attribute shutdown_reason)
