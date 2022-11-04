@@ -3,6 +3,7 @@
 XFSTESTS_FLAVOR=gce
 RUN_ON_LTM=
 RUN_ON_KCS=
+GCE_IMAGE_PROJECT=
 t=$(echo ${XFSTESTS_FLAVOR}_xfstests_dir | tr "[:lower:]" "[:upper:]")
 eval DIR="\$$t"
 if test -z "$DIR"

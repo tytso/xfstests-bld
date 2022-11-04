@@ -91,22 +91,24 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--no-email",
 		"-c", config,
 	}
+
 	if sharder.arch != "" {
 		shard.args = append(shard.args, "--arch", sharder.arch)
 	}
-	shard.args = append(shard.args, sharder.validArgs...)
 
-	var defaultProj bool = true
-	for _, arg := range shard.args {
+	var imgProjFlag bool = false
+	for _, arg := range sharder.validArgs {
 		if arg == "--image-project" {
-			defaultProj = false
+			imgProjFlag = true
 			break
 		}
 	}
 
-	if defaultProj {
-		shard.args = append(shard.args, "--image-project", sharder.projID)
+	if ! imgProjFlag && len(sharder.imgProjID) > 0 {
+		shard.args = append(shard.args, "--image-project", sharder.imgProjID)
 	}
+
+	shard.args = append(shard.args, sharder.validArgs...)
 
 	return &shard
 }

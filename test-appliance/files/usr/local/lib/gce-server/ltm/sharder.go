@@ -39,9 +39,10 @@ const genResultsSummaryPath = "/usr/local/bin/gen_results_summary"
 
 // ShardScheduler schedules tests and aggregates reports.
 type ShardScheduler struct {
-	testID  string
-	projID  string
-	origCmd string
+	testID    string
+	projID    string
+	imgProjID string
+	origCmd   string
 
 	zone           string
 	region         string
@@ -101,6 +102,9 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
 	check.Panic(err, log, "Failed to get project config")
 
+	imgProjID, err := gcp.GceConfig.Get("GCE_IMAGE_PROJECT")
+	check.Panic(err, log, "Failed to get image project")
+
 	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 
@@ -108,9 +112,10 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 
 	log.Info("Initiating test sharder")
 	sharder := ShardScheduler{
-		testID:  testID,
-		projID:  projID,
-		origCmd: origCmd,
+		testID:    testID,
+		projID:    projID,
+		imgProjID: imgProjID,
+		origCmd:   origCmd,
 
 		zone:           zone,
 		region:         region,
