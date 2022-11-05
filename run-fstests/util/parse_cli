@@ -61,6 +61,9 @@ print_help ()
     echo "	-x group	- Exclude group of tests from running"
     echo "	-X test		- Exclude test from running"
     echo "	--kernel file	- Boot the specified kernel"
+    if flavor_in gce ; then
+	echo "	--arch arch	- Specify the architecture to run on"
+    fi
     if flavor_in kvm ; then
 	echo "	--initrd initrd	- Boot with the specified initrd"
     elif flavor_in gce ; then
@@ -75,6 +78,11 @@ print_help ()
     if flavor_in gce ; then
 	echo "	--email email	- Specify the email address to send a report to"
 	echo "	--no-email	- Do not send an email"
+    fi
+    if flavor_in gce ; then
+	echo "	--no-region-shard"
+	echo "			- Don't shard test VMs into other GCE zones"
+	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
     echo ""
     echo "Common file system configurations are:"
@@ -99,10 +107,6 @@ print_help ()
 	echo "			  See documentation for details."
 	echo "	ltm		- Send the command to the LTM."
 	echo "			  Note: NR_CPU and MEM must be their default values."
-	echo "			  The dax config is not supported by the LTM"
-	echo "	--no-region-shard"
-	echo "			- Don't shard test VMs into other GCE zones"
-	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
     exit 1
 }
@@ -226,6 +230,7 @@ validate_branch_name()
 shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
+arch:
 archive
 bisect-bad:
 bisect-good:
@@ -352,6 +357,7 @@ while (( $# >= 1 )); do
 	    if flavor_in gce ; then
 		IMAGE_FLAG="--image"
 	    fi
+	    unset USING_DEFAULT_FAMLY
 	    ;;
 	-n) shift
 	    supported_flavors kvm gce
@@ -386,6 +392,10 @@ while (( $# >= 1 )); do
 		FSTESTEXC="$1"
 	    fi
 	    ;;
+	--arch) shift
+	    supported_flavors gce
+	    ARCH="$1"
+	    ;;
 	--blktests)
 	    supported_flavors kvm gce
 	    FSTESTOPT="$FSTESTOPT,blktests"
@@ -399,6 +409,7 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
+	    unset USING_DEFAULT_FAMLY
 	    ;;
 	--fail-loop-count) shift
 	    FAIL_LOOP_COUNT="$1"

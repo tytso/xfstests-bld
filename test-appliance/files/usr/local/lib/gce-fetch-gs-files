@@ -15,25 +15,27 @@ chmod 0400 /etc/lighttpd/server.pem
 # installed in /root/xfstests_bld/run-fstesets
 DIR=/root/xfstests_bld/run-fstests
 
+. "$GCE_CONFIG_FILE"
+
 if [ "$(hostname)" = "xfstests-ltm" ]
 then
     gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
-	   > $DIR/.gce_xfstests_cert.pem
-    echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.ltm_instance
-    echo "GCE_LTM_NAME=$(hostname)" >> $DIR/.ltm_instance
-    echo "GCE_LTM_EXT_IP=127.0.0.1" >> $DIR/.ltm_instance
-    echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance
-    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance
+	   > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+    echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.ltm_instance_$GCE_PROJECT
+    echo "GCE_LTM_NAME=$(hostname)" >> $DIR/.ltm_instance_$GCE_PROJECT
+    echo "GCE_LTM_EXT_IP=127.0.0.1" >> $DIR/.ltm_instance_$GCE_PROJECT
+    echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance_$GCE_PROJECT
+    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
 fi
 if [ "$(hostname)" = "xfstests-kcs" ]
 then
     gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
-	   > $DIR/.gce_xfstests_cert.pem
-    echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert.pem" > $DIR/.kcs_instance
-    echo "GCE_KCS_NAME=$(hostname)" >> $DIR/.kcs_instance
-    echo "GCE_KCS_EXT_IP=127.0.0.1" >> $DIR/.kcs_instance
-    echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance
-    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance
+	   > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+    echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.kcs_instance_$GCE_PROJECT
+    echo "GCE_KCS_NAME=$(hostname)" >> $DIR/.kcs_instance_$GCE_PROJECT
+    echo "GCE_KCS_EXT_IP=127.0.0.1" >> $DIR/.kcs_instance_$GCE_PROJECT
+    echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance_$GCE_PROJECT
+    gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance_$GCE_PROJECT
 fi
 touch $DIR/config.common
 cat "$GCE_CONFIG_FILE" >> $DIR/config.gce

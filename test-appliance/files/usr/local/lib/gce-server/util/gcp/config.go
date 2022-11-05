@@ -9,11 +9,7 @@ import (
 )
 
 // config file locations on multiple machines
-const (
-	gce = "/usr/local/lib/gce_xfstests.config"
-	ltm = "/root/xfstests_bld/run-fstests/.ltm_instance"
-	kcs = "/root/xfstests_bld/run-fstests/.kcs_instance"
-)
+const gce = "/usr/local/lib/gce_xfstests.config"
 
 // Config stores the parsed config key value pairs.
 type Config struct {
@@ -27,6 +23,8 @@ var (
 	LTMConfig  *Config
 	KCSConfig  *Config
 	configLock sync.RWMutex
+	ltm        string
+	kcs        string
 )
 
 func init() {
@@ -38,6 +36,16 @@ func init() {
 	if err != nil {
 		panic("failed to parse gce config file")
 	}
+
+	// get GCE_PROJECT directly, do not go through Get function
+	// as init is already holding the configLock
+	var projID = GceConfig.kv["GCE_PROJECT"]
+	if projID == "" {
+		panic("failed to get GCE_PROJECT from gce config")
+	}
+
+	ltm = "/root/xfstests_bld/run-fstests/.ltm_instance_" + projID
+	kcs = "/root/xfstests_bld/run-fstests/.kcs_instance_" + projID
 
 	if check.FileExists(ltm) {
 		LTMConfig, err = Get(ltm)

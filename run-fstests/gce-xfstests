@@ -17,6 +17,7 @@ fi
 
 . "$DIR/util/get-config"
 . "$DIR/util/parse_opt_funcs"
+. "$DIR/util/gce-helper-funcs"
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
@@ -618,8 +619,8 @@ case "$1" in
 	;;
     ltm)
 	shift
-	if [ ! -f "$DIR/.ltm_instance" ]; then
-		echo "The .ltm_instance file is not present! Please launch the LTM before"
+	if [ ! -f "$DIR/.ltm_instance_$GCE_PROJECT" ]; then
+		echo "The .ltm_instance_$GCE_PROJECT file is not present! Please launch the LTM before"
 		echo "using this option."
 		exit 1
 	fi
@@ -628,8 +629,8 @@ case "$1" in
 	;;
     kcs)
 	shift
-	if [ ! -f "$DIR/.kcs_instance" ]; then
-		echo "The .kcs_instance file is not present! Please launch the compile server before"
+	if [ ! -f "$DIR/.kcs_instance_$GCE_PROJECT" ]; then
+		echo "The .kcs_instance_$GCE_PROJECT file is not present! Please launch the compile server before"
 		echo "using this option."
 		exit 1
 	fi
@@ -639,8 +640,8 @@ case "$1" in
 	;;
     ltm-info)
 	shift
-	if [ ! -f "$DIR/.ltm_instance" ]; then
-		echo "The .ltm_instance file is not present! Please launch the LTM before"
+	if [ ! -f "$DIR/.ltm_instance_$GCE_PROJECT" ]; then
+		echo "The .ltm_instance_$GCE_PROJECT file is not present! Please launch the LTM before"
 		echo "using this option."
 		exit 1
 	fi
@@ -678,6 +679,8 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p PRIMARY_FSTYPE
     declare -p GCE_PROJECT
     declare -p GCE_IMAGE_PROJECT
+    declare -p ARCH
+    declare -p USING_DEFAULT_FAMILY
     declare -p GCE_ZONE
     declare -p GCE_ZONE2
     declare -p NR_CPU
@@ -721,6 +724,13 @@ if test -n "$NO_ACTION" ; then
 fi
 
 . "$DIR/util/parse_cli"
+
+get_arch "$ARCH"
+
+if test -n "$USING_DEFAULT_FAMILY" ; then
+    ROOT_FS="xfstests-$ARCH"
+    IMAGE_FLAG="--image-family"
+fi
 
 if test -n "$EXTRA_ARG"
 then
@@ -944,6 +954,7 @@ then
 fi
 
 # MT_PRICE is in millidollars, as of 9/7/2015
+# MT_PRICE for arm64 (t2a) updated 09/15/2022
 function get_machtype_stats() {
     local mt=$1
     case "$mt" in
@@ -983,6 +994,13 @@ function get_machtype_stats() {
 	n1-standard-64)	MT_PRICE=3040	; MT_CPU=64  ; MT_RAM=245760 ;;
 	n1-highmem-64)	MT_PRICE=3789	; MT_CPU=64  ; MT_RAM=425984 ;;
 	n1-highcpu-64)	MT_PRICE=2269	; MT_CPU=64  ; MT_RAM=58982 ;;
+	t2a-standard-1)		MT_PRICE=0039; MT_CPU=1   ; MT_RAM=4096 ;;
+	t2a-standard-2)		MT_PRICE=0077; MT_CPU=2   ; MT_RAM=8192 ;;
+	t2a-standard-4)		MT_PRICE=0154; MT_CPU=4   ; MT_RAM=16384 ;;
+	t2a-standard-8)		MT_PRICE=0308; MT_CPU=8   ; MT_RAM=32768 ;;
+	t2a-standard-16)	MT_PRICE=0616; MT_CPU=16  ; MT_RAM=65536 ;;
+	t2a-standard-32)	MT_PRICE=1232; MT_CPU=32  ; MT_RAM=131072 ;;
+	t2a-standard-48)	MT_PRICE=1848; MT_CPU=48  ; MT_RAM=196608 ;;
 	*) MT_PRICE=0	; MT_CPU=0  ; MT_RAM=0 ;;
     esac
 }
@@ -997,9 +1015,19 @@ function fit_machtype_resources() {
     get_machtype_file
     while read f_machtype  f_zone f_cpus f_memory
     do
-	case "$f_machtype" in
-	    n2-*|c2-*) continue ;;
-	    e2-*)	if test -n "$DO_LOCAL_SSD" ; then continue ; fi ;;
+	case "$ARCH" in
+	    arm64)
+		case "$f_machtype" in
+		    t2a-*) ;;
+		    *) continue ;;
+		esac
+		;;
+	    amd64)
+		case "$f_machtype" in
+		    n2-*|c2-*|t2a-*) continue ;;
+		    e2-*)	if test -n "$DO_LOCAL_SSD" ; then continue ; fi ;;
+		esac
+		;;
 	esac
 	if test "$GCE_ZONE" != "$f_zone" ; then
 	    continue
@@ -1018,6 +1046,15 @@ function fit_machtype_resources() {
 	fi
     done < $GCE_MACHTYPE_FILE
     GCE_MACHTYPE="$cur_machtype"
+
+    if test -z "$GCE_MACHTYPE"; then
+	    echo "Could not find a machine matching the provided criteria."
+	    if test "$ARCH" = "arm64" ; then
+		    echo "For arm64, make sure you are using a zone that has t2a machines."
+	    fi
+	    exit 1
+    fi
+
     get_machtype_stats "$GCE_MACHTYPE"
 }
 

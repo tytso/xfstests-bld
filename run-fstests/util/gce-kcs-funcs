@@ -1,4 +1,4 @@
-. $DIR/.kcs_instance
+. $DIR/.kcs_instance_$GCE_PROJECT
 
 # The hostname has to match the common name field of the certificate, as set
 # in util/gce-do-setup when running openssl to create a self-signed cert.
@@ -17,14 +17,14 @@ function kcs_post_json() {
 function kcs_post_failed() {
     if run_gcloud compute instances describe "xfstests-kcs" &> /dev/null; then
 	echo "The build server instance seems to be running. Try deleting the"
-	echo "$DIR/.kcs_instance file and re-running launch-kcs to recreate"
+	echo "$DIR/.kcs_instance_$GCE_PROJECT file and re-running launch-kcs to recreate"
 	echo "the file. If the issue persists, try relaunching the build server"
 	echo "If configuration changes have been made, it may be necessary"
 	echo "to delete and re-launch the build server."
     else
 	echo "The build server doesn't seem to be running. Try launching the build server"
 	echo "instance with launch-kcs. This will recreate the"
-	echo ".kcs_instance file."
+	echo ".kcs_instance_$GCE_PROJECT file."
     fi
 }
 
@@ -32,9 +32,9 @@ function send_to_kcs() {
     local cmd_to_send=$1
     shift
 
-    if test ! -f "$DIR/.kcs_cookie"; then
+    if test ! -f "$DIR/.kcs_cookie_$GCE_PROJECT"; then
         # just create a new login session and store it in the cookie
-        kcs_post_json -c $DIR/.kcs_cookie -d "{\"password\":\"$GCE_KCS_PWD\"}" \
+        kcs_post_json -c $DIR/.kcs_cookie_$GCE_PROJECT -d "{\"password\":\"$GCE_KCS_PWD\"}" \
             "https://$KCS_HOSTNAME/login"
 
         if [ ! $? = 0 ]; then
@@ -60,7 +60,7 @@ function send_to_kcs() {
     fi
     # Create OPTS.
 
-    kcs_post_json -b $DIR/.kcs_cookie -d \
+    kcs_post_json -b $DIR/.kcs_cookie_$GCE_PROJECT -d \
 	"{\"orig_cmdline\": \"$cmd_to_send\"${KCS_OPTS:+, $KCS_OPTS}}" \
 	"https://$KCS_HOSTNAME/gce-xfstests"
 

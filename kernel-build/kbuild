@@ -22,6 +22,16 @@ if test ! -f MAINTAINERS ; then
     exit 1
 fi
 
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)
+	KERN_ARCH=x86_64
+	;;
+    aarch64)
+	KERN_ARCH=arm64
+	;;
+esac
+
 mkdir -p .git/kbuild
 if test -f .git/kbuild/config ; then
     . .git/kbuild/config

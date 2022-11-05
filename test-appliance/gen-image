@@ -468,6 +468,7 @@ if test -n "$DO_FAKECHROOT"; then
     mknod -m 444 $ROOTDIR/dev/random c 1 8
     mknod -m 444 $ROOTDIR/dev/urandom c 1 9
     chown root:tty $ROOTDIR/dev/{console,ptmx,tty}
+    # TODO: does anything similar need to be done for arm64?
     if test "$(uname -m)" = x86_64 ; then
 	rm $ROOTDIR/lib64/ld-linux-x86-64.so.2
 	mkdir -p $ROOTDIR/lib64

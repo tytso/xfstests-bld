@@ -10,6 +10,7 @@ else
 fi
 . "$DIR/util/get-config"
 . "$DIR/util/image-utils"
+. "$DIR/util/gce-helper-funcs"
 
 cd "$(dirname $DIR)/test-appliance"
 
@@ -32,7 +33,6 @@ DATECODE=$(date +%Y%m%d%H%M)
 
 SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
-ROOT_FS=xfstests
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
 
@@ -41,9 +41,39 @@ if type -P pigz >& /dev/null ; then
     GZIP="pigz -9"
 fi
 
+while [ "$1" != "" ]; do
+    case "$1" in
+	--arch) shift
+	    ARCH="$1"
+	    ;;
+	--arch=*)
+	    ARCH=$(echo "$1" | sed 's/--arch=//')
+	    ;;
+	*)
+	    echo "usage: gce-create-image [--arch ARCH]"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+get_arch "$ARCH"
+
+if test -n "$USING_DEFAULT_FAMILY" ; then
+    ROOT_FS="xfstests-$ARCH"
+    IMAGE_FLAG="--image-family"
+fi
+
 setup_for_buster()
 {
-	IMAGE_FAMILY=debian-10
+	case "$ARCH" in
+	    amd64)
+		IMAGE_FAMILY=debian-10
+		;;
+	    arm64)
+		IMAGE_FAMILY=debian-10-arm64
+		;;
+	esac
 	IMAGE_PROJECT=debian-cloud
 	SUITE=buster
 	E2FSPROGS=e2fsprogs/buster-backports
@@ -56,7 +86,14 @@ setup_for_buster()
 
 setup_for_bullseye()
 {
-	IMAGE_FAMILY=debian-11
+	case "$ARCH" in
+	    amd64)
+		IMAGE_FAMILY=debian-11
+		;;
+	    arm64)
+		IMAGE_FAMILY=debian-11-arm64
+		;;
+	esac
 	IMAGE_PROJECT=debian-cloud
 	SUITE=bullseye
 	E2FSPROGS=e2fsprogs
@@ -118,7 +155,14 @@ done
 
 GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
 METADATA="startup-script-url=$GS_SCRIPT suite=$SUITE"
-GCE_MACHTYPE=n1-standard-1
+case "$ARCH" in
+    amd64)
+        GCE_MACHTYPE=n1-standard-1
+        ;;
+    arm64)
+        GCE_MACHTYPE=t2a-standard-1
+        ;;
+esac
 
 if test -n "${PHORONIX}" ; then
     url="http://phoronix-test-suite.com/releases/repo/pts.debian/files/phoronix-test-suite_${PHORONIX}_all.deb"
@@ -168,6 +212,7 @@ mkdir -p $kvm_xfs_dir/util		# for gce-xfstests dependencies
 mkdir -p $xfs_bld_dir/test-appliance	# for a symlink
 mkdir -p $td/tmp2/usr/local/sbin	# for the gce-xfstests bash executable
 
+cp ../run-fstests/util/gce-helper-funcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-kcs-funcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-launch-kcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-launch-ltm	$kvm_xfs_dir/util/
@@ -248,7 +293,8 @@ echo "Creating new image $ROOT_FS-$DATECODE"
 run_gcloud compute -q images create "$ROOT_FS-$DATECODE" \
 	--description "Linux Kernel File System Test Appliance" \
 	--source-disk "$BLD_DISK" --source-disk-zone "$GCE_ZONE" \
-	--family "$ROOT_FS" --labels "$LABELS"
+	--family "$ROOT_FS" --labels "$LABELS" \
+	--architecture $GCE_ARCH
 run_gcloud compute -q disks delete "$BLD_DISK" \
 	--zone "$GCE_ZONE" >& /dev/null &
 run_gcloud compute -q images list --filter="family=$ROOT_FS"
