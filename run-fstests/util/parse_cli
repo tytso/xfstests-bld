@@ -357,7 +357,7 @@ while (( $# >= 1 )); do
 	    if flavor_in gce ; then
 		IMAGE_FLAG="--image"
 	    fi
-	    unset USING_DEFAULT_FAMLY
+	    unset USING_DEFAULT_FAMILY
 	    ;;
 	-n) shift
 	    supported_flavors kvm gce
@@ -409,7 +409,7 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
-	    unset USING_DEFAULT_FAMLY
+	    unset USING_DEFAULT_FAMILY
 	    ;;
 	--fail-loop-count) shift
 	    FAIL_LOOP_COUNT="$1"
