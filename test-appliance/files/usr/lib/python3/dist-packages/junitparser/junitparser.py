@@ -310,7 +310,11 @@ class JUnitXml(Element):
         if parse_func:
             tree = parse_func(filepath)
         else:
-            tree = etree.parse(filepath) # nosec
+            try:
+                tree = etree.parse(filepath) # nosec
+            except etree.XMLSyntaxError:
+                p = etree.XMLParser(huge_tree=True)
+                tree = etree.parse(filepath, parser=p)
         root_elem = tree.getroot()
         if root_elem.tag == "testsuites":
             instance = cls()

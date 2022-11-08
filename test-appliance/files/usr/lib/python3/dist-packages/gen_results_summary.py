@@ -131,6 +131,35 @@ def sum_testsuites(testsuites):
         errors += testsuite.errors
     return (tests, skipped, failures, errors, runtime)
 
+def get_testsuite_stats(testsuite):
+    """Aggregate stats on individual tests"""
+    Stats = {}
+    for test_case in testsuite:
+        isFail = False
+        isSkipped = False
+        isError = False
+        for entry in test_case.result:
+            if isinstance(entry, Failure):
+                isFail = True
+            if isinstance(entry, Skipped):
+                isSkipped = True
+            if isinstance(entry, Error):
+                isError = True
+        if test_case.name in Stats:
+            s = Stats[test_case.name]
+        else:
+            s = TestStats()
+            Stats[test_case.name] = s
+        s.total += 1
+        if isFail:
+            s.failed += 1
+        if isSkipped:
+            s.skipped += 1
+        if isError:
+            s.error += 1
+
+    return Stats
+
 def print_summary(out_f, testsuite, verbose):
     """Print a summary for a particular test suite
 
@@ -175,30 +204,7 @@ def print_summary(out_f, testsuite, verbose):
             out_f.write("  %-12s %-8s %ds\n" %
                         (test_case.name, status, test_case.time))
     else:
-        Stats = {}
-        for test_case in testsuite:
-            isFail = False
-            isSkipped = False
-            isError = False
-            for entry in test_case.result:
-                if isinstance(entry, Failure):
-                    isFail = True
-                if isinstance(entry, Skipped):
-                    isSkipped = True
-                if isinstance(entry, Error):
-                    isError = True
-            if test_case.name in Stats:
-                s = Stats[test_case.name]
-            else:
-                s = TestStats()
-                Stats[test_case.name] = s
-            s.total += 1
-            if isFail:
-                s.failed += 1
-            if isSkipped:
-                s.skipped += 1
-            if isError:
-                s.error += 1
+        Stats = get_testsuite_stats(testsuite)
 
         wp = wrapped_print(out_f, 'Failures', ' ')
         for t in Stats:
