@@ -1136,21 +1136,44 @@ elif test -n "$RUN_ON_KCS"; then
     . "$DIR/util/gce-kcs-funcs"
     send_to_kcs $ORIG_CMDLINE_B64
     exit 0
-else
-    echo "Launching $INSTANCE using $GCE_MACHTYPE..."
-    # echo "Using ARG: $ARG"
 fi
 
-run_gcloud compute \
-       instances create "$INSTANCE" --zone "$GCE_ZONE" \
-       --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
-       $SSD_ARG $PREEMPTIBLE \
-       $SERVICE_ACCOUNT_OPT_VM \
-       --scopes "$SCOPES" \
-       --metadata "^ ^$ARG" \
-       --tags http-server,https-server \
-       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
-       "$IMAGE_FLAG" "$ROOT_FS"
+function launch_vm () {
+    echo "Launching $INSTANCE using $GCE_MACHTYPE..."
+
+    run_gcloud compute \
+	       instances create "$INSTANCE" --zone "$GCE_ZONE" \
+	       --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
+	       $SSD_ARG $PREEMPTIBLE \
+	       $SERVICE_ACCOUNT_OPT_VM \
+	       --scopes "$SCOPES" \
+	       --metadata "^ ^$ARG" \
+	       --tags http-server,https-server \
+	       --image-project "${GCE_IMAGE_PROJECT:-xfstests-cloud}" \
+	       "$IMAGE_FLAG" "$ROOT_FS"
+    err=$?
+}
+ERRFILE=/tmp/gce-xfstests-err-$$
+launch_vm 2> $ERRFILE
+
+if test "$err" -gt 0 ; then
+    cat $ERRFILE
+    if grep -q images/family/xfstests-amd64 $ERRFILE ; then
+	if grep -q "The project .* was not found" ; then
+	    exit $err
+	fi
+	echo Retrying with the image family xfstests
+	ROOT_FS=xfstests
+	launch_vm
+	if test "$err" -gt 0 ; then
+	    exit $err
+	fi
+    else
+	exit $err
+    fi
+fi
+rm -f $ERRFILE
+
 
 case "$ARG" in
     cmd=maint*)
