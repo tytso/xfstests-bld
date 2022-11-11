@@ -724,6 +724,8 @@ if test -n "$NO_ACTION" ; then
 fi
 
 . "$DIR/util/parse_cli"
+_cleanup
+trap - 0
 
 get_arch "$ARCH"
 
