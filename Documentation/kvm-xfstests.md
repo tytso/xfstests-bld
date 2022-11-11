@@ -100,7 +100,7 @@ appliance is:
 
 By default <cfg> defaults to all, which will run the following
 configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
-"dioread_nolock, "data_journal", "inline", "bigalloc", and
+"dioread_nolock, "data_journal", "inline", "bigalloc_4k", and
 "bigalloc_1k".  You may specify a single configuration or a comma
 separated list if you want to run a subset of all possible file system
 configurations.

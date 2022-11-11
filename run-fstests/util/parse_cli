@@ -90,7 +90,7 @@ print_help ()
     echo ""
     echo "Common file system configurations are:"
     echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
-    echo "	data_journal bigalloc bigalloc_1k inline"
+    echo "	data_journal bigalloc_4k bigalloc_1k inline"
     echo ""
     echo "xfstest names have the form: ext4/NNN generic/NNN shared/NNN"
     echo ""

@@ -1,4 +1,4 @@
-// exclude file for ext4/bigalloc
+// exclude file for ext4/bigalloc_4k
 
 ext4/004	// dump/restore doesn't handle the bigalloc feature
 
@@ -7,6 +7,12 @@ ext4/004	// dump/restore doesn't handle the bigalloc feature
 // too much space, so test VM will hang or abort the test run.  We
 // don't need to test this for all file system configs, so just skip it here.
 ext4/033
+
+// ext4/044 tries to mkfs the test file system as ext3 explicitly.  This
+// initially fails because ext3 and the inline_data feature are incompatible.
+// However, _scratch_do_mkfs() retries by stripping off the bigalloc and
+// inline_data options, resulting in a successful but irrelevant test.
+ext4/044
 
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.

@@ -1,5 +1,5 @@
 SIZE=large
-export EXT_MKFS_OPTIONS="-O bigalloc"
+export EXT_MKFS_OPTIONS="-b 4096 -O bigalloc,inline_data"
 export EXT_MOUNT_OPTIONS=""
 
 # Until we can teach xfstests the difference between cluster size and
@@ -11,5 +11,5 @@ export FSSTRESS_AVOID="-f collapse=0 -f insert=0"
 export XFS_IO_AVOID="fcollapse finsert"
 TEST_SET_EXCLUDE="-x collapse,insert"
 
-TESTNAME="Ext4 4k block w/bigalloc"
+TESTNAME="Ext4 4k block w/bigalloc and inline_data"
 

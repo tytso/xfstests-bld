@@ -1,0 +1,14 @@
+SIZE=large
+export EXT_MKFS_OPTIONS="-b 65536 -O bigalloc"
+export EXT_MOUNT_OPTIONS=""
+
+# Until we can teach xfstests the difference between cluster size and
+# block size, avoid collapse_range and insert_range since these will
+# fail due the fact that these operations require cluster-aligned
+# ranges.
+export FSX_AVOID="-C -I"
+export FSSTRESS_AVOID="-f collapse=0 -f insert=0"
+export XFS_IO_AVOID="fcollapse finsert"
+TEST_SET_EXCLUDE="-x collapse,insert"
+
+TESTNAME="Ext4 64k block w/bigalloc"

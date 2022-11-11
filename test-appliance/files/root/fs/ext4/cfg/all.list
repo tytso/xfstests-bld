@@ -7,6 +7,6 @@ ext3conv
 adv
 dioread_nolock
 data_journal
-bigalloc
+bigalloc_4k
 bigalloc_1k
 dax

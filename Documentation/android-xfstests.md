@@ -26,7 +26,7 @@ devices.  If you encounter a problem, please submit a fix!
   sufficient.  This is the sum of three 5 GiB partitions, a shrunken 4
   GiB userdata partition, and the various other partitions used by
   Android devices.  For test configurations requiring large
-  partitions, like bigalloc, you'll need about 64 GiB instead.
+  partitions, like bigalloc_4k, you'll need about 64 GiB instead.
 
 - Ability to connect to the Android device with adb and fastboot.
   Usually this is done via a USB cable.

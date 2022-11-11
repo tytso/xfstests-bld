@@ -59,7 +59,7 @@ should be 5GB.  Smaller, and some tests may not run correctly.
 Larger, and the tests will take a long time to run --- especially
 those tests that need to fill the file system to test ENOSPC handling.
 There are a few file system configurations for ext4 (most notable,
-bigalloc) which require a 20GB test and scratch device.
+bigalloc_4k) which require a 20GB test and scratch device.
 
 For this reason, kvm-xfstests uses five file system devices, /dev/vdb,
 /dev/vdc, /dev/vdd, /dev/vde, and /dev/vdf.  (/dev/vda is used for the

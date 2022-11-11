@@ -41,7 +41,7 @@
 
 6.  Run "kvm-xfstests smoke" to do a quick test.  Or "kvm-xfstests
     -g auto" to do a full test.  You can also run specific tests on
-    specific configurations, i.e., "kvm-xfstests -c bigalloc
+    specific configurations, i.e., "kvm-xfstests -c bigalloc_4k
     generic/013 generic/127".   To run a shell, use "kvm-xfstests shell"
 
 For more information, please see the full [kvm-xfstests
