@@ -165,12 +165,12 @@ sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
     -e 's/After=rc.local.service/After=network.target/' \
 	/etc/systemd/system/telnet-getty@.service
 
-systemctl enable telnet-getty@ttyS1.service
-systemctl enable telnet-getty@ttyS2.service
-systemctl enable telnet-getty@ttyS3.service
-systemctl start telnet-getty@ttyS1.service
-systemctl start telnet-getty@ttyS2.service
-systemctl start telnet-getty@ttyS3.service
+for i in ttyS1 ttyS2 ttyS3 ttyAMA1 ttyAMA2 ttyAMA3 ; do
+    if stty -a < /dev/$i >& /dev/null ; then
+	systemctl enable telnet-getty@$i.service
+	systemctl start telnet-getty@$i.service
+    fi
+done
 
 apt-get update
 apt-get install -y debconf-utils curl
@@ -376,9 +376,6 @@ systemctl enable gce-fetch-gs-files.service
 systemctl enable gce-finalize-wait.service
 systemctl enable gce-finalize.timer
 systemctl enable gen-ssh-keys.service
-systemctl enable telnet-getty@ttyS1.service
-systemctl enable telnet-getty@ttyS2.service
-systemctl enable telnet-getty@ttyS3.service
 systemctl stop multipathd
 systemctl disable multipathd
 cp /usr/share/systemd/tmp.mount /etc/systemd/system/
