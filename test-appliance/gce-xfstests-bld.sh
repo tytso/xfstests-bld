@@ -47,7 +47,8 @@ PACKAGES="bash-completion \
 	file \
 	flex \
 	gawk \
-	gcc-9 \
+	gcc \
+	gcc-aarch64-linux-gnu \
 	git	\
 	jfsutils \
 	jq \
