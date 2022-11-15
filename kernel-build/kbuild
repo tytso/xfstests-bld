@@ -16,21 +16,64 @@
 
 # N=$(($(getconf _NPROCESSORS_ONLN) / 2))
 N=$(($(getconf _NPROCESSORS_ONLN) * 1))
+NO_ACTION=
 
 if test ! -f MAINTAINERS ; then
     echo "Not at top-level of kernel source tree?" 1>&2
     exit 1
 fi
 
-ARCH=$(uname -m)
-case "$ARCH" in
+MY_ARCH=$(uname -m)
+case "$MY_ARCH" in
     x86_64)
 	KERN_ARCH=x86_64
+	MY_ARCH=x86_64
 	;;
     aarch64)
 	KERN_ARCH=arm64
+	MY_ARCH=arm64
+	;;
+    *)
+	echo "unknown architecture: $MY_ARCH"
+	exit 1
 	;;
 esac
+
+function set_arch () {
+    KERN_ARCH=$1
+
+    case "$KERN_ARCH" in
+	arm64)
+	    if test -n "$BLD_DIR_ARM64" ; then
+		BLD_DIR=$BLD_DIR_ARM64
+	    fi
+	    if test "$MY_ARCH" != arm64 ; then
+		CROSS_COMPILE=aarch64-linux-gnu-
+	    fi
+	    ;;
+	i386)
+	    if test -n "$BLD_DIR_32" ; then
+		BLD_DIR=$BLD_DIR_32
+	    elif test -n "$BLD_DIR_I386" ; then
+		BLD_DIR=$BLD_DIR_I386
+	    fi
+	    if test -n "$KERN_ARCH_32" ; then
+		KERN_ARCH=$KERN_ARCH_32
+	    else
+		KERN_ARCH=i386
+	    fi
+	    ;;
+	x86_64)
+	    if test -n "$BLD_DIR_X86_64" ; then
+		BLD_DIR=$BLD_DIR_X86_64
+	    fi
+	    ;;
+	*)
+	    echo "unknown architecture: $KERN_ARCH"
+	    exit 1
+	    ;;
+    esac
+}
 
 mkdir -p .git/kbuild
 if test -f .git/kbuild/config ; then
@@ -40,19 +83,49 @@ elif test -f .git/kbuild.conf ; then
     mv .git/kbuild.conf .git/kbuild/config
 fi
 
-if test "$1" == "--32" -o "$1" == "-32" ; then
+while [ "$1" != "" ];
+do
+    case "$1" in
+	--arch)
+	    shift
+	    set_arch $1
+	    ;;
+	--arm64)
+	    set_arch arm64
+	    ;;
+	--dpkg)
+	    DO_DPKG=yes
+	    DPKG_EXPLICIT=yes
+	    ;;
+	--no-dpkg)
+	    DO_DPKG=
+	    DPKG_EXPLICIT=yes
+	    ;;
+	--get-build-dir)
+	    DO_GET_BUILD_DIR=yes
+	    ;;
+	--i386|-32)
+	    set_arch i386
+	    ;;
+	--no-action)
+	    NO_ACTION=echo
+	    ;;
+
+	-*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+	*)
+	    break
+    esac
     shift
-    if test -n "$BLD_DIR_32" ; then
-	BLD_DIR=$BLD_DIR_32
-    fi
-    if test -n "$KERN_ARCH_32" ; then
-	KERN_ARCH=$KERN_ARCH_32
-    else
-	KERN_ARCH=i386
-    fi
+done
+
+if test -n "$1" -a -z "$DPKG_EXPLICIT" ; then
+    DO_DPKG=
 fi
 
-if test "$1" == "--get-build-dir" ; then
+if test -n "$DO_GET_BUILD_DIR"; then
     if test -z "$BLD_DIR" ; then
 	BLD_DIR=.
     fi
@@ -80,32 +153,21 @@ if test -n "$BLD_DIR" ; then
 else
     BLD_DIR="."
 fi
+if test -n "$CROSS_COMPILE" ; then
+    MAKE_ARGS+=("CROSS_COMPILE=$CROSS_COMPILE")
+fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
     MAKE_ARGS+=("CC=clang")
 fi
 
-if test "$1" == "--dpkg" ; then
-    shift
-    DO_DPKG=yes
-    DPKG_EXPLICIT=yes
-elif test "$1" == "--no-dpkg" ; then
-    shift
-    DO_DPKG=
-    DPKG_EXPLICIT=yes
-fi
-
 rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
 
-if test -n "$1" -a -z "$DPKG_EXPLICIT" ; then
-    DO_DPKG=
-fi
-
 if test -n "$DO_DPKG" ; then
-    make "${MAKE_ARGS[@]}" prepare
+    $NO_ACTION make "${MAKE_ARGS[@]}" prepare
     REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
-    time nice make "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
+    $NO_ACTION time nice make "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
 	 bindeb-pkg "$@"
     err=$?
     d="$BLD_DIR/.."
@@ -118,20 +180,20 @@ if test -n "$DO_DPKG" ; then
 	       sed -e "s/linux-${REL}_${REL}-//" -e "s/_${arch}.changes//")
     v="${REL}-${NUM}_${arch}"
     if test -f "$d/linux-image-${REL}_${v}.deb" ; then
-	mv "$d/linux-image-${REL}_${v}.deb" "$BLD_DIR/linux-image.deb"
+	$NO_ACTION mv "$d/linux-image-${REL}_${v}.deb" "$BLD_DIR/linux-image.deb"
     fi
     if test -f "$d/linux-image-${REL}-dbg_${v}.deb" ; then
-	mv "$d/linux-image-${REL}-dbg_${v}.deb" "$BLD_DIR/linux-image-dbg.deb"
+	$NO_ACTION mv "$d/linux-image-${REL}-dbg_${v}.deb" "$BLD_DIR/linux-image-dbg.deb"
     fi
     if test -f "$d/linux-headers-${REL}_${v}.deb" ; then
-	mv "$d/linux-headers-${REL}_${v}.deb" "$BLD_DIR/linux-headers.deb"
+	$NO_ACTION mv "$d/linux-headers-${REL}_${v}.deb" "$BLD_DIR/linux-headers.deb"
     fi
     if test -f "$d/linux-libc-dev_${v}.deb" ; then
-	mv "$d/linux-libc-dev_${v}.deb" "$BLD_DIR/linux-libc-dev.deb"
+	$NO_ACTION mv "$d/linux-libc-dev_${v}.deb" "$BLD_DIR/linux-libc-dev.deb"
     fi
-    rm -f "$d/linux-${REL}_${v}.buildinfo" "$d/linux-${REL}_${v}.changes"
+    $NO_ACTION rm -f "$d/linux-${REL}_${v}.buildinfo" "$d/linux-${REL}_${v}.changes"
 else
-    time nice make "${MAKE_ARGS[@]}" "$@"
+    $NO_ACTION time nice make "${MAKE_ARGS[@]}" "$@"
     err=$?
 fi
 
@@ -139,19 +201,19 @@ if test -z "$*" -a "$err" == 0 && \
 	grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
     TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)
     echo "Generating $BLD_DIR/modules.tar.xz"
-    make "${MAKE_ARGS[@]}" modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
-    tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
+    $NO_ACTION make "${MAKE_ARGS[@]}" modules_install INSTALL_MOD_PATH="$TMPMODDIR" > /dev/null
+    $NO_ACTION tar -C "$TMPMODDIR" -c --owner=0 --group=0 --numeric-owner \
 	--mode=go+u-w -f - lib/modules | xz > "$BLD_DIR/modules.tar.xz"
-    rm -rf "$TMPMODDIR"
+    $NO_ACTION rm -rf "$TMPMODDIR"
 else
-    rm -f "$BLD_DIR/modules.tar.xz"
+    $NO_ACTION rm -f "$BLD_DIR/modules.tar.xz"
 fi
 
-cp "$BLD_DIR/.config" .git/kbuild/kernel-config
+$NO_ACTION cp "$BLD_DIR/.config" .git/kbuild/kernel-config
 for i in x509.genkey signing_key.pem signing_key.x509
 do
     if test -f "$BLD_DIR/certs/$i" ; then
-	cp "$BLD_DIR/certs/$i" .git/kbuild
+	$NO_ACTION cp "$BLD_DIR/certs/$i" .git/kbuild
     fi
 done
 

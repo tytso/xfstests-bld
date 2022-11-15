@@ -6,18 +6,43 @@ then
 else
     DIR="$(dirname $0)"
 fi
+KCONFIG_DIR=$DIR/kernel-configs
+KBUILD=$DIR/kbuild
 
 TYPE=config
+DO_GENERIC=
 
-ARCH=$(uname -m)
-case "$ARCH" in
+MY_ARCH=$(uname -m)
+case "$MY_ARCH" in
     x86_64)
-	ARCH=x86_64
+	KERN_ARCH=x86_64
 	;;
     aarch64)
-	ARCH=arm64
+	KERN_ARCH=arm64
+	;;
+    *)
+	echo "unknown architecture: $MY_ARCH"
+	exit 1
 	;;
 esac
+
+function set_arch () {
+    KERN_ARCH=$1
+
+    case "$KERN_ARCH" in
+	arm64)
+	    if test "$MY_ARCH" != arm64 ; then
+		CROSS_COMPILE=aarch64-linux-gnu-
+	    fi
+	    ;;
+	i386|x86_64)
+	    ;;
+	*)
+	    echo "unknown architecture: $KERN_ARCH"
+	    exit 1
+	    ;;
+    esac
+}
 
 while [ "$1" != "" ];
 do
@@ -29,7 +54,14 @@ do
 	    DO_BLKTESTS=yes
 	    ;;
 	--i386)
-	    ARCH=i386
+	    set_arch i386
+	    ;;
+	--arm64)
+	    set_arch arm64
+	    ;;
+	--arch)
+	    shift
+	    set_arch $1
 	    ;;
 	--kasan)
 	    DO_KASAN=yes
@@ -55,6 +87,9 @@ do
 	--get-config-fn)
 	    DO_GET_CONFIG_FN=yes
 	    ;;
+	--generic)
+	    DO_GENERIC=yes
+	    ;;
 	--help|help)
 	    echo "Usage: install-kconfig [--i386] [--perf] [--blktests]" \
 		 "[--extra-debug]"
@@ -77,16 +112,12 @@ if test ! -f MAINTAINERS -o ! -f Makefile ; then
 fi
 
 if test -f .git/kbuild/config ; then
-    if test "$ARCH" = i386 ; then
-	BLD_DIR=$(sed -ne 's/^BLD_DIR_32=//p' .git/kbuild/config);
-    else
-	BLD_DIR=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
-    fi
-    mkdir -p "$BLD_DIR"
+    BLD_DIR=$($KBUILD --get-build-dir --arch $KERN_ARCH)
 fi
 if test -z "$BLD_DIR" ; then
    BLD_DIR=.
 fi
+mkdir -p "$BLD_DIR"
 
 # echo "Build directory is $BLD_DIR"
 
@@ -103,9 +134,11 @@ SUBVERSION=$(echo $KVER | awk -F. '{print $2}' | sed -e 's/-.*//')
 # echo "Kernel version is $KVER - $VERSION $SUBVERSION"
 
 CONFIG_FN=''
-KCONFIG_DIR=$DIR/kernel-configs
 while test -z "$CONFIG_FN" ; do
-    fn="$KCONFIG_DIR/$ARCH-$TYPE-$VERSION.$SUBVERSION"
+    fn="$KCONFIG_DIR/$KERN_ARCH-$TYPE-$VERSION.$SUBVERSION"
+    if test -n "$DO_GENERIC" -o ! -f "$fn" ; then
+	fn="$KCONFIG_DIR/$TYPE-$VERSION.$SUBVERSION"
+    fi
     if test -f "$fn" ; then
 	CONFIG_FN=$fn
 	break
@@ -128,6 +161,10 @@ if test -n "$DO_GET_CONFIG_FN" ; then
 fi
 
 FILES=("$CONFIG_FN")
+
+if test -f "$KCONFIG_DIR/$KERN_ARCH-config" ; then
+    FILES+=("$KCONFIG_DIR/$KERN_ARCH-config")
+fi
 
 if test -n "$DO_BLKTESTS" ; then
     FILES+=("$KCONFIG_DIR/blktests-configs")
@@ -174,7 +211,7 @@ if test -n "$tags" ; then
     echo CONFIG_LOCALVERSION=\"${base}${tags}\" >> "$BLD_DIR/.config"
 fi
 
-ARGS=("ARCH=$ARCH")
+ARGS=("ARCH=$KERN_ARCH")
 
 if test "$BLD_DIR" != "." ; then
     ARGS+=("O=$BLD_DIR")
@@ -182,6 +219,10 @@ fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
     ARGS+=("CC=clang")
+fi
+
+if test -n "$CROSS_COMPILE" ; then
+    ARGS+=("CROSS_COMPILE=$CROSS_COMPILE")
 fi
 
 $NO_ACTION make "${ARGS[@]}" olddefconfig
