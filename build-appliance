@@ -11,7 +11,6 @@ OUT_TAR=
 BUILD_ENV=
 SUDO_ENV=sudo
 DO_GCE=
-ARCH=amd64
 
 if test -f config.custom ; then
     . config.custom
@@ -19,7 +18,9 @@ else
     . config
 fi
 
-. run-fstests/util/gce-helper-funcs
+. run-fstests/util/arch-funcs
+
+set_default_arch
 
 usage()
 {
@@ -63,6 +64,7 @@ while (( $# >= 0 )); do
     --chroot)
 	BUILD_ENV="schroot -c $2 --"
 	SUDO_ENV="schroot -c $2 -u root --"
+	MY_ARCH=$(schroot -c $2 -- dpkg --print-architecture)
 	shift
 	;;
     --out-tar)
@@ -95,25 +97,8 @@ if $UPDATE && [ "$OUT_TAR" = "yes" ]; then
     exit 1
 fi
 
-CHROOT=$(sed -n "s/.*-c\s\+\(.*\)\s\+.*/\1/p" <<< "$BUILD_ENV")
-
-if test ! "$CHROOT" ; then
-	echo "Warning: failed to detect chroot name"
-fi
-
-# tries to detect architecture from the chroot being used, otherwise,
-#    uses the ARCH default (can be overwritten in config.custom)
-ARCH=$(sed -n "s/^description=.*(\(.*\))$/\1/p" \
-	/etc/schroot/chroot.d/$CHROOT)
-
-if test -n "$ARCH" ; then
-	echo "Detected architecture of chroot as $ARCH"
-else
-	echo "Warning: failed to detect architecture of chroot,"
-	echo "using $ARCH"
-fi
-
-get_arch "$ARCH"
+set_my_arch
+set_canonicalized_arch "$MY_ARCH"
 
 cd fstests-bld
 

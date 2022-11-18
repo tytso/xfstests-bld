@@ -10,7 +10,7 @@ else
 fi
 . "$DIR/util/get-config"
 . "$DIR/util/image-utils"
-. "$DIR/util/gce-helper-funcs"
+. "$DIR/util/arch-funcs"
 
 cd "$(dirname $DIR)/test-appliance"
 
@@ -57,7 +57,7 @@ while [ "$1" != "" ]; do
     shift
 done
 
-get_arch "$ARCH"
+set_canonicalized_arch "$ARCH"
 
 if test -n "$USING_DEFAULT_FAMILY" ; then
     ROOT_FS="xfstests-$ARCH"
@@ -212,7 +212,7 @@ mkdir -p $kvm_xfs_dir/util		# for gce-xfstests dependencies
 mkdir -p $xfs_bld_dir/test-appliance	# for a symlink
 mkdir -p $td/tmp2/usr/local/sbin	# for the gce-xfstests bash executable
 
-cp ../run-fstests/util/gce-helper-funcs	$kvm_xfs_dir/util/
+cp ../run-fstests/util/arch-funcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-kcs-funcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-launch-kcs	$kvm_xfs_dir/util/
 cp ../run-fstests/util/gce-launch-ltm	$kvm_xfs_dir/util/

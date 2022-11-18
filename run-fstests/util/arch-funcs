@@ -1,0 +1,76 @@
+#
+# There are multiple ways that CPU architectured can be named.
+# KERN_ARCH is what is used when specifying ARCH=xxx when building the
+# kernel.
+#
+# GCE_ARCH is what gets used when setting specifying the architecture
+# when creating the GCE image using the --architecture flag
+# ARCH (after being canonicalized by this function) is defined by
+# the Debian architecture port names[1] and is used internally
+# by gce-xfstests and kvm-xfstests.  So for example, when we add
+# support for support for Power architectures, the ARCH name that should
+# be used is ppc64 or ppc64el.
+#
+
+function set_my_arch () {
+    local t
+
+    if test -n "${MY_ARCH:=}" ; then
+        return
+    fi
+    MY_ARCH=$(dpkg --print-architecture)
+}
+
+function set_default_arch ()
+{
+    if test -n "${ARCH:=}" ; then
+	return
+    fi
+    if test -n "${DEFAULT_ARCH:=}" ; then
+	ARCH="$DEFAULT_ARCH"
+    else
+	set_my_arch
+	ARCH="$MY_ARCH"
+    fi
+}
+
+
+# This function takes as input a user-supplied architecture (which
+# generally should be a Debian port name, but users might use
+# a $(uname -m) instead.
+#
+function set_canonicalized_arch () {
+    case "$1" in
+	arm64|aarch64)
+	    ARCH="arm64"
+	    GCE_ARCH="ARM64"
+	    KERN_ARCH="arm64"
+	    ;;
+	i386)
+	    ARCH="i386"
+	    GCE_ARCH=""
+	    KERN_ARCH="i386"
+	    ;;
+	x86-64|x86_64|X86_64|amd64)
+	    ARCH="amd64"
+	    GCE_ARCH="X86_64"
+	    KERN_ARCH="x86_64"
+	    ;;
+	*)
+	    echo "Architecture $ARCH not supported"
+	    exit 1
+	    ;;
+    esac
+}
+
+function set_cross_compile ()
+{
+    set_my_arch
+    case "$ARCH" in
+	arm64)
+	    if test "$MY_ARCH" != arm64 ; then
+		CROSS_COMPILE=aarch64-linux-gnu-
+	    fi
+	    ;;
+    esac
+}

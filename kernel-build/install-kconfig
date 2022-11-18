@@ -6,43 +6,15 @@ then
 else
     DIR="$(dirname $0)"
 fi
+. $DIR/../run-fstests/util/arch-funcs
+
 KCONFIG_DIR=$DIR/kernel-configs
 KBUILD=$DIR/kbuild
 
 TYPE=config
 DO_GENERIC=
 
-MY_ARCH=$(uname -m)
-case "$MY_ARCH" in
-    x86_64)
-	KERN_ARCH=x86_64
-	;;
-    aarch64)
-	KERN_ARCH=arm64
-	;;
-    *)
-	echo "unknown architecture: $MY_ARCH"
-	exit 1
-	;;
-esac
-
-function set_arch () {
-    KERN_ARCH=$1
-
-    case "$KERN_ARCH" in
-	arm64)
-	    if test "$MY_ARCH" != arm64 ; then
-		CROSS_COMPILE=aarch64-linux-gnu-
-	    fi
-	    ;;
-	i386|x86_64)
-	    ;;
-	*)
-	    echo "unknown architecture: $KERN_ARCH"
-	    exit 1
-	    ;;
-    esac
-}
+set_default_arch
 
 while [ "$1" != "" ];
 do
@@ -54,14 +26,14 @@ do
 	    DO_BLKTESTS=yes
 	    ;;
 	--i386)
-	    set_arch i386
+	    ARCH=i386
 	    ;;
 	--arm64)
-	    set_arch arm64
+	    ARCH=arm64
 	    ;;
 	--arch)
 	    shift
-	    set_arch $1
+	    ARCH=$1
 	    ;;
 	--kasan)
 	    DO_KASAN=yes
@@ -105,6 +77,9 @@ do
     esac
     shift
 done
+
+set_canonicalized_arch "$ARCH"
+set_cross_compile
 
 if test ! -f MAINTAINERS -o ! -f Makefile ; then
    echo "Not at top-level of kernel sources"

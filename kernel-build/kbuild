@@ -14,6 +14,15 @@
 # and create the modules.tar.gz directory for use with kvm-xfstests
 # and gce-xfstests.
 
+if test -n "$KBUILD_DIR"
+then
+    DIR="$KBUILD_DIR"
+else
+    DIR="$(dirname $0)"
+fi
+
+. $DIR/../run-fstests/util/arch-funcs
+
 # N=$(($(getconf _NPROCESSORS_ONLN) / 2))
 N=$(($(getconf _NPROCESSORS_ONLN) * 1))
 NO_ACTION=
@@ -23,58 +32,6 @@ if test ! -f MAINTAINERS ; then
     exit 1
 fi
 
-MY_ARCH=$(uname -m)
-case "$MY_ARCH" in
-    x86_64)
-	KERN_ARCH=x86_64
-	MY_ARCH=x86_64
-	;;
-    aarch64)
-	KERN_ARCH=arm64
-	MY_ARCH=arm64
-	;;
-    *)
-	echo "unknown architecture: $MY_ARCH"
-	exit 1
-	;;
-esac
-
-function set_arch () {
-    KERN_ARCH=$1
-
-    case "$KERN_ARCH" in
-	arm64)
-	    if test -n "$BLD_DIR_ARM64" ; then
-		BLD_DIR=$BLD_DIR_ARM64
-	    fi
-	    if test "$MY_ARCH" != arm64 ; then
-		CROSS_COMPILE=aarch64-linux-gnu-
-	    fi
-	    ;;
-	i386)
-	    if test -n "$BLD_DIR_32" ; then
-		BLD_DIR=$BLD_DIR_32
-	    elif test -n "$BLD_DIR_I386" ; then
-		BLD_DIR=$BLD_DIR_I386
-	    fi
-	    if test -n "$KERN_ARCH_32" ; then
-		KERN_ARCH=$KERN_ARCH_32
-	    else
-		KERN_ARCH=i386
-	    fi
-	    ;;
-	x86_64)
-	    if test -n "$BLD_DIR_X86_64" ; then
-		BLD_DIR=$BLD_DIR_X86_64
-	    fi
-	    ;;
-	*)
-	    echo "unknown architecture: $KERN_ARCH"
-	    exit 1
-	    ;;
-    esac
-}
-
 mkdir -p .git/kbuild
 if test -f .git/kbuild/config ; then
     . .git/kbuild/config
@@ -83,15 +40,17 @@ elif test -f .git/kbuild.conf ; then
     mv .git/kbuild.conf .git/kbuild/config
 fi
 
+set_default_arch
+
 while [ "$1" != "" ];
 do
     case "$1" in
 	--arch)
 	    shift
-	    set_arch $1
+	    ARCH="$1"
 	    ;;
 	--arm64)
-	    set_arch arm64
+	    ARCH=arm64
 	    ;;
 	--dpkg)
 	    DO_DPKG=yes
@@ -105,7 +64,7 @@ do
 	    DO_GET_BUILD_DIR=yes
 	    ;;
 	--i386|-32)
-	    set_arch i386
+	    ARCH=i386
 	    ;;
 	--no-action)
 	    NO_ACTION=echo
@@ -120,6 +79,33 @@ do
     esac
     shift
 done
+
+set_canonicalized_arch "$ARCH"
+set_cross_compile
+
+case "$ARCH" in
+    arm64)
+	if test -n "$BLD_DIR_ARM64" ; then
+	    BLD_DIR=$BLD_DIR_ARM64
+	fi
+	;;
+    i386)
+	if test -n "$BLD_DIR_32" ; then
+	    BLD_DIR=$BLD_DIR_32
+	elif test -n "$BLD_DIR_I386" ; then
+	    BLD_DIR=$BLD_DIR_I386
+	fi
+	;;
+    amd64)
+	if test -n "$BLD_DIR_X86_64" ; then
+	    BLD_DIR=$BLD_DIR_X86_64
+	fi
+	;;
+    *)
+	echo "unknown architecture: $KERN_ARCH"
+	exit 1
+	;;
+esac
 
 if test -n "$1" -a -z "$DPKG_EXPLICIT" ; then
     DO_DPKG=

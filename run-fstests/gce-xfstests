@@ -17,7 +17,7 @@ fi
 
 . "$DIR/util/get-config"
 . "$DIR/util/parse_opt_funcs"
-. "$DIR/util/gce-helper-funcs"
+. "$DIR/util/arch-funcs"
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
@@ -724,8 +724,6 @@ fi
 . "$DIR/util/parse_cli"
 _cleanup
 trap - 0
-
-get_arch "$ARCH"
 
 if test -n "$USING_DEFAULT_FAMILY" ; then
     ROOT_FS="xfstests-$ARCH"

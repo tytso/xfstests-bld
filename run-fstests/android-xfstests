@@ -17,6 +17,7 @@ fi
 
 . "$DIR/util/get-config"
 . "$DIR/util/parse_opt_funcs"
+. "$DIR/util/arch-funcs"
 
 case "$1" in
     install-kconfig)

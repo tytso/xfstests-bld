@@ -151,10 +151,6 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
 	GCE_SERIAL_PORT_ACCESS=TRUE
     fi
 
-# must wait till config read in to set default image family since it
-# depends on ARCH,
-# if --arch passed to via cli, will need to update default ROOT_FS
-# if USING_DEFAULT_FAMILY is set
     if test -z "$ROOT_FS" ; then
 	ROOT_FS="xfstests-$ARCH"
 	IMAGE_FLAG="--image-family"

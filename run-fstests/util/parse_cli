@@ -10,6 +10,8 @@ ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
 ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
 done_cleanup=false
 
+set_default_arch
+
 trap '_cleanup; exit 0' 0
 trap '_cleanup; exit 1' 1 2 3 15
 
@@ -1070,6 +1072,8 @@ fi
 if test -n "$DO_ARCHIVE" ; then
     ARG="$ARG fstestarc=$DO_ARCHIVE"
 fi
+
+set_canonicalized_arch "$ARCH"
 
 find_kernel_to_use
 

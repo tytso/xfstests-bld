@@ -15,3 +15,5 @@ ROOT_FS_URL="https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/r
 # 'fastboot boot', if it's not already running.  This can also be set by the
 # --kernel option.  If unset or empty, the existing kernel will be used.
 #KERNEL=$HOME/linux/arch/arm64/boot/Image.lz4-dtb
+
+ARCH=arm64

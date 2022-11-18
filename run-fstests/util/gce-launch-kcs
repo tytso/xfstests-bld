@@ -16,7 +16,7 @@ then
 fi
 
 . "$DIR/util/get-config"
-. "$DIR/util/gce-helper-funcs"
+. "$DIR/util/arch-funcs"
 
 while (( $# >= 1 )); do
     case $1 in
@@ -44,7 +44,7 @@ while (( $# >= 1 )); do
     shift
 done
 
-get_arch "$ARCH"
+set_canonicalized_arch "$ARCH"
 
 if test -z "$GCE_IMAGE_PROJECT" ; then
     GCE_IMAGE_PROJECT="xfstests-cloud"
