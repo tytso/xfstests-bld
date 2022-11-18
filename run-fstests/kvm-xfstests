@@ -19,7 +19,6 @@ fi
 case "$1" in
     install-kconfig)
 	shift
-	export KBUILD_DIR="$(dirname $DIR)/kernel-build"
 	if test ! -x "$KBUILD_DIR/install-kconfig"
 	then
 	    echo "Kernel configuration not supported in this installation"
@@ -30,7 +29,6 @@ case "$1" in
 	;;
     kbuild)
 	shift
-	export KBUILD_DIR="$(dirname $DIR)/kernel-build"
 	if test ! -x "$KBUILD_DIR/kbuild"
 	then
 	    echo "kbuild not supported in this installation"

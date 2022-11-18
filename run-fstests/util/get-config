@@ -22,6 +22,8 @@
 . $DIR/config.common
 . $DIR/config.${XFSTESTS_FLAVOR}
 
+export KBUILD_DIR="$(dirname $DIR)/kernel-build"
+
 # Source custom configs in ~/.config/ if present
 [ -f "$HOME/.config/xfstests-common" ] && . "$HOME/.config/xfstests-common"
 [ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ] && \
