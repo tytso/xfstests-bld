@@ -233,6 +233,7 @@ shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
 arch:
+arm64
 archive
 bisect-bad:
 bisect-good:
@@ -252,6 +253,7 @@ gce-zone:
 gs-bucket:
 help
 hooks:
+i386
 image-family:
 image-project:
 initrd:
@@ -359,6 +361,7 @@ while (( $# >= 1 )); do
 	    if flavor_in gce ; then
 		IMAGE_FLAG="--image"
 	    fi
+	    EXPLICIT_ROOT_FS=yes
 	    unset USING_DEFAULT_FAMILY
 	    ;;
 	-n) shift
@@ -395,8 +398,16 @@ while (( $# >= 1 )); do
 	    fi
 	    ;;
 	--arch) shift
-	    supported_flavors gce
+	    supported_flavors kvm gce
 	    ARCH="$1"
+	    ;;
+	--arm64)
+	    supported_flavors kvm gce
+	    ARCH="arm64"
+	    ;;
+	--i386)
+	    supported_flavors kvm gce
+	    ARCH="i386"
 	    ;;
 	--blktests)
 	    supported_flavors kvm gce
@@ -411,6 +422,7 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
+	    EXPLICIT_ROOT_FS=yes
 	    unset USING_DEFAULT_FAMILY
 	    ;;
 	--fail-loop-count) shift

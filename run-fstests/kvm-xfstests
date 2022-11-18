@@ -50,6 +50,18 @@ QUIET="quiet loglevel=0"
 
 . $DIR/util/parse_cli
 
+if test -z "$EXPLICIT_ROOT_FS" ; then
+    ROOT_FS="$(dirname $DIR)/test-appliance/root_fs.img.$ARCH"
+    if ! test -f "$ROOT_FS" ; then
+	ROOT_FS="$(dirname $DIR)/test-appliance/root_fs.img"
+    fi
+fi
+
+if ! test -f "$ROOT_FS" ; then
+    echo "Can't find root_fs image: $ROOT_FS"
+    exit 1
+fi
+
 if ! test -f "$KERNEL"; then
      echo "$KERNEL: kernel not found"
      exit 1
@@ -169,8 +181,29 @@ chmod 600 "$VDH"
 
 mkdir -p /tmp/kvm-xfstests-$USER
 
+case "$ARCH" in
+    i386|amd64)
+	QEMU_ARCH=x86_64
+	ACCEL=kvm:tcg
+	CONSOLE_DEV=ttyS0
+	MACHINE_TYPE=q35
+	CPU_TYPE=max
+	;;
+    arm64)
+	QEMU_ARCH=aarch64
+	ACCEL=tcg
+	CONSOLE_DEV=ttyAMA0
+	MACHINE_TYPE=virt
+	CPU_TYPE=max
+	;;
+    *)
+	echo "Unsupported architecture: $ARCH"
+	exit 1;
+esac
+QEMU="qemu-system-$QEMU_ARCH"
+
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
-	-machine type=pc,accel=kvm:tcg $CPU_TYPE \
+	-machine $MACHINE_TYPE,accel=$ACCEL -cpu $CPU_TYPE \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
 	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
 	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \
@@ -191,7 +224,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	$NUMA \
 	--kernel $KERNEL \
 	$INITRD \
-	--append "$QUIET root=$ROOT_DEV console=ttyS0,115200 nokaslr $ARG $EXTRA_ARG" |\
+	--append "$QUIET root=$ROOT_DEV console=$CONSOLE_DEV,115200 nokaslr $ARG $EXTRA_ARG" |\
 tee $LOGFILE
 
 if test -n "$DO_ARCHIVE"; then

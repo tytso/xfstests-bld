@@ -16,12 +16,27 @@ flavor_in ()
 
 find_kernel_to_use()
 {
+    local kernel_in_build
+
+    case "$ARCH" in
+        i386|amd64)
+	    kernel_in_build=arch/x86/boot/bzImage
+	    ;;
+	arm64)
+	    kernel_in_build=arch/arm64/boot/Image
+	    ;;
+	*)
+	    echo "Unknown architecture in find_kernel_to_use: $ARCH"
+	    exit 1
+	    ;;
+    esac
+
     if test -z "$OVERRIDE_KERNEL" ; then
 	if test -f .git/kbuild/config ; then
-	    t=$(sed -ne 's/^BLD_DIR=//p' .git/kbuild/config);
+	    t=$($KBUILD_DIR/kbuild --get-build-dir --arch $ARCH)
 	    if test -n "$t" -a "$KERNEL" != "$t" -a \
 		    "$KERNEL" != "$t/linux-image.deb" -a \
-		    "$KERNEL" != "$t/arch/x86/boot/bzImage" ; then
+		    "$KERNEL" != "$t/$kernel_in_build" ; then
 		echo "Detected kbuild config; using $t for kernel"
 		KERNEL=$t
 		OVERRIDE_KERNEL=$t
@@ -29,9 +44,9 @@ find_kernel_to_use()
 		    MODULES=
 		fi
 	    fi
-	elif test -f "./arch/x86/boot/bzImage" ; then
+	elif test -f "./$kernel_in_build" ; then
 	    t=$(pwd)
-	    if test "$KERNEL" != "$t" -a "$KERNEL" != "$t/arch/x86/boot/bzImage"
+	    if test "$KERNEL" != "$t" -a "$KERNEL" != "$t/$kernel_in_build"
 	    then
 		echo "Current directory appears to be a kernel tree; using it"
 		KERNEL=$t
@@ -51,6 +66,6 @@ find_kernel_to_use()
 	if test -z "$OVERRIDE_MODULES" -a -f "$KERNEL/modules.tar.xz" ; then
 	    MODULES="$KERNEL/modules.tar.xz"
 	fi
-	KERNEL="$KERNEL/arch/x86/boot/bzImage"
+	KERNEL="$KERNEL/$kernel_in_build"
     fi
 }

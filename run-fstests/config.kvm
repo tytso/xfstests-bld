@@ -6,7 +6,6 @@
 
 NR_CPU=2
 MEM=2048
-CPU_TYPE=host
 
 #QEMU=/usr/local/bin/qemu-system-x86_64
 QEMU=/usr/bin/kvm
