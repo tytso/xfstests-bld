@@ -24,16 +24,10 @@ GCE_NETWORK="default"
 NR_CPU=2
 MEM=7680
 
-# Name of the GCE image or image family from which the test instances
-# will be created.
-# This can also be set by the -I or --image-family options.
-# If this is not set, will default to using image family xfstests-$ARCH
-# ROOT_FS="xfstests-amd64"
-# IMAGE_FLAG="--image-family"
-
-# TODO: this is what the docs say is default behavior
-# by default, if only ROOT_FS is set, assume ROOT_F is an image
-IMAGE_FLAG="--image"
+# Name of the GCE image project where the GCE images containing the
+# test appliance can be found.  That can be overriden using the
+# --image-project option.
+GCE_IMAGE_FAMILY=xfstests-cloud
 
 ARCH="amd64"
 

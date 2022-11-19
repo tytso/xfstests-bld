@@ -678,14 +678,11 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p GCE_PROJECT
     declare -p GCE_IMAGE_PROJECT
     declare -p ARCH
-    declare -p USING_DEFAULT_FAMILY
     declare -p GCE_ZONE
     declare -p GCE_ZONE2
     declare -p NR_CPU
     declare -p MEM
     declare -p GS_BUCKET
-    declare -p ROOT_FS
-    declare -p IMAGE_FLAG
     declare -p BUCKET_SUBDIR
     declare -p GCE_MIN_SCR_SIZE
     declare -p GCE_LTM_KEEP_DEAD_VM
@@ -725,7 +722,7 @@ fi
 _cleanup
 trap - 0
 
-if test -n "$USING_DEFAULT_FAMILY" ; then
+if test -z "$EXPLICIT_ROOT_FS" ; then
     ROOT_FS="xfstests-$ARCH"
     IMAGE_FLAG="--image-family"
 fi

@@ -362,7 +362,6 @@ while (( $# >= 1 )); do
 		IMAGE_FLAG="--image"
 	    fi
 	    EXPLICIT_ROOT_FS=yes
-	    unset USING_DEFAULT_FAMILY
 	    ;;
 	-n) shift
 	    supported_flavors kvm gce
@@ -423,7 +422,6 @@ while (( $# >= 1 )); do
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
 	    EXPLICIT_ROOT_FS=yes
-	    unset USING_DEFAULT_FAMILY
 	    ;;
 	--fail-loop-count) shift
 	    FAIL_LOOP_COUNT="$1"

@@ -150,10 +150,4 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
     if test -z "$GCE_SERIAL_PORT_ACCESS" ; then
 	GCE_SERIAL_PORT_ACCESS=TRUE
     fi
-
-    if test -z "$ROOT_FS" ; then
-	ROOT_FS="xfstests-$ARCH"
-	IMAGE_FLAG="--image-family"
-	USING_DEFAULT_FAMILY="yes"
-    fi
 fi

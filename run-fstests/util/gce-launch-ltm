@@ -26,12 +26,12 @@ while (( $# >= 1 )); do
 	--image-family) shift
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image-family"
-	    unset USING_DEFAULT_FAMILY
+	    EXPLICIT_ROOT_FS=yes
 	    ;;
 	-I) shift
 	    ROOT_FS="$1"
 	    IMAGE_FLAG="--image"
-	    unset USING_DEFAULT_FAMILY
+	    EXPLICIT_ROOT_FS=yes
 	    ;;
 	--arch) shift
 	    ARCH="$1"
@@ -50,7 +50,7 @@ if test -z "$GCE_IMAGE_PROJECT" ; then
     GCE_IMAGE_PROJECT="xfstests-cloud"
 fi
 
-if test -n "$USING_DEFAULT_FAMILY" ; then
+if test -z "$EXPLICIT_ROOT_FS" ; then
     ROOT_FS="xfstests-$ARCH"
     IMAGE_FLAG="--image-family"
 fi

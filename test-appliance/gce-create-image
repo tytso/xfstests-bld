@@ -59,10 +59,8 @@ done
 
 set_canonicalized_arch "$ARCH"
 
-if test -n "$USING_DEFAULT_FAMILY" ; then
-    ROOT_FS="xfstests-$ARCH"
-    IMAGE_FLAG="--image-family"
-fi
+ROOT_FS="xfstests-$ARCH"
+IMAGE_FLAG="--image-family"
 
 setup_for_buster()
 {
