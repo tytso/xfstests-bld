@@ -600,9 +600,17 @@ case "$1" in
 	    echo "Can't find kernel at $KERNEL"
 	    exit 1
 	fi
+	get_kernel_file_info "$KERNEL"
+	gs_meta=
+	if test -n "$KERNEL_ARCH" ; then
+	    gs_meta="$gs_meta -h x-goog-meta-arch=$KERNEL_ARCH"
+	fi
+	if test -n "$KERNEL_VERSION" ; then
+	    gs_meta="$gs_meta -h x-goog-meta-ver=$KERNEL_VERSION"
+	fi
 	echo "gsutil cp $KERNEL $GS_KERNEL"
 	if test -z "$NO_ACTION" ; then
-	    gsutil -q cp $KERNEL $GS_KERNEL
+	    gsutil -q $gs_meta cp $KERNEL $GS_KERNEL
 	fi
 	exit $?
 	;;

@@ -183,6 +183,10 @@ else
     err=$?
 fi
 
+if test -z "$*" -a "$err" == 0 ; then
+    git describe > $BLD_DIR/.git_version
+fi
+
 if test -z "$*" -a "$err" == 0 && \
 	grep -q CONFIG_MODULES=y $BLD_DIR/.config ; then
     TMPMODDIR=$(mktemp --tmpdir -d kbuild-modules.XXXXXXXX)

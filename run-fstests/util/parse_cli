@@ -399,14 +399,17 @@ while (( $# >= 1 )); do
 	--arch) shift
 	    supported_flavors kvm gce
 	    ARCH="$1"
+	    EXPLICIT_ARCH=yes
 	    ;;
 	--arm64)
 	    supported_flavors kvm gce
 	    ARCH="arm64"
+	    EXPLICIT_ARCH=yes
 	    ;;
 	--i386)
 	    supported_flavors kvm gce
 	    ARCH="i386"
+	    EXPLICIT_ARCH=yes
 	    ;;
 	--blktests)
 	    supported_flavors kvm gce
@@ -1086,6 +1089,17 @@ fi
 set_canonicalized_arch "$ARCH"
 
 find_kernel_to_use
+
+get_kernel_file_info "$KERNEL"
+if test -n "$EXPLICIT_ARCH" ; then
+    if test "$ARCH" != "$KERNEL_ARCH" ; then
+	echo "Kernel $KERNEL is apparently built for $KERNEL_ARCH"
+	echo "Expected architecture: $ARCH"
+	exit 1
+    fi
+else
+    ARCH="$KERNEL_ARCH"
+fi
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
     (cd "$DIR/../fstests-bld" ; ./gen-tarball --fast)
