@@ -8,8 +8,9 @@ SUITE=buster
 MIRROR=http://mirrors.kernel.org/debian
 DIR=$(pwd)
 ROOTDIR=$DIR/rootdir
-RAW_ROOT_FS=$DIR/root_fs.raw
-ROOT_FS=$DIR/root_fs.img
+DEBIAN_ARCH="$(dpkg --print-architecture)"
+RAW_ROOT_FS="$DIR/root_fs.raw.$DEBIAN_ARCH"
+ROOT_FS="$DIR/root_fs.img.$DEBIAN_ARCH"
 COMPAT="-o compat=0.10"
 SAVE_RAW_ROOT=no
 DO_GCE=no
@@ -388,7 +389,6 @@ if test "$RESUME" -le 5 -a -f "backport-packages-$SUITE" ; then
     fi
     rm -rf "$ROOTDIR/debootstrap"
 fi
-DEBIAN_ARCH="$(dpkg --print-architecture)"
 DEBS="$(find debs -name "*_${DEBIAN_ARCH}.deb" -o -name "*_all.deb")"
 if test -n "$DEBS"
 then
