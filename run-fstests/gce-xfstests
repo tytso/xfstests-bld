@@ -552,10 +552,21 @@ case "$1" in
 	;;
     upload-kernel)
 	shift
+	set_default_arch
 	while (( $# >= 1 )); do
 	    case $1 in
 		--no-action)
 		    NO_ACTION="echo "
+		    ;;
+		--arch)
+		    shift
+		    ARCH="$1"
+		    ;;
+		--arm64)
+		    ARCH="arm64"
+		    ;;
+		--i386)
+		    ARCH="i386"
 		    ;;
 		--kernel) shift
 		    KERNEL="$1"
@@ -574,6 +585,7 @@ case "$1" in
 	    esac
 	    shift
 	done
+	set_canonicalized_arch "$ARCH"
 	find_kernel_to_use
 	if test -n "$1" ; then
 	    GS_KERNEL=gs://$GS_BUCKET/$1
