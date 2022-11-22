@@ -6,6 +6,7 @@ DO_AEX="yes"
 API="1.5"
 ORIG_CMDLINE="$*"
 ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
+TESTRUNID=
 
 ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
 done_cleanup=false
@@ -666,7 +667,7 @@ while (( $# >= 1 )); do
 	    KBUILD_OPTS="$1"
 	    ;;
 	--testrunid) shift
-	    supported_flavors gce
+	    supported_flavors gce kvm
 	    TESTRUNID="$1"
 	    ;;
 	--email) shift

@@ -85,13 +85,15 @@ fi
 
 EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
 
-DATE=$(date +%Y%m%d%H%M)
+if test -z "$TESTRUNID" ; then
+    TESTRUNID=$(date +%Y%m%d%H%M)
+fi
 if test -n "$SKIP_LOG" ; then
-    LOGFILE=/tmp/log.$DATE
+    LOGFILE=/tmp/log.$TESTRUNID
 else
     mkdir -p "$DIR/logs"
-    LOGFILE="$DIR/logs/log.$DATE"
-    RESULTFILE="$DIR/logs/results-$DATE.tar.xz"
+    LOGFILE="$DIR/logs/log.$TESTRUNID"
+    RESULTFILE="$DIR/logs/results-$TESTRUNID.tar.xz"
 fi
 
 if test -n "$INITRD" ; then
