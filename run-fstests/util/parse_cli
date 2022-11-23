@@ -1091,7 +1091,9 @@ set_canonicalized_arch "$ARCH"
 
 find_kernel_to_use
 
-get_kernel_file_info "$KERNEL"
+if test "$OVERRIDE_KERNEL" != "none" ; then
+   get_kernel_file_info "$KERNEL"
+fi
 if test -n "$EXPLICIT_ARCH" ; then
     if test "$ARCH" != "$KERNEL_ARCH" ; then
 	echo "Kernel $KERNEL is apparently built for $KERNEL_ARCH"
