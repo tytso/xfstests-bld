@@ -78,6 +78,26 @@ gen_version_header ()
     test "$TC" = dax && echo \#define IS_DAX_CONFIG
 }
 
+function clear_pool_devs ()
+{
+    if test -n "$POOL0_DEV" ; then
+	losetup -d "$POOL0_DEV"
+	POOL0_DEV=
+    fi
+    if test -n "$POOL1_DEV" ; then
+	losetup -d "$POOL1_DEV"
+	POOL1_DEV=
+    fi
+    if test -n "$POOL2_DEV" ; then
+	losetup -d "$POOL2_DEV"
+	POOL2_DEV=
+    fi
+    if test -n "$POOL3_DEV" ; then
+	losetup -d "$POOL3_DEV"
+	POOL3_DEV=
+    fi
+}
+
 while [ "$1" != "" ]; do
     case $1 in
 	--run-once)
@@ -303,6 +323,7 @@ fi
 
 while test -n "$FSTESTCFG"
 do
+	clear_pool_devs
 	if ! get_one_fs_config "/root/fs"; then
           continue
         fi
@@ -402,7 +423,13 @@ do
 
 	# This is required in case of BTRFS uses SCRATCH_DEV_POOL
 	if [[ -n $SCRATCH_DEV_POOL ]]; then
-		unset SCRATCH_DEV
+	    lopt="--sizelimit 5GiB -L -f --show"
+	    POOL0_DEV=$(losetup $lopt -o  0GiB "$LG_SCR_DEV")
+	    POOL1_DEV=$(losetup $lopt -o  5GiB "$LG_SCR_DEV")
+	    POOL2_DEV=$(losetup $lopt -o 10GiB "$LG_SCR_DEV")
+	    POOL3_DEV=$(losetup $lopt -o 15GiB "$LG_SCR_DEV")
+	    SCRATCH_DEV_POOL="$SCRATCH_DEV $POOL0_DEV $POOL1_DEV $POOL2_DEV $POOL3_DEV"
+	    unset SCRATCH_DEV
 	fi
 
 	case "$TEST_DEV" in
@@ -455,6 +482,7 @@ do
 	echo TEST_DEV: $TEST_DEV >> "$RESULT_BASE/config"
 	echo TEST_DIR: $TEST_DIR >> "$RESULT_BASE/config"
 	echo SCRATCH_DEV: $SCRATCH_DEV >> "$RESULT_BASE/config"
+	echo SCRATCH_DEV_POOL: $SCRATCH_DEV_POOL >> "$RESULT_BASE/config"
 	echo SCRATCH_MNT: $SCRATCH_MNT >> "$RESULT_BASE/config"
 	echo SCRATCH_LOGDEV: $SCRATCH_LOGDEV >> "$RESULT_BASE/config"
 	echo TEST_LOGDEV: $TEST_LOGDEV >> "$RESULT_BASE/config"
@@ -462,6 +490,9 @@ do
 	echo TEST_RTDEV: $TEST_RTDEV >> "$RESULT_BASE/config"
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
+	if test -n "$SCRATCH_DEV_POOL" ; then
+	    losetup --list -a > "$RESULT_BASE/loop-devices"
+	fi
 	if test "$TEST_DEV" != "$PRI_TST_DEV" ; then
 	    format_filesystem "$TEST_DEV" "$(get_mkfs_opts)"
 	    ret="$?"
@@ -644,6 +675,7 @@ END	{ if (NR > 0) {
 	gce_run_hooks fs-config-end $TC
 	umount "$TEST_DIR" >& /dev/null
 	umount "$SCRATCH_MNT" >& /dev/null
+	clear_pool_devs
 	if test -n "$RUN_ONCE" ; then
 	    cat /run/fstest-config >> "$RESULTS/fstest-completed"
 	fi

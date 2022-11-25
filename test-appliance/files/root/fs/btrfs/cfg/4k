@@ -1,5 +1,5 @@
 SIZE=small
 export MKFS_OPTIONS="-s 4096 -n 4096"
 export MOUNT_OPTIONS=""
-export SCRATCH_DEV_POOL="/dev/vdc /dev/vdi /dev/vdj /dev/vdk"
-TESTNAME="btrfs 4k block"
+export SCRATCH_DEV_POOL=yes
+TESTNAME="btrfs 4k block (with scratch dev pool)"
