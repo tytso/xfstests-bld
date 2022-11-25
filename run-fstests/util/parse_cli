@@ -1094,14 +1094,16 @@ find_kernel_to_use
 if test "$OVERRIDE_KERNEL" != "none" ; then
    get_kernel_file_info "$KERNEL"
 fi
-if test -n "$EXPLICIT_ARCH" ; then
-    if test "$ARCH" != "$KERNEL_ARCH" ; then
-	echo "Kernel $KERNEL is apparently built for $KERNEL_ARCH"
-	echo "Expected architecture: $ARCH"
-	exit 1
+if test -n "$KERNEL_ARCH" ; then
+    if test -n "$EXPLICIT_ARCH" ; then
+	if test "$ARCH" != "$KERNEL_ARCH" ; then
+	    echo "Kernel $KERNEL is apparently built for $KERNEL_ARCH"
+	    echo "Expected architecture: $ARCH"
+	    exit 1
+	fi
+    else
+	ARCH="$KERNEL_ARCH"
     fi
-else
-    ARCH="$KERNEL_ARCH"
 fi
 
 if test -n "$UPDATE_XFSTESTS_TAR" ; then
