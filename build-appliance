@@ -8,6 +8,7 @@ set -e -u
 
 gen_image_args=
 OUT_TAR=
+DATECODE=
 BUILD_ENV=
 SUDO_ENV=sudo
 DO_GCE=
@@ -48,6 +49,7 @@ longopts+=",out-tar"
 longopts+=",no-out-tar"
 longopts+=",update"
 longopts+=",gce"
+longopts+=",datecode:"
 
 if ! options=$(getopt -o "" -l "$longopts" -- "$@"); then
     usage 1>&2
@@ -78,6 +80,9 @@ while (( $# >= 0 )); do
 	;;
     --gce)
 	DO_GCE=yes
+	;;
+    --datecode) shift
+	DATECODE="$1"
 	;;
     --)
 	shift
@@ -117,7 +122,12 @@ esac
 
 cd ../run-fstests
 if test -n "$DO_GCE"; then
-    ./gce-xfstests create-image --arch=$ARCH >& /tmp/gce-xfstests-create.$$ &
+    d=
+    if test -n "$DATECODE" ; then
+	d="--datecode $DATECODE"
+    fi
+    ./gce-xfstests create-image --arch=$ARCH $d \
+		   >& /tmp/gce-xfstests-create.$$ &
 fi
 
 cd ../test-appliance

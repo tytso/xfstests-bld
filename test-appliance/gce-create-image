@@ -49,6 +49,9 @@ while [ "$1" != "" ]; do
 	--arch=*)
 	    ARCH=$(echo "$1" | sed 's/--arch=//')
 	    ;;
+	--datecode) shift
+	    DATECODE="$1"
+	    ;;
 	*)
 	    echo "usage: gce-create-image [--arch ARCH]"
 	    exit 1
