@@ -1,0 +1,41 @@
+#!/bin/bash
+# This script runs the shell script fragments from a batch directory
+
+. /usr/local/lib/gce-funcs
+. /root/test-config
+
+set -vx
+
+KEEP=
+GCE_DIR=ltm-batch
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--keep)
+	    DO_KEEP=yes
+	    ;;
+	--gce-dir)
+	    shift
+	    GCE_DIR="$1"
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+
+BATCH_DIR=/run/batch-cmds
+
+mkdir -p $BATCH_DIR
+gsutil rsync gs://$GS_BUCKET/$GCE_DIR $BATCH_DIR
+
+for i in $(find $BATCH_DIR -type f -print | sort) ; do
+    . $i
+    if test -z "$DO_KEEP" ; then
+	rm -f $i
+	gsutil rm gs://$GS_BUCKET/$GCE_DIR/$(basename $i)
+    fi
+done
