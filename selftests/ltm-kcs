@@ -1,0 +1,105 @@
+#!/bin/bash
+#
+# Test script for the LTS/KCS server
+
+NO_ACTION=
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+. $DIR/selftests/config
+if test -f $DIR/selftests/config.custom ; then
+    . $DIR/selftests/config.custom
+fi
+
+GCE_XFSTESTS="$DIR/run-fstests/gce-xfstests"
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--no-action)
+	    NO_ACTION=echo
+	    ;;
+    esac
+    shift
+done
+
+function wait_for_ltm_shutdown ()
+{
+    echo -n "Waiting for LTM server shutdown."
+    cnt=0
+    while /bin/true
+    do
+	if ! $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
+	    break
+	fi
+	let cnt=$cnt+1
+	if test $cnt -ge 10
+	then
+	    echo -n "."
+	    cnt=0
+	fi
+	sleep 1
+    done
+    echo " Done!"
+}
+
+if $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
+    echo "About to shutdown the LTM server."
+    echo "If the LTM server is managing any test VM's,"
+    echo "type control-C now!"
+    sleep 3
+    $NO_ACTION $GCE_XFSTESTS abort xfstests-ltm
+    if test -z "$NO_ACTION" ; then
+	wait_for_ltm_shutdown
+    fi
+fi
+
+LTM_TEST_FILE=/tmp/ltm_test
+
+cp /dev/null $LTM_TEST_FILE
+
+echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 " \
+     "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
+     "--commit v5.15.79" >> $LTM_TEST_FILE
+
+KERNEL_DEB="$DIR/selftests/kernels/kernel-amd64.deb"
+
+if test -f "$KERNEL_DEB" ; then
+    if test -n "$NO_ACTION" ; then
+	$NO_ACTION $GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB \
+		   kernel-amd64.deb
+    fi
+    k=$($GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB kernel-amd64.deb | \
+	    awk '{print $4}')
+    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
+	 "btrfs/064 --kernel $k" >> $LTM_TEST_FILE
+fi
+
+KERNEL_DEB="$DIR/selftests/kernels/kernel-arm64.deb"
+
+if test -f "$KERNEL_DEB" ; then
+    if test -n "$NO_ACTION" ; then
+	$NO_ACTION $GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB \
+		   kernel-arm64.deb
+    fi
+    k=$($GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB kernel-arm64.deb | \
+	    awk '{print $4}')
+    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
+	 "btrfs/064 --kernel $k --no-region-shard" >> $LTM_TEST_FILE
+fi
+
+if test -n "$NO_ACTION" ; then
+   echo "ltm-test script:"
+   cat $LTM_TEST_FILE
+   echo ""
+fi
+
+GS_PREFIX="$(gce-xfstests get-bucket)"
+
+$NO_ACTION gsutil cp $LTM_TEST_FILE $GS_PREFIX/ltm-batch/ltm-test
+rm -f $LTM_TEST_FILE
+$NO_ACTION $GCE_XFSTESTS launch-ltm

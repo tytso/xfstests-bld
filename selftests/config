@@ -1,0 +1,20 @@
+#
+# Generic configuration for the self-tests
+#
+# Settings can be overridden as necessary via the config.custom file
+# in the selftests directory
+#
+
+PRIMARY_FSTYPE="ext4"
+
+#
+# Location of kernel sources used for building kernels for self-tests
+# 
+KSRC=/usr/src/linux
+
+#
+# Debian distribution to be used to build the test appliance
+# The build chroots $DISTRO-$ARCH must exist for architectures
+# amd64, i386, and arm64
+#
+DISTRO=bullseye

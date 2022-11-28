@@ -1,0 +1,182 @@
+#!/bin/bash
+
+ALL_LIST="arm64 i386 amd64"
+DATECODE="$(date +%Y%m%d%H%M)"
+LIST=
+SKIP_BUILD=
+SKIP_TEST=
+SKIP_ARM_QEMU_TEST=
+KSRC=
+KSRC_EXPLICIT=
+NO_ACTION=
+SKIP_GCE=
+GCE_TEST_VMS=
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+. $DIR/selftests/config
+if test -f $DIR/selftests/config.custom ; then
+    . $DIR/selftests/config.custom
+fi
+. "$DIR/run-fstests/util/image-utils"
+
+GCE_XFSTESTS="$DIR/run-fstests/gce-xfstests"
+
+build_appliance ()
+{
+    ARCH="$1"
+    ROOT_FS="$DIR/test-appliance/root_fs.img.$ARCH"
+    LOGFILE="$DIR/run-fstests/logs/log.test.$DATECODE"
+    KERNEL="$DIR/selftests/kernels/Image-$ARCH"
+    KERNEL_DEB="$DIR/selftests/kernels/kernel-$ARCH.deb"
+
+    GCE_FLAG="--gce --datecode $DATECODE"
+    if test "$ARCH" = "i386" -o -n "$SKIP_GCE"; then
+	GCE_FLAG=
+    fi
+    if test -n "$SKIP_BUILD"; then
+	echo "Skipping appliance build for architecture $ARCH"
+    else
+	echo "Building test appliance for architecture $i"
+	$NO_ACTION rm -f $ROOT_FS
+	$NO_ACTION "$DIR/build-appliance" --chroot $DISTRO-$ARCH $GCE_FLAG
+	if test -z "$NO_ACTION" -a ! -f $ROOT_FS ; then
+	    echo "Failed to create $ROOT_FS"
+	    exit 1
+	fi
+    fi
+    if test ! -f "$KERNEL" ; then
+        echo "The prebuilt test kernel at $KERNEL doest not exist"
+	echo "Skipping appliance test"
+	return
+    fi
+    if test -n "$SKIP_TEST" ; then
+	return
+    fi
+    echo "Testing appliance for architecture $i"
+    if test -n "$GCE_FLAG" -a -f "$KERNEL_DEB" ; then
+	echo "Launching GCE Test VM $DATECODE-$ARCH"
+	$NO_ACTION $GCE_XFSTESTS --arch $ARCH --kernel "$KERNEL_DEB" \
+		   --testrunid "$DATECODE-$ARCH" --note selftest \
+		   -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064
+	GCE_TEST_VMS="$GCE_TEST_VMS $DATECODE-$ARCH"
+    fi
+    return
+    if test -n "$SKIP_ARM_QEMU_TEST" -a "$ARCH" = arm64; then
+	return
+    fi
+    $NO_ACTION rm -f "$LOGFILE"
+    $NO_ACTION kvm-xfstests --arch $ARCH -c ext4/4k generic/001 --kernel $KERNEL \
+	       --testrunid test.$DATECODE
+    if test -z "$NO_ACTION" ; then
+	if  test! -f "$LOGFILE" ; then
+	    echo "Failed to find logfile $LOGFILE"
+	    exit 1
+	fi
+	if ! grep -q "^Passed all 1 tests" "$LOGFILE" ; then
+	    echo "kvm-xfstests test failure.  See $LOGFILE for more details"
+	    exit 1
+	fi
+	rm -f "$LOGFILE"
+    fi
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--arch)
+	    shift
+	    LIST="$LIST $1"
+	    ;;
+	--arm64)
+	    LIST="$LIST arm64"
+	    ;;
+	--amd64)
+	    LIST="$LIST amd64"
+	    ;;
+	--i386)
+	    LIST="$LIST i386"
+	    ;;
+	--ksrc) shift
+	    KSRC="$1"
+	    KSRC_EXPLICIT=yes
+	    ;;
+	--no-action)
+	    NO_ACTION=echo
+	    ;;
+	--skip-arm-qemu-test)
+	    SKIP_ARM_QEMU_TEST=yes
+	    ;;
+	--skip-build)
+	    SKIP_BUILD=yes
+	    ;;
+	--skip-gce)
+	    SKIP_GCE=yes
+	    ;;
+	--skip-test)
+	    SKIP_TEST=yes
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if test ! -f $KSRC/MAINTAINERS ; then
+    echo "Kernel sources not found at $KSRC"
+    if test -z "$KSRC_EXPLICIT" ; then
+	echo "Please define KSRC in $DIR/selftests/config"
+    fi
+    exit 1
+fi
+
+if test -z "$LIST" ; then
+    LIST="$ALL_LIST"
+fi
+
+for i in $LIST ; do
+    echo "===== Starting architecture $i: $(date)"
+    build_appliance $i
+    echo "===== Done for architecture $i: $(date)"
+    echo ""
+done
+
+if test -z "$GCE_TEST_VMS" ; then
+    exit 0
+fi
+echo -n "Waiting for GCE test VM's."
+cnt=0
+while /bin/true
+do
+    ls=$($GCE_XFSTESTS ls --gce | grep "$DATECODE")
+    if test -z "$ls" ; then
+	break
+    fi
+    let cnt=$cnt+1
+    if test $cnt -ge 10
+    then
+	echo -n "."
+	cnt=0
+    fi
+    sleep 1
+done
+echo " Done!"
+
+for i in $GCE_TEST_VMS ; do
+    echo -n "Checking test VM $i: "
+    if $GCE_XFSTESTS get-results "$i" | \
+	    grep -q "Totals: 6 tests, 2 skipped, 0 failures, 0 errors" ; then
+	echo "Passed"
+	echo $GCE_XFSTESTS rm-results "$i"
+    else
+	echo "FAILED!"
+	echo "   Test results available via: gce-xfstests get-results $i"
+    fi
+done
+exit 0

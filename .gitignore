@@ -17,3 +17,4 @@ MAKELOG
 /kbuild
 /kbuild32
 /install-kconfig
+/selftests/kernels

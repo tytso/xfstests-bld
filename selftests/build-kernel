@@ -1,0 +1,80 @@
+#!/bin/bash
+
+ALL_LIST="arm64 i386 amd64"
+LIST=
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+. $DIR/selftests/config
+if test -f $DIR/selftests/config.custom ; then
+    . $DIR/selftests/config.custom
+fi
+
+if test ! -f $KSRC/MAINTAINERS ; then
+    echo "Kernel sources not found at $KSRC"
+    echo "Please define KSRC in $DIR/selftests/config"
+    exit 1
+fi
+
+build_kernel ()
+{
+    ARCH="$1"
+    BLD_DIR=$(cd $KSRC ; $DIR/kernel-build/kbuild --get-build-dir --arch $ARCH)
+
+    image=bzImage
+    archdir=x86
+    if test "$ARCH" = "arm64" ; then
+	image=Image
+	archdir=arm64
+    fi
+    debfile="$BLD_DIR/linux-image.deb"
+    imagefile="$BLD_DIR/arch/$archdir/boot/$image"
+    rm -f $debfile $imagefile
+    (cd $KSRC ; $DIR/kernel-build/install-kconfig --arch $ARCH ;
+     $DIR/kernel-build/kbuild --arch $ARCH --dpkg)
+    if test ! -f "$BLD_DIR/linux-image.deb" ; then
+	echo "Failed to build kernel for $ARCH"
+	exit 1
+
+    fi
+    mkdir -p $DIR/selftests/kernels
+    cp $debfile "$DIR/selftests/kernels/kernel-$ARCH.deb"
+    cp $imagefile "$DIR/selftests/kernels/Image-$ARCH"
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--arch)
+	    shift
+	    LIST="$LIST $1"
+	    ;;
+	--arm64)
+	    LIST="$LIST arm64"
+	    ;;
+	--amd64)
+	    LIST="$LIST amd64"
+	    ;;
+	--i386)
+	    LIST="$LIST i386"
+	    ;;
+	*)
+	    echo "Unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if test -z "$LIST" ; then
+    LIST="$ALL_LIST"
+fi
+
+for i in $LIST ; do
+    echo "Building for architecture $i"
+    build_kernel $i
+done
