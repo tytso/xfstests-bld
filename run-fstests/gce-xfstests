@@ -363,6 +363,10 @@ case "$1" in
 	done
 	exit 0
 	;;
+    get-bucket)
+	echo gs://"$GS_BUCKET"
+	exit 0
+	;;
     get-results)
 	shift
 	while (( $# >= 1 )); do
