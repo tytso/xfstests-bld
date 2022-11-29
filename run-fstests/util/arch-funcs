@@ -13,12 +13,16 @@
 #
 
 function set_my_arch () {
-    local t
-
     if test -n "${MY_ARCH:=}" ; then
         return
     fi
-    MY_ARCH=$(dpkg --print-architecture)
+    local arch=$(uname -m)
+    case $arch in
+	aarch64)   MY_ARCH=arm64  ;;
+	i386|i686) MY_ARCH=i386   ;;
+	x86_64)    MY_ARCH=amd64  ;;
+	*)         MY_ARCH=$arch  ;;
+    esac
 }
 
 function set_default_arch ()
