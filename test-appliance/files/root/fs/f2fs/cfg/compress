@@ -1,0 +1,5 @@
+SIZE=small
+export MKFS_OPTIONS="-O compression,extra_attr"
+export F2FS_MOUNT_OPTIONS="compress_extension=*"
+REQUIRE_FEATURE=compression
+TESTNAME="F2FS compression"
