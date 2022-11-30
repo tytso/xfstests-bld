@@ -36,7 +36,8 @@ build_appliance ()
     KERNEL_DEB="$DIR/selftests/kernels/kernel-$ARCH.deb"
 
     GCE_FLAG="--gce --datecode $DATECODE"
-    if test "$ARCH" = "i386" -o -n "$SKIP_GCE"; then
+    if test "$ARCH" = "i386" -o -n "$SKIP_GCE" -o \
+	    ! -f ~/.config/gce-xfstests ; then
 	GCE_FLAG=
     fi
     if test -n "$SKIP_BUILD"; then
