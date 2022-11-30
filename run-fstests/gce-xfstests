@@ -1183,7 +1183,7 @@ launch_vm 2> $ERRFILE
 if test "$err" -gt 0 ; then
     cat $ERRFILE
     if grep -q images/family/xfstests-amd64 $ERRFILE ; then
-	if grep -q "The project .* was not found" ; then
+	if grep -q "The project .* was not found" $ERRFILE; then
 	    exit $err
 	fi
 	echo Retrying with the image family xfstests
