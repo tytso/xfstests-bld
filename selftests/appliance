@@ -66,7 +66,6 @@ build_appliance ()
 		   -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064
 	GCE_TEST_VMS="$GCE_TEST_VMS $DATECODE-$ARCH"
     fi
-    return
     if test -n "$SKIP_ARM_QEMU_TEST" -a "$ARCH" = arm64; then
 	return
     fi
@@ -74,7 +73,7 @@ build_appliance ()
     $NO_ACTION kvm-xfstests --arch $ARCH -c ext4/4k generic/001 --kernel $KERNEL \
 	       --testrunid test.$DATECODE
     if test -z "$NO_ACTION" ; then
-	if  test! -f "$LOGFILE" ; then
+	if ! test -f "$LOGFILE" ; then
 	    echo "Failed to find logfile $LOGFILE"
 	    exit 1
 	fi
