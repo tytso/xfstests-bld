@@ -49,7 +49,7 @@ type ShardWorker struct {
 
 const (
 	monitorTimeout  = 1 * time.Hour
-	noStatusTimeout = 5 * time.Minute
+	noStatusTimeout = 10 * time.Minute
 	monitorInterval = 60 * time.Second
 	gsInterval      = 10 * time.Second
 	maxAttempts     = 5
