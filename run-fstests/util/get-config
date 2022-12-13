@@ -26,8 +26,14 @@ export KBUILD_DIR="$(dirname $DIR)/kernel-build"
 
 # Source custom configs in ~/.config/ if present
 [ -f "$HOME/.config/xfstests-common" ] && . "$HOME/.config/xfstests-common"
-[ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ] && \
-	. "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests"
+
+# If XFSTESTS_CONFIG is set, use that
+# otherwise, look for config in default location ~/.config/
+if [ -n "$XFSTESTS_CONFIG" -a -f "$XFSTESTS_CONFIG" ]; then
+    . "$XFSTESTS_CONFIG"
+elif [ -f "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests" ]; then
+    . "$HOME/.config/${XFSTESTS_FLAVOR}-xfstests"
+fi
 
 # For gce-xfstests, source the config for the active account if present
 if test "$XFSTESTS_FLAVOR" = "gce" -a -z "$GCE_ACCOUNT" -a \
