@@ -230,6 +230,8 @@ validate_branch_name()
     fi
 }
 
+SKIP_KERNEL_ARCH_PROBE=
+
 shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
 longopts=(
 aio:
@@ -286,6 +288,7 @@ pts-size:
 preemptible
 primary_fstype:
 repo:
+skip-kernel-arch-probe
 stress-mem:
 stress-opts:
 testrunid:
@@ -749,6 +752,9 @@ while (( $# >= 1 )); do
 	--disable-serial)
 	    GCE_SERIAL_PORT_ACCESS=FALSE
 	    ;;
+	--skip-kernel-arch-probe)
+	    SKIP_KERNEL_ARCH_PROBE=YES
+	    ;;
 	--)
 	    shift
 	    break
@@ -1091,7 +1097,7 @@ set_canonicalized_arch "$ARCH"
 
 find_kernel_to_use
 
-if test "$OVERRIDE_KERNEL" != "none" ; then
+if test -z "$SKIP_KERNEL_ARCH_PROBE" -a "$OVERRIDE_KERNEL" != "none" ; then
    get_kernel_file_info "$KERNEL"
 fi
 if test -n "$KERNEL_ARCH" ; then
