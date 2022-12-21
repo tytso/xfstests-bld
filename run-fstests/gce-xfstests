@@ -409,13 +409,20 @@ case "$1" in
 	exit $?
 	;;
     ssh)
+	# gce-xfstests ssh --user <user> <host> -- <cmd>
 	user=root
 	shift
 	while (( $# >= 1 )); do
 	    case $1 in
 		--user|-u) shift
 			   user="$1"
+			   echo "user=$user"
 			   ;;
+		--)	shift
+			ssh_cmd="$@"
+			CMD="--command="
+			break
+			;;
 		-*)	echo "Unknown option $1"
 			exit 1
 			;;
@@ -424,8 +431,17 @@ case "$1" in
 	    esac
 	    shift
 	done
-	run_gcloud compute -q ssh $user@"$host" \
-	    --zone $(get_gce_zone "$host") $RUN_INTERNAL
+
+	# ssh_cmd must be quoted but passing "" when there is no command
+	# causes gcloud to complain (even if --command= lumped into ssh_cmd)
+	if test -n "$ssh_cmd"; then
+	    run_gcloud compute -q  ssh $user@"$host" \
+		--zone $(get_gce_zone $host) $RUN_INTERNAL --command="$ssh_cmd"
+	    exit $?
+	fi
+
+	run_gcloud compute -q  ssh $user@"$host" \
+	    --zone $(get_gce_zone $host) $RUN_INTERNAL
 	exit $?
 	;;
     scp)
