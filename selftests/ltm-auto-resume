@@ -1,0 +1,197 @@
+#!/bin/bash
+#
+# Test script for LTM auto-resume
+#
+# ./ltm-auto-resume [--arch <arch>] [--kernel <kernel>] [--no-relaunch]
+#
+#    By default, arch=x86, kernel=selftests/kernels/kernel-amd64.deb,
+#    but these can also be overwritten by the flags or by setting
+#    ARCH/KERNEL_DEB in selftests/config.custom.
+#
+#    --no-relaunch can be used to make the test use the existing ltm
+#    server; if this is not used, the ltm server will be shutdown and
+#    relaunched at the beginning of the test and deleted at the end of
+#    the test
+
+. util/ltm
+. util/setup
+. util/results
+
+function cleanup () {
+    local ret=$?
+    echo "Cleaning up..."
+    if test -z $NO_RELAUNCH; then
+	if ! shutdown_ltm &> /dev/null; then
+	    echo "ERROR: Could not shutdown LTM during cleanup."
+	    echo "Please delete LTM if it was launched by selftest."
+	fi
+    fi
+
+    if [ $ret -eq 0 ]; then
+	echo "Selftest ltm-auto-resume passed!"
+    else
+	echo "Selftest ltm-auto-resume failed."
+    fi
+
+    exit $ret
+}
+
+function cancel () {
+    echo "Selftest cancelled."
+    exit 1
+}
+
+trap cleanup EXIT
+trap cancel SIGINT
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+GCE_XFSTESTS="$DIR/run-fstests/gce-xfstests"
+DEBUG_OUTPUT="/tmp/ltm-auto-resume.debug"
+ARCH=x86_64
+KERNEL_DEB="$DIR/selftests/kernels/kernel-amd64.deb"
+
+. $DIR/selftests/config
+if test -f $DIR/selftests/config.custom ; then
+    . $DIR/selftests/config.custom
+fi
+
+export XFSTESTS_CONFIG
+
+rm -f $DEBUG_OUTPUT
+
+NO_RELAUNCH=
+while [ "$1" != "" ]; do
+    case "$1" in
+	--arch) shift
+	    ARCH="$1"
+	    ;;
+	--kernel) shift
+	    KERNEL_DEB="$1"
+	    ;;
+	--no-relaunch) shift
+	    NO_RELAUNCH=y
+	    ;;
+	*)
+	    echo "Invalid option $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+if ! GS_KERNEL=$(get_gs_kernel $KERNEL_DEB); then
+    echo $GS_KERNEL
+    exit 1
+fi
+
+if test -z $NO_RELAUNCH; then
+    echo "Warning: this test will interfere with other tests running on LTM"
+    sleep 10s
+    if ! relaunch_ltm; then
+	exit 1
+    fi
+elif ! $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null; then
+    echo "LTM must be running if using the --no-relaunch option."
+    echo "Please launch LTM and try again."
+    exit 1
+fi
+
+echo "Launching tests: "
+# selftest/001: pass
+# selftest/002: fail
+# selftest/003: fail
+# selftest/004: skip
+# selftest/005: crash
+# selftest/006: timeout
+declare -a test_sets=("selftest/005"
+		      "selftest/006"
+		      "selftest/005 selftest/006"
+		      "selftest/001 selftest/002 selftest/003 selftest/004 selftest/005 selftest/006")
+declare -a runs_flags=("-C 2" "--fail-loop-count 2")
+
+configs="ext4/4k,ext4/1k"
+declare -a test_ids
+for runs_flag in "${runs_flags[@]}"; do
+    for test_set in "${test_sets[@]}"; do
+	# selftest/005 reboots itself - right now LTM cannot detect this,
+	# so monitor timeout must be long enough to allow for reboot
+	echo gce-xfstests ltm -c $configs $runs_flag \
+	    --arch $ARCH --monitor-timeout 10m --kernel \
+	    "$GS_KERNEL" --note selftest $test_set
+	output=$($GCE_XFSTESTS ltm -c $configs $runs_flag \
+		 --arch $ARCH --monitor-timeout 10m --kernel \
+		 "$GS_KERNEL" --note selftest $test_set) &>> $DEBUG_OUTPUT
+	# TODO ^ right now, we need to grab output to get testrunid,
+	# if we ever support setting testrunid in gce-xfstests command,
+	# change this to be written to ltm startup job file
+	# (the --no-relaunch behavior would need to be modified)
+	if [ $? != 0 ]; then
+	    echo "Error sending command to LTM"
+	    exit 1
+	fi
+
+	testrunid_json=$(echo "$output" | jq .testID)
+	if [ $? -ne 0 ]; then
+	    echo "Error: could not retreive testrunid field"
+	    echo "$output"
+	    exit 1
+	fi
+
+	# remove quotation marks and get rid of potential empty testID from login
+	testrunid=$(echo "$testrunid_json" | sed 's/\"//g' | sed '/^[[:space:]]*$/d' )
+	test_ids+=("$testrunid")
+    done
+done
+echo -n "Waiting for tests to complete, this may take several minutes..."
+# wait for results
+# longest test run will have four reboots, and two hangs of 10m each
+# so 60m timeout should be plenty
+cnt=0
+while true; do
+    if ! ltm_managing_tests; then
+	echo "Done!"
+	break
+    fi
+    let cnt=$cnt+1
+    if [ $cnt -ge 60 ]; then
+	echo "ERROR: selftest timed out"
+	exit 1
+    fi
+    sleep 1m
+    echo -n ".."
+done
+
+echo "Checking results... "
+found_errors=0
+i=0
+for runs_flag in "${runs_flags[@]}"; do
+    for test_set in "${test_sets[@]}"; do
+	testrunid=${test_ids[$i]}
+	let i=$i+1
+
+	if ! output=$(unpack_results ltm-$testrunid); then
+	    echo "$output"
+	    found_errors=1
+	    continue
+	fi
+
+	log_debug "script $output"
+	results_dir=$(echo "$output"  | sed 's/Unpacked results at //g')
+
+	configs=$(echo "$configs" | sed 's/,/ /g')
+	for config in $configs; do
+	    echo "Checking results for $testrunid $config $runs_flag $test_set"
+	    if ! check_debug_results $results_dir $config $runs_flag "$test_set"; then
+		found_errors=1
+	    fi
+	done
+    done
+done
+
+exit $found_errors
