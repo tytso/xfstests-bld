@@ -91,6 +91,9 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--no-email",
 		"-c", config,
 	}
+	if sharder.arch != "" {
+		shard.args = append(shard.args, "--arch", sharder.arch)
+	}
 	shard.args = append(shard.args, sharder.validArgs...)
 
 	var defaultProj bool = true

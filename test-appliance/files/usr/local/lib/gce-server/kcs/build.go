@@ -66,12 +66,13 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	err = repo.Checkout(c.Options.CommitID, w)
 	check.Panic(err, cmdLog, "Failed to checkout to commit")
 
-	gsConfig := c.Options.KConfig;
-	kConfigOpts := c.Options.KConfigOpts;
-	kbuildOpts := c.Options.KbuildOpts;
+	gsConfig := c.Options.KConfig
+	kConfigOpts := c.Options.KConfigOpts
+	kbuildOpts := c.Options.KbuildOpts
+	arch := c.Options.Arch
 
 	if logging.MOCK {
-		result := MockRunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, testID, buildLog, log)
+		result := MockRunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, testID, buildLog, log)
 		c.Options.GsKernel = gsPath
 		c.ExtraOptions.Requester = server.KCSTest
 		c.ExtraOptions.TestResult = result
@@ -80,7 +81,7 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	}
 	cmdLog.WithField("commit", c.Options.CommitID).Info("Building kernel")
 
-	err = RunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, testID, buildLog)
+	err = RunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, testID, buildLog)
 	check.Panic(err, log, "Failed to build and upload kernel")
 	log.WithField("gsPath", gsPath).Info("Kernel build and upload finished")
 

@@ -61,36 +61,46 @@ fi
 LTM_TEST_FILE=/tmp/ltm_test
 
 cp /dev/null $LTM_TEST_FILE
+GS_BUCKET=$(gce-xfstests get-bucket)
 
-echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 " \
-     "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
-     "--commit v5.15.79" >> $LTM_TEST_FILE
+function test-ltm ()
+{
+    ARCH=$1
+    KERNEL_DEB=$2
 
-KERNEL_DEB="$DIR/selftests/kernels/kernel-amd64.deb"
-
-if test -f "$KERNEL_DEB" ; then
-    if test -n "$NO_ACTION" ; then
-	$NO_ACTION $GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB \
-		   kernel-amd64.deb
+    if test -f "$KERNEL_DEB" ; then
+	if test -n "$NO_ACTION" ; then
+	    $NO_ACTION $GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB \
+		       kernel-$ARCH.deb
+	fi
+	$GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB kernel-$ARCH.deb
+	k=$"$GS_BUCKET/kernel-$ARCH.deb"
+	a=
+	if test $ARCH = "arm64" ; then
+	    a="--arch $ARCH"
+	fi
+	echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
+	     "btrfs/064 $a --kernel $k" >> $LTM_TEST_FILE
     fi
-    k=$($GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB kernel-amd64.deb | \
-	    awk '{print $4}')
-    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
-	 "btrfs/064 --kernel $k" >> $LTM_TEST_FILE
-fi
+}
 
-KERNEL_DEB="$DIR/selftests/kernels/kernel-arm64.deb"
+function test-kcs ()
+{
+    ARCH=$1
 
-if test -f "$KERNEL_DEB" ; then
-    if test -n "$NO_ACTION" ; then
-	$NO_ACTION $GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB \
-		   kernel-arm64.deb
+    a=
+    if test $ARCH = "arm64" ; then
+	a="--arch $ARCH"
     fi
-    k=$($GCE_XFSTESTS upload-kernel --kernel $KERNEL_DEB kernel-arm64.deb | \
-	    awk '{print $4}')
-    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
-	 "btrfs/064 --kernel $k --no-region-shard" >> $LTM_TEST_FILE
-fi
+    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 $a" \
+	 "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
+	 "--commit v5.15.79" >> $LTM_TEST_FILE
+}
+
+test-kcs amd64
+test-kcs arm64
+test-ltm amd64 $DIR/selftests/kernels/kernel-amd64.deb
+test-ltm arm64 $DIR/selftests/kernels/kernel-arm64.deb
 
 if test -n "$NO_ACTION" ; then
    echo "ltm-test script:"

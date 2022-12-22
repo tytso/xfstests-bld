@@ -423,7 +423,7 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	var config *gcp.Config
 	if toKCS {
-		accessKCS(c.Options.Arch, log, true)
+		accessKCS(log, true)
 		gcp.Update()
 		config = gcp.KCSConfig
 
@@ -446,6 +446,12 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		log.Panic("No internal option fields set in the request")
 	}
 	c.ExtraOptions.Password = password
+
+	log.WithFields(logrus.Fields{
+		"cmdLine":      c.CmdLine,
+		"options":      c.Options,
+		"extraOptions": c.ExtraOptions,
+	}).Info("Sending request")
 
 	js, err := json.Marshal(c)
 	check.Panic(err, log, "Failed to encode json request body")
@@ -518,7 +524,7 @@ if launch is true, it attempts to launch KCS if it's not running.
 KCS is assumed to be always launched by LTM instead of user.
 It checks KCS's metadata to ensure it's not in the process of shutting down.
 */
-func accessKCS(arch string, log *logrus.Entry, launch bool) bool {
+func accessKCS(log *logrus.Entry, launch bool) bool {
 	log.Info("Launching KCS server")
 
 	zone, err := gcp.GceConfig.Get("GCE_ZONE")
@@ -536,7 +542,7 @@ func accessKCS(arch string, log *logrus.Entry, launch bool) bool {
 			if gcp.NotFound(err) {
 				if launch {
 					log.Info("KCS is not running, launching it")
-					runLaunchKCS(arch, log)
+					runLaunchKCS(log)
 					return true
 				}
 				log.Info("KCS is not running")
@@ -559,7 +565,7 @@ func accessKCS(arch string, log *logrus.Entry, launch bool) bool {
 		if active {
 			log.Info("KCS is running")
 			if gcp.KCSConfig == nil {
-				runLaunchKCS(arch, log)
+				runLaunchKCS(log)
 			}
 			return true
 		} else if !launch {
@@ -572,28 +578,18 @@ func accessKCS(arch string, log *logrus.Entry, launch bool) bool {
 	return false
 }
 
-func runLaunchKCS(arch string, log *logrus.Entry) {
+func runLaunchKCS(log *logrus.Entry) {
 	launchLock.Lock()
 	defer launchLock.Unlock()
-	var cmd *exec.Cmd
 
-	if arch != "" {
-		cmd = exec.Command("gce-xfstests", "launch-kcs", "--arch", arch)
-	} else {
-		cmd = exec.Command("gce-xfstests", "launch-kcs")
-	}
+	cmd := exec.Command("gce-xfstests", "launch-kcs")
 	cmdLog := log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil {
-		if strings.HasPrefix(output, "KCS server is already running on") {
-			cmdLog.WithField("output", output).WithError(err).Panic(
-			"KCS server already running but with wrong architecture")
-		} else if !strings.HasPrefix(output, "The KCS instance already exists!") {
-			cmdLog.WithField("output", output).WithError(err).Panic(
+	if err != nil && !strings.HasPrefix(output, "The KCS instance already exists!") {
+		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")
-		}
 	}
 }
 

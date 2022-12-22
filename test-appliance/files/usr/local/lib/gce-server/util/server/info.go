@@ -138,7 +138,7 @@ type StatusResponse struct {
 func InternalQuery(log *logrus.Entry) StatusResponse {
 	log.Info("Sending status query to KCS")
 
-	active := accessKCS("", log, false)
+	active := accessKCS(log, false)
 	if !active {
 		log.Info("KCS is not running, skipping query")
 		return StatusResponse{}

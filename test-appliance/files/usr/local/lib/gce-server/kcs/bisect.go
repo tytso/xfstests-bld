@@ -360,14 +360,15 @@ func (bisector *GitBisector) Build() server.ResultType {
 	bisector.testHistory = append(bisector.testHistory, newTestID)
 
 	buildLog := bisector.logDir + newTestID + ".build"
-	gsConfig := bisector.testRequest.Options.KConfig;
-	kConfigOpts := bisector.testRequest.Options.KConfigOpts;
-	kbuildOpts := bisector.testRequest.Options.KbuildOpts;
+	gsConfig := bisector.testRequest.Options.KConfig
+	kConfigOpts := bisector.testRequest.Options.KConfigOpts
+	kbuildOpts := bisector.testRequest.Options.KbuildOpts
+	arch := bisector.testRequest.Options.Arch
 
 	if logging.MOCK {
-		return MockRunBuild(bisector.repo, bisector.gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, newTestID, buildLog, bisector.log)
+		return MockRunBuild(bisector.repo, bisector.gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, newTestID, buildLog, bisector.log)
 	}
-	err := RunBuild(bisector.repo, bisector.gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, newTestID, buildLog)
+	err := RunBuild(bisector.repo, bisector.gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, newTestID, buildLog)
 	if !check.NoError(err, bisector.log, "Failed to build and upload kernel, skip commit") {
 		return server.Error
 	}

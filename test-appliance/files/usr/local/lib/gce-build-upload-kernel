@@ -3,17 +3,28 @@ set -vx
 # This script is used by KCS server to build and upload kernels.
 # If repository REPO_ID exists, it pulls and checkouts to COMMIT.
 # Environment variables can be set:
-# REPO_DIR GS_BUCKET GS_PATH GS_CONFIG KCONFIG_OPTS
+# REPO_DIR GS_BUCKET GS_PATH GS_CONFIG KCONFIG_OPTS KBUILD_ARCH
 
 function install_kconfig () {
     if test -z "$KCONFIG_OPTS" ; then
-	gce-xfstests install-kconfig || exit 1
+	gce-xfstests install-kconfig --arch "$KBUILD_ARCH" || exit 1
     else
 	local array=($(echo $KCONFIG_OPTS | sed -e 's/,/ /g'))
 
-	gce-xfstests install-kconfig "${array[@]}" || exit 1
+	gce-xfstests install-kconfig --arch "$KBUILD_ARCH" "${array[@]}" || exit 1
     fi
 }
+
+if test -z "$KBUILD_ARCH" ; then
+    KBUILD_ARCH=$(dpkg --print-architecture)
+fi
+KBUILD_OPTS="$KBUILD_OPTS --arch $KBUILD_ARCH"
+image=bzImage
+archdir=x86_64
+if test "$ARCH" = "arm64" ; then
+	image=Image
+	archdir=arm64
+fi
 
 if command -v ccache &> /dev/null /cache/ccache ; then
     export PATH="/usr/lib/ccache:$PATH"
@@ -28,18 +39,6 @@ if test -z "$GS_PATH"; then
     GS_PATH="gs://$GS_BUCKET/bzImage"
 fi
 
-#TODO: why was this using x86 and not x86_64?
-# x86_64 works better with new changes, is that OK to use?
-BUILD_ARCH=$(uname -m)
-case "$BUILD_ARCH" in
-    x86_64)
-	BUILD_ARCH=x86_64
-	;;
-    aarch64)
-	BUILD_ARCH=arm64
-	;;
-esac
-
 if test -n "$GS_CONFIG" ; then
     if gsutil cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
 	if test $(stat -c %s "$REPO_DIR/.config") -gt 16384 ; then
@@ -53,7 +52,7 @@ if test -n "$GS_CONFIG" ; then
 else
     install_kconfig
 fi
-KERNEL_PATH="$REPO_DIR/arch/$BUILD_ARCH/boot/bzImage"
+KERNEL_PATH="$REPO_DIR/arch/$archdir/boot/$image"
 DPKG_FLAGS=
 if [[ $GS_PATH == *.deb ]]; then
     DPKG_FLAGS=--dpkg

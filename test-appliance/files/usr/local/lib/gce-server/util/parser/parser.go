@@ -32,6 +32,7 @@ var invalidOpts = []string{
 	"-r",
 	"--machtype",
 	"--kernel",
+	"--arch",
 	"--commit",
 	"--config",
 	"--kconfig-opts",

@@ -49,6 +49,7 @@ type ShardScheduler struct {
 	bucketSubdir   string
 	gsKernel       string
 	kernelVersion  string
+	arch	       string
 	reportReceiver string
 	maxShards      int
 	keepDeadVM     bool
@@ -117,6 +118,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		bucketSubdir:   bucketSubdir,
 		gsKernel:       c.Options.GsKernel,
 		kernelVersion:  "unknown_kernel_version",
+		arch:		c.Options.Arch,
 		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
@@ -149,6 +151,13 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	check.Panic(err, log, "Failed to connect to GCE service")
 
 	regionShard := !c.Options.NoRegionShard
+	// This is a hack because RegionSharding doesn't know how to
+	// exclude zones that don't have arm64 machine types.  More
+	// generally, if the user has specified a specific machtype,
+	// region sharding doesn't handle that case as well either.
+	if c.Options.Arch == "arm64" {
+		regionShard = false
+	}
 	if regionShard {
 		sharder.initRegionSharding()
 	} else {
