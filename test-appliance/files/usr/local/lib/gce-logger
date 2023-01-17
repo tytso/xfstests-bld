@@ -11,6 +11,22 @@ if echo "$*" | grep -q "^run xfstest "
 then
     echo "$status" >> $RESULT_BASE/completed
 
+    if test ! -f $RESULT_BASE/rpt_status -o \
+		! -f $RESULT_BASE/tests-to-run -o \
+		! -f $RESULT_BASE/completed
+    then
+	status="--% $status"
+    else
+	rpt_status=$(cat $RESULT_BASE/rpt_status)
+	current_rpt=${rpt_status%%/*}
+	total_rpt=${rpt_status##*/}
+	total_tests=$(cat $RESULT_BASE/tests-to-run | sort | uniq | wc -l)
+	count_completed=$(cat $RESULT_BASE/completed | sort | uniq | wc -l)
+
+	progress=$(( ( ( $current_rpt - 1 ) * $total_tests + $count_completed ) * 100  / ( $total_tests * $total_rpt ) ))
+	status="$progress% $status"
+    fi
+
     # sync completed file
     /root/xfstests/bin/syncfs $RESULT_BASE
 fi

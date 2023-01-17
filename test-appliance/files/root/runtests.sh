@@ -610,10 +610,10 @@ do
 	gce_run_hooks fs-config-begin $TC
 	RPT_START=1
 	if test -f "$RESULT_BASE/rpt_status"; then
-	    RPT_START=$(cat "$RESULT_BASE/rpt_status")
+	    RPT_START=$(cat "$RESULT_BASE/rpt_status" | sed 's:/.*::g')
 	fi
 	for j in $(seq $RPT_START $RPT_COUNT) ; do
-	    echo "$j" > "$RESULT_BASE/rpt_status"
+	    echo "$j/$RPT_COUNT" > "$RESULT_BASE/rpt_status"
 	    /root/xfstests/bin/syncfs "$RESULT_BASE"
 	    gce_run_hooks pre-xfstests $TC $j
 	    if test -n "$RUN_ONCE" ; then
