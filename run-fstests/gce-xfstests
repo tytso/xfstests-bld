@@ -233,6 +233,14 @@ case "$1" in
 	    deldisks="--delete-disks all"
 	fi
 	shift
+
+	bg="&"
+	if test "$1" = "--wait"
+	then
+	    bg=
+	    shift
+	fi
+
 	for i in "$@"
 	do
 	    if test -n "$deldisks"
@@ -245,8 +253,8 @@ case "$1" in
 	    run_gcloud compute -q instances add-metadata "$i" \
 		       --metadata "shutdown_reason=$reason" \
 		       --zone "$zone" > /dev/null
-	    run_gcloud compute -q instances delete "$i" \
-		       --zone "$zone" $deldisks &
+	    eval run_gcloud compute -q instances delete "$i" \
+		       --zone "$zone" $deldisks $bg
 	done
 	exit 0
 	;;
