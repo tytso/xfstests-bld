@@ -49,7 +49,6 @@ type ShardWorker struct {
 }
 
 const (
-	monitorTimeout  = 1 * time.Hour
 	noStatusTimeout = 10 * time.Minute
 	monitorInterval = 60 * time.Second
 	resetTimeout    = 10 * time.Minute
@@ -215,7 +214,7 @@ func (shard *ShardWorker) monitor() {
 			return
 		}
 
-		if time.Since(shard.vmtestStart) > monitorTimeout && ! shard.vmReset {
+		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout && ! shard.vmReset {
 			log.Debug("Resetting VM")
 			err := shard.sharder.gce.ResetVM(shard.sharder.projID, shard.zone, shard.name)
 			if err != nil {

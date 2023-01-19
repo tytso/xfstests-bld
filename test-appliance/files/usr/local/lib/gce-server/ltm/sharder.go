@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/email"
@@ -36,6 +37,7 @@ import (
 )
 
 const genResultsSummaryPath = "/usr/local/bin/gen_results_summary"
+const defaultMonitorTimeout = 1 * time.Hour
 
 // ShardScheduler schedules tests and aggregates reports.
 type ShardScheduler struct {
@@ -54,6 +56,7 @@ type ShardScheduler struct {
 	reportReceiver string
 	maxShards      int
 	keepDeadVM     bool
+	monitorTimeout time.Duration
 
 	reportKCS   bool
 	testRequest server.TaskRequest
@@ -127,6 +130,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
+		monitorTimeout: defaultMonitorTimeout,
 
 		reportKCS:   false,
 		testRequest: c,
@@ -147,6 +151,15 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	}
 	if sharder.bucketSubdir == "" {
 		sharder.bucketSubdir = "results"
+	}
+	if c.Options.MonitorTimeout != "" {
+		sharder.monitorTimeout, err = time.ParseDuration(c.Options.MonitorTimeout)
+		if err != nil {
+			sharder.monitorTimeout = defaultMonitorTimeout
+			sharder.log.WithField("MonitorTimeout", c.Options.MonitorTimeout).Error("Unable to parse --monitor-timeout option, using default value")
+		} else {
+			sharder.log.WithField("MonitorTimeout", sharder.monitorTimeout).Info("Parsed monitor timeout argument")
+		}
 	}
 
 	sharder.validArgs, sharder.configs, err = getConfigs(sharder.origCmd)

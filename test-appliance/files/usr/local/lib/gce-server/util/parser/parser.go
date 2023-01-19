@@ -40,6 +40,7 @@ var invalidOpts = []string{
 	"--watch",
 	"--bisect-good",
 	"--bisect-bad",
+	"--monitor-timeout",
 }
 
 /*
