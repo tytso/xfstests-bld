@@ -214,7 +214,12 @@ func (shard *ShardWorker) monitor() {
 			return
 		}
 
-		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout && ! shard.vmReset {
+		// Reset VM if we don't get a status update
+		// Skip check if we are already performing a reset
+		// Selftests may limit monitorTimeout to shorter than noStatusTimeout
+		//    so skip check if we are still launching
+		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout &&
+				! shard.vmReset && shard.vmStatus != "launching" {
 			log.Debug("Resetting VM")
 			err := shard.sharder.gce.ResetVM(shard.sharder.projID, shard.zone, shard.name)
 			if err != nil {
