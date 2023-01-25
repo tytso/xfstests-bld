@@ -12,7 +12,7 @@ QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # SYZKALLER_COMMIT=2f93b54f26aa40233a0a584ce8714e55c8dd159a
 
-FSVERITY_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git/
+FSVERITY_GIT=https://git.kernel.org/pub/scm/fs/fsverity/fsverity-utils.git
 FSVERITY_COMMIT=ddc6bc9daeb79db932aa12edb85c7c2f4647472a
 
 IMA_EVM_UTILS_GIT=https://git.code.sf.net/p/linux-ima/ima-evm-utils.git
