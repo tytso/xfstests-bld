@@ -10,6 +10,9 @@ status=$(echo "$*" | sed -e 's/^run xfstest //')
 if echo "$*" | grep -q "^run xfstest "
 then
     echo "$status" >> $RESULT_BASE/completed
+
+    # sync completed file
+    /root/xfstests/bin/syncfs $RESULT_BASE
 fi
 
 if test -f /run/fstest-config
