@@ -386,6 +386,7 @@ func (sharder *ShardScheduler) aggResults() {
 			"unpackedResultsDir": shard.unpackedResultsDir,
 		})
 		log.Debug("Moving shard result files into aggregate folder")
+		shardHasResults := false
 
 		if check.DirExists(shard.unpackedResultsDir) {
 			err := os.RemoveAll(sharder.aggDir + shard.shardID)
@@ -394,16 +395,22 @@ func (sharder *ShardScheduler) aggResults() {
 			err = os.Rename(shard.unpackedResultsDir, sharder.aggDir+shard.shardID)
 			check.Panic(err, log, "Failed to move dir")
 
+			shardHasResults = true
 			hasResults = true
-		} else if check.FileExists(shard.serialOutputPath) {
+		}
+
+		if check.FileExists(shard.serialOutputPath) {
 			err := os.RemoveAll(sharder.aggDir + shard.shardID + ".serial")
 			check.Panic(err, log, "Failed to remove dir")
 
 			err = os.Rename(shard.serialOutputPath, sharder.aggDir+shard.shardID+".serial")
 			check.Panic(err, log, "Failed to move dir")
 
+			shardHasResults = true
 			hasResults = true
-		} else {
+		}
+
+		if ! shardHasResults {
 			log.Warn("Shard has no results available")
 		}
 	}

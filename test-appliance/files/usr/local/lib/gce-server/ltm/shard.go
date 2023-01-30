@@ -298,8 +298,7 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 
 /*
 finish calls gce-xfstests scripts to fetch and unpack test result files.
-It deletes the results in gs bucket and local serial port output.
-It also determines testResult:
+It deletes the results in gs bucket and determines testResult:
 
 Default		VM finishes without issues, test result is found;
 Crash		VM started running tests but no test result is found;
@@ -334,11 +333,6 @@ func (shard *ShardWorker) finish() {
 
 	if !check.DirExists(shard.unpackedResultsDir) {
 		shard.log.Panic("Failed to find unpacked result files")
-	}
-
-	if check.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
-		err = os.Remove(shard.serialOutputPath)
-		check.NoError(err, shard.log, "Failed to remove dir")
 	}
 
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
