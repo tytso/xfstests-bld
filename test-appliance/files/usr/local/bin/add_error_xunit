@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+import argparse
+import os
+import sys
+from junitparser import JUnitXml, TestSuite, TestCase, Result, Error
+
+def get_test_suite(filename):
+    if not os.path.exists(filename):
+        ts = TestSuite()
+    else:
+        try:
+            ts = JUnitXml.fromfile(filename)
+        except IOError as e:
+            sys.exit("Couldn't open %s: %s" % (filename, e[1]))
+
+    if type(ts) != TestSuite:
+        sys.exit('%s is not a xUnit report file' % filename)
+    return ts
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('input_file', help='input xUnit result file')
+parser.add_argument('testname', help='name of test causing error')
+parser.add_argument('classname', help='classname for test case')
+args = parser.parse_args()
+
+ts = get_test_suite(args.input_file)
+
+result = Result()
+
+error = Error(result)
+error.message='Machine rebooted (crash or test timeout)'
+error.type='TestFail'
+
+tc = TestCase()
+tc.classname=args.classname
+tc.name=args.testname
+tc.time = 0
+tc.result = [error]
+
+# this also updates the statistics
+ts.add_testcase(tc)
+
+ts.write(args.input_file + '.new', pretty=True)
+if os.path.exists(args.input_file):
+    os.rename(args.input_file, args.input_file + '.error.bak')
+os.rename(args.input_file + '.new' , args.input_file)
+
