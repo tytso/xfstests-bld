@@ -304,6 +304,7 @@ else
 fi
 
 touch "$RESULTS/fstest-completed"
+rm -f /run/last_logged
 
 ./check --help > /tmp/check-help
 report_fmt=xunit
