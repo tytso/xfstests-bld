@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# Helper functions for getting/comparing test results
+PYTHONPATH=$PYTHONPATH:$(realpath ../test-appliance/files/usr/lib/python3/dist-packages):$(realpath ../test-appliance/files/usr/lib/python3/dist-packages/junitparser)
+
+. util/setup
+
+function check_debug_results ()
+{
+    local FAIL_LOOP_COUNT=0
+    local COUNT=1
+    local TESTS=""
+
+    local results_dir="$1"
+    shift
+    local config="$1"
+    shift
+
+    while [ "$1" != "" ]; do
+	case $1 in
+	    --fail-loop-count) shift; FAIL_LOOP_COUNT=$1 ;;
+	    -C) shift; COUNT=$1 ;;
+	    *) TESTS="$TESTS $1" ;;
+	esac
+	shift
+    done
+
+    local FAIL_COUNT=$(( $COUNT + $COUNT * $FAIL_LOOP_COUNT ))
+
+    local ret=0
+    # selftest/001: pass
+    # selftest/002: fail
+    # selftest/003: fail
+    # selftest/004: skip
+    # selftest/005: crash
+    # selftest/006: timeout
+    for name in $TESTS; do
+	local fail=0
+	local skip=0
+	local error=0
+	local total=0
+	case "$name" in
+	    selftest/001) total=$COUNT ;;
+	    selftest/002) total=$FAIL_COUNT; fail=$FAIL_COUNT ;;
+	    selftest/003) total=$FAIL_COUNT; fail=$FAIL_COUNT ;;
+	    selftest/004) total=$COUNT;      skip=$COUNT ;;
+	    selftest/005) total=$COUNT;      error=$COUNT ;;
+	    selftest/006) total=$COUNT;      error=$COUNT ;;
+	esac
+
+	python3 ./util/check_results.py --fail $fail --skip $skip \
+		--error $error --total $total $results_dir $config $name
+	if [ "$?" -ne 0 ]; then
+	    ret=1
+	fi
+    done
+    return $ret
+}
+
+function unpack_results ()
+{
+    local id="$1"
+
+    log_debug "unpack_results"
+
+    # give LTM 10m to upload results
+    local cnt=0
+    local output=
+    while [ $cnt -lt 10 ] ; do
+	    if output=$($GCE_XFSTESTS get-results --unpack "$id"); then
+		log_debug "$output"
+		echo "$output"
+		return 0
+	    fi
+	    let cnt=$cnt+1
+	    sleep 1m
+	    log_debug "$output"
+	    log_debug "sleeping..."
+    done
+
+    echo "$output"
+    return 1
+}
