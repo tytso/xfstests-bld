@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# Helper functions for ltm testing
+#
+
+. util/setup
+
+function wait_ltm_online ()
+{
+    log_debug "wait_ltm_online"
+
+    local cnt=0
+    while /bin/true; do
+	if get_ltm_info &> /dev/null; then
+	    break
+	fi
+	let cnt=$cnt+1
+	if [ $cnt -gt 5 ]; then     # 5 min timeout
+	    echo "Timed out waiting for LTM to come online"
+	    return 1
+	fi
+    done
+
+    return 0
+}
+
+function get_ltm_info ()
+{
+    log_debug "get_ltm_info"
+
+    local cnt=0
+    while /bin/true
+    do
+	# must pre-declare as local
+	# using local with command makes return value always 1, ah bash
+	local ltm_info
+	ltm_info=$($GCE_XFSTESTS ltm-info)
+	if test $? -eq 0 -a -n "$ltm_info"; then
+	    log_debug "ltm-info success!"
+	    break
+	fi
+	let cnt=$cnt+1
+	if [ $cnt -ge 12 ]; then     # 1m timeout
+	     echo "Timed out attempting to get ltm-info"
+	     return 1
+	fi
+	log_debug "ltm-info failed, trying again..."
+	sleep 5s
+    done
+
+    echo "$ltm_info"
+}
+
+function ltm_managing_tests ()
+{
+    log_debug "ltm_mangaing tests"
+
+    if ! $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
+	log_debug "xfstests-ltm not found -> LTM not managing tests"
+	return 1
+    fi
+
+    if ! ltm_info=$(get_ltm_info); then
+	log_debug "Error: could not get ltm_info when checking for running tests"
+	# error, assume tests might be running
+	return 0
+    fi
+
+    # if sharders and bisectors empty, assume we aren't managing any tests
+    local sharders=$(echo "$ltm_info" | jq .sharders 2> /dev/null)
+    local bisectors=$(echo "$ltm_info" | jq .bisectors 2> /dev/null)
+
+    if test -z "$sharders" -o -z "$bisectors"; then
+	log_debug "Error: could not find sharders/bisectors information"
+	log_debug "ltm-info:"
+	log_debug "$ltm_info"
+	# error, assume tests might be running
+	return 0
+    fi
+
+    if [ "$sharders" != "[]" ]  || [ "$bisectors" != "null" ]; then
+	log_debug "Found active sharders/bisectors:"
+	log_debug "$ltm_info"
+	return 0
+    fi
+
+    return 1
+}
+
+function shutdown_ltm ()
+{
+    log_debug  "shutdown_ltm"
+
+    if ! $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
+	log_debug "xfstests-ltm was not found, skipping shutdown"
+	return 0
+    fi
+
+    # abort if other tests in progress
+    if ltm_managing_tests; then
+	echo "Could not confirm LTM is not managing any tests."
+	echo "Please stop any tests, delete LTM, and try again."
+	return 1
+    fi
+
+    if test -n "$NO_ACTION" ; then
+	echo $GCE_XFSTESTS abort xfstests-ltm
+	return 0
+    fi
+
+    echo -n "Shutting down LTM server... "
+    $GCE_XFSTESTS abort --wait xfstests-ltm &>> $DEBUG_OUTPUT
+    echo "Done!"
+}
+
+function relaunch_ltm ()
+{
+    if ! shutdown_ltm; then
+	exit 1
+    fi
+
+    echo -n "Launching LTM server... "
+
+    $GCE_XFSTESTS launch-ltm &>> $DEBUG_OUTPUT
+
+    echo "Done!"
+
+    echo -n "Waiting for LTM to come online... "
+    if ! wait_ltm_online; then
+	echo "Could not connect to LTM"
+	exit 1
+    fi
+    echo "Done!"
+}
+

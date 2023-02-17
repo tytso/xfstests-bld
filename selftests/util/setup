@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# Helper functions for selftesting
+#
+
+if test -z "$DEBUG_OUTPUT"; then
+    DEBUG_OUTPUT=/dev/null
+fi
+
+function log_debug()
+{
+    echo "$@" >> $DEBUG_OUTPUT
+}
+
+function get_gs_kernel()
+{
+    log_debug "get_gs_kernel"
+
+    local kernel="$1"
+
+    # see if kernel is at GS
+    if gsutil ls "$kernel" &>> /dev/null; then
+	echo "$kernel"
+	return 0
+    fi
+
+    # look for kernel locally
+    if test ! -f $kernel; then
+	echo "Could not find KERNEL_DEB=$kernel"
+	return 1
+    fi
+
+    local gs_kernel
+    gs_kernel=$($GCE_XFSTESTS upload-kernel --kernel $kernel kernel-arm64.deb 2>$DEBUG_OUTPUT | \
+	awk '{print $4}')
+
+    if [ $? -ne 0 ]; then
+	echo "Could not upload $kernel"
+	return 1
+    fi
+
+    echo $gs_kernel
+}
+

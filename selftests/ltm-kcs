@@ -2,6 +2,8 @@
 #
 # Test script for the LTS/KCS server
 
+. util/ltm
+
 NO_ACTION=
 
 d=$(dirname "$0")
@@ -27,35 +29,8 @@ while [ "$1" != "" ]; do
     shift
 done
 
-function wait_for_ltm_shutdown ()
-{
-    echo -n "Waiting for LTM server shutdown."
-    cnt=0
-    while /bin/true
-    do
-	if ! $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
-	    break
-	fi
-	let cnt=$cnt+1
-	if test $cnt -ge 10
-	then
-	    echo -n "."
-	    cnt=0
-	fi
-	sleep 1
-    done
-    echo " Done!"
-}
-
-if $GCE_XFSTESTS describe-vm xfstests-ltm >& /dev/null ; then
-    echo "About to shutdown the LTM server."
-    echo "If the LTM server is managing any test VM's,"
-    echo "type control-C now!"
-    sleep 3
-    $NO_ACTION $GCE_XFSTESTS abort xfstests-ltm
-    if test -z "$NO_ACTION" ; then
-	wait_for_ltm_shutdown
-    fi
+if ! shutdown_ltm; then
+    exit 1
 fi
 
 LTM_TEST_FILE=/tmp/ltm_test
