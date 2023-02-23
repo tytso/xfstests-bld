@@ -35,6 +35,9 @@ do
 	    shift
 	    ARCH=$1
 	    ;;
+	--dept)
+	    DO_DEPT=yes
+	    ;;
 	--kasan)
 	    DO_KASAN=yes
 	    ;;
@@ -151,6 +154,10 @@ fi
 
 if test -n "$DO_FULL_DEBUG_INFO" ; then
     FILES+=("$KCONFIG_DIR/full-debug-info-configs")
+fi
+
+if test -n "$DO_DEPT" ; then
+    FILES+=("$KCONFIG_DIR/dept-configs")
 fi
 
 if test -n "$DO_KASAN" ; then
