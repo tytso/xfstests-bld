@@ -84,7 +84,7 @@ for i in "${ARCH_LIST[@]}" ; do
 	exit 1
     fi
     cp $TOP_DIR/test-appliance/root_fs.tar.gz out_dir/root_fs.$i.tar.gz
-    cp $TOP_DIR/test-appliance/root_fs.img out_dir/root_fs.img.$i
+    cp $TOP_DIR/test-appliance/root_fs.img.$i out_dir/root_fs.img.$i
     cp $BUILD_DIR/xfstests.tar.gz out_dir/xfstests-$i.tar.gz
     cp $BUILD_DIR/xfstests/git-versions out_dir/git-versions-$i
     if test ! -f out_dir/README ; then
