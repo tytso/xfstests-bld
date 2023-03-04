@@ -1,14 +1,5 @@
 #!/bin/bash
 
-# TODO: add getopt parsing so we can support the --perf option
-
-ADD_FILE=$1
-
-if test -z "$ADD_FILE" ; then
-    echo "Usage: $0 <add-file>"
-    exit 1
-fi
-
 function check_program {
     prog=$1
 
@@ -24,7 +15,7 @@ check_program kbuild
 check_program install-kconfig
 
 function add_config() {
-
+    set -vx
     BLD_DIR=$($KBUILD --get-build-dir)
     if test -z "$BLD_DIR" ; then
 	echo "Can't find kernel build directory"
@@ -39,7 +30,8 @@ function add_config() {
 	cp "$BLD_DIR/.config" /tmp/config-save.$$
     fi
 
-    DEFCONFIG=$(install-kconfig $INSTALL_KCONFIG_OPTS --get-config-fn)
+    DEFCONFIG=$(install-kconfig $INSTALL_KCONFIG_OPTS $INSTALL_KCONFIG_OPTS \
+				--get-config-fn)
     if test -z "$DEFCONFIG" ; then
 	echo "Can't find defconfig file"
 	exit 1
@@ -58,9 +50,34 @@ function add_config() {
 
 KBUILD=kbuild
 INSTALL_KCONFIG_OPTS=
-add_config
-KBUILD=kbuild32
-INSTALL_KCONFIG_OPTS=--i386
+
+while [ "$1" != "" ];
+do
+    case "$1" in
+	--use-generic)
+	    INSTALL_KCONFIG_OPTS=--generic
+	    ;;
+	--perf)
+	    INSTALL_KCONFIG_OPTS=--perf
+	    ;;
+	-*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+	*)
+	    break
+	    ;;
+    esac
+    shift
+done
+
+ADD_FILE=$1
+
+if test -z "$ADD_FILE" ; then
+    echo "Usage: $0 <add-file>"
+    exit 1
+fi
+
 add_config
 
 exit 0
