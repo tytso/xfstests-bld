@@ -35,7 +35,7 @@ install:
 postmark: postmark.c
 	$(CC) $(LDFLAGS) -o postmark -O2 $<
 
-zerofree: ../kvm-xfstests/util/zerofree.c
+zerofree: ../run-fstests/util/zerofree.c
 	$(CC) $(LDFLAGS) -o zerofree -O2 $< -lext2fs
 
 clean:

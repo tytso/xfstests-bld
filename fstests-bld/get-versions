@@ -80,9 +80,9 @@ cd xfstests-dev
 ver=$(git describe --always --dirty); echo "xfstests	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/xfstests.ver
 cd ..
 
-if test -n "$(ls kvm-xfstests/test-appliance/debs/*.ver 2> /dev/null)"
+if test -n "$(ls ../test-appliance/debs/*.ver 2> /dev/null)"
 then
-    cp kvm-xfstests/test-appliance/debs/*.ver $TMPDIR
+    cp ../test-appliance/debs/*.ver $TMPDIR
 fi
 
 cat $TMPDIR/*.ver | sort

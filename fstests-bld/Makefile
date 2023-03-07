@@ -47,9 +47,9 @@ clean:
 	done
 	if test -d xfsprogs-dev; then make -C xfsprogs-dev realclean; fi
 	rm -rf bld xfstests build-distro
-	rm -f kvm-xfstests/util/zerofree $(SCRIPTS)
+	rm -f run-fstests/util/zerofree $(SCRIPTS)
 
-kvm-xfstests/util/zerofree: kvm-xfstests/util/zerofree.c
+run-fstests/util/zerofree: run-fstests/util/zerofree.c
 	cc -static -o $@ $< -lext2fs -lcom_err -lpthread
 
 realclean: clean

@@ -61,8 +61,8 @@ else
     cp xfstests-dev/README* xfstests
 fi
 echo "xfstests-bld	$(git describe --always --dirty) ($(git log -1 --pretty=%cD))" > xfstests-bld.ver
-if test -e kvm-xfstests/test-appliance/debs ; then
-    debs_vers=$(find kvm-xfstests/test-appliance/debs -name "*.ver" -print)
+if test -e ../test-appliance/debs ; then
+    debs_vers=$(find ../test-appliance/debs -name "*.ver" -print)
 else
     debs_vers=
 fi

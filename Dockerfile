@@ -48,12 +48,12 @@ MAINTAINER Theodore Y. Ts'o tytso@mit.edu
 
 COPY . /devel/xfstests-bld
 
-RUN cd /devel/xfstests-bld && \
+RUN cd /devel/xfstests-bld/fstests-bld && \
     cp config.docker config.custom && \
     make && \
     make tarball && \
     tar -C /root -xf xfstests.tar.gz && \
-    cd kvm-xfstests/test-appliance && \
+    cd ../test-appliance && \
     cp docker-entrypoint /entrypoint && \
     rsync --exclude-from docker-exclude-files -avH files/* / && \
     chown -R root:root /root && \
