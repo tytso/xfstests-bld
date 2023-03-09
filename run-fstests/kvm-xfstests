@@ -188,7 +188,7 @@ case "$ARCH" in
 	QEMU_ARCH=x86_64
 	ACCEL=kvm:tcg
 	CONSOLE_DEV=ttyS0
-	MACHINE_TYPE=q35
+	MACHINE_TYPE=${KVM_MACHTYPE:-q35}
 	CPU_TYPE=max
 	;;
     arm64)

@@ -542,8 +542,12 @@ while (( $# >= 1 )); do
 	    PMEM_DEVICE=yes
 	    ;;
 	--machtype) shift
-	    supported_flavors gce
-	    GCE_MACHTYPE="$1"
+	    supported_flavors gce kvm
+	    if flavor_in gce ; then
+		GCE_MACHTYPE="$1"
+	    else
+		KVM_MACHTYPE="$1"
+	    fi
 	    ;;
 	--image-project) shift
 	    supported_flavors gce
