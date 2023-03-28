@@ -37,7 +37,7 @@
     the commands:
 
         kvm-xfstests install-kconfig
-	kvm-xfstests kbuild
+        kvm-xfstests kbuild
 
 6.  Run "kvm-xfstests smoke" to do a quick test.  Or "kvm-xfstests
     -g auto" to do a full test.  You can also run specific tests on
