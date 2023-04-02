@@ -153,7 +153,25 @@ rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
 if test -n "$DO_DPKG" ; then
     $NO_ACTION make "${MAKE_ARGS[@]}" prepare
     REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
-    $NO_ACTION time nice make "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
+    MAJOR=$(echo $REL | awk -F. '{print $1}')
+    MINOR=$(echo $REL | awk -F. '{print $2}')
+    if test -f "$BLD_DIR/.version" ; then
+	NUM=$(cat "$BLD_DIR/.version")
+	# Starting in 6.1, how "make bindeb-pkg" handled the
+	# .version numbering randomly changed; accomodate that
+	# here.   Things are broken starting in 6.1-rc1 until 6.1-rc6
+	# but we won't worry about that here.  See commit
+	# 5db8face97f8 ("kbuild: Restore .version auto-increment behaviour
+	# for Debian packages") which fixed the problem but in a way
+	# which was different compared to how 6.0 and earlier kernels
+	# handled things.
+	if test "$MAJOR" -ge 6 -a "$MINOR" -ge 1 ; then
+	    NUM=$(( $NUM + 1 ))
+	fi
+    else
+	NUM=1
+    fi
+    $NO_ACTION time nice make "KDEB_PKGVERSION=$REL-$NUM" "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
 	 bindeb-pkg "$@"
     err=$?
     d="$BLD_DIR/.."
