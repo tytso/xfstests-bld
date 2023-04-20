@@ -61,8 +61,12 @@ def parse_timestamp(timestamp):
     """Parse an ISO-8601-like timestamp as found in an xUnit file."""
     if timestamp == "":
         return 0
-    return time.mktime(datetime.strptime(timestamp,
-                                         '%Y-%m-%dT%H:%M:%S').timetuple())
+    for fmt in ('%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
+        try:
+            return time.mktime(datetime.strptime(timestamp, fmt).timetuple())
+        except ValueError:
+            pass
+    raise ValueError('no valid timestamp format found')
 
 def failed_tests(testsuite):
     """This iterator the failed tests from the testsuite."""
