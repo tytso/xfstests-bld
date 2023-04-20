@@ -23,6 +23,7 @@ function copy_xunit_results()
 
     if test -f "$RESULT"
     then
+	sed -i.orig -e 's/xmlns=\".*\"//' "$RESULT"
 	if test -f "$RESULTS"
 	then
 	    merge_xunit "$RESULTS" "$RESULT"
