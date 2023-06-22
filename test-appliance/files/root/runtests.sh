@@ -577,6 +577,7 @@ do
 	    files=()
 	    for i in "/root/fs/global_exclude" \
 			"/root/fs/$FS/exclude" \
+			"/root/fs/$BASE_FSTYPE/exclude" \
 			"/root/fs/$FS/cfg/$TC.exclude" \
 			"/root/fs/exclude.$XFSTESTS_FLAVOR" ; do
 		test -f "$i" && files+=("$i")
