@@ -69,7 +69,10 @@ do
 	--no-action)
 	    NO_ACTION=echo
 	    ;;
-
+	-j)
+	    shift
+	    N="$1"
+	    ;;
 	-*)
 	    echo "unknown option: $1"
 	    exit 1
