@@ -1,4 +1,8 @@
 SIZE=small
 export EXT_MKFS_OPTIONS="-O ^extents,^flex_bg,^uninit_bg,^64bit,^metadata_csum,^huge_file,^dir_nlink,^extra_isize"
+if mke2fs -Fq -t ext3 -O ^orphan_file /tmp/test$$.img 200k >& /dev/null ; then
+   EXT_MKFS_OPTIONS="$EXT_MKFS_OPTIONS,^orphan_file"
+   /bin/rm -f /tmp/test$$.img
+fi
 export EXT_MOUNT_OPTIONS="nodelalloc"
 TESTNAME="Ext4 4k block emulating ext3"
