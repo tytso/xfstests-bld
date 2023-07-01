@@ -1,5 +1,5 @@
 /*
- * syncfs.c -- issue 
+ * syncfs.c -- issue syncfs on a file or directory
  */
 
 #define _GNU_SOURCE
@@ -16,14 +16,14 @@ const char *progname;
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s <file>\n");
+	fprintf(stderr, "Usage: %s <file>\n", progname);
 	exit(1);
 }
 
 int main(int argc, char **argv)
 {
 	int fd;
-	
+
 	progname = argv[0];
 	if (argc != 2)
 		usage();
@@ -38,4 +38,3 @@ int main(int argc, char **argv)
 	}
 	return 0;
 }
-	

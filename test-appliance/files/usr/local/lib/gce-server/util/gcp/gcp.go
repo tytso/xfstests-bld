@@ -286,3 +286,10 @@ func NotFound(err error) bool {
 	}
 	return false
 }
+
+func (gce *Service) ResetVM(project string, zone string, instance string) error {
+        instancesService := compute.NewInstancesService(gce.service)
+        call := instancesService.Reset(project, zone, instance)
+        _, err := call.Do()
+        return err
+}

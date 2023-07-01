@@ -36,6 +36,8 @@ function copy_xunit_results()
 	fi
 	rm "$RESULT"
     fi
+
+    /root/xfstests/bin/syncfs $RESULT_BASE
 }
 
 # check to see if a device is assigned to be used
@@ -303,6 +305,7 @@ else
 fi
 
 touch "$RESULTS/fstest-completed"
+rm -f /run/last_logged
 
 ./check --help > /tmp/check-help
 report_fmt=xunit
@@ -607,13 +610,33 @@ do
 	    show_mount_opts
 	fi
 	gce_run_hooks fs-config-begin $TC
-	for j in $(seq 1 $RPT_COUNT) ; do
+	RPT_START=1
+	if test -f "$RESULT_BASE/rpt_status"; then
+	    RPT_START=$(cat "$RESULT_BASE/rpt_status" | sed 's:/.*::g')
+	fi
+	for j in $(seq $RPT_START $RPT_COUNT) ; do
+	    echo "$j/$RPT_COUNT" > "$RESULT_BASE/rpt_status"
+	    /root/xfstests/bin/syncfs "$RESULT_BASE"
 	    gce_run_hooks pre-xfstests $TC $j
 	    if test -n "$RUN_ONCE" ; then
 		if test -f "$RESULT_BASE/completed"
 		then
-		    head -n -2 "$RESULT_BASE/completed" > /tmp/completed
-		    mv /tmp/completed "$RESULT_BASE/completed"
+		    last_test="$(tail -n 1 "$RESULT_BASE/completed")"
+
+		    if test -f "$RESULT_BASE/results.xml"; then
+			add_error_xunit "$RESULT_BASE/results.xml" "$last_test" "xfstests.global"
+		    else
+			# if first test crashes, make sure results.xml gets
+			# setup correctly via copy_xunit_results
+			add_error_xunit "$RESULT_BASE/result.xml" "$last_test" "xfstests.global"
+			copy_xunit_results
+		    fi
+		    /root/xfstests/bin/syncfs $RESULT_BASE
+
+		    # this was part of the in-progress preemption work,
+		    # removing for now as it conflicts with the crash recovery stuff
+		    # head -n -2 "$RESULT_BASE/completed" > /tmp/completed
+		    # mv /tmp/completed "$RESULT_BASE/completed"
 		else
 		    touch "$RESULT_BASE/completed"
 		fi
@@ -627,7 +650,7 @@ do
 	    then
 		echo ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
 		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run) \
-		     > "$RESULT_BASE/check-cmd"
+		     >> "$RESULT_BASE/check-cmd"
 		bash ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
 		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run)
 		copy_xunit_results
@@ -642,6 +665,7 @@ do
 	    fi
 	    rm -f "$RESULT_BASE/completed"
 	done
+	rm -f "$RESULT_BASE/rpt_status"
 	if test -n "$RUN_ON_GCE"
 	then
 	    gsutil cp "gs://$GS_BUCKET/check-time.tar.gz" /tmp >& /dev/null

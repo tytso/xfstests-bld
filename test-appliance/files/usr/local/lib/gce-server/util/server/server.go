@@ -116,20 +116,21 @@ const (
 
 // UserOptions contains configs user sends to LTM or KCS.
 type UserOptions struct {
-	NoRegionShard bool   `json:"no_region_shard"`
-	BucketSubdir  string `json:"bucket_subdir"`
-	GsKernel      string `json:"gs_kernel"`
-	ReportEmail   string `json:"report_email"`
-	CommitID      string `json:"commit_id"`
-	GitRepo       string `json:"git_repo"`
-	BranchName    string `json:"branch_name"`
-	UnWatch       string `json:"unwatch"`
-	BadCommit     string `json:"bad_commit"`
-	GoodCommit    string `json:"good_commit"`
-	KConfig	      string `json:"kconfig"`
-	KConfigOpts   string `json:"kconfig_opts"`
-	KbuildOpts    string `json:"kbuild_opts"`
-	Arch          string `json:"arch"`
+	NoRegionShard  bool   `json:"no_region_shard"`
+	BucketSubdir   string `json:"bucket_subdir"`
+	GsKernel       string `json:"gs_kernel"`
+	ReportEmail    string `json:"report_email"`
+	CommitID       string `json:"commit_id"`
+	GitRepo        string `json:"git_repo"`
+	BranchName     string `json:"branch_name"`
+	UnWatch        string `json:"unwatch"`
+	BadCommit      string `json:"bad_commit"`
+	GoodCommit     string `json:"good_commit"`
+	KConfig	       string `json:"kconfig"`
+	KConfigOpts    string `json:"kconfig_opts"`
+	KbuildOpts     string `json:"kbuild_opts"`
+	Arch           string `json:"arch"`
+	MonitorTimeout string `json:"monitor_timeout"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally.

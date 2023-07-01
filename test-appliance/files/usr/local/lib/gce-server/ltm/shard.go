@@ -38,6 +38,7 @@ type ShardWorker struct {
 	vmStatus    string
 	vmtestStart time.Time
 	testResult  server.ResultType
+	vmReset     bool
 
 	log                *logrus.Entry
 	logPath            string
@@ -48,9 +49,9 @@ type ShardWorker struct {
 }
 
 const (
-	monitorTimeout  = 1 * time.Hour
-	noStatusTimeout = 5 * time.Minute
+	noStatusTimeout = 10 * time.Minute
 	monitorInterval = 60 * time.Second
+	resetTimeout    = 10 * time.Minute
 	gsInterval      = 10 * time.Second
 	maxAttempts     = 5
 )
@@ -70,6 +71,7 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		vmStatus:    "waiting for launch",
 		vmtestStart: time.Now(),
 		testResult:  server.DefaultResult,
+		vmReset:     false,
 
 		log:                sharder.log.WithField("shardID", shardID),
 		logPath:            logPath,
@@ -91,22 +93,24 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--no-email",
 		"-c", config,
 	}
+
 	if sharder.arch != "" {
 		shard.args = append(shard.args, "--arch", sharder.arch)
 	}
-	shard.args = append(shard.args, sharder.validArgs...)
 
-	var defaultProj bool = true
-	for _, arg := range shard.args {
+	var imgProjFlag bool = false
+	for _, arg := range sharder.validArgs {
 		if arg == "--image-project" {
-			defaultProj = false
+			imgProjFlag = true
 			break
 		}
 	}
 
-	if defaultProj {
-		shard.args = append(shard.args, "--image-project", sharder.projID)
+	if ! imgProjFlag && len(sharder.imgProjID) > 0 {
+		shard.args = append(shard.args, "--image-project", sharder.imgProjID)
 	}
+
+	shard.args = append(shard.args, sharder.validArgs...)
 
 	return &shard
 }
@@ -185,6 +189,7 @@ func (shard *ShardWorker) monitor() {
 				if *metaData.Value != shard.vmStatus {
 					shard.vmStatus = *metaData.Value
 					shard.vmtestStart = time.Now()
+					shard.vmReset = false
 					break
 				}
 			}
@@ -203,18 +208,28 @@ func (shard *ShardWorker) monitor() {
 			log.Debug("waiting to get test status metadata")
 		}
 
-		if time.Since(shard.vmtestStart) > monitorTimeout {
-			if !shard.sharder.keepDeadVM {
-				shard.shutdownOnTimeout(instanceInfo.Metadata)
-			}
-			shard.vmStatus = "timeout on one test"
-			shard.testResult = server.Hang
 
-			log.WithFields(logrus.Fields{
-				"status": shard.vmStatus,
-				"start":  shard.vmtestStart.Format(time.Stamp),
-			}).Errorf("Instance seems to have wedged, no status update for %s", monitorTimeout.Round(time.Minute))
+		if shard.vmReset && time.Since(shard.vmtestStart) > resetTimeout {
+			log.Errorf("VM did not come back online after reset, exiting");
 			return
+		}
+
+		// Reset VM if we don't get a status update
+		// Skip check if we are already performing a reset
+		// Selftests may limit monitorTimeout to shorter than noStatusTimeout
+		//    so skip check if we are still launching
+		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout &&
+				! shard.vmReset && shard.vmStatus != "launching" {
+			log.Debug("Resetting VM")
+			err := shard.sharder.gce.ResetVM(shard.sharder.projID, shard.zone, shard.name)
+			if err != nil {
+				log.Errorf("Failed to reset %s", shard.name)
+				shard.vmStatus = "failed to reset after timeout"
+				shard.testResult = server.Error
+				return
+			}
+			shard.vmReset = true
+			shard.vmtestStart = time.Now()
 		}
 
 		log.WithFields(logrus.Fields{
@@ -283,8 +298,7 @@ func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 
 /*
 finish calls gce-xfstests scripts to fetch and unpack test result files.
-It deletes the results in gs bucket and local serial port output.
-It also determines testResult:
+It deletes the results in gs bucket and determines testResult:
 
 Default		VM finishes without issues, test result is found;
 Crash		VM started running tests but no test result is found;
@@ -319,11 +333,6 @@ func (shard *ShardWorker) finish() {
 
 	if !check.DirExists(shard.unpackedResultsDir) {
 		shard.log.Panic("Failed to find unpacked result files")
-	}
-
-	if check.FileExists(shard.serialOutputPath) && !shard.vmTimeout {
-		err = os.Remove(shard.serialOutputPath)
-		check.NoError(err, shard.log, "Failed to remove dir")
 	}
 
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)

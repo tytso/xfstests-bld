@@ -6,10 +6,31 @@ then
     run_hooks logger "$*"
 fi
 
+is_test=
 status=$(echo "$*" | sed -e 's/^run xfstest //')
 if echo "$*" | grep -q "^run xfstest "
 then
+    is_test="y"
     echo "$status" >> $RESULT_BASE/completed
+
+    if test ! -f $RESULT_BASE/rpt_status -o \
+		! -f $RESULT_BASE/tests-to-run -o \
+		! -f $RESULT_BASE/completed
+    then
+	status="--% $status"
+    else
+	rpt_status=$(cat $RESULT_BASE/rpt_status)
+	current_rpt=${rpt_status%%/*}
+	total_rpt=${rpt_status##*/}
+	total_tests=$(cat $RESULT_BASE/tests-to-run | sort | uniq | wc -l)
+	count_completed=$(cat $RESULT_BASE/completed | sort | uniq | wc -l)
+
+	progress=$(( ( ( $current_rpt - 1 ) * $total_tests + $count_completed ) * 100  / ( $total_tests * $total_rpt ) ))
+	status="$progress% $status"
+    fi
+
+    # sync completed file
+    /root/xfstests/bin/syncfs $RESULT_BASE
 fi
 
 if test -f /run/fstest-config
@@ -18,7 +39,11 @@ then
     status="$cfg $status"
 fi
 
-if test -z "$(find /run/last_logged -mmin -1 -print 2> /dev/null)"
+# force first test to upload it's test status and wait for it to finish
+if test -n "$is_test" -a ! -s /run/last_logged; then
+    /usr/local/lib/gce-add-metadata "status=$(date +%H:%M) $status"
+    echo "Started testing" > /run/last_logged
+elif test -z "$(find /run/last_logged -mmin -1 -print 2> /dev/null)"
 then
     /usr/local/lib/gce-add-metadata "status=$(date +%H:%M) $status" &
     touch /run/last_logged

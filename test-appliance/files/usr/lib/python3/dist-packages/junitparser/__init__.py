@@ -8,6 +8,7 @@ from .junitparser import (
     Skipped,
     Failure,
     Error,
+    Result,
     TestCase,
     Properties,
     IntAttr,

@@ -87,6 +87,11 @@ print_help ()
 	echo "			- Don't shard test VMs into other GCE zones"
 	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
+    if flavor_in gce ; then
+	echo "	--monitor-timeout time	- LTM option to reboot test VM if no"
+	echo "		status update after specified time. Accepted time"
+	echo "		suffixes include \"h\", \"m\", \"s\"."
+    fi
     echo ""
     echo "Common file system configurations are:"
     echo "	4k 1k ext3 nojournal ext3conv metacsum dioread_nolock "
@@ -119,7 +124,7 @@ validate_test_name()
     if test -z "$DO_BLKTESTS" ; then
 	case "$1" in
 	    btrfs*|ceph*|cifs*|ext4*|f2fs*|generic*|nfs*) ;;
-	    ocfs2*|overlay*|perf*|shared*|udf*|xfs*) ;;
+	    ocfs2*|overlay*|perf*|shared*|udf*|xfs*|selftest*) ;;
 	    *)
 		echo -e "Invalid xfstests test name: $1\n"
 		print_help
@@ -269,6 +274,7 @@ local-ssd-nvme
 log
 machtype:
 modules:
+monitor-timeout:
 nfssrv:
 note:
 no-action
@@ -758,6 +764,9 @@ while (( $# >= 1 )); do
 	    ;;
 	--skip-kernel-arch-probe)
 	    SKIP_KERNEL_ARCH_PROBE=YES
+	    ;;
+	--monitor-timeout) shift
+	    MONITOR_TIMEOUT="$1"
 	    ;;
 	--)
 	    shift

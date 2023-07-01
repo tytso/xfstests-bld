@@ -32,7 +32,14 @@ function send_to_ltm() {
     local cmd_to_send=$1
     shift
 
-    if test ! -f "$DIR/.ltm_cookie_$GCE_PROJECT"; then
+        # Failed login will create an empty cookie file, so ensure
+        # the file exists and contains a cookie - sometimes ltm_post_json
+        # will succeed even when login fails, so we cannot simply remove
+        # the cookie file upon ltm_post_json failure
+    if test ! -f "$DIR/.ltm_cookie_$GCE_PROJECT" || \
+            ! grep "a.$GCE_PROJECT.gce-xfstests" "$DIR/.ltm_cookie_$GCE_PROJECT" &> /dev/null
+    then
+        echo "login attempt " >> /tmp/ltm-auto-resume.debug
         # just create a new login session and store it in the cookie
         ltm_post_json -c $DIR/.ltm_cookie_$GCE_PROJECT -d "{\"password\":\"$GCE_LTM_PWD\"}" \
             "https://$LTM_HOSTNAME/login"
@@ -96,6 +103,9 @@ function send_to_ltm() {
     fi
     if [ -n "$ARCH" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"arch\":\"$ARCH\""
+    fi
+    if [ -n "$MONITOR_TIMEOUT" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"monitor_timeout\":\"$MONITOR_TIMEOUT\""
     fi
     if [ -n "$LTM_OPTS" ]; then
 	LTM_OPTS="\"options\": {$LTM_OPTS}"

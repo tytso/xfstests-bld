@@ -372,6 +372,8 @@ sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
     -e 's/After=rc.local.service/After=network.target/' \
 	/etc/systemd/system/telnet-getty@.service
 
+echo "kernel.panic=60" >> /etc/sysctl.conf
+
 systemctl enable kvm-xfstests.service
 systemctl enable gce-fetch-gs-files.service
 systemctl enable gce-finalize-wait.service
