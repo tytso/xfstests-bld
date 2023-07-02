@@ -36,9 +36,21 @@ while (( $# >= 1 )); do
 	--arch) shift
 	    ARCH="$1"
 	    ;;
+	--oslogin)
+            GCE_OSLOGIN=TRUE
+            ;;
+	--no-oslogin)
+            GCE_OSLOGIN=FALSE
+            ;;
+	--oslogin-2fa)
+            GCE_OSLOGIN_2FA=TRUE
+            ;;
+	--no-oslogin-2fa)
+            GCE_OSLOGIN_2FA=FALSE
+            ;;
 	*)
 	    echo "Invalid option \"$1\""
-	    shift
+	    exit 1
 	    ;;
     esac
     shift
@@ -111,6 +123,16 @@ ARG="gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
 ARG="$ARG gce_xfs_ltm=YES"
 if test -n "$TZ" ; then
     ARG="$ARG fstesttz=$TZ"
+fi
+
+if test -n "$GCE_OSLOGIN"
+then
+    ARG="$ARG enable-oslogin=$GCE_OSLOGIN"
+fi
+
+if test -n "$GCE_OSLOGIN_2FA"
+then
+    ARG="$ARG enable-oslogin-2fa=GCE_OSLOGIN_2FA"
 fi
 
 if ! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem

@@ -277,6 +277,10 @@ modules:
 monitor-timeout:
 nfssrv:
 note:
+oslogin
+no-oslogin
+oslogin-2fa
+no-oslogin-2fa
 no-action
 no-archive
 no-collapse
@@ -473,6 +477,22 @@ while (( $# >= 1 )); do
 	--cpu-type) shift
 	    supported_flavors kvm
 	    CPU_TYPE="$1"
+	    ;;
+	--oslogin)
+	    supported_flavors gce
+	    GCE_OSLOGIN=TRUE
+	    ;;
+	--no-oslogin)
+	    supported_flavors gce
+	    GCE_OSLOGIN=FALSE
+	    ;;
+	--oslogin-2fa)
+	    supported_flavors gce
+	    GCE_OSLOGIN_2FA=TRUE
+	    ;;
+	--no-oslogin-2fa)
+	    supported_flavors gce
+	    GCE_OSLOGIN_2FA=FALSE
 	    ;;
 	--no-action)
 	    supported_flavors kvm gce
