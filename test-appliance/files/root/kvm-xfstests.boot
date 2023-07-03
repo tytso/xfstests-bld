@@ -202,5 +202,10 @@ else
 	else
 	    /usr/local/lib/gce-add-metadata "kernel_version=$(uname -a)" &
 	fi
+	if test -n "$(gce_attribute no_vm_timeout)" ; then
+	    systemctl stop gce-finalize.timer
+	    systemctl disable gce-finalize.timer
+	    logger -i "Disabled gce-finalize timer"
+	fi
     fi
 fi

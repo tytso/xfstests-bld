@@ -246,6 +246,11 @@ if test -n "$RUN_ON_GCE"
 then
     cp /usr/local/lib/gce-local.config /root/xfstests/local.config
     . /usr/local/lib/gce-funcs
+    if test -n "$(gce_attribute no_vm_timeout)" ; then
+	systemctl stop gce-finalize.timer
+	systemctl disable gce-finalize.timer
+	logger -i "Disabled gce-finalize timer"
+    fi
     image=$(gcloud compute disks describe --format='value(sourceImage)' \
 		--zone "$ZONE" ${instance} | \
 		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \

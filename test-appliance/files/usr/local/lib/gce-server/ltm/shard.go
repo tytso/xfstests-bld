@@ -91,6 +91,7 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--kernel", sharder.gsKernel,
 		"--bucket-subdir", sharder.bucketSubdir,
 		"--no-email",
+		"--no-vm-timeout",
 		"-c", config,
 	}
 

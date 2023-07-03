@@ -291,6 +291,7 @@ no-preemptible
 no-punch
 no-region-shard
 no-virtio-rng
+no-vm-timeout
 no-zero
 numa:
 pmem-device
@@ -586,6 +587,10 @@ while (( $# >= 1 )); do
 	--no-virtio-rng)
 	    supported_flavors kvm
 	    NO_VIRTIO_RNG=yes
+	    ;;
+	--no-vm-timeout)
+	    supported_flavors gce
+	    GCE_NO_VM_TIMEOUT=yes
 	    ;;
 	--preemptible|--preempt)
 	    supported_flavors gce

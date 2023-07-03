@@ -1178,7 +1178,12 @@ fi
 
 if test -n "$GCE_OSLOGIN_2FA"
 then
-    ARG="$ARG enable-oslogin-2fa=GCE_OSLOGIN_2FA"
+    ARG="$ARG enable-oslogin-2fa=$GCE_OSLOGIN_2FA"
+fi
+
+if test -n "$GCE_NO_VM_TIMEOUT"
+then
+    ARG="$ARG gce_no_vm_timeout=$GCE_NO_VM_TIMEOUT"
 fi
 
 if test -n "$RUN_ON_LTM"; then
