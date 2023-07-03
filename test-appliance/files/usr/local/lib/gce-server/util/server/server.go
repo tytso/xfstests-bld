@@ -44,6 +44,8 @@ const (
 	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
 
 	shutdownTimeout = 30 * time.Second
+
+	loggerPath = "/usr/local/lib/gce-logger"
 )
 
 // RequestType defines the type of a json request.
@@ -165,6 +167,7 @@ type SimpleResponse struct {
 type Instance struct {
 	httpServer *http.Server
 	addr       string
+	name       string
 	router     *mux.Router
 
 	store *sessions.CookieStore
@@ -218,11 +221,12 @@ func init() {
 }
 
 // New sets up a new https server.
-func New(addr string) (*Instance, error) {
+func New(addr string, name string) (*Instance, error) {
 	log := logging.InitLogger(logging.ServerLogPath)
 	log.Info("Initiating server")
 
 	server := &Instance{
+		name:	name,
 		addr:   addr,
 		router: mux.NewRouter(),
 		store:  sessions.NewCookieStore(key),
@@ -247,14 +251,20 @@ func (server *Instance) Log() *logrus.Entry {
 
 // Start launches the server. Custom endpoints shuold be registered already.
 func (server *Instance) Start() {
-	server.log.Info("Launching server")
+	launchMsg := fmt.Sprintf("Started %s server", server.name)
+	server.log.Info(launchMsg)
 	defer logging.CloseLog(server.log)
+
+	err := exec.Command(loggerPath, "--force", launchMsg).Run()
+	if err != nil {
+		server.log.WithError(err).Error("Failed log startup message")
+	}
 
 	server.httpServer = &http.Server{
 		Addr:    server.addr,
 		Handler: server.router,
 	}
-	err := server.httpServer.ListenAndServeTLS(certPath, secretPath)
+	err = server.httpServer.ListenAndServeTLS(certPath, secretPath)
 
 	if err != http.ErrServerClosed {
 		server.log.WithError(err).Error("Server stopped unexpectedly")

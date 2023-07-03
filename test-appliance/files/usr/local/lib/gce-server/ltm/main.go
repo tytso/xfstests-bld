@@ -140,7 +140,7 @@ func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
 }
 
 func main() {
-	s, err := server.New(":443")
+	s, err := server.New(":443", "ltm")
 	if err != nil {
 		panic(err)
 	}
