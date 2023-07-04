@@ -276,6 +276,15 @@ case "$1" in
 	done
 	exit 0
 	;;
+    simulate-maintenance-event)
+	shift
+	for i in "$@"
+	do
+	    run_gcloud compute -q instances simulate-maintenance-event "$i" \
+		   --zone $(get_gce_zone "$i") &
+	done
+	exit 0
+	;;
     ls-disks|ls-disk)
 	run_gcloud compute disks list
 	exit $?

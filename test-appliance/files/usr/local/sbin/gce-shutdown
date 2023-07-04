@@ -90,7 +90,7 @@ then
 
     REPORT_EMAIL=$(gce_attribute report_email)
     run_hooks send-email
-    if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY" -a ! -f /run/powerbtn
+    if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY"
     then
 	if test -s /results/report
 	then
@@ -99,6 +99,10 @@ then
 	    RESULTS_REPORT=/results/runtests.log
 	fi
 	subj="$suite results $TESTRUNID - $(uname -r)"
+	if test -f /run/powerbtn
+	then
+	    subj="$subj - test run aborted"
+	fi
 	if test -z "$GCE_REPORT_SENDER"
 	then
 	    GCE_REPORT_SENDER="$USER@$HOSTNAME"

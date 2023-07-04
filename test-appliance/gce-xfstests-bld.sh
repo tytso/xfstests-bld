@@ -19,7 +19,8 @@ F2FS_TOOLS="@F2FS_TOOLS@"
 # Hardcoded go version
 GO_VERSION=1.17.6
 
-PACKAGES="bash-completion \
+PACKAGES="acpid \
+	bash-completion \
 	bc \
 	bison \
 	blktrace \

@@ -624,7 +624,16 @@ do
 	    /root/xfstests/bin/syncfs "$RESULT_BASE"
 	    gce_run_hooks pre-xfstests $TC $j
 	    if test -n "$RUN_ONCE" ; then
-		if test -f "$RESULT_BASE/completed"
+		if test -f "/results/preempted"
+		then
+		    rm -f "/results/preempted"
+		    if test -f "$RESULT_BASE/completed"
+		    then
+			# Backup and restart the test that was interrupted
+			head -n -2 "$RESULT_BASE/completed" > /tmp/completed
+			mv /tmp/completed "$RESULT_BASE/completed"
+		    fi
+		elif test -f "$RESULT_BASE/completed"
 		then
 		    last_test="$(tail -n 1 "$RESULT_BASE/completed")"
 
@@ -637,11 +646,6 @@ do
 			copy_xunit_results
 		    fi
 		    /root/xfstests/bin/syncfs $RESULT_BASE
-
-		    # this was part of the in-progress preemption work,
-		    # removing for now as it conflicts with the crash recovery stuff
-		    # head -n -2 "$RESULT_BASE/completed" > /tmp/completed
-		    # mv /tmp/completed "$RESULT_BASE/completed"
 		else
 		    touch "$RESULT_BASE/completed"
 		fi
