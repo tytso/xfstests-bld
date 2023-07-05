@@ -2,6 +2,7 @@
 Package gcp deals with Google Cloud APIs and config file parsing.
 
 Files included in this package:
+
 	gcp.go: 	Interface for GCP manipulation.
 	config.go: 	Parse config files into dicts.
 */
@@ -288,8 +289,15 @@ func NotFound(err error) bool {
 }
 
 func (gce *Service) ResetVM(project string, zone string, instance string) error {
-        instancesService := compute.NewInstancesService(gce.service)
-        call := instancesService.Reset(project, zone, instance)
-        _, err := call.Do()
-        return err
+	instancesService := compute.NewInstancesService(gce.service)
+	call := instancesService.Reset(project, zone, instance)
+	_, err := call.Do()
+	return err
+}
+
+func (gce *Service) StartVM(project string, zone string, instance string) error {
+	instancesService := compute.NewInstancesService(gce.service)
+	call := instancesService.Start(project, zone, instance)
+	_, err := call.Do()
+	return err
 }

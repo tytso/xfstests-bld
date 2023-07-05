@@ -1,11 +1,12 @@
 /*
-ShardWorker launches, monitors and collects results from a single gce-xfstests run.
+ShardWorker launches, monitors and collects results from a single
+gce-xfstests run.
 
-A shard is created and configured by a sharder only. It make a call to the gce-xfstests
-scripts on start, and then waits for the test to finish by checking the VM status
-periodically. After the test finishes, the shard calls the scripts again to fetch the test
-result files from GCS and unpacks them to a local directory.
-
+A shard is created and configured by a sharder only. It make a call to
+the gce-xfstests scripts on start, and then waits for the test to
+finish by checking the VM status periodically. After the test
+finishes, the shard calls the scripts again to fetch the test result
+files from GCS and unpacks them to a local directory.
 */
 package main
 
@@ -35,10 +36,13 @@ type ShardWorker struct {
 	args      []string
 	vmTimeout bool
 
-	vmStatus    string
-	vmtestStart time.Time
-	testResult  server.ResultType
-	vmReset     bool
+	vmStatus       string
+	vmtestStart    time.Time
+	testResult     server.ResultType
+	vmReset        bool
+	vmTerminated   bool
+	vmTermTime     time.Time
+	vmTermInterval time.Duration
 
 	log                *logrus.Entry
 	logPath            string
@@ -49,11 +53,13 @@ type ShardWorker struct {
 }
 
 const (
-	noStatusTimeout = 10 * time.Minute
-	monitorInterval = 60 * time.Second
-	resetTimeout    = 10 * time.Minute
-	gsInterval      = 10 * time.Second
-	maxAttempts     = 5
+	noStatusTimeout    = 10 * time.Minute
+	monitorInterval    = 60 * time.Second
+	restartIntervalMin = 1 * time.Minute
+	restartIntervalMax = 60 * time.Minute
+	resetTimeout       = 10 * time.Minute
+	gsInterval         = 10 * time.Second
+	maxAttempts        = 5
 )
 
 // NewShardWorker constructs a new shard, requested by the sharder
@@ -68,10 +74,11 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		args:      []string{},
 		vmTimeout: false,
 
-		vmStatus:    "waiting for launch",
-		vmtestStart: time.Now(),
-		testResult:  server.DefaultResult,
-		vmReset:     false,
+		vmStatus:     "waiting for launch",
+		vmtestStart:  time.Now(),
+		testResult:   server.DefaultResult,
+		vmReset:      false,
+		vmTerminated: false,
 
 		log:                sharder.log.WithField("shardID", shardID),
 		logPath:            logPath,
@@ -107,7 +114,7 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		}
 	}
 
-	if ! imgProjFlag && len(sharder.imgProjID) > 0 {
+	if !imgProjFlag && len(sharder.imgProjID) > 0 {
 		shard.args = append(shard.args, "--image-project", sharder.imgProjID)
 	}
 
@@ -178,11 +185,43 @@ func (shard *ShardWorker) monitor() {
 			return
 		}
 
-		offset = shard.updateSerialData(offset)
+		if !shard.vmTerminated {
+			offset = shard.updateSerialData(offset)
+		}
 
-		if instanceInfo.Status != "RUNNING" {
-			log.Info("Test VM stop running")
-			return
+		if instanceInfo.Status == "TERMINATED" {
+			if !shard.vmTerminated {
+				shard.vmStatus = "terminated"
+				shard.vmTerminated = true
+				shard.vmTermTime = time.Now()
+				shard.vmTermInterval = restartIntervalMin
+				offset = 0
+				log.Debug("VM Terminated")
+				continue
+			} else {
+				if time.Since(shard.vmTermTime) >
+					shard.vmTermInterval {
+					shard.vmTermInterval *= 2
+					if shard.vmTermInterval > restartIntervalMax {
+						shard.vmTermInterval = restartIntervalMax
+					}
+					log.Debug("Restarting VM")
+					err := shard.sharder.gce.StartVM(shard.sharder.projID, shard.zone, shard.name)
+					check.NoError(err, log, "Failed to restart VM")
+					shard.vmTermTime = time.Now()
+				} else {
+					log.WithFields(logrus.Fields{
+						"interval": shard.vmTermInterval,
+					}).Debug("Not yet time to restart")
+				}
+			}
+		} else if instanceInfo.Status != "RUNNING" {
+			log.WithFields(logrus.Fields{
+				"instanceStatus": instanceInfo.Status,
+			}).Debug("Unexpected VM instance status")
+			continue
+		} else {
+			shard.vmTerminated = false
 		}
 
 		for _, metaData := range instanceInfo.Metadata.Items {
@@ -209,9 +248,8 @@ func (shard *ShardWorker) monitor() {
 			log.Debug("waiting to get test status metadata")
 		}
 
-
 		if shard.vmReset && time.Since(shard.vmtestStart) > resetTimeout {
-			log.Errorf("VM did not come back online after reset, exiting");
+			log.Errorf("VM did not come back online after reset, exiting")
 			return
 		}
 
@@ -220,7 +258,7 @@ func (shard *ShardWorker) monitor() {
 		// Selftests may limit monitorTimeout to shorter than noStatusTimeout
 		//    so skip check if we are still launching
 		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout &&
-				! shard.vmReset && shard.vmStatus != "launching" {
+			!shard.vmReset && shard.vmStatus != "launching" {
 			log.Debug("Resetting VM")
 			err := shard.sharder.gce.ResetVM(shard.sharder.projID, shard.zone, shard.name)
 			if err != nil {
@@ -305,7 +343,8 @@ Default		VM finishes without issues, test result is found;
 Crash		VM started running tests but no test result is found;
 Hang		VM stays on one test for too long;
 Error		VM stops at launch time, doesn't launch any tests at all,
-			or other unexpected errors.
+
+	or other unexpected errors.
 */
 func (shard *ShardWorker) finish() {
 	shard.log.Info("Finishing shard")
@@ -325,7 +364,7 @@ func (shard *ShardWorker) finish() {
 	}
 
 	cmd := exec.Command("gce-xfstests", "get-results", "--unpack-dir",
-			    shard.sharder.logDir, url)
+		shard.sharder.logDir, url)
 	cmdLog := shard.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
