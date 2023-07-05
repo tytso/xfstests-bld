@@ -799,13 +799,6 @@ fi
 
 SCOPES="https://www.googleapis.com/auth/cloud-platform"
 
-if test -n "$PREEMPTIBLE"
-then
-    PREEMPTIBLE="--preemptible"
-else
-    PREEMPTIBLE="--maintenance-policy MIGRATE"
-fi
-
 if [ -z ${TESTRUNID:+x} ]; then
     TESTRUNID=$(date +%Y%m%d%H%M%S)
     # if GCE_USER is non-empty or unset
@@ -1218,10 +1211,16 @@ fi
 function launch_vm () {
     echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 
+if test -n "$GCE_SPOT"
+then
+    SPOT="--provisioning-model=SPOT"
+else
+    SPOT=
+fi
     run_gcloud compute \
 	       instances create "$INSTANCE" --zone "$GCE_ZONE" \
 	       --machine-type "$GCE_MACHTYPE" --network "$GCE_NETWORK" \
-	       $SSD_ARG $PREEMPTIBLE \
+	       $SSD_ARG $SPOT \
 	       $SERVICE_ACCOUNT_OPT_VM \
 	       --scopes "$SCOPES" \
 	       --metadata "^ ^$ARG" \
@@ -1231,24 +1230,47 @@ function launch_vm () {
     err=$?
 }
 ERRFILE=/tmp/gce-xfstests-err-$$
-launch_vm 2> $ERRFILE
+RETRY_COUNTER=0
+while true
+do
+    launch_vm 2> $ERRFILE
 
-if test "$err" -gt 0 ; then
-    cat $ERRFILE
-    if grep -q images/family/xfstests-amd64 $ERRFILE ; then
-	if grep -q "The project .* was not found" $ERRFILE; then
-	    exit $err
-	fi
-	echo Retrying with the image family xfstests
-	ROOT_FS=xfstests
-	launch_vm
-	if test "$err" -gt 0 ; then
+    if test "$err" -gt 0 ; then
+	cat $ERRFILE
+	if grep -q images/family/xfstests-amd64 $ERRFILE ; then
+	    if grep -q "The project .* was not found" $ERRFILE; then
+		exit $err
+	    fi
+	    echo Retrying with the image family xfstests
+	    ROOT_FS=xfstests
+	    launch_vm
+	    if test "$err" -gt 0 ; then
+		exit $err
+	    fi
+	elif grep -iq resource $ERRFILE && grep -iq available $ERRFILE ; then
+	    let RETRY_COUNTER++
+	    if test $RETRY_COUNTER -lt 3
+	    then
+		echo "Resources unavailable, retrying ($RETRY_COUNTER)..."
+		sleep 1
+	    else
+		if test -n "$GCE_SPOT" -a -n "$GCE_SPOT_FALLBACK"
+		then
+		    echo "Unable to start spot VM, retrying with standard..."
+		    GCE_SPOT=
+		    RETRY_COUNTER=0
+		else
+		    echo "Unable to start VM"
+		    exit $err
+		fi
+	    fi
+	else
 	    exit $err
 	fi
     else
-	exit $err
+	break
     fi
-fi
+done
 rm -f $ERRFILE
 
 

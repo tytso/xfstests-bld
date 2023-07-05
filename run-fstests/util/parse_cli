@@ -288,6 +288,8 @@ no-email
 no-insert
 no-log
 no-preemptible
+no-spot-fallback
+no-spot
 no-punch
 no-region-shard
 no-virtio-rng
@@ -297,6 +299,8 @@ numa:
 pmem-device
 pts-size:
 preemptible
+spot
+spot-fallback
 primary_fstype:
 repo:
 skip-kernel-arch-probe
@@ -592,9 +596,13 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    GCE_NO_VM_TIMEOUT=yes
 	    ;;
-	--preemptible|--preempt)
+	--preemptible|--spot)
 	    supported_flavors gce
-	    PREEMPTIBLE=yes
+	    GCE_SPOT=yes
+	    ;;
+	--spot-fallback)
+	    supported_flavors gce
+	    GCE_SPOT_FALLBACK=yes
 	    ;;
 	--primary_fstype) shift
 	    PRIMARY_FSTYPE="$1"
@@ -603,9 +611,13 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    PTS_SIZE="$1"
 	    ;;
-	--no-preemptible|--no-preempt)
+	--no-preemptible|--no-spot)
 	    supported_flavors gce
-	    PREMPTIBLE=
+	    GCE_SPOT=
+	    ;;
+	--no-spot-fallback)
+	    supported_flavors gce
+	    GCE_SPOT_FALLBACK=
 	    ;;
 	--gce-disk-spec) shift
 	    supported_flavors gce

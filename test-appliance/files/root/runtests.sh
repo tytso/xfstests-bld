@@ -641,7 +641,7 @@ do
 		else
 		    touch "$RESULT_BASE/completed"
 		fi
-		if test -n "$last_time"
+		if test -n "$last_test"
 		then
 		    if test -f "$RESULT_BASE/results.xml"; then
 			add_error_xunit "$RESULT_BASE/results.xml" "$last_test" "xfstests.global"
