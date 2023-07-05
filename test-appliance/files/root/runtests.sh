@@ -624,6 +624,7 @@ do
 	    /root/xfstests/bin/syncfs "$RESULT_BASE"
 	    gce_run_hooks pre-xfstests $TC $j
 	    if test -n "$RUN_ONCE" ; then
+		last_test=
 		if test -f "/results/preempted"
 		then
 		    rm -f "/results/preempted"
@@ -633,10 +634,15 @@ do
 			head -n -2 "$RESULT_BASE/completed" > /tmp/completed
 			mv /tmp/completed "$RESULT_BASE/completed"
 		    fi
+		    last_test="preempted"
 		elif test -f "$RESULT_BASE/completed"
 		then
 		    last_test="$(tail -n 1 "$RESULT_BASE/completed")"
-
+		else
+		    touch "$RESULT_BASE/completed"
+		fi
+		if test -n "$last_time"
+		then
 		    if test -f "$RESULT_BASE/results.xml"; then
 			add_error_xunit "$RESULT_BASE/results.xml" "$last_test" "xfstests.global"
 		    else
@@ -645,10 +651,8 @@ do
 			add_error_xunit "$RESULT_BASE/result.xml" "$last_test" "xfstests.global"
 			copy_xunit_results
 		    fi
-		    /root/xfstests/bin/syncfs $RESULT_BASE
-		else
-		    touch "$RESULT_BASE/completed"
 		fi
+		/root/xfstests/bin/syncfs $RESULT_BASE
 		sort "$RESULT_BASE/completed" > /tmp/completed
 		comm -23 "$RESULT_BASE/tests-to-run" /tmp/completed \
 		     > /tmp/tests-to-run
