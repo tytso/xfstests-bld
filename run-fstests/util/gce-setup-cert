@@ -1,0 +1,84 @@
+#!/bin/bash -e
+
+XFSTESTS_FLAVOR=gce
+if test -n "$GCE_XFSTESTS_DIR"
+then
+    DIR="$GCE_XFSTESTS_DIR"
+else
+    DIR="$(dirname "$(dirname "$0")")"
+fi
+if test ! -f "$DIR/util/get-config"
+then
+    echo "$(basename "$0"): couldn't find $DIR/util/get-config"
+    exit 1
+fi
+
+FORCE_REGEN=
+FORCE_RENEW=
+UPDATE_COMBINED=
+EXPIRE_DAYS=365
+CHECKENDSECS=$((60 * 60 * 24 * 120))
+
+. "$DIR/util/get-config"
+
+while [ "$1" != "" ];
+do
+    case $1 in
+	--force-regen|--force-regenerate-certificates)
+	    FORCE_REGEN=yes
+	    ;;
+	--force-renew)
+	    FORCE_RENEW=yes
+	    ;;
+	--expire-days) shift
+	    EXPIRE_DAYS="$1"
+	    ;;
+	*)
+	    echo "unknown option: $1"
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+tmpdir=$(mktemp -d)
+if test -n "$FORCE_REGEN" ||
+	! gsutil cp gs://$GS_BUCKET/gce-xfstests-cert.pem $tmpdir/ 2>/dev/null ||
+	! gsutil cp gs://$GS_BUCKET/gce-xfstests-key.pem $tmpdir/ 2>/dev/null
+then
+    echo "Regenerating GCE certificate files"
+
+    openssl req -x509 -newkey rsa:4096 -keyout "$tmpdir/gce-xfstests-key.pem" \
+	    -noenc -out "$tmpdir/gce-xfstests-cert.pem" -days $EXPIRE_DAYS \
+	    -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
+
+    UPDATE_COMBINED=yes
+else
+    if test -n "$FORCE_REGEN" ||
+	    ! openssl x509 -enddate -noout -in $tmpdir/gce-xfstests-cert.pem \
+	      -checkend $CHECKENDSECS >& /dev/null
+    then
+	echo "Certificates will expire soon, renewing"
+	openssl x509 -days 365 -in $tmpdir/gce-xfstests-cert.pem \
+		-signkey $tmpdir/gce-xfstests-key.pem \
+		-out $tmpdir/gce-xfstests-cert.pem.new
+	mv $tmpdir/gce-xfstests-cert.pem.new $tmpdir/gce-xfstests-cert.pem
+	UPDATE_COMBINED=yes
+    fi
+fi
+    
+if test -n "$UPDATE_COMBINED" ||
+	! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-server.pem
+then
+    cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
+	> "$tmpdir/gce-xfstests-server.pem"
+
+    gsutil -m cp "$tmpdir/*" gs://$GS_BUCKET/
+fi
+if test -n "$UPDATE_COMBINED" -o \
+	 ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+then
+    cp "$tmpdir/gce-xfstests-cert.pem" $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+fi
+rm -rf "$tmpdir"
+

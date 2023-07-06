@@ -281,10 +281,10 @@ unset rule rule_name
 if [ "$1" == "--regenerate-ssl-cert" ]
 then
   echo "Regenerating certificate."
-  REGEN_CERT="yes"
+  REGEN_OPTS="--force-regen"
 fi
 
-gce_gen_cert
+$DIR/util/gce-setup-cert $REGEN_OPTS
 gce_gen_ltm_pass
 
 exit 0

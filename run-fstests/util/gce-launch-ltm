@@ -135,20 +135,14 @@ then
     ARG="$ARG enable-oslogin-2fa=GCE_OSLOGIN_2FA"
 fi
 
-if ! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem
-then
-    echo "You do not have a generated SSL certificate in your GCS bucket."
-    echo "It is not possible to communicate with the LTM."
-    echo "Please run gce-xfstests setup and then restart the LTM."
-    exit 1
-fi
-
 if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
 then
     echo "You must run gce-xfstests setup to upload a .config file"
     echo "to your GCS bucket."
     exit 1
 fi
+
+"$DIR/util/gce-setup-cert"
 
 echo "Launching LTM server..."
 touch $DIR/.ltm_instance_$GCE_PROJECT
@@ -170,11 +164,6 @@ if [ $? != 0 ]
 then
     echo "Could not start LTM server."
     exit 1
-fi
-
-if [ ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem ]
-then
-    gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
 fi
 
 echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.ltm_instance_$GCE_PROJECT
