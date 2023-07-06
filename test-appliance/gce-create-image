@@ -49,8 +49,17 @@ while [ "$1" != "" ]; do
 	--arch=*)
 	    ARCH=$(echo "$1" | sed 's/--arch=//')
 	    ;;
+	--distro) shift
+	    FORCE_DISTRO="$1"
+	    ;;
 	--datecode) shift
 	    DATECODE="$1"
+	    ;;
+	-I) shift
+	    ROOT_FS="$1"
+	    ;;
+	--phoronix) shift
+	    PHORONIX="$1"
 	    ;;
 	*)
 	    echo "usage: gce-create-image [--arch ARCH]"
@@ -62,8 +71,10 @@ done
 
 set_canonicalized_arch "$ARCH"
 
-ROOT_FS="xfstests-$ARCH"
-IMAGE_FLAG="--image-family"
+if test -z "$ROOT_FS"
+then
+    ROOT_FS="xfstests-$ARCH"
+fi
 
 setup_for_buster()
 {
@@ -105,6 +116,26 @@ setup_for_bullseye()
 	BACKPORTS=/bullseye-backports
 }
 
+setup_for_bookworm()
+{
+	case "$ARCH" in
+	    amd64)
+		IMAGE_FAMILY=debian-12
+		;;
+	    arm64)
+		IMAGE_FAMILY=debian-12-arm64
+		;;
+	esac
+	IMAGE_PROJECT=debian-cloud
+	SUITE=bookworm
+	E2FSPROGS=e2fsprogs
+	LIBCOMERR=libcom-err2
+	LIBSS=libss2
+	BTRFS_PROGS=btrfs-progs
+	F2FS_TOOLS=f2fs-tools
+	BACKPORTS=/bookworm-backports
+}
+
 setup_for_buster
 
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
@@ -117,6 +148,10 @@ fi
 
 if test -f ../fstests-bld/xfstests/build-distro ; then
     distro=$(cat ../fstests-bld/xfstests/build-distro)
+    if test -n "$FORCE_DISTRO"
+    then
+	distro="$FORCE_DISTRO"
+    fi
     case "$distro" in
 	buster)
 	    setup_for_buster
@@ -124,35 +159,15 @@ if test -f ../fstests-bld/xfstests/build-distro ; then
 	bullseye)
 	    setup_for_bullseye
 	    ;;
+	bookworm)
+	    setup_for_bookworm
+	    ;;
 	*)
 	    echo "No support for build gce image for $distro"
 	    exit 1
 	    ;;
     esac
 fi
-
-while [ "$1" != "" ];
-do
-    case "$1" in
-	--buster)
-	    setup_for_buster
-	    ;;
-	--phoronix) shift
-	    PHORONIX="$1"
-	    ;;
-	-I) shift
-	    ROOT_FS="$1"
-	    BLD_INST="xfstests-bld-$1"
-	    BLD_DISK="xfstests-bld-$1"
-	    GS_TAR="gs://$GS_BUCKET/gce-xfstests-$1.image.tar.gz"
-	    ;;
-	*)
-	    echo "unknown option: $1"
-	    exit 1
-	    ;;
-    esac
-    shift
-done
 
 GS_SCRIPT=gs://$GS_BUCKET/create-image/gce-xfstests-bld.sh
 METADATA="startup-script-url=$GS_SCRIPT suite=$SUITE"

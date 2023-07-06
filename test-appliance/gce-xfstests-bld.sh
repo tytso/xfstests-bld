@@ -43,7 +43,6 @@ PACKAGES="acpid \
 	$E2FSPROGS \
 	dump \
 	ed \
-	exfat-utils \
 	$F2FS_TOOLS \
 	file \
 	flex \
@@ -189,9 +188,21 @@ export DEBIAN_FRONTEND=noninteractive
 
 NEW_SUITE=$(gce_attribute suite)
 OLD_SUITE=$(cat /etc/apt/sources.list | grep ^deb | grep -v updates | head -1 | awk '{print $3}')
+debian_sources="/etc/apt/sources.list.d/debian.sources"
+if test -z "$OLD_SUITE" -a -f $debian_sources
+then
+    OLD_SUITE=$(cat $debian_sources | grep ^Suites | head -1 | awk '{print $2}' | sed -e "s/-[a-z]*//")
+fi
+if test -z "$OLD_SUITE"
+then
+   OLD_SUITE="$NEW_SUITE"
+fi
 if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
-    sed -e "s/$OLD_SUITE/$NEW_SUITE/g" < /etc/apt/sources.list > /etc/apt/sources.list.new
-    mv /etc/apt/sources.list.new /etc/apt/sources.list
+    sed -i -e "s/$OLD_SUITE/$NEW_SUITE/g" /etc/apt/sources.list
+    if test -f $debian_sources
+    then
+       sed -i -e "s/$OLD_SUITE/$NEW_SUITE/g" $debian_sources
+    fi
     apt-get update
     apt-get -y dist-upgrade
     apt-get -o Dpkg::Options::="--force-confnew" --force-yes -fuy dist-upgrade
@@ -203,7 +214,9 @@ else
 fi
 
 if test "$NEW_SUITE" = "buster" ; then
-    PACKAGES="$PACKAGES python-future python-pip"
+    PACKAGES="$PACKAGES python-future python-pip exfat-utils"
+else
+    PACKAGES="$PACKAGES exfatprogs"
 fi
 
 apt-get install -y $PACKAGES
