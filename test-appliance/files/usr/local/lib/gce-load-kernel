@@ -169,6 +169,10 @@ EOF
     grub-reboot "1>$menunum"
     echo "Rebooting..."
     reboot
+    sleep 60
+    echo "Forcing reboot after 60 seconds..."
+    reboot -f
+    sleep 60
 fi
 
 if ! test -f /root/bzImage
