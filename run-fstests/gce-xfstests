@@ -117,10 +117,7 @@ do_get_results()
 	/bin/rm -rf "$DIRNAME" 2> /dev/null
 	mkdir -p "$DIRNAME"
 	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
-	echo "Unpacked results at $DIRNAME"
-	return 0
-    fi
-    if test -n "$get_syslog"
+    elif test -n "$get_syslog"
     then
 	xzcat < "$TARBALL" | tar -Oxf - ./syslog
     elif test -n "$do_summary"
@@ -130,6 +127,11 @@ do_get_results()
     else
 	xzcat < "$TARBALL" | tar -Oxf - ./runtests.log
     fi
+    if test -n "$do_nocache" -o -n "$do_unpack"
+    then
+	rm "$TARBALL"
+    fi
+    return 0
 }
 
 get_gce_zone()
@@ -387,6 +389,7 @@ case "$1" in
 	;;
     get-results)
 	shift
+	ret=0
 	while (( $# >= 1 )); do
 	    case $1 in
 		--bucket-subdir) shift
@@ -412,12 +415,18 @@ case "$1" in
 		--failures|-F)
 		    do_summary="-F"
 		    ;;
+		--no-cache)
+		    do_nocache=yes
+		    ;;
 		*)
-		    do_get_results "$1"
+		    if ! do_get_results "$1"
+		    then
+			ret=1
+		    fi
 	    esac
 	    shift
 	done
-	exit 0
+	exit $ret
 	;;
     setup)
 	shift
