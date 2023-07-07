@@ -27,8 +27,8 @@ fi
 
 if test -f ../fstests-bld/xfstests/build-distro ; then
     distro=$(cat ../fstests-bld/xfstests/build-distro)
-    if test "$distro" = bullseye ; then
-	SUITE=bullseye
+    if test "$distro" = bookworm -o "$distro" = bullseye; then
+	SUITE="$distro"
     else
 	SUITE=buster
     fi

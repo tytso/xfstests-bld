@@ -14,7 +14,6 @@ dmsetup
 dosfstools
 dump
 ed
-exfat-utils
 f2fs-tools
 file
 gawk
