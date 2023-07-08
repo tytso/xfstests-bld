@@ -265,8 +265,16 @@ tar -C / -xzf /root/files.tar.gz
 rm -f /root/xfstests.tar.gz /root/files.tar.gz
 
 # This installs junitparser and the sendgrid python classes
-pip3 install -r /usr/local/lib/requirements.txt
-pip3 install drgn
+#
+# Someday we may transition to using Python virtual environments
+# instead of overriding PEP 668.  We currently have a number of
+# manually set up python lcasses which are installed in
+# test-appliances/files/usr/lib/python3/dist-packages which
+# we would need to deal with in some PIP install compatible
+# way, and which has to work for kvm-xfstests images as well as
+# gce-xfstests.   So we'll hack around it for now...
+PIP_BREAK_SYSTEM_PACKAGES=yes pip3 install -r /usr/local/lib/requirements.txt
+PIP_BREAK_SYSTEM_PACKAGES=yes pip3 install drgn
 
 for i in /results/runtests.log /var/log/syslog \
        /var/log/messages /var/log/kern.log
