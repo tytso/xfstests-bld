@@ -117,6 +117,7 @@ do_get_results()
 	/bin/rm -rf "$DIRNAME" 2> /dev/null
 	mkdir -p "$DIRNAME"
 	xzcat < "$TARBALL" | tar -C "$DIRNAME" -xf -
+	echo "Unpacked results at $DIRNAME"
     elif test -n "$get_syslog"
     then
 	xzcat < "$TARBALL" | tar -Oxf - ./syslog
