@@ -134,6 +134,7 @@ if test -f /run/filestore-param ; then
 fi
 
 run_hooks shutdown
+sleep 60
 /usr/local/lib/gce-logger shutting down
 if test -f /run/powerbtn
 then

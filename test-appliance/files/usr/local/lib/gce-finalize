@@ -6,4 +6,5 @@ killall gce-finalize-wait
 
 run_hooks finalize
 
-exec /usr/local/sbin/gce-shutdown
+# exec /usr/local/sbin/gce-shutdown
+exec script -c "/bin/bash -vx /usr/local/sbin/gce-shutdown" /dev/console
