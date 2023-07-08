@@ -31,7 +31,7 @@ fi
 if ! test -e $CREATED_PTS_DEV
 then
     logger -s "Couldn't create or attach the PTS disk!"
-    #    gcloud compute -q instances delete $(hostname) --zone $ZONE
+    #    gcloud compute -q instances delete $instance --zone $ZONE
     exit 1
 fi
 

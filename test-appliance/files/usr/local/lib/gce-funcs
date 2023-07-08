@@ -1,6 +1,6 @@
 #!/bin/bash
 
-instance=$(hostname)
+instance=$(hostname | cut -d "." -f1)
 
 GCE_STATE_DIR=/var/lib/gce-xfstests
 
