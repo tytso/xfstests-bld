@@ -8,7 +8,7 @@
 
 . /usr/local/lib/gce-funcs
 
-if grep -q fstestcfg /proc/cmdline; then exit 0; fi
+set -vx
 
 if test -f /root/do_kexec ; then
     /usr/local/lib/gce-logger do_kexec file found, using it

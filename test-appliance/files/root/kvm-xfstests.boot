@@ -66,7 +66,11 @@ then
 	exit $?
     fi
 
-    script -a -c /usr/local/lib/gce-load-kernel /var/log/gce-load-kernel.log
+    if ! grep -q fstestcfg /proc/cmdline
+    then
+	script -a -f -c /usr/local/lib/gce-load-kernel \
+	       /var/log/gce-load-kernel.log
+    fi
     . /run/test-env
     # for interactive mounting using the fstab entries
     ln -s "$PRI_TST_DEV" /dev/vdb
