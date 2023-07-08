@@ -168,9 +168,9 @@ EOF
     logger "Using grub-reboot 1>$menunum"
     grub-reboot "1>$menunum"
     echo "Rebooting..."
-    reboot
-    sleep 60
-    echo "Forcing reboot after 60 seconds..."
+    sync /boot
+    sync
+    sleep 1
     reboot -f
     sleep 60
 fi
