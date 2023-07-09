@@ -17,7 +17,7 @@ DIR=/root/xfstests_bld/run-fstests
 
 . "$GCE_CONFIG_FILE"
 
-if [ "$instance" = "xfstests-ltm" ]
+if gce_attribute gce_xfs_ltm
 then
     gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
 	   > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
@@ -26,8 +26,7 @@ then
     echo "GCE_LTM_EXT_IP=127.0.0.1" >> $DIR/.ltm_instance_$GCE_PROJECT
     echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance_$GCE_PROJECT
     gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
-fi
-if [ "$instance" = "xfstests-kcs" ]
+elif gce_attribute gce_xfs_kcs
 then
     gsutil cat gs://$GS_BUCKET/gce-xfstests-cert.pem \
 	   > $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
