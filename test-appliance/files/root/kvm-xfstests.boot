@@ -164,6 +164,7 @@ then
 	/root/runblktests.sh --run-once >> /results/runtests.log 2>&1
 
 	/usr/local/lib/gce-logger tests complete
+	script -c "/bin/bash -vx /usr/local/sbin/gce-shutdown" /dev/console
 	/bin/rm -f /run/gce-finalize-wait
     else
 	/root/runblktests.sh
