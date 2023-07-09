@@ -7,11 +7,13 @@ set -vx
 
 function install_kconfig () {
     if test -z "$KCONFIG_OPTS" ; then
-	gce-xfstests install-kconfig --arch "$KBUILD_ARCH" || exit 1
+	(cd "$REPO_DIR" ; gce-xfstests install-kconfig \
+		--arch "$KBUILD_ARCH") || exit 1
     else
 	local array=($(echo $KCONFIG_OPTS | sed -e 's/,/ /g'))
 
-	gce-xfstests install-kconfig --arch "$KBUILD_ARCH" "${array[@]}" || exit 1
+	(cd "$REPO_DIR" ; gce-xfstests install-kconfig \
+		--arch "$KBUILD_ARCH" "${array[@]}") || exit 1
     fi
 }
 
@@ -42,9 +44,9 @@ fi
 if test -n "$GS_CONFIG" ; then
     if gsutil cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
 	if test $(stat -c %s "$REPO_DIR/.config") -gt 16384 ; then
-	    make oldconfig || exit 1
+	    (cd "$REPO_DIR" ; make oldconfig) || exit 1
 	else
-	    make olddefconfig || exit 1
+	    (cd "$REPO_DIR" ; make olddefconfig) || exit 1
 	fi
     else
 	install_kconfig
@@ -57,6 +59,19 @@ DPKG_FLAGS=
 if [[ $GS_PATH == *.deb ]]; then
     DPKG_FLAGS=--dpkg
     KERNEL_PATH="$REPO_DIR/linux-image.deb"
+fi
+
+cc=gcc
+if grep -q CONFIG_CC_IS_CLANG=y "$REOP_DIR/.config" 2>/dev/null ; then
+    cc=clang
+fi
+$cc --version > "$REPO_DIR/.cc-version-new"
+if cmp -s "$REPO_DIR/.cc-version" "$REPO_DIR/.cc-version-new"
+then
+    rm -f "$REPO_DIR/.cc-version-new"
+else
+    (cd "$REPO_DIR" ; gce-xfstests kbuild clean)
+    mv "$REPO_DIR/.cc-version-new" "$REPO_DIR/.cc-version"
 fi
 
 status=1
