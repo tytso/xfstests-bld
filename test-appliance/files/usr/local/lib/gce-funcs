@@ -102,7 +102,7 @@ if test -f $GCE_STATE_DIR/testrunid
 then
     TESTRUNID=$(cat $GCE_STATE_DIR/testrunid)
 else
-    case "$HOSTNAME" in
+    case "$instance" in
 	xfstests-*)
 	    TESTRUNID=$(echo $instance | sed -e 's/xfstests-//')
 	    ;;
