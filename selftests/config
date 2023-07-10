@@ -17,4 +17,4 @@ KSRC=/usr/src/linux
 # The build chroots $DISTRO-$ARCH must exist for architectures
 # amd64, i386, and arm64
 #
-DISTRO=bullseye
+DISTRO=bookworm
