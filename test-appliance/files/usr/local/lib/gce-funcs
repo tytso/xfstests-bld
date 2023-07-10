@@ -1,7 +1,5 @@
 #!/bin/bash
 
-instance=$(hostname | cut -d "." -f1)
-
 GCE_STATE_DIR=/var/lib/gce-xfstests
 
 if test -z "$MDS_PREFIX"
@@ -92,13 +90,21 @@ else
     echo $GCE_ID > $GCE_STATE_DIR/gce_id
 fi
 
+if test -f $GCE_STATE_DIR/instance
+then
+    instance="$(cat $GCE_STATE_DIR/instance)"
+else
+    instance=$(get_metadata_value_with_retries name)
+    echo "$instance" > "$GCE_STATE_DIR/instance"
+fi
+
 if test -f $GCE_STATE_DIR/testrunid
 then
     TESTRUNID=$(cat $GCE_STATE_DIR/testrunid)
 else
     case "$HOSTNAME" in
 	xfstests-*)
-	    TESTRUNID=$(echo $HOSTNAME | sed -e 's/xfstests-//')
+	    TESTRUNID=$(echo $instance | sed -e 's/xfstests-//')
 	    ;;
 	*)
 	    TESTRUNID=$(date +%Y%m%d%H%M%S)
