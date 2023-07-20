@@ -59,7 +59,7 @@ function is_dev_free() {
     return 0
 }
 
-gen_version_header ()
+function gen_version_header ()
 {
     local version patchlevel sublevel
 
@@ -99,6 +99,24 @@ function clear_pool_devs ()
 	losetup -d "$POOL3_DEV"
 	POOL3_DEV=
     fi
+}
+
+function clean_empty_dirs()
+{
+    local i
+
+    for i in $(find "$RESULTS" -name results-\* -type d -print)
+    do
+	if test $(ls "$i" | wc -l) -le 1 -a -f "$i/check.time"
+	then
+	    rm "$i/check.time"
+	    rmdir "$i"
+	fi
+    done
+    for i in $(find "$RESULTS" -maxdepth 1 -mindepth 1 -type d -empty)
+    do
+	rmdir "$i"
+    done
 }
 
 while [ "$1" != "" ]; do
@@ -720,6 +738,11 @@ END	{ if (NR > 0) {
 	echo -n "END TEST: $TESTNAME " ; date
 	logger "END TEST $TC: $TESTNAME "
 done
+
+if test -n "$RUN_ON_GCE"
+then
+    clean_empty_dirs
+fi
 
 if test -n "$FSTESTSTR" ; then
     [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.stress"
