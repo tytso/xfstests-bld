@@ -18,6 +18,8 @@ import time
 from datetime import datetime
 from junitparser import JUnitXml, Property, Properties, Failure, Error, Skipped
 
+PREEMPTED = 'preempted'
+
 class TestStats:
     def __init__(self):
         self.failed = 0
@@ -103,6 +105,8 @@ def print_tests(out_f, testsuite, result_type, type_label):
     """Print all of the tests which match a particular result_type"""
     wp = wrapped_print(out_f, type_label, ' ')
     for testcase in testsuite:
+        if testcase.name == PREEMPTED:
+                continue
         match = False
         for entry in testcase.result:
             if isinstance(entry, result_type):
@@ -183,6 +187,14 @@ def print_summary(out_f, testsuite, verbose):
     skipped = testsuite.skipped
     failures = testsuite.failures
     errors = testsuite.errors
+    Stats = get_testsuite_stats(testsuite)
+    preempts = 0
+    if PREEMPTED in Stats:
+        s = Stats[PREEMPTED]
+        preempts = s.total
+        errors -= s.error
+        tests -= s.total
+        failures -= s.failed
     out_f.write('%s: %d tests, ' % (cfg, tests))
     if failures > 0:
         out_f.write('%d failures, ' % failures)
@@ -190,10 +202,15 @@ def print_summary(out_f, testsuite, verbose):
         out_f.write('%d errors, ' % errors)
     if skipped > 0:
         out_f.write('%d skipped, ' % skipped)
+    if preempts > 0:
+        out_f.write('%d VM preempts, ' % preempts)
     out_f.write('%d seconds\n' % runtime)
     if verbose:
         for test_case in testsuite:
             status = ''
+            if test_case.name == PREEMPTED:
+                out_f.write("  Test VM preempted!\n")
+                continue
             for entry in test_case.result:
                 if isinstance(entry, Failure):
                     status = status + 'Failed,'
@@ -208,10 +225,10 @@ def print_summary(out_f, testsuite, verbose):
             out_f.write("  %-12s %-8s %ds\n" %
                         (test_case.name, status, test_case.time))
     else:
-        Stats = get_testsuite_stats(testsuite)
-
         wp = wrapped_print(out_f, 'Failures', ' ')
         for t in Stats:
+            if t == PREEMPTED:
+                continue
             s = Stats[t]
             if s.failed == 0 or s.total != s.failed:
                 continue
@@ -220,6 +237,8 @@ def print_summary(out_f, testsuite, verbose):
 
         wp = wrapped_print(out_f, 'Flaky', '   ')
         for t in Stats:
+            if t == PREEMPTED:
+                continue
             s = Stats[t]
             if s.failed == 0 or s.total == s.failed:
                 continue
