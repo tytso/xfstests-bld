@@ -1,0 +1,19 @@
+#!/usr/bin/python3
+
+import argparse
+import sys
+from gen_results_summary import tests_have_errors
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('results_dir', help='Results directory to process')
+
+    args = parser.parse_args()
+
+    if tests_have_errors(args.results_dir):
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()

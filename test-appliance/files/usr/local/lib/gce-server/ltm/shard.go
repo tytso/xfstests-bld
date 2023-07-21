@@ -53,13 +53,14 @@ type ShardWorker struct {
 }
 
 const (
-	noStatusTimeout    = 10 * time.Minute
-	monitorInterval    = 60 * time.Second
-	restartIntervalMin = 1 * time.Minute
-	restartIntervalMax = 60 * time.Minute
-	resetTimeout       = 10 * time.Minute
-	gsInterval         = 10 * time.Second
-	maxAttempts        = 5
+	resultsNoRebootsPath = "/usr/local/bin/results_no_reboots"
+	noStatusTimeout      = 10 * time.Minute
+	monitorInterval      = 60 * time.Second
+	restartIntervalMin   = 1 * time.Minute
+	restartIntervalMax   = 60 * time.Minute
+	resetTimeout         = 10 * time.Minute
+	gsInterval           = 10 * time.Second
+	maxAttempts          = 5
 )
 
 // NewShardWorker constructs a new shard, requested by the sharder
@@ -373,6 +374,15 @@ func (shard *ShardWorker) finish() {
 
 	if !check.DirExists(shard.unpackedResultsDir) {
 		shard.log.Panic("Failed to find unpacked result files")
+	}
+
+	cmd = exec.Command(resultsNoRebootsPath, shard.unpackedResultsDir)
+	err = cmd.Run()
+	check.NoError(err, shard.log, "Failed to check for VM reboots")
+	if err == nil && !shard.vmTimeout &&
+		check.FileExists(shard.serialOutputPath) {
+		err = os.Remove(shard.serialOutputPath)
+		check.NoError(err, shard.log, "Failed to remove dir")
 	}
 
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)

@@ -349,3 +349,13 @@ def gen_results_summary(results_dir, output_fn=None, merge_fn=None,
         os.rename(merge_fn + '.new', merge_fn)
 
     return nr_files
+
+def tests_have_errors(results_dir):
+    """Scan a results directory and return true if any tests errored out"""
+
+    for filename in get_results(results_dir):
+        ts = JUnitXml.fromfile(filename)
+
+        if ts.errors > 0:
+            return True
+    return False
