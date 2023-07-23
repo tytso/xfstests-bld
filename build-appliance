@@ -30,11 +30,12 @@ Usage: build-appliance [OPTION]...
 Build or update a test appliance.
 
 Options:
-    --chroot=CHROOT Use the specified build chroot, where CHROOT is the chroot
+    --chroot CHROOT Use the specified build chroot, where CHROOT is the chroot
                     name in /etc/schroot/schroot.conf, e.g. "stretch-amd64".
     --gce           Build a GCE test appliance as well as a kvm/android
                     test appliance
     --out-tar       Build a root_fs.tar.gz, not a root_fs.img
+    --out-both      Build both the root_Fs.img as well as the root_fs.tar.gz
     --no-out-tar    Build/update a root_fs.img, not a root_fs.tar.gz
     --update        Update only; don't do a clean build.  (Only supported with
                     .img output currently.)
@@ -46,6 +47,7 @@ UPDATE=false
 longopts="help"
 longopts+=",chroot:"
 longopts+=",out-tar"
+longopts+=",out-both"
 longopts+=",no-out-tar"
 longopts+=",update"
 longopts+=",gce"
@@ -71,6 +73,9 @@ while (( $# >= 0 )); do
 	;;
     --out-tar)
 	OUT_TAR=yes
+	;;
+    --out-both)
+	OUT_TAR=both
 	;;
     --no-out-tar)
 	OUT_TAR=
