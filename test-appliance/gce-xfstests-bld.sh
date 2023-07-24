@@ -219,6 +219,10 @@ else
     PACKAGES="$PACKAGES exfatprogs"
 fi
 
+if test "$NEW_SUITE" = "bookworm" ; then
+    PACKAGES="$PACKAGES xxd"
+fi
+
 apt-get install -y $PACKAGES
 # n.b. we have to install git$BACKPORTS separately afer installing git
 # because otherwise apt will complain about dependency problems.
