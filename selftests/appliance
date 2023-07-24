@@ -50,6 +50,7 @@ build_appliance ()
 	    echo "Failed to create $ROOT_FS"
 	    exit 1
 	fi
+	cp "$DIR/fstests-bld/xfstests/git-versions" "$DIR/selftests/git-versions.$ARCH"
     fi
     if test ! -f "$KERNEL" ; then
         echo "The prebuilt test kernel at $KERNEL doest not exist"
@@ -179,4 +180,20 @@ for i in $GCE_TEST_VMS ; do
 	echo "   Test results available via: gce-xfstests get-results $i"
     fi
 done
+
+for i in $LIST
+do
+    file="$DIR/selftests/git-versions.$i"
+    if test ! -f $file ; then continue ; fi
+    if test -z "$first"
+    then
+	first="$file"
+    else
+	if ! cmp "$first" "$file"
+	then
+	    echo "FAILED: $first and $file differ!"
+	fi
+    fi
+done
+
 exit 0
