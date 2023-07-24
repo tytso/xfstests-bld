@@ -126,7 +126,7 @@ if $UPDATE; then
 else
     $BUILD_ENV make all-clean-first
 fi
-$BUILD_ENV ./gen-tarball
+$BUILD_ENV ./gen-tarball --arch "$ARCH"
 
 case "$OUT_TAR" in
     both) gen_image_args+=" --both" ;;

@@ -139,8 +139,11 @@ setup_for_bookworm()
 setup_for_buster
 
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
-TARBALL=../fstests-bld/xfstests.tar.gz
-
+TARBALL=../fstests-bld/xfstests-$ARCH.tar.gz
+if ! test -f "$TARBALL"
+then
+    TARBALL=../fstests-bld/xfstests.tar.gz
+fi
 if ! test -f $TARBALL ; then
    echo $TARBALL does not exist!
    exit 1

@@ -31,6 +31,9 @@ do
 	--fast)
 	    fast=yes
 	    ;;
+	--arch) shift
+	    ARCH="$1"
+	    ;;
 	*)
 	    echo "unknown option: $1"
 	    exit 1
@@ -100,7 +103,16 @@ echo "STRIP xfstests/*"
 find xfstests -mindepth 2 -type f -perm /0111 | xargs $STRIP 2> /dev/null \
     || true
 echo "TAR xfstests"
+if test -n "$ARCH"
+then
+    echo "$ARCH" > xfstests/build-arch
+fi
+rm -f xfstests.tar.gz
 find xfstests blktests -path blktests/.git -prune -o -print0 | \
     LC_ALL=C sort -z | \
     tar c --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" \
     --mode=go+u-w --null --no-recursion -T - | $GZIP > xfstests.tar.gz
+if test -n "$ARCH"
+then
+    ln -f xfstests.tar.gz "xfstests-$ARCH.tar.gz"
+fi
