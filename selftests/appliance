@@ -45,7 +45,7 @@ build_appliance ()
     else
 	echo "Building test appliance for architecture $i"
 	$NO_ACTION rm -f $ROOT_FS
-	$NO_ACTION "$DIR/build-appliance" --chroot $DISTRO-$ARCH $GCE_FLAG
+	$NO_ACTION "$DIR/build-appliance" --chroot $DISTRO-$ARCH --out-both $GCE_FLAG 
 	if test -z "$NO_ACTION" -a ! -f $ROOT_FS ; then
 	    echo "Failed to create $ROOT_FS"
 	    exit 1
