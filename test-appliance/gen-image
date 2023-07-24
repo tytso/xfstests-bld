@@ -85,13 +85,17 @@ while [ "$1" != "" ]; do
     --log=*)
       DO_LOG="$(echo $1 | sed 's/--log=//')"
       ;;
+    --src_date) shift
+      SOURCE_DATE="$1"
+      ;;
     -a|--add_packages) shift
       PACKAGES="$PACKAGES $1"
       ;;
     *)
       echo "usage: gen-image [--save_raw_root] [--update] [--mirror MIRROR_LOC]"
       echo "                 [-a|--add_packages packages] [--networking] "
-      echo "                 [--suite SUITE] [--out_tar[=DIR]]"
+      echo "                 [--src_date DATE] [--log[=LOGFILE]]"
+      echo "                 [--suite SUITE] [--out_tar[=DIR]] [--both]"
       exit 1
       ;;
   esac
@@ -106,8 +110,8 @@ function stage_start () {
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): gen-image: Starting $*"
 }
 
-if test -z "$SOURCE_DATE_EPOCH" ; then
-    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+if test -z "$SOURCE_DATE" ; then
+    export SOURCE_DATE=@$(git log -1 --pretty=%ct)
 fi
 
 if test -n "$DO_LOG" ; then
@@ -525,7 +529,7 @@ if test -n "$OUT_TAR"; then
     stage_start "to create tarfile"
     (cd "$ROOTDIR" ; find . -print0 | LC_ALL=C sort -z |
 	 tar -c --null --no-recursion -T - --numeric-owner \
-	     --mtime="@${SOURCE_DATE_EPOCH}" -f - | $ZCMD > "$OUT_TAR")
+	     --mtime="${SOURCE_DATE}" -f - | $ZCMD > "$OUT_TAR")
 fi
 unmount_rootdir
 if test "$DO_IMAGE" = "yes" ; then

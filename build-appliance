@@ -144,7 +144,7 @@ if test -n "$DO_GCE"; then
 fi
 
 cd ../test-appliance
-$SUDO_ENV ./gen-image $gen_image_args
+$SUDO_ENV ./gen-image $gen_image_args --src_date @$(git log -1 --pretty=%ct)
 
 if test -n "$DO_GCE"; then
     tail -n +1 -f /tmp/gce-xfstests-create.$$ &
