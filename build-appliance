@@ -13,6 +13,14 @@ BUILD_ENV=
 SUDO_ENV=sudo
 DO_GCE=
 
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(pwd)
+else
+    DIR=$(realpath $(dirname "$0"))
+fi
+cd "$DIR"
+
 if test -f config.custom ; then
     . config.custom
 else
