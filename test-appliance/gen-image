@@ -58,7 +58,7 @@ while [ "$1" != "" ]; do
     --both)
       DO_IMAGE=yes;
       if test -z "$OUT_TAR" ; then
-	  OUT_TAR="$DIR/root_fs.tar.gz"
+	  OUT_TAR="$DIR/root_fs.$DEBIAN_ARCH.tar.gz"
       fi
       ;;
     --drgn)
@@ -74,7 +74,7 @@ while [ "$1" != "" ]; do
       PAUSE_DEBUG=yes
       ;;
     --out_tar|--out-tar)
-      OUT_TAR="$DIR/root_fs.tar.gz"
+      OUT_TAR="$DIR/root_fs.$DEBIAN_ARCH.tar.gz"
       ;;
     --out_tar=*|--out-tar=*)
       OUT_TAR="$(echo $1 | sed 's/--out[-_]tar=//')"
