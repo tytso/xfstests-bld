@@ -1,4 +1,7 @@
 /xfstests.tar.gz
+/xfstests-amd64.tar.gz
+/xfstests-arm64.tar.gz
+/xfstests-i386.tar.gz
 /acl/chacl/chacl
 /acl/doc/CHANGES.gz
 /acl/getfacl/getfacl
