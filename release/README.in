@@ -1,0 +1,29 @@
+These KVM test appliance images are designed to be used with the
+kvm-xfstests system which can be found here:
+
+	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+
+If you are testing a 32-bit x86 kernel you must use the
+root_fs.img.i386.  If you are using a 64-bit x86 kernel, you may use
+either the i386 or x86_64 root_fs.img file.
+
+Information on how to use these images can be found at the Quick Start
+guide, located at:
+
+    https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
+
+The "corresponding source" of the GPL binaries found in these KVM
+images can be found in the source packages from this snapshot of
+Debian distribution's "@DISTRO@" release:
+
+	@MIRROR@
+
+... as well as the following git repositories:
+
+@VERFILE@
+
+The gen-image script found in the test-appliance directory of the
+xfstests-bld git repository, plus Debian @DISTRO@'s debootstrap,
+constitutes the scripts used to control the creation of these KVM
+images.
+

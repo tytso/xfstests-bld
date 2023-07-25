@@ -1,0 +1,87 @@
+#!/bin/bash
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+BUILD_DIR="$DIR/fstests-bld"
+REL_DIR="$DIR/release"
+OUT_DIR="$DIR/release/out_dir"
+APPLIANCE_DIR="$DIR/test-appliance"
+TEST_DIR="$DIR/selftests"
+
+ARCHES="arm64 i386 amd64"
+first_version=
+
+function check_file_exists ()
+{
+    local f="$1"
+
+    if ! test -f "$f"
+    then
+	echo "$f missing!"
+	echo "Aborting!"
+	exit 1
+    fi
+}
+
+function check_file_out_of_date ()
+{
+    local f="$1"
+
+    if test "$f" -nt "$verfile"
+    then
+	echo "$(basename $f) newer than $(basename $verfile)"
+	echo "Aborting!"
+	exit 1
+    fi
+}
+
+mkdir -p "$OUT_DIR"
+
+for i in $ARCHES
+do
+    verfile="$TEST_DIR/git-versions.$i"
+    tarfile="$BUILD_DIR/xfstests-$i.tar.gz"
+    root_img_file="$APPLIANCE_DIR/root_fs.img.$i"
+    root_tar_file="$APPLIANCE_DIR/root_fs.$i.tar.gz"
+
+    check_file_exists "$verfile"
+    check_file_exists "$tarfile"
+    check_file_exists "$root_img_file"
+    check_file_exists "$root_tar_file"
+
+    check_file_out_of_date "$tarfile"
+    check_file_out_of_date "$root_img_file"
+    check_file_out_of_date "$root_tar_file"
+    
+    if test -z "$first_version"
+    then
+	first_version="$verfile"
+    else
+	if ! cmp "$first_version" "$verfile"
+	then
+	    a="$(basename $first_version)"
+	    b="$(basename $f)"
+	    echo "$a and $b" are different!
+	    exit 1
+	fi
+    fi
+done   
+
+
+for i in $ARCHES
+do
+    echo "Copying files for $i"
+    verfile="$TEST_DIR/git-versions.$i"
+    tarfile="$BUILD_DIR/xfstests-$i.tar.gz"
+    root_img_file="$APPLIANCE_DIR/root_fs.img.$i"
+    root_tar_file="$APPLIANCE_DIR/root_fs.$i.tar.gz"
+
+    cp -p "$verfile" "$tarfile" "$root_img_file" "$root_tar_file" $OUT_DIR
+done
+
+$REL_DIR/gen-README

@@ -1,0 +1,58 @@
+#!/bin/bash
+
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+BUILD_DIR="$DIR/fstests-bld"
+REL_DIR="$DIR/release"
+OUT_DIR="$DIR/release/out_dir"
+APPLIANCE_DIR="$DIR/test-appliance"
+
+MIRROR=http://mirrors.kernel.org/debian
+if test -f "$APPLIANCE_DIR/config.custom"
+then
+    . "$APPLIANCE_DIR/config.custom"
+fi
+
+distro=buster
+if test -f "$BUILD_DIR/xfstests/build-distro" ; then
+    distro=$(cat "$BUILD_DIR/xfstests/build-distro")
+fi
+
+xfstests_rel=$(cd $BUILD_DIR/xfstests-dev ; git tag --points-at HEAD | grep ^release)
+blktests_rel=$(cd $BUILD_DIR/blktests ; git tag --points-at HEAD | grep ^release)
+
+mkdir -p "$OUT_DIR"
+
+sed -e "
+s;@MIRROR@;$MIRROR;
+s/@DISTRO@/$distro/
+/@VERFILE@/{r $OUT_DIR/git-versions.amd64
+	    d}" \
+		< "$REL_DIR/README.in" > "$OUT_DIR/README"
+
+if test -n "$xfstests_rel"
+then
+    cat >> "$OUT_DIR/README" <<EOF 
+Local changes to xfstests can be found at:
+
+    https://github.com/tytso/xfstests $xfstests_rel
+
+EOF
+fi
+
+if test -n "$blktests_rel"
+then
+    cat >> "$OUT_DIR/README" <<EOF 
+Local changes to blktests can be found at:
+
+    https://github.com/tytso/blktests $blktests_rel
+
+EOF
+fi
+

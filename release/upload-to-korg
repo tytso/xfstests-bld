@@ -1,0 +1,102 @@
+#!/bin/bash
+
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+
+cd "$DIR/release"
+
+DEST=/pub/linux/kernel/people/tytso/kvm-xfstests
+FILES=( README \
+	root_fs.img.amd64 \
+	root_fs.img.i386 \
+	root_fs.img.arm64 \
+	root_fs.amd64.tar.gz \
+	root_fs.i386.tar.gz \
+	root_fs.arm64.tar.gz \
+	xfstests-amd64.tar.gz \
+	xfstests-i386.tar.gz \
+	xfstests-arm64.tar.gz )
+	   
+function usage()
+{
+    echo "Usage: upload-to-korg: [--testing]"
+    exit 1
+}
+
+while [ "$1" != "" ]; do
+    case $1 in
+	--testing)
+	    DEST=/pub/linux/kernel/people/tytso/kvm-xfstests/testing
+	    ;;
+	*)
+	    usage
+	    exit 1
+	    ;;
+    esac
+    shift
+done
+
+ls -sl out_dir
+printf "\n"
+
+for i in "${FILES[@]}" ; do
+    if test ! -f "out_dir/$i" ; then
+	echo "Missing file $i"
+	echo "Aborting!"
+	exit 1
+    fi
+done
+
+printf "Pausing to verify..."
+sleep 1
+printf "\n"
+
+function sign_file()
+{
+    local fn=out_dir/$1
+    local tar_fn
+
+    rm -f "$fn.sig"
+    if test -f $fn ; then
+	case "$fn" in
+	    *.tar.gz)
+		tar_fn=$(basename "$fn")
+		tar_fn=$(echo "$tar_fn" | sed -e 's/.gz//')
+		echo $tar_fn
+		gunzip < $fn > /tmp/$tar_fn
+		rm -f "/tmp/$tar_fn.sig"
+		gpg2 --sign --detach /tmp/$tar_fn
+		mv /tmp/$tar_fn.sig $fn.sig
+		rm -f /tmp/$tar_fn
+		;;
+	    *)
+		gpg2 --sign --detach $fn
+	esac
+    fi
+}
+
+function upload_file()
+{
+    local fn=out_dir/$1
+
+    if test -f $fn ; then
+	kup put $fn $fn.sig  $DEST/$i
+    else
+	kup rm $DEST/$i
+    fi
+}
+
+for i in "${FILES[@]}" ; do
+    sign_file $i
+    echo $i
+done
+
+for i in "${FILES[@]}" ; do
+    upload_file $i
+done
+
+exit 0
