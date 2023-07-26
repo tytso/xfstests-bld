@@ -50,10 +50,18 @@ QUIET="quiet loglevel=0"
 
 . $DIR/util/parse_cli
 
+DOWNLOAD_BASE_URL="https://mirrors.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests"
 if test -z "$EXPLICIT_ROOT_FS" ; then
     ROOT_FS="$(dirname $DIR)/test-appliance/root_fs.img.$ARCH"
     if ! test -f "$ROOT_FS" ; then
 	ROOT_FS="$(dirname $DIR)/test-appliance/root_fs.img"
+    fi
+    if ! test -f "$ROOT_FS" ; then
+	f=root_fs.img.$ARCH
+	ROOT_FS="$(dirname $DIR)/test-appliance/$f"
+	echo "Downloading $f..."
+	wget -nv --show-progress -O "$ROOT_FS.new" "$DOWNLOAD_BASE_URL/$f"
+	mv "$ROOT_FS.new" "$ROOT_FS"
     fi
 fi
 
