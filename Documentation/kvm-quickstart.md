@@ -1,48 +1,60 @@
 # Quick start instructions for kvm-xfstests
 
-1.  Make sure qemu with kvm support is installed on your system.
+1.  Make sure the necessary packages are installed.  For Debian/Ubuntu
+    systems:
 
-        apt-get install qemu-kvm
+        apt-get install qemu-kvm wget gcc git make
+
+    For Fedora systems:
+
+        dnf install qemu-kvm wget2 gcc git make
 
 2.  Run the following commands to install the xfstests-bld repository
-    and download a pre-compiled test appliance image.  We use the
-    32-bit test appliance here since it can support both 32-bit and
-    64-bit kernels.
+    and install the necessary scripts into the bin directory in your
+    home directory.  If ~/bin isn't in your PATH, edit your dotfiles
+    (e.g., your ~/.bashrc) so that it is.
 
-        git clone https://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git fstests
+        git clone https://github.com/tytso/xfstests-bld fstests
         cd fstests
-        wget -O test-appliance/root_fs.img https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
+        make ; make install
 
-3.  In the top-level directory of your checked out xfstests-bld
-    repository, run "make kvm-xfstests" and then copy this generated
-    file to a directory which is your shell's PATH.  This allows you
-    to run the kvm-xfstests binary without needing to set the
-    working directory to the kvm-xfstests directory.
+3.  Optionally, if you want to primarily developing a file system
+    other than ext4, you can specify the primary file system type in the
+    file ~/.config/kvm-xfstests:
 
-        make kvm-xfstests
-        cp kvm-xfstests ~/bin/kvm-xfstests
+        echo PRIMARY_FSTYPE=f2fs >> ~/.config/kvm-xfstests
 
-4.  In the fstests/run-fstests/ directory, take a look at the
-    "config.kvm" file and either edit that file in place, or (this is
-    preferred) put override values in ~/.config/kvm-xfstests.  The
-    most common values you will likely need to override are the
-    location of the compiled kernel and the preferred timezone if you
-    wish the log files to display times in your local timezone.
+    Again, optionally, if you want the log files to display times in
+    your local timezone, you can add a timezone to the
+    ~/.config/kvm-xfstests file.
 
-        TZ=America/New_York
-        KERNEL=/build/ext4/arch/x86/boot/bzImage
+        echo TZ=America/New_York >> ~/.config/kvm-xfstests
 
-5.  To build a kernel for use with kvm-xfstests, with the current
+4.  To build a kernel for use with kvm-xfstests, with the current
     directory in the kernel sources which you would like to use, run
     the commands:
 
-        kvm-xfstests install-kconfig
-        kvm-xfstests kbuild
+        install-kconfig
+        kbuild
 
-6.  Run "kvm-xfstests smoke" to do a quick test.  Or "kvm-xfstests
-    -g auto" to do a full test.  You can also run specific tests on
-    specific configurations, i.e., "kvm-xfstests -c bigalloc_4k
-    generic/013 generic/127".   To run a shell, use "kvm-xfstests shell"
+5.  In the top-level of the kernel sources where you have run "kbuild"
+    you can perform a smoke test:
+
+        kvm-xfstests smoke
+
+
+    Developers are *strongly* recommended to run a smoke test before
+    submitting a patch or patch series upstream for review.
+
+    Today, this is equivalent to "kvm-xfstests -c default -g quick".
+    However, this might change in the future to run a smaller set of
+    tests, as the quick group can take about an hour to run.
+
+    To do a full test, you can run "kvm-xfstests full".   Warning:
+    this will take a long time --- close to 24 hours if you are
+    testing ext4; you may be better off using
+    [gce-xfstests](gce-xfstests.md) if you are interested in doing the sort of
+    testing used by file system maintainers.
 
 For more information, please see the full [kvm-xfstests
 documentation](kvm-xfstests.md).

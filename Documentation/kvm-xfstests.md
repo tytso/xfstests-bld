@@ -11,33 +11,26 @@ read this [introduction to xfstests](what-is-xfstests.md).
 The kvm-xfstests system consists of a series of shell scripts, and a
 test appliance virtual machine image.  You can build an image using
 the build infrastructure in the xfstests-bld git repository, but if
-you are just getting started, it will be much simpler if you download
-one of the pre-compiled VM images which can be found on
-[kernel.org](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests).
+you are just getting started, it will be much simpler if you let
+kvm-xfstests automatically download a pre-compiled VM test appliance
+image from [kernel.org](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests).
 
-You will find there a 32-bit test appliance named
-[root_fs.img.i386](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386)
-and a 64-bit test appliance named
-[root_fs.img.amd64](https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.amd64).
-This file should be installed as root_fs.img in the test-appliance
-directory.
-
-A 64-bit x86 kernel can use both the 32-bit and 64-bit test appliance
-VM, since you can run 32-bit ELF binaries using a 64-bit kernel.
-However, the reverse is not true; a 32-bit x86 kernel can not run
-64-bit x86 binaries.  This makes the 64-bit test appliance more
-flexible.  In addition, if you use the 64-bit kernel with 32-bit
-interfaces, it tests the 32-bit compat ioctl code paths, which
-otherwise may not get sufficient testing.
-
-If you want to build your own test appliance VM, see
-[building-rootfs.md](building-rootfs.md).
+There are prebuilt test appliances for 32-bit and 64-bit x86 systems
+(root_fs.img.i386 and root_fs.img.amd64) as well as for the 64-bit ARM
+platform.  Thet test appliance images are installed in the
+test-appliance directory, but it's easist to just allow kvm-xfstests
+to download the image to the correct place, or to let the
+build-appliance write the newly created test appliance image where it
+should be located.  If you want to build your own test appliance VM,
+see [building-rootfs.md](building-rootfs.md).
 
 ## Setup and configuration
 
-The configuration file for kvm-xfstests is run-fstests/config.kvm.
-You can edit this file directly, but the better thing to do is to
-place override values in ~/.config/kvm-xfstests.
+The configuration file for kvm-xfstests is located
+~/.config/kvm-xfstests.  A sample of the parameters that can be set in
+the config file can be found in run-tests/config.kvm and
+run-tests/config.common, which show the default values if they are not
+overridden by settings in ~/.config/kvm-xfstests.
 
 Perhaps the most important configuration variable to set is KERNEL.
 This should point at the default location for the kernel that qemu
@@ -48,16 +41,20 @@ tree where there is a built kernel, kvm-xfstests will use it.
 Otherwise, it will use the kernel specified by the KERNEL variable.
 
 To build a correctly configured kernel for use with kvm-xfstests, run
-the command:
+the commands:
 
-        kvm-xfstests install-kconfig [--i386]
+        install-kconfig
+        kbuild
 
-(Add the --i386 option if you wish to build a 32-bit kernel.)
+If you wish to build kernels for the i386 or arm64 platforms, add
+"--arch i386" or "--arch amd64" to install-kconfig and kbuild
+commands.
 
 By default, the scratch disks used by test-appliance will be set up
 automatically, and are stored in the run-fstests directory with the
 names vdb, vdc, vdd, ... up to vdg.  However, it is slightly faster to
-use logical volumes.  To do this override the VDB..VDG variables:
+use logical volumes.  To do this override the VDB..VDG variables in
+the ~/.config/kvm-xfstests file.
 
         VG=closure
 
@@ -98,8 +95,8 @@ appliance is:
         kvm-xfstests [-c <cfg>] [-g <group>]|[<tests>] ...
 
 
-By default <cfg> defaults to all, which will run the following
-configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
+By default <cfg> defaults to all, which for ext4 will run the
+following configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
 "dioread_nolock, "data_journal", "inline", "bigalloc_4k", and
 "bigalloc_1k".  You may specify a single configuration or a comma
 separated list if you want to run a subset of all possible file system
