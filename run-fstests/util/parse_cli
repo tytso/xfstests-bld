@@ -304,6 +304,7 @@ spot-fallback
 primary_fstype:
 repo:
 skip-kernel-arch-probe
+soak-duration:
 stress-mem:
 stress-opts:
 testrunid:
@@ -802,6 +803,9 @@ while (( $# >= 1 )); do
 	--skip-kernel-arch-probe)
 	    SKIP_KERNEL_ARCH_PROBE=YES
 	    ;;
+	--soak-duration) shift
+	    SOAK_DURATION="$1"
+	    ;;
 	--monitor-timeout) shift
 	    MONITOR_TIMEOUT="$1"
 	    ;;
@@ -1092,6 +1096,10 @@ fi
 
 if test "$NO_ZERO" = yes ; then
     FSTESTOPT="$FSTESTOPT,no_zero"
+fi
+
+if test -n "$SOAK_DURATION" ; then
+    FSTESTOPT="$FSTESTOPT,soak,$SOAK_DURATION"
 fi
 
 FSTESTOPT=${FSTESTOPT/#,/}

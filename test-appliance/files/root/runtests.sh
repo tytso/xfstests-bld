@@ -207,6 +207,9 @@ while [ "$1" != "" ]; do
     extra_opt) shift
 	EXTRA_OPT="$EXTRA_OPT $1"
 	;;
+    soak) shift
+	export SOAK_DURATION="$1"
+	;;
     *)
 	echo " "
 	echo "Unrecognized option $1"
