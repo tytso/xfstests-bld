@@ -1,3 +1,12 @@
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+// We now allow cross-vfsmnt reflink/dedupe starting in 5.18.
+// Older kernels will fail on generic/373 and generic/374 because
+// these tests have been updated to cross-vfsmount reflink and dedupe,
+// at least for those file systems which support reflink/dedupe
+generic/373
+generic/374
+#endif
+
 // "The test is just broken.  It made some odd assumptions on
 // what RWF_NOMAIT means with buffered writes..." -- Jens Axboe
 // https://lore.kernel.org/r/b2865bd6-2346-8f4d-168b-17f06bbedbed@kernel.dk
