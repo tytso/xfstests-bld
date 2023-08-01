@@ -167,6 +167,7 @@ fi
 
 RPT_COUNT=1
 FAIL_LOOP_COUNT=4
+NO_TRUNCATE=
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -209,6 +210,9 @@ while [ "$1" != "" ]; do
 	;;
     soak) shift
 	export SOAK_DURATION="$1"
+	;;
+    no_truncate_test_files)
+	NO_TRUNCATE=t
 	;;
     *)
 	echo " "
@@ -763,7 +767,11 @@ echo "-------------------- Summary report"
 
 cat $RESULTS/report
 
-if test -n "$FSTEST_ARCHIVE"; then
+if test -z "$NO_TRUNCATE" ; then
+    /usr/local/bin/truncate-test-files "$RESULTS"
+fi
+
+if test -n "$FSTEST_ARCHIVE" ; then
     tar -C $RESULTS -cf - . | \
 	xz -6e > /tmp/results.tar.xz
 fi

@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+# Truncate *.full and *.fsxlog files except when a test has failed,
+# to reduce the size of the test artifacts saved.
+#
+
+DIR=.
+maxsize=31k
+
+if test -n "$1" ; then
+    DIR="$1"
+fi
+
+if test -n "$2"; then
+    maxsize=$2
+fi
+
+if ! test -d "$DIR" ; then
+    echo "Directory $DIR does not exist"
+fi
+
+echo "Truncating test artifacts in $DIR to $maxsize"
+
+for i in $(find $DIR -name \*.full -size +$maxsize -print)
+do
+    bad=$(echo $i | sed -e 's/full/out.bad/')
+    if test -f $bad
+    then
+	continue
+    fi
+    truncate -s "$maxsize" $i
+    echo -e "\n\n<file truncated>" >> $i
+done
+
+for i in $(find $DIR -name \*.full.rerun\* -size +$maxsize -print)
+do
+    bad=$(echo $i | sed -e 's/full/out.bad/')
+    if test -f $bad
+    then
+	continue
+    fi
+    truncate -s "$maxsize" $i
+    echo -e "\n\n<file truncated>" >> $i
+done
+
+for i in $(find $DIR -name \*.fsxlog -size +$maxsize -print)
+do
+    bad=$(echo $i | sed -e 's/[0-9]*\.fsxlog/out.bad/')
+    if test -f $bad
+    then
+	continue
+    fi
+    truncate -s "$maxsize" $i
+    echo -e "\n\n<file truncated>" >> $i
+done
