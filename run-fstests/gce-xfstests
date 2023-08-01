@@ -785,6 +785,8 @@ then
 	fi
     fi
 fi
+rm -f "$TMP_CONFIG"
+trap - EXIT
 
 # Simulate how parse_cli handles --no-action if this option was specified
 # as the first argument and we are running a test.
