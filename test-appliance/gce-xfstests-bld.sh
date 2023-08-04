@@ -219,8 +219,12 @@ else
     PACKAGES="$PACKAGES exfatprogs"
 fi
 
+if test "$NEW_SUITE" = "bullseye" ; then
+    PACKAGES="$PACKAGES xxd liburing1"
+fi
+
 if test "$NEW_SUITE" = "bookworm" ; then
-    PACKAGES="$PACKAGES xxd"
+    PACKAGES="$PACKAGES xxd liburing2"
 fi
 
 apt-get install -y $PACKAGES
