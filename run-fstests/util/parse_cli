@@ -267,6 +267,7 @@ image-project:
 initrd:
 instance-name:
 kernel:
+kernel-arch:
 kbuild-opts:
 kconfig-opts:
 local-ssd
@@ -528,6 +529,10 @@ while (( $# >= 1 )); do
 	--kernel) shift
 	    KERNEL="$1"
 	    OVERRIDE_KERNEL="$KERNEL"
+	    ;;
+	--kernel-arch) shift
+	    KERNEL_ARCH="$1"
+	    SKIP_KERNEL_ARCH_PROBE="yes"
 	    ;;
 	--modules) shift
 	    supported_flavors kvm gce

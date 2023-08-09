@@ -14,6 +14,7 @@ now to reduce the code base.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -52,6 +53,7 @@ type ShardScheduler struct {
 	bucketSubdir   string
 	gsKernel       string
 	kernelVersion  string
+	kernelArch     string
 	arch	       string
 	reportReceiver string
 	maxShards      int
@@ -126,6 +128,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		bucketSubdir:   bucketSubdir,
 		gsKernel:       c.Options.GsKernel,
 		kernelVersion:  "unknown_kernel_version",
+		kernelArch:     "",
 		arch:		c.Options.Arch,
 		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
@@ -164,6 +167,8 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 
 	sharder.validArgs, sharder.configs, err = getConfigs(sharder.origCmd)
 	check.Panic(err, log, "Failed to parse config from origCmd")
+
+	sharder.getKernelInfo()
 
 	sharder.gce, err = gcp.NewService(sharder.gsBucket)
 	check.Panic(err, log, "Failed to connect to GCE service")
@@ -280,6 +285,34 @@ func (sharder *ShardScheduler) initRegionSharding() {
 	sharder.shards = allShards
 }
 
+// Get information about the kernel so that each gce-xfstests invocation
+// doesn't have to replicate this work.
+func (sharder *ShardScheduler) getKernelInfo() {
+	cmd := exec.Command("gce-xfstests", "get-kernel-info", sharder.gsKernel)
+	sharder.kernelArch = ""
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	if !check.NoError(err, sharder.log, "Failed to get kernel information") {
+		sharder.log.Errorf("Failure text: %s",
+			strings.TrimSuffix(stderr.String(), "\n"))
+		return;
+	}
+	for _, v := range strings.Split(stdout.String(), "\n") {
+		arg := strings.Split(v, "=")
+		if (len(arg) < 2) {
+			continue
+		}
+		if arg[0] == "KERNEL_ARCH" {
+			sharder.kernelArch = strings.TrimSuffix(arg[1], "\n")
+		} else if arg[0] == "KERNEL_VERSION" {
+			sharder.kernelVersion = strings.TrimSuffix(arg[1], "\n")
+		}
+	}
+}
+
 // getConfigs calls a parser to extract the valid args and configs from
 // the raw cmdline.
 func getConfigs(origCmd string) ([]string, []string, error) {
@@ -346,6 +379,8 @@ func (sharder *ShardScheduler) Info() server.SharderInfo {
 	info := server.SharderInfo{
 		ID:        sharder.testID,
 		Command:   sharder.origCmd,
+		KernelVersion: sharder.kernelVersion,
+		KernelArch: sharder.kernelArch,
 		NumShards: len(sharder.shards),
 		Result:    sharder.testResult.String(),
 	}
@@ -425,6 +460,9 @@ func (sharder *ShardScheduler) aggResults() {
 	}
 
 	for _, shard := range sharder.shards {
+		if sharder.kernelVersion != "" {
+			break
+		}
 		kernelVersionFile := fmt.Sprintf("%s%s/kernel_version", sharder.aggDir, shard.shardID)
 		if check.FileExists(kernelVersionFile) {
 			content, err := check.ReadLines(kernelVersionFile)

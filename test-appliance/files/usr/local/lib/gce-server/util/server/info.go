@@ -17,6 +17,8 @@ import (
 type SharderInfo struct {
 	ID        string      `json:"id"`
 	Command   string      `json:"command"`
+	KernelVersion string  `json:"kernel_version"`
+	KernelArch string     `json:"kernel_arch"`
 	NumShards int         `json:"num_shards"`
 	Result    string      `json:"test_result"`
 	ShardInfo []ShardInfo `json:"shards"`
@@ -24,9 +26,11 @@ type SharderInfo struct {
 
 func (s SharderInfo) String() string {
 	info := fmt.Sprintf(
-		"============SHARDER INFO %s============\nCMDLINE:\t%s\nSHARD NUM:\t%d\nTEST RESULT:\t%s\n",
+		"============SHARDER INFO %s============\nCMDLINE:\t%s\nKERNEL VERSION:\t%s\nKERNEL ARCH:\t%s\nSHARD NUM:\t%d\nTEST RESULT:\t%s\n",
 		s.ID,
 		s.Command,
+		s.KernelVersion,
+		s.KernelArch,
 		s.NumShards,
 		s.Result,
 	)

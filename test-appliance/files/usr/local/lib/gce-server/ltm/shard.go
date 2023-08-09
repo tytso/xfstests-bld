@@ -107,6 +107,10 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		shard.args = append(shard.args, "--arch", sharder.arch)
 	}
 
+	if sharder.kernelArch != "" {
+		shard.args = append(shard.args, "--kernel-arch", sharder.kernelArch)
+	}
+
 	var imgProjFlag bool = false
 	for _, arg := range sharder.validArgs {
 		if arg == "--image-project" {

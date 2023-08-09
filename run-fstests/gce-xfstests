@@ -388,6 +388,22 @@ case "$1" in
 	echo gs://"$GS_BUCKET"
 	exit 0
 	;;
+    get-kernel-arch) shift
+	get_kernel_file_info "$1"
+	echo $KERNEL_ARCH
+	exit 0
+	;;
+    get-kernel-version) shift
+	get_kernel_file_info "$1"
+	echo $KERNEL_VERSION
+	exit 0
+	;;
+    get-kernel-info) shift
+	get_kernel_file_info "$1"
+	echo KERNEL_ARCH="$KERNEL_ARCH"
+	echo KERNEL_VERSION="$KERNEL_VERSION"
+	exit 0
+	;;
     get-results)
 	shift
 	ret=0
