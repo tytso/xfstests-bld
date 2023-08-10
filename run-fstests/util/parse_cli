@@ -829,13 +829,7 @@ done
 while (( $# >= 1 )); do
     case "$1" in
 	smoke)
-	    if test -n "$FSTESTCFG" ; then
-		echo "You can use either '-c' or 'smoke', not both! " \
-			"'smoke' means '-c 4k -g quick'."
-		exit 1
-	    fi
-	    FSTESTCFG=4k
-	    FSTESTSET="$FSTESTSET,-g,quick"
+	    DO_SMOKE=yes
 	    ;;
 	quick)
 	    FSTESTSET="$FSTESTSET,-g,quick"
@@ -962,6 +956,14 @@ EOF
     esac
     shift
 done
+
+if test -n "$DO_SMOKE" ; then
+    SOAK_DURATION=3m
+    FSTESTSET="$FSTESTSET,-g,smoketest"
+    if test -z "$FSTESTCFG" ; then
+	FSTESTCFG="$PRIMARY_FSTYPE/default"
+    fi
+fi
 
 if test -z "$FSTESTCFG" ; then
     FSTESTCFG=all

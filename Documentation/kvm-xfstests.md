@@ -96,11 +96,11 @@ appliance is:
 
 
 By default <cfg> defaults to all, which for ext4 will run the
-following configurations: "4k", "1k", "ext3", "nojournal", "ext3conv",
-"dioread_nolock, "data_journal", "inline", "bigalloc_4k", and
-"bigalloc_1k".  You may specify a single configuration or a comma
-separated list if you want to run a subset of all possible file system
-configurations.
+following configurations: "4k", "1k", "ext3", "encrypt", "nojournal",
+"ext3conv", "adv", "dioread_nolock, "data_journal", "inline",
+"bigalloc_4k", "bigalloc_1k", and "dax".  You may specify a single
+configuration or a comma separated list if you want to run a subset of
+all possible file system configurations.
 
 Tests can be specified using an xfstests group via "-g <group>", or
 via one or more specific xfstests subtests (e.g., "generic/068").  The
@@ -109,12 +109,14 @@ tests that are suitable for use in an automated test run, and "quick"
 which runs a subset of the tests designed for a fast smoke test.
 
 For developer convenience, "kvm-xfstests smoke" is short-hand for
-"kvm-xfstests -c 4k -g quick", which runs the fast subset of tests
-using just 4k block file system configuration.  In addition
-"kvm-xfstests full" is short-hand for "kvm-xfstests -g auto" which
-runs all of the tests using a large set of file system configurations.
-This will take quite a while, so it's best run overnight.  (Or it may
-be better to run the full set of tests using gce-xfstests.)
+"kvm-xfstests -c default -g smoketest --soak-duration 3m".  In
+addition "kvm-xfstests full" is short-hand for "kvm-xfstests -g auto"
+which runs all of the tests using a large set of file system
+configurations.  This will take the better part of a day, so you
+should consider running the full set of tests using "gce-xfstests ltm
+full", which will start multiple VM's for each file system
+configuration, and will take a few hours, if you have access to a GCE
+account.
 
 ### Running an interactive shell
 

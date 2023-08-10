@@ -42,13 +42,8 @@
 
         kvm-xfstests smoke
 
-
     Developers are *strongly* recommended to run a smoke test before
     submitting a patch or patch series upstream for review.
-
-    Today, this is equivalent to "kvm-xfstests -c default -g quick".
-    However, this might change in the future to run a smaller set of
-    tests, as the quick group can take about an hour to run.
 
     To do a full test, you can run "kvm-xfstests full".   Warning:
     this will take a long time --- close to 24 hours if you are
