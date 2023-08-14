@@ -9,6 +9,7 @@ else
     DIR="$(dirname "$(dirname "$0")")"
 fi
 . "$DIR/util/get-config"
+. "$DIR/util/arch-funcs"
 
 if test -z "$GS_BUCKET" -o -z "$GCE_PROJECT" -o -z "$GCE_ZONE"
 then
@@ -31,14 +32,20 @@ then
     SRC_PROJECT=
     DEST_PROJECT=
 fi
-SRC_FAMILY=xfstests
-DEST_FAMILY=xfstests
+SRC_FAMILY=__unspec
+DEST_FAMILY=__unspec
 SRC_IMAGE=
 DEST_IMAGE=
 
 while [ "$1" != "" ];
 do
     case $1 in
+	--arch) shift
+	    ARCH="$1"
+	    ;;
+	--arch=*)
+	    ARCH=$(echo "$1" | sed 's/--arch=//')
+	    ;;
 	--src_project)
 	    shift
 	    SRC_PROJECT="$1"
@@ -80,6 +87,18 @@ do
     esac
     shift
 done
+
+set_canonicalized_arch "$ARCH"
+
+if [ "$SRC_FAMILY" = "__unspec" ]
+then
+    SRC_FAMILY="xfstests-$ARCH"
+fi
+
+if [ "$DEST_FAMILY" = "__unspec" ]
+then
+    DEST_FAMILY="xfstests-$ARCH"
+fi
 
 if [ -z "$SRC_PROJECT" ]
 then
@@ -126,6 +145,10 @@ then
 fi
 
 echo "About to copy $SRC_PROJECT/$SRC_IMAGE to $DEST_PROJECT/$DEST_IMAGE..."
+if [ -n "$DEST_FAMILY" ]
+then
+   echo "Destination family: $DEST_FAMILY"
+fi
 
 if [ -z "$NOACTION" ]
 then
