@@ -29,6 +29,7 @@ libkeyutils1
 lvm2
 lz4
 makedev
+mg
 mtd-utils
 multipath-tools
 nbd-client

@@ -68,6 +68,7 @@ PACKAGES="acpid \
 	lighttpd \
 	lvm2 \
 	lz4 \
+	mg \
 	mtd-utils \
 	multipath-tools \
 	nano \
