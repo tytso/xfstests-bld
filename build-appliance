@@ -12,6 +12,7 @@ DATECODE=
 BUILD_ENV=
 SUDO_ENV=sudo
 DO_GCE=
+NO_BUILD=
 
 d=$(dirname "$0")
 if test $d = "." ; then
@@ -56,6 +57,7 @@ longopts="help"
 longopts+=",chroot:"
 longopts+=",out-tar"
 longopts+=",out-both"
+longopts+=",no-build"
 longopts+=",no-out-tar"
 longopts+=",update"
 longopts+=",gce"
@@ -84,6 +86,9 @@ while (( $# >= 0 )); do
 	;;
     --out-both)
 	OUT_TAR=both
+	;;
+    --no-build)
+	NO_BUILD=yes
 	;;
     --no-out-tar)
 	OUT_TAR=
@@ -124,7 +129,9 @@ if $UPDATE; then
     $BUILD_ENV ./update-all
     gen_image_args+=" --update"
 else
-    $BUILD_ENV make all-clean-first
+    if test -z "$NO_BUILD" ; then
+	$BUILD_ENV make all-clean-first
+    fi
 fi
 $BUILD_ENV ./gen-tarball --arch "$ARCH"
 
