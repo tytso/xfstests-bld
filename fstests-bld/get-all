@@ -139,6 +139,7 @@ done
 
 # required repositories
 setup_repo fio			FIO_GIT		FIO_COMMIT		true
+setup_repo libaio		LIBAIO_GIT	LIBAIO_COMMIT		true
 setup_repo quota		QUOTA_GIT	QUOTA_COMMIT		true
 setup_repo xfsprogs-dev		XFSPROGS_GIT	XFSPROGS_COMMIT		true
 setup_repo xfstests-dev		XFSTESTS_GIT	XFSTESTS_COMMIT		true

@@ -274,9 +274,15 @@ fi
 
 if test -z "$SKIP_AIO" ; then
     build_start "AIO library"
-    (cd libaio; ./configure $cross --disable-nls; $MAKE_CLEAN ;
-     make $J prefix=$DESTDIR install)
-    rm $DESTDIR/lib/libaio.so*
+    (cd libaio
+     ver=$(git describe --always --dirty); echo "libaio  	$ver ($(git log -1 --pretty=%cD))" > ../libaio.ver
+     if [ -n "$CROSS_COMPILE" ]; then
+	export CC="$CROSS_COMPILE-gcc"
+	export AR="$CROSS_COMPILE-ar"
+	export RANLIB="$CROSS_COMPILE-ranlib"
+     fi
+     $MAKE_CLEAN
+     make $J prefix=$DESTDIR ENABLE_SHARED=0 install)
 fi
 
 if test -z "$SKIP_KEYUTILS" ; then

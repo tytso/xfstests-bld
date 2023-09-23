@@ -6,6 +6,9 @@ XFSPROGS_COMMIT=b42033308360655616fc9bd77678c46bf518b7c8 # v5.13.0
 FIO_GIT=https://git.kernel.dk/fio.git
 FIO_COMMIT=9b46661c289d01dbfe5182189a7abea9ce2f9e04 # fio-3.29
 
+LIBAIO_GIT=https://pagure.io/libaio.git
+LIBAIO_COMMIT=1b18bfafc6a2f7b9fa2c6be77a95afed8b7be448 # libaio-0.3.113
+
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
 QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
 

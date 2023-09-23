@@ -27,8 +27,6 @@ mkdir -p $DESTDIR
 
 (cd libaio; make $J prefix=$DESTDIR install)
 
-rm $DESTDIR/lib/libaio.so*
-
 (cd xfsprogs-dev; \
     make $J LLDFLAGS=-all-static BUILD_VERBOSE=1; \
     DIST_ROOT=$DESTDIR make $J install; \
