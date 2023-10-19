@@ -38,6 +38,7 @@ PACKAGES="$ADD_PACKAGES acpid \
 	dc \
 	dbench \
 	dbus \
+	debhelper \
 	dmsetup \
 	dosfstools \
 	duperemove \
