@@ -16,10 +16,11 @@ LIBCOMERR="@LIBCOMERR@"
 LIBSS="@LIBSS@"
 BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
+ADD_PACKAGES="@ADD_PACKAGES@"
 # Hardcoded go version
 GO_VERSION=1.17.6
 
-PACKAGES="acpid \
+PACKAGES="$ADD_PACKAGES acpid \
 	bash-completion \
 	bc \
 	bison \

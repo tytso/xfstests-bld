@@ -7,12 +7,14 @@
 set -e -u
 
 gen_image_args=
+gce_image_args=
 OUT_TAR=
 DATECODE=
 BUILD_ENV=
 SUDO_ENV=sudo
 DO_GCE=
 NO_BUILD=
+ADD_PACKAGES=
 
 d=$(dirname "$0")
 if test $d = "." ; then
@@ -39,6 +41,9 @@ Usage: build-appliance [OPTION]...
 Build or update a test appliance.
 
 Options:
+    --add-package PACKAGE
+                    Install the package or comma-delimited list of packages
+                    as additional packages in the test appliance
     --chroot CHROOT Use the specified build chroot, where CHROOT is the chroot
                     name in /etc/schroot/schroot.conf, e.g. "stretch-amd64".
     --gce           Build a GCE test appliance as well as a kvm/android
@@ -54,6 +59,7 @@ EOF
 UPDATE=false
 
 longopts="help"
+longopts+=",add-package:"
 longopts+=",chroot:"
 longopts+=",out-tar"
 longopts+=",out-both"
@@ -74,6 +80,10 @@ while (( $# >= 0 )); do
     --help)
 	usage
 	exit 0
+	;;
+    --add-package)
+	ADD_PACKAGES="$ADD_PACKAGES $2"
+	shift
 	;;
     --chroot)
 	BUILD_ENV="schroot -c $2 --"
@@ -140,13 +150,20 @@ case "$OUT_TAR" in
     yes)  gen_image_args+=" --out-tar" ;;
 esac
 
+if test -n "$ADD_PACKAGES" ; then
+    a=$(echo $ADD_PACKAGES | sed -e 's/ /,/')
+    gen_image_args+=" -a $a"
+    gce_image_args+= "--add-package $a"
+    unset a
+fi
+
 cd ../run-fstests
 if test -n "$DO_GCE"; then
     d=
     if test -n "$DATECODE" ; then
 	d="--datecode $DATECODE"
     fi
-    ./gce-xfstests create-image --arch=$ARCH $d \
+    ./gce-xfstests create-image $gce_image_args --arch=$ARCH $d \
 		   >& /tmp/gce-xfstests-create.$$ &
 fi
 

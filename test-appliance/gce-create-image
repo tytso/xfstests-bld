@@ -35,6 +35,7 @@ SCOPES="$GS_RW,$LOG_WR,$COMPUTE_RW"
 
 BLD_INST=xfstests-bld
 BLD_DISK=xfstests-bld
+ADD_PACKAGES=
 
 GZIP=gzip
 if type -P pigz >& /dev/null ; then
@@ -43,6 +44,9 @@ fi
 
 while [ "$1" != "" ]; do
     case "$1" in
+	--add-package) shift
+	    ADD_PACKAGES="$(echo $ADD_PACKAGES $1 | sed -e 's/,/ /')";
+	    ;;
 	--arch) shift
 	    ARCH="$1"
 	    ;;
@@ -197,7 +201,8 @@ fi
 td=$(mktemp -d /tmp/gce-create.XXXXXXXX)
 
 cp $TARBALL $td/xfstests.tar.gz
-sed -e "s/@BUCKET@/$GS_BUCKET/" \
+sed -e "s/@ADD_PACKAGES@/$ADD_PACKAGES/" \
+    -e "s/@BUCKET@/$GS_BUCKET/" \
     -e "s;@GS_TAR@;$GS_TAR;" \
     -e "s/@BLD_INST@/$BLD_INST/" \
     -e "s;@BACKPORTS@;$BACKPORTS;" \

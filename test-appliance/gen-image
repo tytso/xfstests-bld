@@ -88,8 +88,8 @@ while [ "$1" != "" ]; do
     --src_date) shift
       SOURCE_DATE="$1"
       ;;
-    -a|--add_packages) shift
-      PACKAGES="$PACKAGES $1"
+    -a|--add-package) shift
+      PACKAGES="$(echo $PACKAGES $1 | sed -e 's/,/ /')"
       ;;
     *)
       echo "usage: gen-image [--save_raw_root] [--update] [--mirror MIRROR_LOC]"
