@@ -1,0 +1,7 @@
+#!/bin/sh
+
+DIR=@DIR@
+
+KVM_XFSTESTS_DIR=$DIR/run-fstests
+export KVM_XFSTESTS_DIR
+exec $KVM_XFSTESTS_DIR/kvm-xfstests "$@"
