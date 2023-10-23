@@ -7,6 +7,7 @@ REPOS =		blktests \
 		keyutils \
 		fsverity \
 		ima-evm-utils \
+		libaio \
 		nvme-cli \
 		quota \
 		stress-ng \
@@ -20,7 +21,6 @@ SUBDIRS =	acl \
 		attr \
 		dbench \
 		e2fsprogs-libs \
-		libaio \
 		libinih \
 		misc \
 		popt \

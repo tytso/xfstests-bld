@@ -69,6 +69,17 @@ setup_repo()
     local commit="${!3}"
     local required="$4"
 
+    # If there is a plain directory where the git repo should be, remove it.
+    # This handles the switch from in-tree libaio to external libaio.
+    if [ -d "$repo_name" ] && [ ! -e "$repo_name/.git" ]; then
+	if [ -n "$NO_ACTION" ]; then
+	    echo "Replace plain directory '$repo_name' with git repo"
+	    return
+	fi
+	echo "Replacing plain directory '$repo_name' with git repo"
+	rm -rf "$repo_name"
+    fi
+
     # Clone the repository if needed.
     if [ ! -d "$repo_name" ]; then
 	if [ -z "$repo_url" ]; then
@@ -128,6 +139,7 @@ done
 
 # required repositories
 setup_repo fio			FIO_GIT		FIO_COMMIT		true
+setup_repo libaio		LIBAIO_GIT	LIBAIO_COMMIT		true
 setup_repo quota		QUOTA_GIT	QUOTA_COMMIT		true
 setup_repo xfsprogs-dev		XFSPROGS_GIT	XFSPROGS_COMMIT		true
 setup_repo xfstests-dev		XFSTESTS_GIT	XFSTESTS_COMMIT		true

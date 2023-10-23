@@ -45,8 +45,6 @@
 /dbench/dbench
 /dbench/tbench
 /dbench/tbench_srv
-/libaio/src/libaio.a
-/libaio/src/libaio.so.1.0.1
 /e2fsprogs-libs/intl/libgnuintl.h
 /e2fsprogs-libs/lib/blkid/blkid.h
 /e2fsprogs-libs/lib/uuid/uuid.h
@@ -54,6 +52,7 @@
 /fsverity/
 /ima-evm-utils/
 /keyutils/
+/libaio/
 /libinih/libinih.a
 /nvme-cli
 /popt/.deps/
