@@ -55,7 +55,7 @@ function __mkfs()
 
 	case "$BASE_FSTYPE" in
 	    ext4)
-		/sbin/mke2fs -F -q -t ext4 "$dev"
+		/sbin/mke2fs -F -q -t ext4 -O verity "$dev"
 		;;
 	    xfs)
 		mkfs.xfs -f -m rmapbt=1,reflink=1 "$dev"
