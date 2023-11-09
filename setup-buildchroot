@@ -231,12 +231,23 @@ select_debian_keyring()
     prompt_for_param "Debian keyring" DEBIAN_KEYRING "$DEBIAN_KEYRING_DEFAULT"
 }
 
+add_fstab_bind()
+{
+    if ! grep "^$SCRIPTDIR\s" $SCHROOT_FSTAB_FILE &> /dev/null; then
+	echo "Adding $SCRIPTDIR bind mount to $SCHROOT_FSTAB_FILE"
+	echo "$SCRIPTDIR      $SCRIPTDIR      none    rw,bind         0       0" >> $SCHROOT_FSTAB_FILE
+	return 0
+    fi
+    return 1
+}
+
 select_chroot_dir()
 {
     prompt_for_param "chroot directory" \
 	    CHROOT_DIR "/chroots/${DEBIAN_RELEASE}-${DEBIAN_ARCH}"
     if [ -e "$CHROOT_DIR" ]; then
-	die "$CHROOT_DIR already exists!"
+	add_fstab_bind && exit 0
+	die "$CHROOT_DIR already exists and $SCHROOT_FSTAB_FILE up-to-date!"
     fi
 }
 
@@ -523,6 +534,7 @@ create_schroot_fstab()
 {
     if [ -e "$SCHROOT_FSTAB_FILE" ]; then
 	log "$SCHROOT_FSTAB_FILE was already created"
+	add_fstab_bind || true
 	return
     fi
     mkdir -p "$(dirname "$SCHROOT_FSTAB_FILE")"
