@@ -56,10 +56,12 @@ function get_one_fs_config() {
 	*)    FSTESTCFG=""
     esac
     export BASE_FSTYPE="$FSTESTTYP"
+    export FS_PREFIX=
     case "$TC" in
         *:*/*)
 	    # set primary fstype if provided (ex. ext4:overlay)
 	    BASE_FSTYPE="${TC%%:*}"
+	    FS_PREFIX="$BASE_FSTYPE:"
 	    TC="${TC#*:}"
 	    FS="${TC%%/*}"
 	    TC="${TC#*/}"

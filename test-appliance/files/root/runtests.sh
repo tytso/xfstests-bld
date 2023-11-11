@@ -28,7 +28,7 @@ function copy_xunit_results()
 	then
 	    merge_xunit "$RESULTS" "$RESULT"
 	else
-	    if ! update_properties_xunit --fsconfig "$FS/$TC" "$RESULTS" \
+	    if ! update_properties_xunit --fsconfig "$FS_PREFIX$FS/$TC" "$RESULTS" \
 		 "$RESULT" "$RUNSTATS"
 	    then
 		mv "$RESULT" "$RESULT.broken"
@@ -495,23 +495,23 @@ do
 	    XFS_IO_AVOID="$ALL_XFS_IO_AVOID $XFS_IO_AVOID"
 	    XFS_IO_AVOID="${XFS_IO_AVOID/# /}"
 	fi
-	echo $FS/$TC > /run/fstest-config
+	echo $FS_PREFIX$FS/$TC > /run/fstest-config
 	if test -n "$RUN_ONCE" && \
-		grep -q "^$FS/$TC\$" "$RESULTS/fstest-completed"
+		grep -q "^$FS_PREFIX$FS/$TC\$" "$RESULTS/fstest-completed"
 	then
-	    echo "$FS/$TC: already run"
+	    echo "$FS_PREFIX$FS/$TC: already run"
 	    /usr/local/lib/gce-logger already run
 	    continue
 	fi
 	setup_mount_opts
-	export RESULT_BASE="$RESULTS/$FS/results-$TC"
+	export RESULT_BASE="$RESULTS/${FS_PREFIX//:/-}$FS/results-$TC"
 	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$TC" ; then
 	    mkdir -p "$RESULTS/$FS"
 	    mv "$RESULTS/results-$TC" "$RESULT_BASE"
 	fi
 	mkdir -p "$RESULT_BASE"
 	copy_xunit_results
-	echo FS: $FS > "$RESULT_BASE/config"
+	echo FS: $FS_PREFIX$FS > "$RESULT_BASE/config"
 	echo TESTNAME: $TESTNAME >> "$RESULT_BASE/config"
 	echo TEST_DEV: $TEST_DEV >> "$RESULT_BASE/config"
 	echo TEST_DIR: $TEST_DIR >> "$RESULT_BASE/config"

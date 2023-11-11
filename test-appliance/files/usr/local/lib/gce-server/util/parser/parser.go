@@ -162,11 +162,15 @@ Possible pattern of configs:
 	for a list of configurations, and read config lines from each file.
 
 	<fs> (e.g. ext4) - uses default config for <fs> if it exists.
+
 	<cfg> (e.g. quick) - uses primaryFS and <cfg> as the configuration.
+
+	<primaryFS>:<fs>/<cfg> (e.g. ext4:overlay/small) - runs the <fs>/<cfg>
+	config with <primaryFS> set as primary file system
 */
 func singleConfig(configs map[string][]string, configArg string) error {
 	configLines := []string{}
-	var fs, cfg string
+	var fs, cfg, localPrimaryFS string
 
 	arg := strings.Split(configArg, "/")
 	if len(arg) == 1 {
@@ -178,7 +182,13 @@ func singleConfig(configs map[string][]string, configArg string) error {
 			cfg = configArg
 		}
 	} else {
-		fs = arg[0]
+		checkPrimary := strings.Split(arg[0], ":")
+		if len(checkPrimary) > 1 {
+			localPrimaryFS = checkPrimary[0]
+			fs = checkPrimary[1]
+		} else {
+			fs = arg[0]
+		}
 		cfg = arg[1]
 	}
 
@@ -200,6 +210,10 @@ func singleConfig(configs map[string][]string, configArg string) error {
 				return nil
 			}
 		}
+	}
+
+	if len(localPrimaryFS) > 0 {
+		fs = fmt.Sprintf("%s:%s", localPrimaryFS, fs)
 	}
 
 	if _, ok := configs[fs]; ok {
