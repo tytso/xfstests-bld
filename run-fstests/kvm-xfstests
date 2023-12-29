@@ -124,7 +124,7 @@ do
     fi
 done
 
-if ionice -h > /dev/null ; then
+if type ionice >& /dev/null ; then
     IONICE="ionice -n 5"
 fi
 
@@ -201,7 +201,12 @@ case "$ARCH" in
 	;;
     arm64)
 	QEMU_ARCH=aarch64
-	ACCEL=tcg
+	if test "$(uname -o)" = "Darwin" ; then
+	    ACCEL=hvf
+	    GDB=
+	else
+	    ACCEL=tcg
+	fi
 	CONSOLE_DEV=ttyAMA0
 	MACHINE_TYPE=virt
 	CPU_TYPE=max
