@@ -212,18 +212,26 @@ case "$ARCH" in
 esac
 QEMU="qemu-system-$QEMU_ARCH"
 
+if test "$CACHE" != "none" ; then
+    AIO=
+fi
+
+if test -n "$CACHE" ; then
+    CACHE="cache=$CACHE,"
+fi
+
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-machine $MACHINE_TYPE,accel=$ACCEL -cpu $CPU_TYPE \
 	-drive file=$ROOT_FS,if=virtio$SNAPSHOT \
-	-drive file=$VDB,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDC,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDD,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDE,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDF,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDG,cache=none,if=virtio,format=raw$AIO \
+	-drive file=$VDB,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDC,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDD,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDE,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDF,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDG,${CACHE}if=virtio,format=raw$AIO \
 	-drive file=$VDH,if=virtio,format=raw \
-	-drive file=$VDI,cache=$CACHE,if=virtio,format=raw$AIO \
-	-drive file=$VDJ,cache=$CACHE,if=virtio,format=raw$AIO \
+	-drive file=$VDI,${CACHE}if=virtio,format=raw$AIO \
+	-drive file=$VDJ,${CACHE}if=virtio,format=raw$AIO \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
 	$VIRTFS \
 	$VIRTIO_RNG \

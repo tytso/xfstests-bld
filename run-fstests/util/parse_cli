@@ -746,11 +746,18 @@ while (( $# >= 1 )); do
 	    ;;
 	--aio) shift
 	    supported_flavors kvm
-	    AIO=",aio=$1"
+	    if test "$1" = "default" ; then
+		AIO=
+	    else
+		AIO=",aio=$1"
+	    fi
 	    ;;
 	--cache) shift
 	    supported_flavors kvm
 	    CACHE="$1"
+	    if test "$CACHE" = "default" ; then
+		CACHE=
+	    fi
 	    ;;
 	--virtfs) shift
 	    supported_flavors kvm
