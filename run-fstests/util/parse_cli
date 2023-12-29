@@ -5,7 +5,11 @@ SNAPSHOT=",snapshot=on"
 DO_AEX="yes"
 API="1.5"
 ORIG_CMDLINE="$*"
-ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 -w 0)
+nowrap=
+if base64 -w 0 < /dev/null >& /dev/null ; then
+    nowrap="-w 0"
+fi
+ORIG_CMDLINE_B64=$(echo -n "$ORIG_CMDLINE" | sed -e "s/^ //" | base64 $nowrap)
 TESTRUNID=
 
 ourtmp=$(mktemp --tmpdir --directory xfstests-cli.XXXXXXXX)
