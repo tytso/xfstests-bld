@@ -14,6 +14,7 @@ MAKELOG
 /android-xfstests
 /kvm-xfstests
 /gce-xfstests
+/qemu-xfstests
 /kbuild
 /kbuild32
 /install-kconfig
