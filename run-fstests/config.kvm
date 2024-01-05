@@ -51,6 +51,11 @@ CONSOLE=" -serial mon:stdio"
 # production systems.
 AIO=",aio=native"
 
+if test "$(uname -o)" = "Darwin" ; then
+    AIO=
+    CACHE=
+fi
+
 # Exported test/scratch dirs for 9p test in kvm guest, and virtfs security model
 #VIRTFS_TEST_PATH=/tmp/9ptest
 #VIRTFS_SCRATCH_PATH=/tmp/9pscratch
