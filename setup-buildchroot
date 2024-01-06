@@ -20,7 +20,12 @@ DEBIAN_KEYRING_DEFAULT=/usr/share/keyrings/debian-archive-keyring.gpg
 DEBIAN_PORTS_KEYRING_DEFAULT=/usr/share/keyrings/debian-ports-archive-keyring.gpg
 
 DEBIAN_ARCH=
-DEBIAN_ARCH_DEFAULT=amd64
+case $(uname -m) in
+    aarch64)   DEBIAN_ARCH_DEFAULT=arm64  ;;
+    i386|i686) DEBIAN_ARCH_DEFAULT=i386   ;;
+    x86_64)    DEBIAN_ARCH_DEFAULT=amd64  ;;
+    *)         DEBIAN_ARCH_DEFAULT=$(uname -m) ;;
+esac
 DEBIAN_PORTS_ARCH_DEFAULT=x32
 
 DEBIAN_MIRROR=
