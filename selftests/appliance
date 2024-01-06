@@ -132,7 +132,7 @@ done
 if test ! -f $KSRC/MAINTAINERS ; then
     echo "Kernel sources not found at $KSRC"
     if test -z "$KSRC_EXPLICIT" ; then
-	echo "Please define KSRC in $DIR/selftests/config"
+	echo "Please define KSRC in $DIR/selftests/config.custom"
     fi
     exit 1
 fi
