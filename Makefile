@@ -5,7 +5,7 @@ SCRIPTS =	android-xfstests \
 
 KBUILD_SCRIPTS = kbuild kbuild32 install-kconfig
 
-prefix= $(HOME)/bin
+bindir= $(HOME)/bin
 
 all: $(SCRIPTS) $(KBUILD_SCRIPTS)
 
@@ -13,9 +13,10 @@ clean:
 	rm -f $(SCRIPTS) $(KBUILD_SCRIPTS)
 
 install: $(SCRIPTS) $(KBUILD_SCRIPTS)
+	mkdir -p $(DESTDIR)$(bindir)
 	for i in $(SCRIPTS) $(KBUILD_SCRIPTS) ; do \
-		rm -f $(DESTDIR)$(prefix)/$$i ; \
-		install -D $$i $(DESTDIR)$(prefix)/$$i; \
+		rm -f $(DESTDIR)$(bindir)/$$i ; \
+		install $$i $(DESTDIR)$(bindir)/$$i; \
 	done
 
 $(SCRIPTS): %: run-fstests/%.sh.in
