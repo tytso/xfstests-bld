@@ -5,164 +5,12 @@ API_MINOR=5
 . /root/test-config
 . /root/runtests_utils
 
-RESULTS=/results
-RUNSTATS="$RESULTS/run-stats"
-
-function gce_run_hooks()
-{
-    if test -n "$RUN_ON_GCE"
-    then
-	run_hooks "$@"
-    fi
-}
-
-function copy_xunit_results()
-{
-    local RESULT="$RESULT_BASE/result.xml"
-    local RESULTS="$RESULT_BASE/results.xml"
-
-    if test -f "$RESULT"
-    then
-	sed -i.orig -e 's/xmlns=\".*\"//' "$RESULT"
-	if test -f "$RESULTS"
-	then
-	    merge_xunit "$RESULTS" "$RESULT"
-	else
-	    if ! update_properties_xunit --fsconfig "$FS_PREFIX$FS/$TC" "$RESULTS" \
-		 "$RESULT" "$RUNSTATS"
-	    then
-		mv "$RESULT" "$RESULT.broken"
-	    fi
-	fi
-	rm "$RESULT"
-    fi
-
-    /root/xfstests/bin/syncfs $RESULT_BASE
-}
-
-# check to see if a device is assigned to be used
-function is_dev_free() {
-    local device="$1"
-
-    for dev in "$TEST_DEV" \
-	       "$SCRATCH_DEV" \
-	       "$SCRATCH_LOGDEV" \
-	       "$TEST_LOGDEV" \
-	       "$LOGWRITES_DEV" \
-	       "$SCRATCH_RTDEV" \
-	       "$TEST_RTDEV"
-    do
-	if test "$dev" == "$1" ; then
-	    return 1
-	fi
-    done
-    return 0
-}
-
-function gen_version_header ()
-{
-    local version patchlevel sublevel
-
-    read version patchlevel sublevel <<< \
-	 $(uname -r | sed -e 's/-.*$//' | tr . ' ')
-
-    echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + \
-	((c) > 255 ? 255 : (c)))'
-    echo \#define LINUX_VERSION_MAJOR $version
-    echo \#define LINUX_VERSION_PATCHLEVEL $patchlevel
-    echo \#define LINUX_VERSION_SUBLEVEL $sublevel
-    if [ $sublevel -gt 255 ]; then
-	sublevel=255
-    fi
-    echo \#define LINUX_VERSION_CODE \
-	$(expr $version \* 65536 + $patchlevel \* 256 + $sublevel)
-    test -n "$FS" && echo \#define FC $FS
-    test -n "$TC" && echo \#define TC $TC
-    test "$TC" = dax && echo \#define IS_DAX_CONFIG
-}
-
-function clear_pool_devs ()
-{
-    if test -n "$POOL0_DEV" ; then
-	losetup -d "$POOL0_DEV"
-	POOL0_DEV=
-    fi
-    if test -n "$POOL1_DEV" ; then
-	losetup -d "$POOL1_DEV"
-	POOL1_DEV=
-    fi
-    if test -n "$POOL2_DEV" ; then
-	losetup -d "$POOL2_DEV"
-	POOL2_DEV=
-    fi
-    if test -n "$POOL3_DEV" ; then
-	losetup -d "$POOL3_DEV"
-	POOL3_DEV=
-    fi
-}
-
-function clean_empty_dirs()
-{
-    local i
-
-    for i in $(find "$RESULTS" -name results-\* -type d -print)
-    do
-	if test $(ls "$i" | wc -l) -le 1 -a -f "$i/check.time"
-	then
-	    rm "$i/check.time"
-	    rmdir "$i"
-	fi
-    done
-    for i in $(find "$RESULTS" -maxdepth 1 -mindepth 1 -type d -empty)
-    do
-	rmdir "$i"
-    done
-}
-
-while [ "$1" != "" ]; do
-    case $1 in
-	--run-once)
-	    RUN_ONCE=yes
-	    ;;
-	*)
-	    echo "Illegal option: $1"
-	    exit 1
-	    ;;
-    esac
-    shift
-done
-
-if test -z "$FSTESTAPI" ; then
-    echo "Missing TEST API!"
-    umount "$RESULTS"
-    poweroff -f > /dev/null 2>&1
-fi
-
-set $FSTESTAPI
-
-if test "$1" -ne "$API_MAJOR" ; then
-    echo " "
-    echo "API version of kvm-xfstests is $1.$2"
-    echo "Major version number must be $API_MAJOR"
-    echo " "
-    umount "$RESULTS"
-    poweroff -f > /dev/null 2>&1
-fi
-
-if test "$2" -gt "$API_MINOR" ; then
-    echo " "
-    echo "API version of kvm-xfstests is $1.$2"
-    echo "Minor version number is greater than $API_MINOR"
-    echo "Some kvm-xfstests options may not work correctly."
-    echo "please update or rebuild your root_fs.img"
-    echo " "
-    sleep 5
-fi
+runtests_setup
 
 if test -n "$FSTESTOPT" ; then
-   set $FSTESTOPT
+	set $FSTESTOPT
 else
-   set ""
+	set ""
 fi
 
 RPT_COUNT=1
@@ -256,82 +104,9 @@ else
 	rm -f /tmp/exclude-tests
 fi
 
-CPUS=$(cat /proc/cpuinfo  | grep ^processor | tail -n 1 | awk '{print $3 + 1}')
-MEM=$(grep MemTotal /proc/meminfo | awk '{print $2 / 1024}')
-
-if test -n "$RUN_ONCE" -a -f "$RUNSTATS"
-then
-    mv "$RUNSTATS" "$RUNSTATS.old"
-    RESTARTED=yes
-fi
-
-cp /dev/null "$RUNSTATS"
-echo CMDLINE: \"$(echo $ORIG_CMDLINE | base64 -d)\" >> "$RUNSTATS"
 if test -n "$RUN_ON_GCE"
 then
     cp /usr/local/lib/gce-local.config /root/xfstests/local.config
-    . /usr/local/lib/gce-funcs
-    if test -n "$(gce_attribute no_vm_timeout)" ; then
-	systemctl stop gce-finalize.timer
-	systemctl disable gce-finalize.timer
-	logger -i "Disabled gce-finalize timer"
-    fi
-    image=$(gcloud compute disks describe --format='value(sourceImage)' \
-		--zone "$ZONE" ${instance} | \
-		sed -e 's;https://www.googleapis.com/compute/v1/projects/;;' \
-		    -e 's;global/images/;;')
-    echo "FSTESTIMG: $image" >> "$RUNSTATS"
-    echo "FSTESTPRJ: $(get_metadata_value_with_retries project-id)" >> "$RUNSTATS"
-fi
-echo -e "KERNEL: kernel\t$(uname -r -v -m)" >> "$RUNSTATS"
-sed -e 's/^/FSTESTVER: /g' /root/xfstests/git-versions >> "$RUNSTATS"
-echo FSTESTCFG: \"$FSTESTCFG\" >> "$RUNSTATS"
-echo FSTESTSET: \"$FSTESTSET\" >> "$RUNSTATS"
-echo FSTESTEXC: \"$FSTESTEXC\" >> "$RUNSTATS"
-echo FSTESTOPT: \"$FSTESTOPT\" >> "$RUNSTATS"
-echo MNTOPTS:   \"$MNTOPTS\" >> "$RUNSTATS"
-echo CPUS:      \"$CPUS\" >> "$RUNSTATS"
-echo MEM:       \"$MEM\" >> "$RUNSTATS"
-if test -n "$RUN_ON_GCE"
-then
-    DMI_MEM=$(sudo dmidecode -t memory 2> /dev/null | \
-		     grep "Maximum Capacity: " | \
-		     sed -e 's/.*: //')
-    if test $? -eq 0
-    then
-	echo "DMI_MEM: $DMI_MEM (Max capacity)" >> "$RUNSTATS"
-    fi
-    PARAM_MEM=$(gce_attribute mem)
-    if test -n "$PARAM_MEM"
-    then
-	echo "PARAM_MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
-    fi
-    echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
-    MACHTYPE=$(basename $(get_metadata_value_with_retries machine-type))
-    echo MACHINE TYPE: \"$MACHTYPE\" >> "$RUNSTATS"
-    echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
-fi
-
-if test -z "$RUN_ON_GCE" -o -z "$RUN_ONCE"
-then
-    for i in $(find "$RESULTS" -name results-\* -type d)
-    do
-	if [ "$(ls -A $i)" ]; then
-	    find $i/* -type d -print | xargs rm -rf 2> /dev/null
-	    find $i -type f ! -name check.time -print | xargs rm -f 2> /dev/null
-	fi
-    done
-fi
-
-if test -z "$RESTARTED"
-then
-    cat "$RUNSTATS"
-    free -m
-else
-    test -f "$RESULTS/slabinfo.before" && \
-	mv "$RESULTS/slabinfo.before" "$RESULTS/slabinfo.before.old"
-    test -f "$RESULTS/meminfo.before" && \
-	mv "$RESULTS/meminfo.before" "$RESULTS/meminfo.before.old"
 fi
 
 touch "$RESULTS/fstest-completed"
@@ -348,12 +123,7 @@ if test $RPT_COUNT -eq 1 && test $FAIL_LOOP_COUNT -gt 0 && \
     fail_test_loop="-L $FAIL_LOOP_COUNT"
 fi
 
-[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.before"
-cp /proc/meminfo "$RESULTS/meminfo.before"
-
-if test -n "$FSTESTSTR" ; then
-    systemctl start stress
-fi
+runtests_before_tests
 
 while test -n "$FSTESTCFG"
 do
@@ -747,20 +517,7 @@ END	{ if (NR > 0) {
 	logger "END TEST $TC: $TESTNAME "
 done
 
-if test -n "$RUN_ON_GCE"
-then
-    clean_empty_dirs
-fi
-
-if test -n "$FSTESTSTR" ; then
-    [ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.stress"
-    cp /proc/meminfo "$RESULTS/meminfo.stress"
-    systemctl status stress
-    systemctl stop stress
-fi
-
-[ -e /proc/slabinfo ] && cp /proc/slabinfo "$RESULTS/slabinfo.after"
-cp /proc/meminfo "$RESULTS/meminfo.after"
+runtests_after_tests
 
 /usr/local/bin/gen_results_summary $RESULTS > $RESULTS/report
 
@@ -772,7 +529,4 @@ if test -z "$NO_TRUNCATE" ; then
     /usr/local/bin/truncate-test-files "$RESULTS"
 fi
 
-if test -n "$FSTEST_ARCHIVE" ; then
-    tar -C $RESULTS -cf - . | \
-	xz -6e > /tmp/results.tar.xz
-fi
+runtests_save_results_tar
