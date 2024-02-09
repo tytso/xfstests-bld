@@ -52,6 +52,17 @@ if test -z "$SOURCE_DATE_EPOCH" ; then
     export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 fi
 
+LTP_DIR=
+rm -rf ltp
+if test -d ltp-dev ; then
+    LTP_DIR=ltp
+    echo "GEN ltp"
+    (D=$(pwd) ; cd ltp-dev ; make DESTDIR=$D SKIP_IDCHECK=1 install)
+    echo "STRIP ltp/*"
+    find ltp -mindepth 2 -type f -perm /0111 | xargs -n 50 $STRIP 2> /dev/null \
+	|| true
+fi
+
 echo "GEN xfstests"
 rm -rf xfstests
 if test "$fast" = "yes"
@@ -108,7 +119,7 @@ then
     echo "$ARCH" > xfstests/build-arch
 fi
 rm -f xfstests.tar.gz
-find xfstests blktests -path blktests/.git -prune -o -print0 | \
+find xfstests blktests $LTP_DIR -path blktests/.git -prune -o -print0 | \
     LC_ALL=C sort -z | \
     tar c --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" \
     --mode=go+u-w --null --no-recursion -T - | $GZIP > xfstests.tar.gz

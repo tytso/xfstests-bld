@@ -18,6 +18,7 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 # UTIL_LINUX_GIT=https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
+# LTP_GIT=https://github.com/linux-test-project/ltp
 
 FIO_COMMIT=fio-3.28
 LIBAIO_COMMIT=libaio-0.3.113

@@ -85,6 +85,13 @@ then
     cp ../test-appliance/debs/*.ver $TMPDIR
 fi
 
+if test -d ltp-dev
+then
+    cd ltp-dev
+    ver=$(git describe --always --dirty); echo "ltp	$ver ($(git log -1 --pretty=%cD))" > ../$TMPDIR/ltp.ver
+    cd ..
+fi
+
 cat $TMPDIR/*.ver | sort
 rm -rf $TMPDIR
 exit 0

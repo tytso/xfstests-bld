@@ -81,6 +81,7 @@ function set_skip_all () {
     SKIP_SYZKALLER=yes
     SKIP_BLKTESTS=yes
     SKIP_NVME_CLI=yes
+    SKIP_LTP=yes
 }
 
 # Optional components
@@ -91,6 +92,7 @@ function set_skip_all () {
 [ -d go/src/github.com/google/syzkaller ] || SKIP_SYZKALLER=yes
 [ -d blktests ] || SKIP_BLKTESTS=yes
 [ -d nvme-cli ] || SKIP_NVME_CLI=yes
+[ -d ltp-dev ] || SKIP_LTP=yes
 
 MAKE_CLEAN=":"
 
@@ -177,6 +179,10 @@ while [ "$1" != "" ]; do
 	--nvme-cli-only)
 	    set_skip_all
 	    unset SKIP_NVME_CLI
+	    ;;
+	--ltp-only)
+	    set_skip_all
+	    unset SKIP_LTP
 	    ;;
 	--clean-first)
 	    MAKE_CLEAN="make clean"
@@ -487,6 +493,17 @@ if test -z "$SKIP_BLKTESTS"; then
      fi ; \
      $MAKE_CLEAN ; make ; \
      ver=$(git describe --always --dirty); echo "blktests	$ver ($(git log -1 --pretty=%cD))" > ../blktests.ver)
+fi
+
+if test -z "$SKIP_LTP" ; then
+    build_start "ltp-dev"
+    (cd ltp-dev ; \
+     ver=$(git describe --always --dirty); echo "ltp		$ver ($(git log -1 --pretty=%cD))" > ../ltm.ver ; \
+     make autotools; \
+     CFLAGS="$LCF -I$DESTDIR/include" \
+     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
+     ./configure $cross --prefix=/ltp ; $MAKE_CLEAN ; \
+     make $J all )
 fi
 
 if test -z "$SKIP_NVME_CLI"; then

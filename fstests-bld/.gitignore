@@ -54,6 +54,8 @@
 /keyutils/
 /libaio/
 /libinih/libinih.a
+/ltp
+/ltp-dev
 /nvme-cli
 /popt/.deps/
 /popt/Doxyfile
