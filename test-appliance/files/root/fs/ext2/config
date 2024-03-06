@@ -28,6 +28,7 @@ function format_filesystem()
 
 function setup_mount_opts()
 {
+    export MKFS_OPTIONS="-q $EXT_MKFS_OPTIONS"
     if test -n "$MNTOPTS" ; then
 	if test -n "$EXT_MOUNT_OPTIONS" ; then
             export EXT_MOUNT_OPTIONS="$EXT_MOUNT_OPTIONS,$MNTOPTS"
@@ -39,12 +40,12 @@ function setup_mount_opts()
 
 function get_mkfs_opts()
 {
-    echo "$MKFS_OPTIONS"
+    echo "$EXT_MKFS_OPTIONS"
 }
 
 function show_mkfs_opts()
 {
-    echo MKFS_OPTIONS: "$MKFS_OPTIONS"
+    echo EXT_MKFS_OPTIONS: "$EXT_MKFS_OPTIONS"
 }
 
 function show_mount_opts()
@@ -60,5 +61,6 @@ function test_name_alias()
 function reset_vars()
 {
     unset EXT_MOUNT_OPTIONS
+    unset EXT_MKFS_OPTIONS
     unset MKFS_OPTIONS
 }
