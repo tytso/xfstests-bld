@@ -3,8 +3,6 @@
 # Helper functions for ltm testing
 #
 
-. util/setup
-
 function wait_ltm_online ()
 {
     log_debug "wait_ltm_online"
@@ -96,7 +94,6 @@ function shutdown_ltm ()
 	return 0
     fi
 
-    # abort if other tests in progress
     if ltm_managing_tests; then
 	echo "Could not confirm LTM is not managing any tests."
 	echo "Please stop any tests, delete LTM, and try again."

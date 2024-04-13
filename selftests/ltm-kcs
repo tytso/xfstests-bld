@@ -2,8 +2,6 @@
 #
 # Test script for the LTS/KCS server
 
-. util/ltm
-
 NO_ACTION=
 
 d=$(dirname "$0")
@@ -13,10 +11,12 @@ else
     DIR=$(realpath $(dirname $(dirname "$0")))
 fi
 
-. $DIR/selftests/config
+. "$DIR/selftests/config"
 if test -f $DIR/selftests/config.custom ; then
-    . $DIR/selftests/config.custom
+    . "$DIR/selftests/config.custom"
 fi
+. "$DIR/selftests/util/setup"
+. "$DIR/selftests/util/ltm"
 
 GCE_XFSTESTS="$DIR/run-fstests/gce-xfstests"
 

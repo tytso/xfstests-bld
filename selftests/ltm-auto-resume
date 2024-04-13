@@ -13,9 +13,15 @@
 #    relaunched at the beginning of the test and deleted at the end of
 #    the test
 
-. util/ltm
-. util/setup
-. util/results
+d=$(dirname "$0")
+if test $d = "." ; then
+    DIR=$(dirname $(pwd))
+else
+    DIR=$(realpath $(dirname $(dirname "$0")))
+fi
+. "$DIR/selftests/util/setup"
+. "$DIR/selftests/util/ltm"
+. "$DIR/selftests/util/results"
 
 function cleanup () {
     local ret=$?
