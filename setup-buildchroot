@@ -64,6 +64,7 @@ select_packages()
     e2fslibs-dev
     ed
     fakechroot
+    flex
     gettext
     git
     libblkid-dev
@@ -71,6 +72,7 @@ select_packages()
     libgdbm-dev
     libicu-dev
     libkeyutils-dev
+    libsqlite3-dev
     libssl-dev
     libsystemd-dev
     libtool-bin

@@ -26,6 +26,7 @@ libcap2-bin
 liblzo2-2
 libbsd0
 libkeyutils1
+libsqlite3-0
 lvm2
 lz4
 makedev

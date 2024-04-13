@@ -107,12 +107,12 @@ using the following command:
 
     $ sudo apt-get install autoconf autoconf2.64 \
 		automake autopoint bison build-essential ca-certificates \
-		debootstrap e2fslibs-dev ed fakechroot gettext git \
+		debootstrap e2fslibs-dev ed fakechroot flex gettext git \
 		golang-1.11-go libblkid-dev libdbus-1-3 libgdbm-dev \
-		libicu-dev libkeyutils-dev libssl-dev libsystemd-dev \
-		libtool-bin liburcu-dev lsb-release meson pkg-config \
-		python3-setuptools rsync symlinks qemu-utils uuid-dev \
-		zlib1g-dev
+		libicu-dev libkeyutils-dev libsqlite3-dev libssl-dev \
+		libsystemd-dev libtool-bin liburcu-dev lsb-release \
+		meson pkg-config python3-setuptools rsync symlinks \
+		qemu-utils uuid-dev zlib1g-dev
 
 It is also possible to use a cross compiler rather than the native
 compiler.  To do this, set the shell variables `CROSS_COMPILE` and

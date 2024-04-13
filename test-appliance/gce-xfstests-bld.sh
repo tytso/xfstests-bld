@@ -66,6 +66,7 @@ PACKAGES="$ADD_PACKAGES acpid \
 	liblzo2-2 \
 	libkeyutils1 \
 	libncurses-dev \
+	libsqlite3-0 \
 	libssl-dev \
 	lighttpd \
 	lvm2 \
