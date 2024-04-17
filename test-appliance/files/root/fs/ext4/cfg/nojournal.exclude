@@ -8,6 +8,19 @@ ext4/059
 generic/050
 generic/052
 
+// generic/459 expects that a file system that it has been unable to freeze
+// will be automatically remounted read only.  However, the default error
+// handling policy for ext4 is to continue when possible after errors.
+//
+// A workaround was added to the test in the past to force ext4 to
+// perform a read only remount in order to meet the test's expectations.
+// The touch command was used to create a new file after a freeze failure.
+// This forces ext4 to start a new journal transaction, where it discovers
+// the journal has previously aborted due to lack of space, and triggers
+// special case error handling that results in a read only remount.  But
+// this only works if there is a journal.
+generic/459
+
 // Without a journal, tests which do a shutdown won't pass
 generic/530
 
