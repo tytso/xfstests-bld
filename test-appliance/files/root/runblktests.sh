@@ -5,7 +5,7 @@ API_MINOR=5
 . /root/test-config
 . /root/runtests_utils
 
-runtests_setup
+runtests_setup "$@"
 
 if test -n "$FSTESTOPT" ; then
 	set $FSTESTOPT
