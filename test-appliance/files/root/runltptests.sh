@@ -8,7 +8,7 @@ API_MINOR=5
 RESULTS=/results
 RUNSTATS="$RESULTS/run-stats"
 
-runtests_setup
+runtests_setup "$@"
 
 if test -n "$FSTESTOPT" ; then
 	set $FSTESTOPT

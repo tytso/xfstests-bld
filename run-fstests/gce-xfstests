@@ -488,8 +488,24 @@ case "$1" in
 	exit $?
 	;;
     scp)
-	run_gcloud compute -q scp "$3" root@"$2":~ \
-	    --zone $(get_gce_zone "$2") $RUN_INTERNAL
+	SRC="$2"
+	DEST="$3"
+
+	if [[ "$2" =~ "@" ]]; then
+	  SCP_VM="$2"
+	elif [[ "$3" =~ "@" ]]; then
+	  SCP_VM="$3"
+	else
+	  echo "Could not find VM name"
+	  exit 1
+	fi
+
+	# right now, SCP_VM will look something like root@xfstests:~/file
+	SCP_VM=$(echo "${SCP_VM##*@}") # remote username before '@'
+	SCP_VM=$(echo "${SCP_VM%%:*}") # remote file after ':'
+
+	run_gcloud compute -q scp "$2" "$3" \
+	    --zone $(get_gce_zone "$SCP_VM") $RUN_INTERNAL
 	exit $?
 	;;
     console)
@@ -1213,7 +1229,7 @@ fi
 
 if test -n "$GCE_NO_VM_TIMEOUT"
 then
-    ARG="$ARG gce_no_vm_timeout=$GCE_NO_VM_TIMEOUT"
+    ARG="$ARG no_vm_timeout=$GCE_NO_VM_TIMEOUT"
 fi
 
 if test -n "$RUN_ON_LTM"; then
