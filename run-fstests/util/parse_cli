@@ -680,10 +680,12 @@ while (( $# >= 1 )); do
 	    ;;
 	--watch) shift
 	    supported_flavors gce
+	    OVERRIDE_KERNEL="none"
 	    BRANCH="$1"
 	    ;;
 	--unwatch) shift
 	    supported_flavors gce
+	    OVERRIDE_KERNEL="none"
 	    WATCHER_ID="$1"
 	    ;;
 	--bisect-bad) shift
