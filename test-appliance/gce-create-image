@@ -132,9 +132,9 @@ setup_for_bookworm()
 	esac
 	IMAGE_PROJECT=debian-cloud
 	SUITE=bookworm
-	E2FSPROGS=e2fsprogs
-	LIBCOMERR=libcom-err2
-	LIBSS=libss2
+	E2FSPROGS=e2fsprogs/bookworm-backports
+	LIBCOMERR=libcom-err2/bookworm-backports
+	LIBSS=libss2/bookworm-backports
 	BTRFS_PROGS=btrfs-progs
 	F2FS_TOOLS=f2fs-tools
 	BACKPORTS=/bookworm-backports
