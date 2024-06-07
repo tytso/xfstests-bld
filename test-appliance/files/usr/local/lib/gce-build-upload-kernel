@@ -37,6 +37,9 @@ if test -z "$REPO_DIR"; then
     REPO_DIR="."
 fi
 
+echo -n "Building in "
+(cd $REPO_DIR ; pwd ; git log --oneline -1)
+
 if test -z "$GS_PATH"; then
     GS_PATH="gs://$GS_BUCKET/bzImage"
 fi
