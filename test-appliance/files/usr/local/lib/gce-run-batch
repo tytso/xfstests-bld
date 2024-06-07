@@ -4,8 +4,6 @@
 . /usr/local/lib/gce-funcs
 . /root/test-config
 
-set -vx
-
 KEEP=
 GCE_DIR=ltm-batch
 
@@ -33,7 +31,8 @@ mkdir -p $BATCH_DIR
 gsutil rsync gs://$GS_BUCKET/$GCE_DIR $BATCH_DIR
 
 for i in $(find $BATCH_DIR -type f -print | sort) ; do
-    . $i
+    echo "Running $i..."
+    script -a -c "/bin/bash -vx $i" /var/log/gce-run-batch.log
     if test -z "$DO_KEEP" ; then
 	rm -f $i
 	gsutil rm gs://$GS_BUCKET/$GCE_DIR/$(basename $i)

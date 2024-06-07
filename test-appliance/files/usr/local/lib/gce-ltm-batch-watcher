@@ -1,0 +1,21 @@
+#!/bin/bash
+
+PATH=/usr/lib/ccache:/root/xfstests/bin:/usr/local/sbin:/usr/local/bin:/usr/local/lib/go/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /usr/local/lib/gce-funcs
+
+ltm_wait=$(gce_attribute ltm_wait)
+
+while /bin/true
+do
+    script -c "/usr/local/lib/gce-run-batch --gce-dir ltm-batch" /run/ltm-batch.$$
+    gsutil cp /run/ltm-batch.$$ gs://$GS_BUCKET/ltm-batch.log
+    /bin/rm -f /run/ltm-batch.$$
+    if test -n "$ltm_wait" ; then
+	ltm_wait=$(gce_attribute ltm_wait?wait_for_change=true)
+    else
+	sleep 60
+	ltm_wait=$(gce_attribute ltm_wait)
+    fi
+done
+

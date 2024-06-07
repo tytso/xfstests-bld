@@ -1,0 +1,15 @@
+[Unit]
+Description=ltm-batch watcherk
+ConditionPathExists=/usr/local/lib/gce-ltm-batch-watcher
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+WorkingDirectory=/usr/local/lib/bin
+ExecStart=/usr/local/lib/gce-ltm-batch-watcher
+
+[Install]
+WantedBy=multi-user.target
