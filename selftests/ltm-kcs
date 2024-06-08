@@ -87,4 +87,4 @@ GS_PREFIX="$(gce-xfstests get-bucket)"
 
 $NO_ACTION gsutil cp $LTM_TEST_FILE $GS_PREFIX/ltm-batch/ltm-test
 rm -f $LTM_TEST_FILE
-$NO_ACTION $GCE_XFSTESTS launch-ltm
+$NO_ACTION $GCE_XFSTESTS launch-ltm --skip-rc

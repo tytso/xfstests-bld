@@ -48,6 +48,9 @@ while (( $# >= 1 )); do
 	--no-oslogin-2fa)
             GCE_OSLOGIN_2FA=FALSE
             ;;
+	--skip-rc)
+	    SKIP_RC=TRUE
+	    ;;
 	*)
 	    echo "Invalid option \"$1\""
 	    exit 1
@@ -120,7 +123,7 @@ SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
 PREEMPTIBLE="--maintenance-policy MIGRATE"
 
 ARG="gs_bucket=$GS_BUCKET serial-port-enable=$GCE_SERIAL_PORT_ACCESS"
-ARG="$ARG gce_xfs_ltm=YES"
+ARG="$ARG gce_xfs_ltm=YES ltm_wait=0"
 if test -n "$TZ" ; then
     ARG="$ARG fstesttz=$TZ"
 fi
@@ -133,6 +136,11 @@ fi
 if test -n "$GCE_OSLOGIN_2FA"
 then
     ARG="$ARG enable-oslogin-2fa=GCE_OSLOGIN_2FA"
+fi
+
+if test -n "$SKIP_RC"
+then
+    ARG="$ARG skip-rc=Y"
 fi
 
 if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config

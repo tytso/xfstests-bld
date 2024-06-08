@@ -118,7 +118,7 @@ function relaunch_ltm ()
 
     echo -n "Launching LTM server... "
 
-    $GCE_XFSTESTS launch-ltm &>> $DEBUG_OUTPUT
+    $GCE_XFSTESTS launch-ltm --skip-rc &>> $DEBUG_OUTPUT
 
     echo "Done!"
 

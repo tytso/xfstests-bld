@@ -45,6 +45,9 @@ then
 fi
 
 /usr/local/sbin/gce-xfstests cache-machtype-file
-/usr/local/lib/gce-run-batch --keep --gce-dir ltm-rc
+if test -z "$(gce_attribute skip-rc)"
+then
+    /usr/local/lib/gce-run-batch --keep --gce-dir ltm-rc
+fi
 systemctl enable gce-ltm-batch-watcher.service
 systemctl start gce-ltm-batch-watcher.service
