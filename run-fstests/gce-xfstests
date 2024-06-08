@@ -755,6 +755,24 @@ case "$1" in
 	LTM_INFO="yes"
 	OVERRIDE_KERNEL="none"
 	;;
+    ltm-batch)
+	shift
+	gsutil cp "$@" gs://$GS_BUCKET/ltm-batch/
+	run_gcloud compute -q instances add-metadata xfstests-ltm \
+		   --metadata ltm_wait=$(date +%s) \
+		   --zone "$GCE_ZONE" > /dev/null
+	exit 0
+	;;
+    ltm-batch-cmd)
+	shift
+	echo "gce-xfstests ltm $*" > /tmp/ltm-batch.$$
+	gsutil cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
+	/bin/rm -f /tmp/ltm-batch.$$
+	run_gcloud compute -q instances add-metadata xfstests-ltm \
+		   --metadata ltm_wait=$(date +%s) \
+		   --zone "$GCE_ZONE" > /dev/null
+	exit 0
+	;;
     launch-dashboard)
 	shift
 	$DIR/util/gce-launch-dashboard $@
