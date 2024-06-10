@@ -9,3 +9,21 @@ ext4/044
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
+
+// This test is failing flakily with a data file mismatch after a simulated
+// power failure.  This needs to be investigated.
+generic/455	// EXPFAIL
+
+// This test simulates open by file handle; the problem is that file handles
+// for inline directories doesn't work.  This is definitely an ext4 bug with
+// the inline_data feature.  We need to fix this...
+generic/477	// EXPFAIL
+
+// This test is confirming whether the project id change works after a
+// power failure.  Apparently there is a quota inconsistency in this case,
+// which is a file system bug.
+generic/506	// EXPFAIL
+
+// This test uses the shutdown ioctl and it is apparently triggering a reliable
+// failure with the adv test case.
+generic/737	// EXPFAIL

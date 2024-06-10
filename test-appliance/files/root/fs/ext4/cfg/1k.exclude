@@ -17,3 +17,12 @@ generic/273
 
 // This test creates too many extended attributes to fit in a 1k block
 generic/454
+
+// These tests result in an fsck.ext4 inconsistency: "Inode NNNN, end
+// of extent exceeds allowed value" apparently only with a 1k
+// blocksize.  Unclear whether this is an e2fsck or ext4 bug, but it
+// apparently doesn't happen in real life.  It is apparently triggered
+// by shutdowns and/or a highly parallel modification of the extent tree.
+generic/051	// EXPFAIL
+generic/475	// EXPFAIL
+generic/476	// EXPFAIL

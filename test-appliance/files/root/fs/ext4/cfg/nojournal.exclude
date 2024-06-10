@@ -27,3 +27,9 @@ generic/530
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
+
+// These tests result in the ext4 defrag ioctl failing with EBUSY.
+// Unclear whether this can be fixed or we just have to not support
+// defrag in nojournal mode.
+ext4/301	// EXPFAIL
+ext4/304	// EXPFAIL

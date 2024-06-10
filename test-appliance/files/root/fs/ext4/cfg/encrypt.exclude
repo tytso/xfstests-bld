@@ -41,3 +41,12 @@ generic/601
 // anticipate the external extended attribute required when
 // using a 1k block size
 generic/204
+
+// these tests fail because encryption requires more space in the
+// directory for each directory entry, and so the setup runs into
+// an EDQUOT error early, which then causes the test failure.  This is
+// a test bug; the quota limit needs to be set based on exactly how much
+// directory space is consumed during the setup phase
+generic/681
+generic/682
+generic/691

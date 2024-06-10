@@ -20,3 +20,12 @@ generic/537
 // This test uses dioread_nolock which currently isn't supported with
 // data=journal
 ext4/034
+
+// This test fails with a data file mismatch after a simulated power failure
+// This is apparently specific to data=journal mode, which is weird.
+generic/455	// EXPFAIL
+
+// In data=journal mode, a fdatasync will result in a journal failure if
+// the block device is flipped to non-working mode, so the error returned
+// witll be EROFS instead of EIO
+generic/484

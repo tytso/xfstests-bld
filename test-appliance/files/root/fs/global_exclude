@@ -34,3 +34,7 @@ generic/554
 // Unless we are testing the dax config, we can exclude all dax tests
 -g dax
 #endif
+
+// This test is flaky due to a VFS race between freeze/thaw and mount/umount
+// See https://lore.kernel.org/r/20240611085210.GA1838544@mit.edu
+generic/085
