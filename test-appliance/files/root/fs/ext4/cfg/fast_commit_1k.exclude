@@ -1,9 +1,5 @@
 // exclude file for ext4/fast_commit_1k
 
-// This test tries to create 65536 directories, and with 1k blocks,
-// and long names, we run out of htree depth
-ext4/045
-
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027

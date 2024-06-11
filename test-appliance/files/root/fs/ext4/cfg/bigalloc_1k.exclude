@@ -8,10 +8,6 @@ ext4/004	// dump/restore doesn't handle the bigalloc feature
 // don't need to test this for all file system configs, so just skip it here.
 ext4/033
 
-// This test tries to create 65536 directories, and with 1k blocks,
-// and long names, we run out of htree depth
-ext4/045
-
 // This takes a *long* time and doesn't add much value to run on all
 // configurations.  So we're going to be selective where we run it.
 generic/027
