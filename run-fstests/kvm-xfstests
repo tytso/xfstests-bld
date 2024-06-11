@@ -186,7 +186,7 @@ then
     fi
 fi
 
-truncate -s 128M "$VDH"
+truncate -s 256M "$VDH"
 chmod 600 "$VDH"
 
 mkdir -p /tmp/kvm-xfstests-$USER
