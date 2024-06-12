@@ -109,8 +109,8 @@ func (r ResultType) String() string {
 }
 
 const (
-	kcsTimeout     = 30 * time.Second
-	ltmTimeout     = 60 * time.Second
+	kcsTimeout     = 3 * time.Minute
+	ltmTimeout     = 3 * time.Minute
 	checkInterval  = 10 * time.Second
 	launchInterval = 2 * time.Minute
 	maxAttempts    = 5
