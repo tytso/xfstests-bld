@@ -38,3 +38,8 @@ generic/554
 // This test is flaky due to a VFS race between freeze/thaw and mount/umount
 // See https://lore.kernel.org/r/20240611085210.GA1838544@mit.edu
 generic/085
+
+// This is a new test which tests an io_uring bug where fails with an
+// EBUSY after running fsstress followed by a umount.  Note: this may
+// get renumbered when it is accepted upstream.
+generic/750

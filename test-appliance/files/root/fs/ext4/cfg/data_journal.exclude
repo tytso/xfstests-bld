@@ -29,3 +29,13 @@ generic/455	// EXPFAIL
 // the block device is flipped to non-working mode, so the error returned
 // witll be EROFS instead of EIO
 generic/484
+
+// This tests racing freeze/unfreeze with a heavy file system workload
+// (fsstress, fstest -m, etc.  With data=journal mode, we can see a
+// kernel warning triggered by the writeback thread calling ext4's
+// writepages after the file system has been completely frozen, and
+// this triggers the WARN in ext4_journal_check_start() due to an
+// attempt to start a journal handle when the file system is frozen.
+// For some reason this isn't an issue with delayed allocation
+// writebacks; it only shows up in data=journal mode.
+generic/068
