@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 	"sync"
@@ -16,7 +13,6 @@ import (
 	"thunk.org/gce-server/util/gcp"
 	"thunk.org/gce-server/util/git"
 	"thunk.org/gce-server/util/logging"
-	"thunk.org/gce-server/util/mymath"
 	"thunk.org/gce-server/util/parser"
 	"thunk.org/gce-server/util/server"
 
@@ -206,167 +202,18 @@ func (watcher *GitWatcher) InitTest() {
 	go ForwardKCS(watcher.testRequest, watcher.testID)
 }
 
-// tidyUp cleans up the GCS bucket by fetching and aggregating the test result files
-// since last agg time. It only works when there are enough existing test runs.
-// Any test run gets packed into the tarball is removed from watcher.testHistory.
+// tidyUp used to clean up the GCS bucket by fetching and aggregating
+// the test result files periodically.  The problem is that combined
+// tar file would very quickly huge, and it would take a huge amount
+// of time to repack the tar file.   It also makes it harder to fetch
+// the test artifacts tarball, so let's just drop aggregation.
+// We'll save the tidyUp hook since eventually we might want to
+// shorten the the test history to save memory (we only return
+// last ten results anyway).
 func (watcher *GitWatcher) tidyUp() {
 	watcher.historyLock.Lock()
 	defer watcher.historyLock.Unlock()
 	watcher.log.Info("Tidy up the GCS results")
-
-	if len(watcher.testHistory) < aggMinCount {
-		watcher.log.Info("No enough tests, returning")
-		return
-	}
-	gce, err := gcp.NewService(watcher.gsBucket)
-	if !check.NoError(err, watcher.log, "Failed to connect to GCE service") {
-		return
-	}
-	defer gce.Close()
-
-	if check.DirExists(watcher.resultsDir) {
-		os.RemoveAll(watcher.resultsDir)
-	}
-	err = check.CreateDir(watcher.resultsDir)
-	check.Panic(err, watcher.log, "Failed to create dir")
-
-	fetchedTests := watcher.aggResults(gce)
-	watcher.packResults(gce, fetchedTests)
-}
-
-func (watcher *GitWatcher) aggResults(gce *gcp.Service) []string {
-	watcher.historyLock.Lock()
-	defer watcher.historyLock.Unlock()
-	watcher.log.Info("Fetching test results")
-
-	fetchedTests := []string{}
-	file, err := os.Create(watcher.resultsDir + "report")
-	if !check.NoError(err, watcher.log, "Failed to create file") {
-		return fetchedTests
-	}
-	defer file.Close()
-
-	info := watcher.Info()
-	e, err := json.MarshalIndent(&info, "", "  ")
-	if !check.NoError(err, watcher.log, "Failed to parse json") {
-		return fetchedTests
-	}
-	fmt.Fprintf(file, "LTM watcher info:\n%s\n", e)
-
-	for _, test := range watcher.testHistory {
-		fmt.Fprintf(file, "\n============TEST %s============\n", test.TestID)
-		reportFile, err := watcher.getResults(test.TestID, gce)
-		if err == nil {
-			sourceFile, err := os.Open(reportFile)
-			if check.NoError(err, watcher.log, "Failed to open file") {
-				_, err = io.Copy(file, sourceFile)
-				check.NoError(err, watcher.log, "Failed to copy file")
-
-				sourceFile.Close()
-			}
-		}
-		if err != nil {
-			fmt.Fprintf(file, "No test results available, check prior emails or log for errors\n")
-		} else {
-			fetchedTests = append(fetchedTests, test.TestID)
-		}
-	}
-	return fetchedTests
-}
-
-func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, error) {
-	prefix := fmt.Sprintf("%s/results.%s-%s.", watcher.bucketSubdir, server.LTMUserName, testID)
-	resultFiles, err := gce.GetFileNames(prefix)
-	if !check.NoError(err, watcher.log, "Failed to get GS filenames") {
-		return "", err
-	}
-
-	if len(resultFiles) >= 1 {
-		watcher.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
-
-		url := fmt.Sprintf("gs://%s/%s", watcher.gsBucket, resultFiles[0])
-		cmd := exec.Command("gce-xfstests", "get-results",
-			"--unpack-dir", watcher.logDir, url)
-		cmdLog := watcher.log.WithField("cmd", cmd.String())
-		w := cmdLog.Writer()
-		defer w.Close()
-		err := check.Run(cmd, check.RootDir, check.EmptyEnv, w, w)
-		if !check.NoError(err, cmdLog, "Failed to run get-results") {
-			return "", err
-		}
-
-		tmpResultsDir := fmt.Sprintf("%s/results-%s-%s",
-			watcher.logDir, server.LTMUserName, testID)
-		unpackedResultsDir := watcher.logDir + "results/" + testID + "/"
-
-		if check.DirExists(tmpResultsDir) {
-			os.RemoveAll(unpackedResultsDir)
-			err = os.Rename(tmpResultsDir, unpackedResultsDir)
-			if !check.NoError(err, watcher.log, "Failed to move dir") {
-				return "", err
-			}
-		} else {
-			return "", fmt.Errorf("Failed to find unpacked result files")
-		}
-		reportFile := unpackedResultsDir + "report"
-		if !check.FileExists(reportFile) {
-			return "", fmt.Errorf("test results found but failed to get report file")
-		}
-		return reportFile, nil
-	}
-
-	return "", fmt.Errorf("Failed to get test result")
-}
-
-func (watcher *GitWatcher) packResults(gce *gcp.Service, fetchedTests []string) {
-	watcher.log.Info("Packing test results")
-	aggFile := fmt.Sprintf("%sresults.%s-%s-watcher", watcher.logDir, server.LTMUserName, watcher.testID)
-
-	cmd := exec.Command("tar", "-cf", aggFile+".tar", "-C", watcher.resultsDir, ".")
-	cmdLog := watcher.log.WithField("cmd", cmd.Args)
-	w1 := cmdLog.Writer()
-	defer w1.Close()
-	err := check.Run(cmd, check.RootDir, check.EmptyEnv, w1, w1)
-	if !check.NoError(err, cmdLog, "Failed to create tarball") {
-		return
-	}
-
-	cmd = exec.Command("xz", "-6ef", aggFile+".tar")
-	cmdLog = watcher.log.WithField("cmd", cmd.Args)
-	w2 := cmdLog.Writer()
-	defer w2.Close()
-	err = check.Run(cmd, check.RootDir, check.EmptyEnv, w2, w2)
-	if !check.NoError(err, cmdLog, "Failed to create xz compressed tarball") {
-		return
-	}
-
-	watcher.log.Info("Uploading repacked results tarball")
-	gsPath := fmt.Sprintf("%s/results.%s-%s-%s-watcher.tar.xz", watcher.bucketSubdir, server.LTMUserName, watcher.testID, mymath.GetTimeStamp())
-	err = gce.UploadFile(aggFile+".tar.xz", gsPath)
-	if !check.NoError(err, watcher.log, "Failed to upload results tarball") {
-		return
-	}
-	watcher.packHistory = append(watcher.packHistory, gsPath)
-
-	watcher.log.Info("Removing separate results tarball")
-	for _, testID := range fetchedTests {
-		prefix := fmt.Sprintf("%s/results.%s-%s.", watcher.bucketSubdir, server.LTMUserName, testID)
-		_, err = gce.DeleteFiles(prefix)
-		check.NoError(err, watcher.log, "Failed to delete file")
-	}
-
-	watcher.historyLock.Lock()
-	newTestHistory := []server.TestInfo{}
-	set := parser.NewSet(fetchedTests)
-	for _, test := range watcher.testHistory {
-		if !set.Contain(test.TestID) {
-			newTestHistory = append(newTestHistory, test)
-		}
-	}
-	watcher.testHistory = newTestHistory
-	watcher.historyLock.Unlock()
-
-	os.Remove(aggFile + ".tar.xz")
 }
 
 // Clean removes the watcher from watcherMap and performs other cleanup.
