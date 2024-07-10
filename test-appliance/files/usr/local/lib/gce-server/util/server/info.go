@@ -4,24 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"thunk.org/gce-server/util/check"
-	"thunk.org/gce-server/util/gcp"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"thunk.org/gce-server/util/check"
+	"thunk.org/gce-server/util/gcp"
 
 	"github.com/sirupsen/logrus"
 )
 
 // SharderInfo exports sharder info.
 type SharderInfo struct {
-	ID        string      `json:"id"`
-	Command   string      `json:"command"`
-	KernelVersion string  `json:"kernel_version"`
-	KernelArch string     `json:"kernel_arch"`
-	NumShards int         `json:"num_shards"`
-	Result    string      `json:"test_result"`
-	ShardInfo []ShardInfo `json:"shards"`
+	ID            string      `json:"id"`
+	Command       string      `json:"command"`
+	KernelVersion string      `json:"kernel_version"`
+	KernelArch    string      `json:"kernel_arch"`
+	NumShards     int         `json:"num_shards"`
+	Result        string      `json:"test_result"`
+	ShardInfo     []ShardInfo `json:"shards"`
 }
 
 func (s SharderInfo) String() string {
@@ -65,14 +65,16 @@ func (s ShardInfo) String() string {
 // TestInfo stores the info about one test for watcher.
 type TestInfo struct {
 	TestID     string `json:"test_id"`
+	Commit     string `json:"commit"`
 	UpdateTime string `json:"update_time"`
 	Status     string `json:"status"`
 }
 
 func (t TestInfo) String() string {
 	return fmt.Sprintf(
-		"[Test INFO %s]\tUPDATE TIME:\t%s\tSTATUS:\t%s\n",
+		"[Test INFO %s]\tCOMMIT:\t%s\tUPDATE TIME:\t%s\tSTATUS:\t%s\n",
 		t.TestID,
+		t.Commit,
 		t.UpdateTime,
 		t.Status,
 	)

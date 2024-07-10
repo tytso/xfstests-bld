@@ -46,6 +46,7 @@ type GitWatcher struct {
 	testHistory    []server.TestInfo
 	packHistory    []string
 	historyLock    sync.Mutex
+	buildID        int
 
 	repo *git.RemoteRepository
 	done chan bool
@@ -119,6 +120,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		testRequest:    c,
 		testHistory:    []server.TestInfo{},
 		packHistory:    []string{},
+		buildID:        0,
 
 		repo:       repo,
 		done:       done,
@@ -181,12 +183,18 @@ func (watcher *GitWatcher) watch() {
 
 // InitTest initiates a kernel building and testing using the current repo head.
 func (watcher *GitWatcher) InitTest() {
-	watcher.log.WithField("commit", watcher.repo.Head()).Info("initiating new build and test task")
-	testID := watcher.testID + "-" + watcher.repo.Head()[:8]
-
 	watcher.historyLock.Lock()
+	watcher.buildID++
+	log := watcher.log.WithFields(logrus.Fields{
+		"buildID": watcher.buildID,
+		"commit":  watcher.repo.Head(),
+	})
+	log.Info("initiating new build and test task")
+	testID := fmt.Sprintf("%s-%04d", watcher.testID, watcher.buildID)
+
 	watcher.testHistory = append(watcher.testHistory, server.TestInfo{
 		TestID:     testID,
+		Commit:     watcher.repo.Head()[:12],
 		UpdateTime: time.Now().Format(time.Stamp),
 		Status:     "running",
 	})
@@ -278,7 +286,7 @@ func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, 
 
 		url := fmt.Sprintf("gs://%s/%s", watcher.gsBucket, resultFiles[0])
 		cmd := exec.Command("gce-xfstests", "get-results",
-				    "--unpack-dir", watcher.logDir, url)
+			"--unpack-dir", watcher.logDir, url)
 		cmdLog := watcher.log.WithField("cmd", cmd.String())
 		w := cmdLog.Writer()
 		defer w.Close()
@@ -288,7 +296,7 @@ func (watcher *GitWatcher) getResults(testID string, gce *gcp.Service) (string, 
 		}
 
 		tmpResultsDir := fmt.Sprintf("%s/results-%s-%s",
-				watcher.logDir, server.LTMUserName, testID)
+			watcher.logDir, server.LTMUserName, testID)
 		unpackedResultsDir := watcher.logDir + "results/" + testID + "/"
 
 		if check.DirExists(tmpResultsDir) {
