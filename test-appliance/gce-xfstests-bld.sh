@@ -352,7 +352,7 @@ mkdir -p /usr/local/lib/bin
 for i in kcs ltm ; do
     cd /usr/local/lib/gce-server/$i
     /usr/local/lib/go/bin/go get .
-    /usr/local/lib/go/bin/go build .
+    /usr/local/lib/go/bin/go build -trimpath -ldflags="-s -w" .
     mv $i /usr/local/lib/bin
 done
 
