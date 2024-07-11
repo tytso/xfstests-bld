@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/sendgrid/sendgrid-go v3.10.4+incompatible
 	github.com/sirupsen/logrus v1.8.1
-	golang.org/x/net v0.17.0
+	golang.org/x/net v0.27.0
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
 	google.golang.org/api v0.114.0
@@ -30,8 +30,8 @@ require (
 	github.com/googleapis/gax-go/v2 v2.7.1 // indirect
 	github.com/sendgrid/rest v2.6.6+incompatible // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
