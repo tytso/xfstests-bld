@@ -42,4 +42,4 @@ generic/085
 // This is a new test which tests an io_uring bug where fails with an
 // EBUSY after running fsstress followed by a umount.  Note: this may
 // get renumbered when it is accepted upstream.
-generic/750
+generic/760
