@@ -64,7 +64,7 @@ build_appliance ()
     if test -n "$GCE_FLAG" -a -f "$KERNEL_DEB" ; then
 	echo "Launching GCE Test VM $DATECODE-$ARCH"
 	$NO_ACTION $GCE_XFSTESTS --arch $ARCH --kernel "$KERNEL_DEB" \
-		   --testrunid "$DATECODE-$ARCH" --note selftest \
+		   --testrunid "$DATECODE-$ARCH" --note selftest --no-email \
 		   -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064
 	GCE_TEST_VMS="$GCE_TEST_VMS $DATECODE-$ARCH"
     fi
