@@ -625,7 +625,11 @@ func (sharder *ShardScheduler) genResultsSummary() {
 
 // emailReport sends the email.
 func (sharder *ShardScheduler) emailReport() {
-	sharder.log.Info("Sending email report")
+	if (sharder.reportReceiver == "") {
+		sharder.log.Info("Skipping e-mail report")
+		return
+	}
+	sharder.log.Info("Sending e-mail report")
 	subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
 
 	b, err := ioutil.ReadFile(sharder.aggDir + "report")
