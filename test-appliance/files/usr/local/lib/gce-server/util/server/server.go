@@ -133,6 +133,7 @@ type UserOptions struct {
 	KbuildOpts     string `json:"kbuild_opts"`
 	Arch           string `json:"arch"`
 	MonitorTimeout string `json:"monitor_timeout"`
+	TestRunID      string `json:"test_run_id"`
 }
 
 // InternalOptions contains configs used by LTM and KCS internally.

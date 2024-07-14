@@ -48,7 +48,12 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	testID := mymath.GetTimeStamp()
 
 	if c.ExtraOptions == nil {
-		log.WithField("testID", testID).Info("User request, generating testID")
+		if c.Options.TestRunID == "" {
+			log.WithField("testID", testID).Info("User request, generating testID")
+		} else {
+			testID = c.Options.TestRunID
+			log.WithField("testID", testID).Info("User request with specified testID")
+		}
 	} else {
 		testID = c.ExtraOptions.TestID
 		log.WithField("testID", testID).Info("KCS request, use existing testID")
