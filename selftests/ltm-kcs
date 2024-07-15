@@ -119,7 +119,7 @@ for i in $GCE_TEST_VMS ; do
     echo -n "Checking test VM $i: "
     totals=$($GCE_XFSTESTS get-results "$i" | grep "^Totals: ")
     n=$(echo "$totals" | wc -l)
-    t=$(echo "$totals" | grep -v "3 tests")
+    t=$(echo "$totals" | grep -v "[13] tests")
     if test "$n" -eq 2 -a -z "$t" ; then
         echo "Passed"
 	$GCE_XFSTESTS rm-results "$i" >& /dev/null

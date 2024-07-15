@@ -178,7 +178,7 @@ echo " Done!"
 for i in $GCE_TEST_VMS ; do
     echo -n "Checking test VM $i: "
     if $GCE_XFSTESTS get-results "$i" | \
-	    grep -q "Totals: 6 tests, 2 skipped, 0 failures, 0 errors" ; then
+	    grep -q "Totals: 4 tests, 0 skipped, 0 failures, 0 errors" ; then
 	echo "Passed"
 	$GCE_XFSTESTS rm-results "$i" >& /dev/null
     else

@@ -386,16 +386,25 @@ do
 	    AEX="$AEX -E /tmp/exclude-tests"
 	fi
 	if test ! -f "$RESULT_BASE/tests-to-run" ; then
-	    bash ./check -n $FSTESTSET >& /tmp/tests-to-run.debug
+	    case "$FSTYP" in
+		ext2|ext3|ext4)
+		    tests_regexp="ext4"
+		    ;;
+		*)
+		    tests_regexp="$FSTYP"
+	    esac
+	    tests_regexp="^($tests_regexp|shared|generic|perf|selftest)"
+	    ./check -n $FSTESTSET 2> /tmp/tests-to-run.stderr > /tmp/tests-to-run
 	    ret="$?"
-	    echo "Exit status $ret" >> /tmp/tests-to-run.debug
+	    echo "Exit status $ret" >> /tmp/tests-to-run.stderr
 	    if test "$ret" -gt 0 ; then
 		echo "Failed to run ./check -n $FSTESTSET"
+		cat /tmp/tests-to-run /tmp/tests-to-run.stderr > /tmp/tests-to-run.debug
 		cat /tmp/tests-to-run.debug
 		continue
 	    fi
-	    bash ./check -n $FSTESTSET 2> /dev/null | \
-		sed -e '1,/^$/d' -e '/^$/d' | \
+	    sed -e '1,/^$/d' -e '/^$/d' < /tmp/tests-to-run | \
+		grep -E "$tests_regexp" | \
 		sort > "$RESULT_BASE/tests-to-run"
 	    nr_tests=$(wc -l < "$RESULT_BASE/tests-to-run")
 	    if test "$nr_tests" -ne 1
