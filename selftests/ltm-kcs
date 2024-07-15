@@ -19,6 +19,8 @@ fi
 . "$DIR/selftests/util/ltm"
 
 GCE_XFSTESTS="$DIR/run-fstests/gce-xfstests"
+DATECODE="$(date +%Y%m%d%H%M)"
+GCE_TEST_VMS=
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -55,7 +57,9 @@ function test-ltm ()
 	    a="--arch $ARCH"
 	fi
 	echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
+	     --testrunid "test-$DATECODE-$ARCH"	--no-email \
 	     "btrfs/064 $a --kernel $k" >> $LTM_TEST_FILE
+	GCE_TEST_VMS="$GCE_TEST_VMS ltm-test-$DATECODE-$ARCH"
     fi
 }
 
@@ -69,7 +73,9 @@ function test-kcs ()
     fi
     echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 $a" \
 	 "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
-	 "--commit v5.15.79" >> $LTM_TEST_FILE
+	 --no-email --commit v5.15.79 "--testrunid testkcs-$DATECODE-$ARCH" \
+	 >> $LTM_TEST_FILE
+	GCE_TEST_VMS="$GCE_TEST_VMS ltm-testkcs-$DATECODE-$ARCH"
 }
 
 test-kcs amd64
@@ -88,3 +94,37 @@ GS_PREFIX="$(gce-xfstests get-bucket)"
 $NO_ACTION gsutil cp $LTM_TEST_FILE $GS_PREFIX/ltm-batch/ltm-test
 rm -f $LTM_TEST_FILE
 $NO_ACTION $GCE_XFSTESTS launch-ltm --skip-rc
+
+echo "Datecode: $DATECODE"
+echo -n "Waiting for test results..."
+w=60
+while /bin/true
+do
+    n=$($GCE_XFSTESTS ls-results | grep "$DATECODE" | \
+	    grep -v "64-a[ab]" | wc -l)
+    echo -n "$n"
+    sleep "$w"
+    if test "$n" -eq 1 ; then
+	w=30
+    elif test "$n" -ge 2 ; then
+	w=15
+    fi
+    if test "$n" -ge 4 ; then
+	break
+	echo " "
+    fi
+done
+
+for i in $GCE_TEST_VMS ; do
+    echo -n "Checking test VM $i: "
+    totals=$($GCE_XFSTESTS get-results "$i" | grep "^Totals: ")
+    n=$(echo "$totals" | wc -l)
+    t=$(echo "$totals" | grep -v "3 tests")
+    if test "$n" -eq 2 -a -z "$t" ; then
+        echo "Passed"
+	$GCE_XFSTESTS rm-results "$i" >& /dev/null
+    else
+	echo "FAILED!"
+	echo "   Test results available via: gce-xfstests get-results $i"
+    fi
+done
