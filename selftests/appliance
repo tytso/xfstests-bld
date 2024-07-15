@@ -10,6 +10,7 @@ KSRC=
 KSRC_EXPLICIT=
 NO_ACTION=
 SKIP_GCE=
+SKIP_QEMU=
 GCE_TEST_VMS=
 
 d=$(dirname "$0")
@@ -64,11 +65,13 @@ build_appliance ()
     if test -n "$GCE_FLAG" -a -f "$KERNEL_DEB" ; then
 	echo "Launching GCE Test VM $DATECODE-$ARCH"
 	$NO_ACTION $GCE_XFSTESTS --arch $ARCH --kernel "$KERNEL_DEB" \
-		   --testrunid "$DATECODE-$ARCH" --note selftest --no-email \
+		   --testrunid "test-$DATECODE-$ARCH" --note selftest \
+		   --no-email \
 		   -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064
-	GCE_TEST_VMS="$GCE_TEST_VMS $DATECODE-$ARCH"
+	GCE_TEST_VMS="$GCE_TEST_VMS test-$DATECODE-$ARCH"
     fi
-    if test -n "$SKIP_ARM_QEMU_TEST" -a "$ARCH" = arm64; then
+    if test -n "$SKIP_QEMU" ||
+	    test -n "$SKIP_ARM_QEMU_TEST" -a "$ARCH" = arm64; then
 	return
     fi
     $NO_ACTION rm -f "$LOGFILE"
@@ -117,6 +120,9 @@ while [ "$1" != "" ]; do
 	    ;;
 	--skip-gce)
 	    SKIP_GCE=yes
+	    ;;
+	--skip-qemu|--skip-kvm)
+	    SKIP_QEMU=yes
 	    ;;
 	--skip-test)
 	    SKIP_TEST=yes
@@ -174,7 +180,7 @@ for i in $GCE_TEST_VMS ; do
     if $GCE_XFSTESTS get-results "$i" | \
 	    grep -q "Totals: 6 tests, 2 skipped, 0 failures, 0 errors" ; then
 	echo "Passed"
-	echo $GCE_XFSTESTS rm-results "$i"
+	$GCE_XFSTESTS rm-results "$i" >& /dev/null
     else
 	echo "FAILED!"
 	echo "   Test results available via: gce-xfstests get-results $i"
