@@ -214,7 +214,8 @@ if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
     logger -s "Update to $NEW_SUITE complete"
 else
     apt-get update
-    apt-get -y --with-new-pkgs upgrade
+    # Temporary workaround to fix networking breakage
+    # apt-get -y --with-new-pkgs upgrade
 fi
 
 if test "$NEW_SUITE" = "buster" ; then
