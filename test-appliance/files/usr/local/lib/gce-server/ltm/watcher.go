@@ -156,16 +156,38 @@ func (watcher *GitWatcher) watch() {
 	watcher.InitTest()
 
 	for {
+		var runonce bool
+		var skip, skipAmount int
+
 		select {
 		case <-watcher.done:
 			watcher.log.Info("Received terminating signal, generating watcher summary")
 			return
 
 		case <-checkTicker.C:
+			if skip > 0 {
+				skip--
+				continue
+			}
 			watcher.log.WithField("time", time.Since(start).Round(time.Second)).Debug("Checking for new commits")
 			updated, err := watcher.repo.Update()
-			check.Panic(err, watcher.log, "Failed to update repo")
-
+			if err != nil {
+				if !runonce {
+					check.Panic(err, watcher.log, "Failed to update repo")
+				}
+				if skipAmount > 0 {
+					if skipAmount < 32 {
+						skipAmount *= 2
+					}
+				} else {
+					skipAmount = 1
+				}
+				skip = skipAmount
+				watcher.log.WithField("skip", skip).Debug("Failed to update repo, retrying")
+				continue
+			}
+			runonce = true
+			skipAmount = 0
 			if updated {
 				watcher.InitTest()
 			}
