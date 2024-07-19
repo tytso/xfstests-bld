@@ -730,7 +730,7 @@ case "$1" in
 		exit 1
 	fi
 	RUN_ON_LTM="yes"
-	GCE_USER="ltm"
+	GCE_USER=""
 	;;
     kcs)
 	shift
@@ -740,7 +740,7 @@ case "$1" in
 		exit 1
 	fi
 	RUN_ON_KCS="yes"
-	GCE_USER="kcs"
+	GCE_USER=""
 	OVERRIDE_KERNEL="none"
 	;;
     ltm-info)
