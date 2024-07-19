@@ -765,7 +765,14 @@ case "$1" in
 	;;
     ltm-batch-cmd)
 	shift
-	echo "gce-xfstests ltm $*" > /tmp/ltm-batch.$$
+	batch_cmd="$@"
+	case "$batch_cmd" in
+	    *--kernel*) : ;;
+	    *) batch_cmd="--kernel gs://$GS_BUCKET/kernel.deb $batch_cmd"
+	       echo "Kernel not specified; defaulting to gs://$GS_BUCKET/kernel.deb"
+	       ;;
+	esac
+	echo "gce-xfstests ltm $batch_cmd" > /tmp/ltm-batch.$$
 	gsutil cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
 	/bin/rm -f /tmp/ltm-batch.$$
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
