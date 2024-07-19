@@ -3,6 +3,7 @@ Web server endpoints for the gce-xfstests LTM (lightweight test manager).
 
 This stand-alone server handles requests sent by the client-side scripts.
 The endpoints are:
+
 	/login - authenticates a user session, implemented in server.go
 
 	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
@@ -11,7 +12,6 @@ The endpoints are:
 	/internal - handles internal requests from KCS server.
 
 	/status - handles queries for running status from user.
-
 */
 package main
 

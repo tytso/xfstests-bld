@@ -9,7 +9,6 @@ to the user if necessary.
 
 The TestRunManager from previous flask version is integrated into shardScheduler
 now to reduce the code base.
-
 */
 package main
 
@@ -54,7 +53,7 @@ type ShardScheduler struct {
 	gsKernel       string
 	kernelVersion  string
 	kernelArch     string
-	arch	       string
+	arch           string
 	reportReceiver string
 	maxShards      int
 	keepDeadVM     bool
@@ -129,7 +128,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		gsKernel:       c.Options.GsKernel,
 		kernelVersion:  "unknown_kernel_version",
 		kernelArch:     "",
-		arch:		c.Options.Arch,
+		arch:           c.Options.Arch,
 		reportReceiver: c.Options.ReportEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
@@ -220,7 +219,7 @@ func (sharder *ShardScheduler) initLocalSharding() {
 	configs := splitConfigs(numShards, sharder.configs)
 
 	for i, config := range configs {
-		shardID := string(rune(i)/26 + 'a') + string(rune(i)%26 + 'a')
+		shardID := string(rune(i)/26+'a') + string(rune(i)%26+'a')
 		shard := NewShardWorker(sharder, shardID, config, sharder.zone)
 		allShards = append(allShards, shard)
 	}
@@ -277,7 +276,7 @@ func (sharder *ShardScheduler) initRegionSharding() {
 	configs := splitConfigs(len(usedZones), sharder.configs)
 
 	for i, config := range configs {
-		shardID := string(rune(i)/26 + 'a') + string(rune(i)%26 + 'a')
+		shardID := string(rune(i)/26+'a') + string(rune(i)%26+'a')
 		shard := NewShardWorker(sharder, shardID, config, usedZones[i])
 		allShards = append(allShards, shard)
 	}
@@ -298,11 +297,11 @@ func (sharder *ShardScheduler) getKernelInfo() {
 	if !check.NoError(err, sharder.log, "Failed to get kernel information") {
 		sharder.log.Errorf("Failure text: %s",
 			strings.TrimSuffix(stderr.String(), "\n"))
-		return;
+		return
 	}
 	for _, v := range strings.Split(stdout.String(), "\n") {
 		arg := strings.Split(v, "=")
-		if (len(arg) < 2) {
+		if len(arg) < 2 {
 			continue
 		}
 		if arg[0] == "KERNEL_ARCH" {
@@ -377,12 +376,12 @@ func (sharder *ShardScheduler) Run() {
 // Info returns structured sharder information.
 func (sharder *ShardScheduler) Info() server.SharderInfo {
 	info := server.SharderInfo{
-		ID:        sharder.testID,
-		Command:   sharder.origCmd,
+		ID:            sharder.testID,
+		Command:       sharder.origCmd,
 		KernelVersion: sharder.kernelVersion,
-		KernelArch: sharder.kernelArch,
-		NumShards: len(sharder.shards),
-		Result:    sharder.testResult.String(),
+		KernelArch:    sharder.kernelArch,
+		NumShards:     len(sharder.shards),
+		Result:        sharder.testResult.String(),
 	}
 
 	for _, shard := range sharder.shards {
@@ -445,7 +444,7 @@ func (sharder *ShardScheduler) aggResults() {
 			hasResults = true
 		}
 
-		if ! shardHasResults {
+		if !shardHasResults {
 			log.Warn("Shard has no results available")
 		}
 	}
@@ -625,7 +624,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 
 // emailReport sends the email.
 func (sharder *ShardScheduler) emailReport() {
-	if (sharder.reportReceiver == "") {
+	if sharder.reportReceiver == "" {
 		sharder.log.Info("Skipping e-mail report")
 		return
 	}

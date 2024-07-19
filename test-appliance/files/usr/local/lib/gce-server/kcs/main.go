@@ -4,6 +4,7 @@ Web server endpoints for the gce-xfstests KCS (kernel compile server).
 This stand-alone server handles requests to build a kernel image from the
 client-side bash scripts or the LTM server. It also supports auto git bisect.
 The endpoints are:
+
 	/login - authenticates a user session, implemented in server.go
 
 	/gce-xfstests - takes in a json POST in the form of LTMRequest, and runs the
@@ -12,7 +13,6 @@ The endpoints are:
 	/internal - handles internal requests from LTM server.
 
 	/internal-status - handles queries for running status from LTM server.
-
 */
 package main
 
