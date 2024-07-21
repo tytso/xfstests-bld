@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -239,10 +240,15 @@ func (sharder *ShardScheduler) initRegionSharding() {
 	quotas, err := sharder.gce.GetAllRegionsQuota(sharder.projID)
 	check.Panic(err, log, "Failed to get quota")
 
-	usedZones := []string{}
+	var usedZones, avoidZones []string
+	content, err := os.ReadFile("/usr/local/lib/zone-avoid-list")
+	if err == nil {
+		avoidZones = strings.Split(string(content), "\n")
+	}
 
 	for _, quota := range quotas {
-		if strings.HasPrefix(quota.Zone, continent) {
+		if !slices.Contains(avoidZones, quota.Zone) &&
+			strings.HasPrefix(quota.Zone, continent) {
 			maxShard, err := quota.GetMaxShard()
 			check.Panic(err, log, "Failed to get max shard")
 

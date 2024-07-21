@@ -34,6 +34,8 @@ chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 
+gsutil cp gs://$GS_BUCKET/zone-avoid-list /usr/local/lib/
+
 if test ! -d "/var/log/go"
 then
     # we only want to do this if the server isn't set up already.
