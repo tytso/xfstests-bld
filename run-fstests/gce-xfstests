@@ -804,6 +804,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
 {
     declare -p GCE_REPORT_SENDER
     declare -p GCE_REPORT_EMAIL
+    declare -p GCE_JUNIT_EMAIL
     declare -p SENDGRID_API_KEY
     declare -p GCE_UPLOAD_SUMMARY
     declare -p PRIMARY_FSTYPE
@@ -1233,6 +1234,11 @@ fi
 if test -n "$GCE_REPORT_EMAIL"
 then
     ARG="$ARG report_email=$GCE_REPORT_EMAIL"
+fi
+
+if test -n "$GCE_JUNIT_EMAIL"
+then
+    ARG="$ARG junit_email=$GCE_JUNIT_EMAIL"
 fi
 
 ARG="$ARG orig_cmdline=$ORIG_CMDLINE_B64"

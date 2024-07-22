@@ -7,8 +7,8 @@ package parser
 import (
 	"encoding/base64"
 	"fmt"
-	"thunk.org/gce-server/util/check"
 	"strings"
+	"thunk.org/gce-server/util/check"
 )
 
 const (
@@ -16,12 +16,18 @@ const (
 	xfsPath   = "/root"
 )
 
-var invalidBools = []string{"ltm", "--no-region-shard", "--no-email"}
+var invalidBools = []string{
+	"ltm",
+	"--no-region-shard",
+	"--no-email",
+	"--no-junit-email",
+}
 var invalidOpts = []string{
 	"--instance-name",
 	"--bucket-subdir",
 	"--gs-bucket",
 	"--email",
+	"--junit-email",
 	"--gce-zone",
 	"--testrunid",
 	"--hooks",
@@ -47,6 +53,7 @@ var invalidOpts = []string{
 Cmd parses a cmdline into validArgs and configs.
 
 Returns:
+
 	validArgs - a slice of cmd args not related to test configurations.
 	Parser removes arguments from the original cmd that don't make sense
 	for LTM (e.g. ltm, --instance-name).
@@ -158,6 +165,7 @@ func defaultConfigs(configs map[string][]string) error {
 /*
 singleConfig parses a single configuration and adds it to the map.
 Possible pattern of configs:
+
 	<fs>/<cfg> (e.g. ext4/4k) - checks /root/fs/<fs>/cfg/<cfg>.list
 	for a list of configurations, and read config lines from each file.
 

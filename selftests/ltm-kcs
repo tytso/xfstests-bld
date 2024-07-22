@@ -57,7 +57,7 @@ function test-ltm ()
 	    a="--arch $ARCH"
 	fi
 	echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 " \
-	     --testrunid "test-$DATECODE-$ARCH"	--no-email \
+	     --testrunid "test-$DATECODE-$ARCH"	--no-email --no-junit-email \
 	     "btrfs/064 $a --kernel $k" >> $LTM_TEST_FILE
 	GCE_TEST_VMS="$GCE_TEST_VMS ltm-test-$DATECODE-$ARCH"
     fi
@@ -71,9 +71,10 @@ function test-kcs ()
     if test $ARCH = "arm64" ; then
 	a="--arch $ARCH"
     fi
-    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 $a" \
+    echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 $a " \
 	 "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
-	 --no-email --commit v5.15.79 "--testrunid testkcs-$DATECODE-$ARCH" \
+	 "--no-email --no-junit-email --commit v5.15.79 " \
+	 "--testrunid testkcs-$DATECODE-$ARCH" \
 	 >> $LTM_TEST_FILE
 	GCE_TEST_VMS="$GCE_TEST_VMS ltm-testkcs-$DATECODE-$ARCH"
 }
@@ -100,7 +101,7 @@ echo -n "Waiting for test results..."
 w=60
 while /bin/true
 do
-    n=$($GCE_XFSTESTS ls-results | grep "$DATECODE" | \
+    n=$($GCE_XFSTESTS ls-results | grep "$DATECODE" | grep .tar.xz | \
 	    grep -v "64-a[ab]" | wc -l)
     echo -n "$n"
     sleep "$w"

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -406,12 +407,26 @@ func (shard *ShardWorker) getResults() string {
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	for attempts := maxAttempts; attempts > 0; attempts-- {
 		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
+		var resultURL string
 		check.NoError(err, shard.log, "Failed to get GS filenames")
-		if err == nil && len(resultFiles) == 1 {
-			shard.log.WithField("resultURL", resultFiles[0]).Info("Found result file url")
-			return fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, resultFiles[0])
+		for _, value := range resultFiles {
+			if !strings.HasSuffix(value, ".tar.xz") {
+				continue
+			}
+			resultURL = fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, value)
+			break
 		}
-		shard.log.WithField("attemptsLeft", attempts).Debug("No GS file with matching url")
+		if err == nil && resultURL != "" {
+			shard.log.WithField("resultURL", resultURL).Info("Found result file url")
+			return resultURL
+
+		}
+		shard.log.WithFields(logrus.Fields{
+			"attemptsLeft": attempts,
+			"prefix":       prefix,
+			"resultURL":    resultURL,
+			"err":          err,
+		}).Debug("No GS file with matching url")
 		time.Sleep(gsInterval)
 	}
 	return ""

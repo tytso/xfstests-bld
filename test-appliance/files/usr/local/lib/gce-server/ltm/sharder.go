@@ -56,6 +56,7 @@ type ShardScheduler struct {
 	kernelArch     string
 	arch           string
 	reportReceiver string
+	junitReceiver  string
 	maxShards      int
 	keepDeadVM     bool
 	monitorTimeout time.Duration
@@ -131,6 +132,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		kernelArch:     "",
 		arch:           c.Options.Arch,
 		reportReceiver: c.Options.ReportEmail,
+		junitReceiver:  c.Options.JunitEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
 		monitorTimeout: defaultMonitorTimeout,
@@ -632,19 +634,34 @@ func (sharder *ShardScheduler) genResultsSummary() {
 func (sharder *ShardScheduler) emailReport() {
 	if sharder.reportReceiver == "" {
 		sharder.log.Info("Skipping e-mail report")
-		return
-	}
-	sharder.log.Info("Sending e-mail report")
-	subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
+	} else {
+		sharder.log.Info("Sending e-mail report")
+		subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
 
-	b, err := ioutil.ReadFile(sharder.aggDir + "report")
-	content := string(b)
-	if !check.NoError(err, sharder.log, "Failed to read the report file") {
-		content = "Unable to generate test summary report"
-	}
+		b, err := ioutil.ReadFile(sharder.aggDir + "report")
+		content := string(b)
+		if !check.NoError(err, sharder.log, "Failed to read the report file") {
+			content = "Unable to generate test summary report"
+		}
 
-	err = email.Send(subject, content, sharder.reportReceiver)
-	check.Panic(err, sharder.log, "Failed to send the email")
+		err = email.Send(subject, content, sharder.reportReceiver)
+		check.Panic(err, sharder.log, "Failed to send the report email")
+	}
+	if sharder.junitReceiver == "" {
+		sharder.log.Info("Skipping junit file e-mail")
+	} else {
+		sharder.log.Info("Sending junit file e-mail")
+		subject := fmt.Sprintf("xfstests junit results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
+
+		b, err := ioutil.ReadFile(sharder.aggDir + "results.xml")
+		content := string(b)
+		if !check.NoError(err, sharder.log, "Failed to read the results xml file") {
+			content = "Unable to generate combined junit file"
+		}
+
+		err = email.Send(subject, content, sharder.junitReceiver)
+		check.Panic(err, sharder.log, "Failed to send the junit email")
+	}
 }
 
 func (sharder *ShardScheduler) sendKCSReport() {

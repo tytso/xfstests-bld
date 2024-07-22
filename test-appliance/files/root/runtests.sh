@@ -528,7 +528,8 @@ done
 
 runtests_after_tests
 
-/usr/local/bin/gen_results_summary $RESULTS > $RESULTS/report
+/usr/local/bin/gen_results_summary $RESULTS \
+	--merge_file /tmp/results.xml > $RESULTS/report
 
 echo "-------------------- Summary report"
 

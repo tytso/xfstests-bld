@@ -2,9 +2,9 @@
 Package server implements server functions shared by LTM and KCS.
 
 Files included in this package:
+
 	server.go: 	Web servers interface and handlers, and functions to send requests.
 	info.go: 	Construct human-friendly status info for multiple modules.
-
 */
 package server
 
@@ -122,13 +122,14 @@ type UserOptions struct {
 	BucketSubdir   string `json:"bucket_subdir"`
 	GsKernel       string `json:"gs_kernel"`
 	ReportEmail    string `json:"report_email"`
+	JunitEmail     string `json:"junit_email"`
 	CommitID       string `json:"commit_id"`
 	GitRepo        string `json:"git_repo"`
 	BranchName     string `json:"branch_name"`
 	UnWatch        string `json:"unwatch"`
 	BadCommit      string `json:"bad_commit"`
 	GoodCommit     string `json:"good_commit"`
-	KConfig	       string `json:"kconfig"`
+	KConfig        string `json:"kconfig"`
 	KConfigOpts    string `json:"kconfig_opts"`
 	KbuildOpts     string `json:"kbuild_opts"`
 	Arch           string `json:"arch"`
@@ -218,7 +219,7 @@ func init() {
 		panic("Failed to get project config in init()")
 	}
 
-	certPath =  "/root/xfstests_bld/run-fstests/.gce_xfstests_cert_" + projID + ".pem"
+	certPath = "/root/xfstests_bld/run-fstests/.gce_xfstests_cert_" + projID + ".pem"
 }
 
 // New sets up a new https server.
@@ -227,7 +228,7 @@ func New(addr string, name string) (*Instance, error) {
 	log.Info("Initiating server")
 
 	server := &Instance{
-		name:	name,
+		name:   name,
 		addr:   addr,
 		router: mux.NewRouter(),
 		store:  sessions.NewCookieStore(key),

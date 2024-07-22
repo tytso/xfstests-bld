@@ -270,6 +270,7 @@ image-family:
 image-project:
 initrd:
 instance-name:
+junit-email:
 kernel:
 kernel-arch:
 kbuild-opts:
@@ -291,6 +292,7 @@ no-archive
 no-collapse
 no-email
 no-insert
+no-junit-email
 no-log
 no-preemptible
 no-spot-fallback
@@ -739,6 +741,14 @@ while (( $# >= 1 )); do
 	--no-email)
 	    supported_flavors gce
 	    GCE_REPORT_EMAIL=""
+	    ;;
+	--junit-email) shift
+	    supported_flavors gce
+	    GCE_JUNIT_EMAIL="$1"
+	    ;;
+	--no-junit-email)
+	    supported_flavors gce
+	    GCE_JUNIT_EMAIL=""
 	    ;;
 	--no-region-shard)
 	    supported_flavors gce

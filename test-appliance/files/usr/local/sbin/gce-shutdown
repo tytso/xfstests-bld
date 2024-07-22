@@ -89,6 +89,7 @@ then
     fi
 
     REPORT_EMAIL=$(gce_attribute report_email)
+    JUNIT_EMAIL=$(gce_attribute junit_email)
     run_hooks send-email
     if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY"
     then
@@ -111,9 +112,26 @@ then
 	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
 		-s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
     fi
+    if test -n "$JUNIT_EMAIL" -a -n "$SENDGRID_API_KEY" -a -f /tmp/results.xml
+    then
+	subj="$suite junit results $TESTRUNID - $(uname -r)"
+	if test -f /run/powerbtn
+	then
+	    subj="$subj - test run aborted"
+	fi
+	if test -z "$GCE_REPORT_SENDER"
+	then
+	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
+	fi
+	export SENDGRID_API_KEY
+	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
+		-s "$subj" "$JUNIT_EMAIL" < /tmp/results.xml
+    fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gsutil cp /tmp/results.tar.xz \
 	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
+    gsutil cp /tmp/results.xml \
+	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).xml"
 fi
 
 if test -f /run/filestore-param ; then
