@@ -576,7 +576,7 @@ If any shard has non-default testResult, append the sharder info to the result f
 */
 func (sharder *ShardScheduler) genResultsSummary() {
 	sharder.log.Info("Creating LTM test result summary")
-	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report")
+	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report", "--merge_file", sharder.aggDir+"results.xml")
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
@@ -694,6 +694,10 @@ func (sharder *ShardScheduler) packResults() {
 	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
 	check.Panic(err, sharder.log, "Failed to upload results tarball")
+
+	gsPath = fmt.Sprintf("%s/results.%s-%s.%s.xml", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
+	err = sharder.gce.UploadFile(sharder.aggDir+"results.xml", gsPath)
+	check.Panic(err, sharder.log, "Failed to upload junit file")
 
 	os.Remove(sharder.aggFile + ".tar.xz")
 
