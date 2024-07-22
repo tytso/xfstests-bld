@@ -402,6 +402,7 @@ function runtests_setup()
 	    echo "PARAM_MEM: $PARAM_MEM (restricted by cmdline)" >> "$RUNSTATS"
 	fi
 	echo GCE ID:    \"$GCE_ID\" >> "$RUNSTATS"
+	echo GCE ZONE: \"$ZONE\" >> "$RUNSTATS"
 	MACHTYPE=$(basename $(get_metadata_value_with_retries machine-type))
 	echo MACHINE TYPE: \"$MACHTYPE\" >> "$RUNSTATS"
 	echo TESTRUNID: $TESTRUNID >> "$RUNSTATS"
