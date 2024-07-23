@@ -1,0 +1,33 @@
+// exclude file for f2fs/encrypt
+
+// When encryption is enabled this uses space in the extended attribute
+// area which impacts the number of ACL entries that can be created
+// which this test does not take into account.
+generic/026
+
+// These tests use the old-style quota support where the quota files are user
+// files instead of hidden inodes.  This isn't compatible with
+// test_dummy_encryption, as it causes the quota files to be encrypted.
+generic/082
+generic/219
+generic/230
+generic/231
+generic/232
+generic/233
+generic/235
+generic/270
+generic/381
+generic/382
+generic/566
+generic/587
+generic/600
+generic/601
+
+// these tests fail because encryption requires more space in the
+// directory for each directory entry, and so the setup runs into
+// an EDQUOT error early, which then causes the test failure.  This is
+// a test bug; the quota limit needs to be set based on exactly how much
+// directory space is consumed during the setup phase
+generic/681
+generic/682
+generic/691
