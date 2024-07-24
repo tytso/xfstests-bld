@@ -767,17 +767,24 @@ case "$1" in
 	shift
 	batch_cmd="$@"
 	case "$batch_cmd" in
-	    *--kernel*) : ;;
+	    *--kernel*|*--commit*|*--watch*|*--bisect-bad*) : ;;
 	    *) batch_cmd="--kernel gs://$GS_BUCKET/kernel.deb $batch_cmd"
 	       echo "Kernel not specified; defaulting to gs://$GS_BUCKET/kernel.deb"
 	       ;;
 	esac
 	echo "gce-xfstests ltm $batch_cmd" > /tmp/ltm-batch.$$
-	gsutil cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
+	null=
+	if test -z "$NO_ACTION" ; then
+	    null="> /dev/null"
+	else
+	    cat /tmp/ltm-batch.$$
+	    echo ""
+	fi
+	$NO_ACTION gsutil cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
 	/bin/rm -f /tmp/ltm-batch.$$
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
-		   --zone "$GCE_ZONE" > /dev/null
+		   --zone "$GCE_ZONE" $null
 	exit 0
 	;;
     launch-dashboard)
