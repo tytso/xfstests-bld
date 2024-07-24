@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -111,7 +112,7 @@ func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, er
 		os.RemoveAll(repo.dir)
 		return nil, err
 	}
-	cmd = exec.Command("git", "fetch", "-q", "--all")
+	cmd = exec.Command("git", "fetch", "-qpf", "--all")
 	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		os.RemoveAll(repo.dir)
@@ -145,15 +146,23 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 		return fmt.Errorf("directory %s does not exist", repo.dir)
 	}
 
-	cmd := exec.Command("git", "checkout", "-q", "-f", commit)
-	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
-	if err == nil {
-		return nil
+	isHexCommit, _ := regexp.MatchString("^[0-9a-fA-F]+$", commit)
+	if isHexCommit && len(commit) > 6 {
+		cmd := exec.Command("git", "checkout", "-q", "-f", commit)
+		err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+		if err == nil {
+			return nil
+		}
 	}
-	cmd = exec.Command("git", "fetch", "-q", "--all")
-	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	cmd := exec.Command("git", "fetch", "-qpf", "--all")
+	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
+	}
+	cmd = exec.Command("git", "checkout", "-q", "-f", "origin/"+commit)
+	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	if err == nil {
+		return nil
 	}
 	cmd = exec.Command("git", "checkout", "-q", "-f", commit)
 	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
@@ -311,12 +320,12 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig str
 	cmd := exec.Command(BuildUploadScript)
 
 	env := map[string]string{
-		"GS_BUCKET": gsBucket,
-		"GS_PATH":   gsPath,
-		"GS_CONFIG": gsConfig,
+		"GS_BUCKET":    gsBucket,
+		"GS_PATH":      gsPath,
+		"GS_CONFIG":    gsConfig,
 		"KCONFIG_OPTS": kConfigOpts,
-		"KBUILD_OPTS": kbuildOpts,
-		"KBUILD_ARCH": arch,
+		"KBUILD_OPTS":  kbuildOpts,
+		"KBUILD_ARCH":  arch,
 	}
 
 	err := check.Run(cmd, repo.dir, env, writer, writer)
