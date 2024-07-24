@@ -152,6 +152,8 @@ fi
 
 "$DIR/util/gce-setup-cert"
 
+$NO_ACTION gsutil rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
+
 echo "Launching LTM server..."
 touch $DIR/.ltm_instance_$GCE_PROJECT
 LAUNCH_LTM_EXIT_STATUS=1

@@ -765,6 +765,9 @@ case "$1" in
 	;;
     ltm-batch-cmd)
 	shift
+	if test -n "$NO_ACTION" ; then
+	    set -vx
+	fi
 	batch_cmd="$@"
 	case "$batch_cmd" in
 	    *--kernel*|*--commit*|*--watch*|*--bisect-bad*) : ;;
@@ -773,10 +776,7 @@ case "$1" in
 	       ;;
 	esac
 	echo "gce-xfstests ltm $batch_cmd" > /tmp/ltm-batch.$$
-	null=
-	if test -z "$NO_ACTION" ; then
-	    null="> /dev/null"
-	else
+	if test -n "$NO_ACTION" ; then
 	    cat /tmp/ltm-batch.$$
 	    echo ""
 	fi
@@ -784,13 +784,28 @@ case "$1" in
 	/bin/rm -f /tmp/ltm-batch.$$
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
-		   --zone "$GCE_ZONE" $null
+		   --zone "$GCE_ZONE" > /dev/null
 	exit 0
 	;;
     launch-dashboard)
 	shift
 	$DIR/util/gce-launch-dashboard $@
 	exit $?
+	;;
+    stop-kcs)
+	$NO_ACTION gce-xfstests rm xfstests-kcs
+	exit $?
+	;;
+    stop-ltm)
+	echo "poweroff -f" > /tmp/stop-ltm.$$
+	$NO_ACTION gsutil cp /tmp/stop-ltm.$$  gs://$GS_BUCKET/ltm-batch/stop-ltm
+	/bin/rm -f /tmp/stop-ltm.$$
+	run_gcloud compute -q instances add-metadata xfstests-ltm \
+		   --metadata ltm_wait=$(date +%s) \
+		   --zone "$GCE_ZONE" > /dev/null
+	$NO_ACTION gce-xfstests abort xfstests-ltm
+	exit $?
+	;;
 esac
 
 GS_CONFIG="gs://$GS_BUCKET/gce_xfstests.config"
