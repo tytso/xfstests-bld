@@ -144,6 +144,9 @@ func (watcher *GitWatcher) Run() {
 }
 
 func (watcher *GitWatcher) watch() {
+	var runonce bool
+	var skip, skipAmount int
+
 	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
 	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
 
@@ -156,9 +159,6 @@ func (watcher *GitWatcher) watch() {
 	watcher.InitTest()
 
 	for {
-		var runonce bool
-		var skip, skipAmount int
-
 		select {
 		case <-watcher.done:
 			watcher.log.Info("Received terminating signal, generating watcher summary")
