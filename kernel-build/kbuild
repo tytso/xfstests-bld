@@ -4,7 +4,8 @@
 #
 # This script will build a kernel using an external build directory.
 # To use it, create the directory ".git/kbuild" in the top-level of
-# the kernel sources, and create a file .git/kbuild/config with the
+# the kernel sources (note: if using worktrees, use the .git dir in
+# the main worktree) and create a file .git/kbuild/config with the
 # following contents:
 #
 # BLD_DIR=/build/ext4
@@ -32,12 +33,13 @@ if test ! -f MAINTAINERS ; then
     exit 1
 fi
 
-mkdir -p .git/kbuild
-if test -f .git/kbuild/config ; then
-    . .git/kbuild/config
-elif test -f .git/kbuild.conf ; then
-    . .git/kbuild.conf
-    mv .git/kbuild.conf .git/kbuild/config
+GIT_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+mkdir -p "$GIT_DIR/kbuild" || exit 1
+if test -f "$GIT_DIR/kbuild/config" ; then
+    . "$GIT_DIR/kbuild/config"
+elif test -f "$GIT_DIR/kbuild.conf" ; then
+    . "$GIT_DIR/kbuild.conf"
+    mv "$GIT_DIR/kbuild.conf" "$GIT_DIR/kbuild/config"
 fi
 
 set_default_arch
@@ -124,14 +126,14 @@ fi
 
 if test -n "$BLD_DIR" -a ! -d "$BLD_DIR" ; then
     mkdir -p "$BLD_DIR"
-    if test -f .git/kbuild/kernel-config ; then
-	cp .git/kbuild/kernel-config "$BLD_DIR/.config"
+    if test -f "$GIT_DIR/kbuild/kernel-config" ; then
+	cp "$GIT_DIR/kbuild/kernel-config" "$BLD_DIR/.config"
     fi
     for i in x509.genkey signing_key.pem signing_key.x509
     do
-	if test -f ".git/kbuild/$i" ; then
+	if test -f "$GIT_DIR/kbuild/$i" ; then
 	    mkdir -p "$BLD_DIR/certs"
-	    cp ".git/kbuild/$i" "$BLD_DIR/certs"
+	    cp "$GIT_DIR/kbuild/$i" "$BLD_DIR/certs"
 	fi
     done
 fi
@@ -220,11 +222,11 @@ else
     $NO_ACTION rm -f "$BLD_DIR/modules.tar.xz"
 fi
 
-$NO_ACTION cp "$BLD_DIR/.config" .git/kbuild/kernel-config
+$NO_ACTION cp "$BLD_DIR/.config" "$GIT_DIR/kbuild/kernel-config"
 for i in x509.genkey signing_key.pem signing_key.x509
 do
     if test -f "$BLD_DIR/certs/$i" ; then
-	$NO_ACTION cp "$BLD_DIR/certs/$i" .git/kbuild
+	$NO_ACTION cp "$BLD_DIR/certs/$i" "$GIT_DIR/kbuild"
     fi
 done
 

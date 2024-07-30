@@ -10,6 +10,7 @@ fi
 
 KCONFIG_DIR=$DIR/kernel-configs
 KBUILD=$DIR/kbuild
+GIT_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
 
 TYPE=config
 DO_GENERIC=
@@ -89,7 +90,7 @@ if test ! -f MAINTAINERS -o ! -f Makefile ; then
    exit 1
 fi
 
-if test -f .git/kbuild/config ; then
+if test -f "$GIT_DIR/kbuild/config" ; then
     BLD_DIR=$($KBUILD --get-build-dir --arch $KERN_ARCH)
 fi
 if test -z "$BLD_DIR" ; then
