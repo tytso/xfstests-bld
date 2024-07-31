@@ -176,6 +176,11 @@ if test -n "$DO_DPKG" ; then
     else
 	NUM=1
     fi
+
+    # bindeb-pkg fails if we don't have a modules.order file :(
+    # with our default config, we don't create one, touching file
+    # is a temporary workaround
+    test -f "$BLD_DIR/modules.order" || touch "$BLD_DIR/modules.order"
     $NO_ACTION time nice make "KDEB_PKGVERSION=$REL-$NUM" "KDEB_SOURCENAME=linux-${REL}" "${MAKE_ARGS[@]}" \
 	 bindeb-pkg "$@"
     err=$?
