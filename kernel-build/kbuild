@@ -154,6 +154,7 @@ rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
 
 if test -n "$DO_DPKG" ; then
+    test -f "$BLD_DIR/modules.order" || touch "$BLD_DIR/modules.order"
     $NO_ACTION make "${MAKE_ARGS[@]}" prepare
     REL=$(make "${MAKE_ARGS[@]}" kernelrelease | grep -v ^make)
     MAJOR=$(echo $REL | awk -F. '{print $1}')
