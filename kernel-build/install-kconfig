@@ -89,12 +89,7 @@ if test ! -f MAINTAINERS -o ! -f Makefile ; then
    exit 1
 fi
 
-if test -f .git/kbuild/config ; then
-    BLD_DIR=$($KBUILD --get-build-dir --arch $KERN_ARCH)
-fi
-if test -z "$BLD_DIR" ; then
-   BLD_DIR=.
-fi
+BLD_DIR=$($KBUILD --get-build-dir --arch $KERN_ARCH)
 mkdir -p "$BLD_DIR"
 
 # echo "Build directory is $BLD_DIR"

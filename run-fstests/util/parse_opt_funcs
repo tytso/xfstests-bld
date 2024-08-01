@@ -32,7 +32,8 @@ find_kernel_to_use()
     esac
 
     if test -z "$OVERRIDE_KERNEL" ; then
-	if test -f .git/kbuild/config ; then
+	if test -x $KBUILD_DIR/kbuild &&
+		$KBUILD_DIR/kbuild --get-kbuild-config >& /dev/null ; then
 	    t=$($KBUILD_DIR/kbuild --get-build-dir --arch $ARCH)
 	    if test -n "$t" -a "$KERNEL" != "$t" -a \
 		    "$KERNEL" != "$t/linux-image.deb" -a \
