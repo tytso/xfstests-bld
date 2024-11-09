@@ -9,6 +9,10 @@
 
         dnf install qemu-kvm wget2 gcc git make
 
+    For openSUSE Tumbleweed:
+
+        zypper in qemu wget2 gcc git make
+
 2.  Run the following commands to install the xfstests-bld repository
     and install the necessary scripts into the bin directory in your
     home directory.  If ~/bin isn't in your PATH, edit your dotfiles
