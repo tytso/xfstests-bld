@@ -460,7 +460,7 @@ run_in_chroot "systemctl disable nvmf-autoconnect"
 find $ROOTDIR/usr/share/doc -type f -print0 ! -name copyright | xargs -0 rm
 find $ROOTDIR/usr/share/doc -mindepth 2 -type l -print0 | xargs -0 rm
 find $ROOTDIR/usr/share/doc -type d -print0 | xargs -0 rmdir --ignore-fail-on-non-empty -p
-rm -rf $ROOTDIR/usr/share/man
+rm -rf $ROOTDIR/usr/share/man $ROOTDIR/usr/share/locale
 find $ROOTDIR/var/log -type f -print0 | xargs -0 rm
 if test -n "$DO_FAKECHROOT"; then
     rm -f $ROOTDIR/dev $ROOTDIR/proc
