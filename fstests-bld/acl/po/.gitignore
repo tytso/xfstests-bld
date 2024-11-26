@@ -1,7 +1,0 @@
-*.gmo
-*.sed
-acl.pot
-Makevars.template
-POTFILES
-Rules-quot
-stamp-po

@@ -16,9 +16,7 @@ REPOS =		blktests \
 		xfstests-dev \
 		go/src/github.com/google/syzkaller
 
-SUBDIRS =	acl \
-		android-compat \
-		attr \
+SUBDIRS =	android-compat \
 		dbench \
 		e2fsprogs-libs \
 		libinih \

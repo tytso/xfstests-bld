@@ -67,6 +67,7 @@ select_packages()
     flex
     gettext
     git
+    libacl1-dev
     libblkid-dev
     libdbus-1-3
     libgdbm-dev

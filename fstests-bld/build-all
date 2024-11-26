@@ -63,8 +63,6 @@ function build_start () {
 
 function set_skip_all () {
     SKIP_E2FSLIBS=yes
-    SKIP_ATTR=yes
-    SKIP_ACL=yes
     SKIP_POPT=yes
     SKIP_AIO=yes
     SKIP_DBENCH=yes
@@ -103,14 +101,6 @@ while [ "$1" != "" ]; do
 	    ;;
 	--skip-quota)
 	    SKIP_QUOTA=yes
-	    ;;
-	--attr-only)
-	    set_skip_all
-	    unset SKIP_ATTR
-	    ;;
-	--acl-only)
-	    set_skip_all
-	    unset SKIP_ACL
 	    ;;
 	--popt-only)
 	    set_skip_all
@@ -243,28 +233,6 @@ if test -z "$SKIP_E2FSLIBS" ; then
      LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
      ./configure $cross --prefix=/ --disable-nls; $MAKE_CLEAN ; make $J; \
      make DESTDIR=$DESTDIR $J install)
-fi
-
-if test -z "$SKIP_ATTR" ; then
-    build_start "extended attribute library"
-    (cd attr; \
-     CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -static -L$DESTDIR/lib" \
-     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J LLDFLAGS="$ALL_STATIC" ; \
-     make $J install-dev ; make $J install)
-fi
-
-if test -z "$SKIP_ACL" ; then
-    build_start "ACL library"
-    (cd acl; \
-     rm -f aclocal.m4 configure Makefile.in ; autoreconf -fvi ; \
-     CPPFLAGS="-I$DESTDIR/include" \
-     CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -static $ALL_STATIC -L$DESTDIR/lib" \
-     ./configure $cross --prefix=$DESTDIR --disable-nls; $MAKE_CLEAN ; \
-     make $J ; \
-     make $J install ; rm -f $DESTDIR/lib/*.so)
 fi
 
 if test -z "$SKIP_POPT" ; then

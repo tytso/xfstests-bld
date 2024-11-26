@@ -20,7 +20,9 @@ ADD_PACKAGES="@ADD_PACKAGES@"
 # Hardcoded go version
 GO_VERSION=1.22.5
 
-PACKAGES="$ADD_PACKAGES acpid \
+PACKAGES="$ADD_PACKAGES acl \
+	acpid \
+	attr \
 	bash-completion \
 	bc \
 	bison \
