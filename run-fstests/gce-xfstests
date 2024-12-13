@@ -310,7 +310,7 @@ case "$1" in
     ls-images)
 	shift
 	case $1 in
-	    --project) shift
+	    --project | --image-project) shift
 		GCE_PROJECT=$1
 		shift ;;
 	esac
