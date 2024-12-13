@@ -70,6 +70,7 @@ PACKAGES="$ADD_PACKAGES acl \
 	libncurses-dev \
 	libsqlite3-0 \
 	libssl-dev \
+	libssl-dev:arm64 \
 	lighttpd \
 	lvm2 \
 	lz4 \
@@ -179,6 +180,7 @@ for i in ttyS1 ttyS2 ttyS3 ttyAMA1 ttyAMA2 ttyAMA3 ; do
     fi
 done
 
+dpkg --add-architecture arm64
 apt-get update
 apt-get install -y debconf-utils curl
 debconf-set-selections <<EOF
