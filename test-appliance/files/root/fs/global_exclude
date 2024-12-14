@@ -38,6 +38,15 @@ generic/554
 generic/645
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,6,30)
+// This test failure is fixed by commit 631426ba1d45q ("mm/madvise:
+// make MADV_POPULATE_(READ|WRITE) handle VM_FAULT_RETRY properly"),
+// which first landed in v6.9, and was backported to 6.6.30 as commit
+// 631426ba1d45.  Unfortunately, it's too involved to backport it and its
+// dependencies to the 6.1 or earlier LTS kernels
+generic/743
+#endif
+
 #ifndef IS_DAX_CONFIG
 // Unless we are testing the dax config, we can exclude all dax tests
 -g dax
