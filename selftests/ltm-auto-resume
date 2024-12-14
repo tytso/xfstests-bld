@@ -189,6 +189,7 @@ for runs_flag in "${runs_flags[@]}"; do
 
 	log_debug "script $output"
 	results_dir=$(echo "$output"  | sed 's/Unpacked results at //g')
+	rm -f "$results_dir/results.xml"
 
 	configs=$(echo "$configs" | sed 's/,/ /g')
 	for config in $configs; do
