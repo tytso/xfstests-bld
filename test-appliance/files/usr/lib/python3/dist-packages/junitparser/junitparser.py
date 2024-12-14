@@ -2,14 +2,16 @@
 junitparser is a JUnit/xUnit Result XML Parser. Use it to parse and manipulate
 existing Result XML files, or create new JUnit/xUnit result XMLs from scratch.
 
+Reference schema: https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
+This according to the document is Apache Ant's JUnit output.
+
+See documentation for other supported schemas.
+
 :copyright: (c) 2019 by Joel Wang.
 :license: Apache2, see LICENSE for more details.
 """
 
-from __future__ import with_statement
-from __future__ import absolute_import
-from __future__ import unicode_literals
-from future.utils import with_metaclass
+from copy import deepcopy
 from builtins import object
 from io import open
 
@@ -27,8 +29,6 @@ try:
     from lxml import etree
 except ImportError:
     from xml.etree import ElementTree as etree
-
-from copy import deepcopy
 
 try:
     type(unicode)
@@ -143,7 +143,7 @@ class junitxml(type):
         return cls
 
 
-class Element(with_metaclass(junitxml, object)):
+class Element(metaclass=junitxml):
     """Base class for all Junit XML elements."""
 
     def __init__(self, name=None):
