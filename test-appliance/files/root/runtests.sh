@@ -70,6 +70,7 @@ while [ "$1" != "" ]; do
   shift
 done
 
+gen_version_files
 umount "$PRI_TST_DEV" >& /dev/null
 umount "$SM_TST_DEV" >& /dev/null
 if ! get_fs_config $FSTESTTYP ; then
@@ -274,6 +275,7 @@ do
 	    continue
 	fi
 	setup_mount_opts
+	gen_version_files
 	export RESULT_BASE="$RESULTS/${FS_PREFIX//:/-}$FS/results-$TC"
 	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$TC" ; then
 	    mkdir -p "$RESULTS/$FS"
@@ -359,8 +361,7 @@ do
 		cp /dev/null /tmp/exclude.cpp
 	    fi
 	    if test -s "/tmp/exclude.cpp" ; then
-		gen_version_header > /tmp/header.cpp
-		cat /tmp/header.cpp /tmp/exclude.cpp | \
+		cat /run/version_info.cpp /tmp/exclude.cpp | \
 		    cpp -I /root/fs/$FS/cfg | \
 		    sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' \
 			> /tmp/exclude

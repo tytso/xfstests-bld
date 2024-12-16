@@ -249,26 +249,34 @@ function is_dev_free() {
     return 0
 }
 
-function gen_version_header ()
+function gen_version_files ()
 {
     local version patchlevel sublevel
+    local vi_cpp=/run/version_info.cpp
+    local vi_sh=/run/version_info.sh
 
     read version patchlevel sublevel <<< \
 	 $(uname -r | sed -e 's/-.*$//' | tr . ' ')
 
     echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + \
-	((c) > 255 ? 255 : (c)))'
-    echo \#define LINUX_VERSION_MAJOR $version
-    echo \#define LINUX_VERSION_PATCHLEVEL $patchlevel
-    echo \#define LINUX_VERSION_SUBLEVEL $sublevel
+	((c) > 255 ? 255 : (c)))' > $vi_cpp
+    echo \#define LINUX_VERSION_MAJOR $version >> $vi_cpp
+    echo \#define LINUX_VERSION_PATCHLEVEL $patchlevel >> $vi_cpp
+    echo \#define LINUX_VERSION_SUBLEVEL $sublevel >> $vi_cpp
     if [ $sublevel -gt 255 ]; then
 	sublevel=255
     fi
     echo \#define LINUX_VERSION_CODE \
-	$(expr $version \* 65536 + $patchlevel \* 256 + $sublevel)
-    test -n "$FS" && echo \#define FC $FS
-    test -n "$TC" && echo \#define TC $TC
-    test "$TC" = dax && echo \#define IS_DAX_CONFIG
+	$(expr $version \* 65536 + $patchlevel \* 256 + $sublevel) >> $vi_cpp
+    test -n "$FS" && echo \#define FC $FS >> $vi_cpp
+    test -n "$TC" && echo \#define TC $TC >> $vi_cpp
+    test "$TC" = dax && echo \#define IS_DAX_CONFIG >> $vi_cpp
+
+    echo LINUX_VERSION_MAJOR=$version > $vi_sh
+    echo LINUX_VERSION_MINOR=$patchlevel >> $vi_sh
+    echo LINUX_VERSION_SUBLEVEL=$sublevel >> $vi_sh
+    test -n "$FS" && echo FS_CFG=$FS >> $vi_sh
+    test -n "$TC" && echo TEST_CFG=$TC >> $vi_sh
 }
 
 function clear_pool_devs ()
