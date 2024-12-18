@@ -3,6 +3,9 @@
 #
 
 DEFAULT_MKFS_OPTIONS=""
+if test -n "$MKFS_CONFIG_FILE" ; then
+   DEFAULT_MKFS_OPTIONS="-c options=$MKFS_CONFIG_FILE"
+fi
 
 function check_filesystem()
 {
@@ -25,6 +28,21 @@ function check_filesystem()
     echo xfs_repair exited with status "$ret"
     return "$ret"
 }
+
+function xfs_adjust_mkfs_opts()
+{
+    if test -z "$MKFS_CONFIG_FILE" ; then
+	return
+    fi
+    if test -z "$XFS_MKFS_OPTIONS" ; then
+	XFS_MKFS_OPTIONS="-c options=$MKFS_CONFIG_FILE"
+    else
+	XFS_MKFS_OPTIONS="$XFS_MKFS_OPTIONS -c options=$MKFS_CONFIG_FILE"
+    fi
+    export XFS_MKFS_OPTIONS
+}
+
+adjust_mkfs_options=xfs_adjust_mkfs_opts
 
 function format_filesystem()
 {
@@ -85,4 +103,5 @@ function reset_vars()
 {
     unset XFS_MOUNT_OPTIONS
     unset XFS_MKFS_OPTIONS
+    unset adjust_mkfs_options
 }

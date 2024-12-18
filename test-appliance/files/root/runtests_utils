@@ -17,6 +17,13 @@ function get_fs_config()
     fi
     . "$FS_DIR/config"
     FS_CONFIGURED="$fs"
+    MKFS_CONFIG_FILE=
+    if test -n "$MKFS_CONFIG" ; then
+	MKFS_CONFIG_FILE="$FS_DIR/mkfs_cfg/$MKFS_CONFIG.conf"
+	if ! test -f "$MKFS_CONFIG_FILE" ; then
+	    MKFS_CONFIG_FILE=
+	fi
+    fi
     return 0
 }
 
@@ -100,6 +107,9 @@ function get_one_fs_config() {
     else
 	echo "Unknown configuration $FS/$TC"
 	return 1
+    fi
+    if test -n "$adjust_mkfs_options" ; then
+       $adjust_mkfs_options
     fi
     if test -z "$TEST_DEV" ; then
 	if test -z "$SIZE" ; then
@@ -277,6 +287,47 @@ function gen_version_files ()
     echo LINUX_VERSION_SUBLEVEL=$sublevel >> $vi_sh
     test -n "$FS" && echo FS_CFG=$FS >> $vi_sh
     test -n "$TC" && echo TEST_CFG=$TC >> $vi_sh
+}
+
+function set_mkfs_config
+{
+    . /run/version_info.sh
+    case "$LINUX_VERSION_MAJOR" in
+	4)
+	    case "$LINUX_VERSION_MINOR" in
+		19)
+		    MKFS_CONFIG=lts_4.19
+		    ;;
+	    esac
+	    ;;
+	5)
+	    case "$LINUX_VERSION_MINOR" in
+		4)
+		    MKFS_CONFIG=lts_5.4
+		    ;;
+		10)
+		    MKFS_CONFIG=lts_5.10
+		    ;;
+		14|15)
+		    # 5.14 is an honorary 5.15 for RHEL 9 and SLES 15 SP4+
+		    MKFS_CONFIG=lts_5.15
+		    ;;
+	    esac
+	    ;;
+	6)
+	    case "$LINUX_VERSION_MINOR" in
+		1)
+		    MKFS_CONFIG=lts_6.1
+		    ;;
+		6)
+		    MKFS_CONFIG=lts_6.6
+		    ;;
+		12)
+		    MKFS_CONFIG=lts_6.12
+		    ;;
+	    esac
+	    ;;
+    esac
 }
 
 function clear_pool_devs ()

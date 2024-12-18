@@ -279,6 +279,7 @@ local-ssd
 local-ssd-nvme
 log
 machtype:
+mkfs_config:
 modules:
 monitor-timeout:
 nfssrv:
@@ -539,6 +540,9 @@ while (( $# >= 1 )); do
 	--kernel-arch) shift
 	    KERNEL_ARCH="$1"
 	    SKIP_KERNEL_ARCH_PROBE="yes"
+	    ;;
+	--mkfs_config) shift
+	    MKFS_CONFIG="$1"
 	    ;;
 	--modules) shift
 	    supported_flavors kvm gce
@@ -1130,6 +1134,10 @@ fi
 
 if test -n "$SOAK_DURATION" ; then
     FSTESTOPT="$FSTESTOPT,soak,$SOAK_DURATION"
+fi
+
+if test -n "$MKFS_CONFIG" ; then
+    FSTESTOPT="$FSTESTOPT,mkfs_config,$MKFS_CONFIG"
 fi
 
 FSTESTOPT=${FSTESTOPT/#,/}

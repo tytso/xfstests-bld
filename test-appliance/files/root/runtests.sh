@@ -62,6 +62,9 @@ while [ "$1" != "" ]; do
     no_truncate_test_files)
 	NO_TRUNCATE=t
 	;;
+    mkfs_config) shift
+	MKFS_CONFIG="$1"
+	;;
     *)
 	echo " "
 	echo "Unrecognized option $1"
@@ -71,6 +74,9 @@ while [ "$1" != "" ]; do
 done
 
 gen_version_files
+if test -z "$MKFS_CONFIG" ; then
+    set_mkfs_config
+fi
 umount "$PRI_TST_DEV" >& /dev/null
 umount "$SM_TST_DEV" >& /dev/null
 if ! get_fs_config $FSTESTTYP ; then
@@ -294,6 +300,9 @@ do
 	echo TEST_LOGDEV: $TEST_LOGDEV >> "$RESULT_BASE/config"
 	echo SCRATCH_RTDEV: $SCRATCH_RTDEV >> "$RESULT_BASE/config"
 	echo TEST_RTDEV: $TEST_RTDEV >> "$RESULT_BASE/config"
+	if test -n "$MKFS_CONFIG_FILE" ; then
+	   echo MKFS_CONFIG: $MKFS_CONFIG >> "$RESULT_BASE/config"
+	fi
 	show_mkfs_opts >> "$RESULT_BASE/config"
 	show_mount_opts >> "$RESULT_BASE/config"
 	if test -n "$SCRATCH_DEV_POOL" ; then
