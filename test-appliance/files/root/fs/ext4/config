@@ -3,6 +3,9 @@
 #
 
 DEFAULT_MKFS_OPTIONS="-b 4096"
+if test -n "$MKFS_CONFIG_FILE" ; then
+   export MKE2FS_CONFIG="$MKFS_CONFIG_FILE"
+fi
 
 function check_filesystem()
 {
@@ -90,4 +93,5 @@ function reset_vars()
     unset EXT_MKFS_OPTIONS
     unset MKFS_OPTIONS
     unset USE_EXTERNAL
+    unset MKE2FS_CONFIG
 }
