@@ -76,6 +76,15 @@ done
 gen_version_files
 if test -z "$MKFS_CONFIG" ; then
     set_mkfs_config
+else
+    for i in /root/fs/*/mkfs_cfg/$MKFS_CONFIG.conf ; do
+	if test ! -e "$i" ; then
+	    echo " "
+	    echo "mkfs_config ""$MKFS_CONFIG"" does not exist!"
+	    echo " "
+	fi
+	break
+    done
 fi
 umount "$PRI_TST_DEV" >& /dev/null
 umount "$SM_TST_DEV" >& /dev/null
