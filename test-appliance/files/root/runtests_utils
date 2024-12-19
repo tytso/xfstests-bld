@@ -15,8 +15,6 @@ function get_fs_config()
 	echo "Could not find directory $cfg_dir/$fs"
 	return 1
     fi
-    . "$FS_DIR/config"
-    FS_CONFIGURED="$fs"
     MKFS_CONFIG_FILE=
     if test -n "$MKFS_CONFIG" ; then
 	MKFS_CONFIG_FILE="$FS_DIR/mkfs_cfg/$MKFS_CONFIG.conf"
@@ -24,12 +22,14 @@ function get_fs_config()
 	    MKFS_CONFIG_FILE=
 	fi
     fi
+    . "$FS_DIR/config"
+    FS_CONFIGURED="$fs"
     return 0
 }
 
 function clear_fs_config()
 {
-    unset SIZE REQUIRE_FEATURE
+    unset SIZE REQUIRE_FEATURE FS_CONFIGURED
     unset FSX_AVOID FSSTRESS_AVOID XFS_IO_AVOID TEST_SET_EXCLUDE
     unset TEST_DEV TEST_DIR SCRATCH_DEV SCRATCH_MNT
     unset TEST_LOGDEV SCRATCH_LOGDEV TEST_RTDEV SCRATCH_RTDEV
@@ -93,7 +93,9 @@ function get_one_fs_config() {
 	echo "Unknown file system type $FS"
 	return 1
     fi
-    clear_fs_config
+    if test "$fs" != "$FS_CONFIGURED" ; then
+        clear_fs_config
+    fi
     get_fs_config "$FS" "$cfg_dir"
     TC=$(test_name_alias $TC)
     if test -f "$cfg_dir/$FS/cfg/$TC.list"; then

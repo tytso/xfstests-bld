@@ -93,7 +93,7 @@ if ! get_fs_config $FSTESTTYP ; then
     exit 1
 fi
 
-if test -b "$PRI_TST_DEV" ; then
+if test -b "$PRI_TST_DEV" -a -z "$MKFS_CONFIG" ; then
     if test "$(blkid -s TYPE -o value ""$PRI_TST_DEV"")" != "$FSTESTTYP"; then
 	format_filesystem "$PRI_TST_DEV" "$DEFAULT_MKFS_OPTIONS"
     fi
@@ -164,6 +164,7 @@ do
 		export TEST_DIR=$LG_TST_MNT
 	    else
 		if test "$FSTESTTYP" = "$FS" -a \
+			-z "$MKFS_CONFIG" -a \
 			-b "$PRI_TST_DEV" -a \
 			"$DEFAULT_MKFS_OPTIONS" = "$(get_mkfs_opts)"
 		then
