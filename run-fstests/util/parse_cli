@@ -279,7 +279,7 @@ local-ssd
 local-ssd-nvme
 log
 machtype:
-mkfs_config:
+mkfs-config:
 modules:
 monitor-timeout:
 nfssrv:
@@ -541,7 +541,7 @@ while (( $# >= 1 )); do
 	    KERNEL_ARCH="$1"
 	    SKIP_KERNEL_ARCH_PROBE="yes"
 	    ;;
-	--mkfs_config) shift
+	--mkfs-config) shift
 	    MKFS_CONFIG="$1"
 	    ;;
 	--modules) shift
