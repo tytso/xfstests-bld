@@ -239,6 +239,58 @@ validate_branch_name()
     fi
 }
 
+function set_git_repo ()
+{
+    if test -n "${GIT_REPOS[$1]}" ; then
+	GIT_REPO="${GIT_REPOS[$1]}"
+    elif test -n "${DEF_GIT_REPOS[$1]}" ; then
+	GIT_REPO="${DEF_GIT_REPOS[$1]}"
+    else
+	GIT_REPO="$1"
+    fi
+    case "$GIT_REPO" in
+	http://*|https://*|git://*) ;;
+	*)
+	    echo "Invalid git repo: $GIT_REPO"
+	    exit 1
+    esac
+    local host=$(echo "$GIT_REPO" | sed -e 's;[a-z]*://;;' -e 's;/.*$;;')
+    if type host >& /dev/null && ! host "$host" >& /dev/null ; then
+       echo "Invalid hostname in git repo: $GIT_REPO"
+       exit 1
+    fi
+}
+
+function get_default_repo_branch ()
+{
+    case "$1" in
+	fs-next|fs-current|pending-fixes)
+	    echo "next.git"
+	    ;;
+	linux-[0-9].*.y)
+	    echo "stable-rc.git"
+	    ;;
+	*)
+	    echo "linux.git"
+	    ;;
+    esac
+}
+
+function get_default_repo_commit ()
+{
+    case "$1" in
+	next-[12]*)
+	    echo "next-history.git"
+	    ;;
+	v[0-9].*.*)
+	    echo "stable.git"
+	    ;;
+	*)
+	    get_default_repo_branch "$1"
+	    ;;
+    esac
+}
+
 SKIP_KERNEL_ARCH_PROBE=
 
 shortopts="ac:C:g:hI:m:n:No:O:r:vx:X:"
@@ -673,13 +725,7 @@ while (( $# >= 1 )); do
 	    ;;
 	--repo) shift
 	    supported_flavors gce
-	    if test -n "${GIT_REPOS[$1]}" ; then
-		GIT_REPO="${GIT_REPOS[$1]}"
-	    elif test -n "${DEF_GIT_REPOS[$1]}" ; then
-		GIT_REPO="${DEF_GIT_REPOS[$1]}"
-	    else
-		GIT_REPO="$1"
-	    fi
+	    set_git_repo "$1"
 	    ;;
 	--commit) shift
 	    supported_flavors gce
@@ -1010,6 +1056,27 @@ then
     exit 1
 fi
 
+if test -z "$GIT_REPO" -a -n "$COMMIT" ; then
+   set_git_repo $(get_default_repo_commit "$COMMIT")
+fi
+
+if test -z "$GIT_REPO" -a -n "$BISECT_BAD" ; then
+    set_git_repo $(get_default_repo_commit "$BISECT_BAD")
+fi
+
+if test -z "$GIT_REPO" -a -n "$BISECT_GOOD" ; then
+    b=$(echo "$BISECT_GOOD" | sed -e 's/|.*//')
+    set_git_repo $(get_default_repo_commit "$b")
+fi
+
+if test -z "$GIT_REPO" -a -n "$BRANCH" ; then
+    set_git_repo $(get_default_repo_branch "$BRANCH")
+fi
+
+if test -n "$NO_ACTION" ; then
+   echo "GIT_REPO: $GIT_REPO"
+fi
+
 if test -n "$COMMIT"
 then
     validate_commit_name $COMMIT
@@ -1044,8 +1111,6 @@ fi
 
 if test -n "$GIT_REPO" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
 then
-    echo "GIT_REPO: $GIT_REPO"
-    echo ""
     echo "Specifying a git repository only makes sense with LTM or KCS"
     exit 1
 fi
