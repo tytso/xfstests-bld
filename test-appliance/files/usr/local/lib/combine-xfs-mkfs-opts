@@ -1,0 +1,140 @@
+#!/bin/bash
+#
+# combine-xfs-mkfs-opts --- bash shell script library to work around
+# an xfsprogs misfeature which blows up if there is a command-line option
+# which overrides a previously given option, or an option specified in
+# in a configuration file.
+#
+# Example of how to use this library functions:
+#
+# xfs_combine_reset
+# xfs_combine_config_file < lts_5.15.conf
+# xfs_combine_opt_string "-i size=1024 -m crc=0"
+# XFS_MKFS_OPTIONS=$(xfs_combine_output_opts)
+
+declare -Ag xfs_combine_sects
+xfs_combine_sects[b]=block
+xfs_combine_sects[m]=metadata
+xfs_combine_sects[d]=data
+xfs_combine_sects[i]=inode
+xfs_combine_sects[l]=log
+xfs_combine_sects[n]=naming
+xfs_combine_sects[p]=proto
+xfs_combine_sects[r]=realtime
+xfs_combine_sects[s]=sector
+
+xfs_combine_reset ()
+{
+    for a in ${xfs_combine_sects[@]} ; do
+	unset xfs_combine_${a}
+	declare -Ag xfs_combine_${a}
+    done
+}
+xfs_combine_reset
+
+function xfs_combine_sect_map() {
+    echo "xfs_combine_"${xfs_combine_sects[$1]}
+}
+
+ function xfs_combine_sections () {
+    echo ${xfs_combine_sects[@]}
+}
+
+function xfs_combine_keys () {
+    echo ${!xfs_combine_sects[@]}
+}
+
+function xfs_combine_opt_string()
+{
+    set -f
+    local -a opts=($1)
+    set +f
+    local num_opts=${#opts[@]}
+    local a section i=0
+
+    while [ "$i" -lt "$num_opts" ]; do
+	local arg="${opts[$i]}"
+	local -A ar
+	((i++))
+	local save_IFS="$IFS"
+	case "$arg" in
+	    -[bdilmnprs])
+		local key=${arg#*-*}
+		local sect=$(eval xfs_combine_sect_map $key)
+		if [ -z "$sect" ] ; then
+		    echo "Missing mapping for $arg?"
+		    exit 1
+		fi
+		set -f ; IFS=","
+		local -a params=(${opts[$i]})
+		set +f ; IFS="$save_IFS"
+		((i++))
+		for a in ${params[@]} ; do
+		    eval "$sect[${a%%=*}]=${a#*=*}"
+		done
+		;;
+	    *)
+		continue
+		;;
+	esac
+    done
+}
+
+function xfs_combine_config_file ()
+{
+    local line
+    local section=""
+
+    while read line ; do
+	line=${line%%#*}
+	case "$line" in
+	    ""|[[:blank:]]*)
+		continue;
+		;;
+	    \[*\])
+		section=${line%%\]}
+		section=${section#\[}
+		if [[ "$section" =~ ^[a-z]+$ ]] ; then
+		    sect=xfs_combine_$section
+		else
+		    echo "invaid section name: $section"
+		    exit 1
+		fi
+		;;
+	    *=*)
+		if [[ $line =~ ^[a-z0-9]+=[a-z0-9]$ ]] ; then
+		    eval "$sect[${line%%=*}]=${line#*=*}"
+		else
+		    echo "invalid parmeter line: $line"
+		    exit 1
+		fi
+		;;
+	    *)
+		continue
+		;;
+	esac
+    done
+}
+
+function xfs_combine_output_opts ()
+{
+
+    local key
+
+    for key in $(xfs_combine_keys) ; do
+	local sect=$(eval xfs_combine_sect_map $key)
+	local sep="-$key "
+	local params="$(eval echo \${!$sect[@]})"
+	
+	if test -z "$params" ; then
+	    continue
+	fi
+	for i in $params ; do
+	    printf "%s%s=%s" "$sep" "$i" "$(eval echo \${$sect[$i]})"
+	    sep=","
+	done
+	echo -n " "
+    done
+    echo ""
+}
+

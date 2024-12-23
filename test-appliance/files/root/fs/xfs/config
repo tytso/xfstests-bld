@@ -2,10 +2,9 @@
 # Configuration file for xfs
 #
 
-DEFAULT_MKFS_OPTIONS=""
-if test -n "$MKFS_CONFIG_FILE" ; then
-   DEFAULT_MKFS_OPTIONS="-c options=$MKFS_CONFIG_FILE"
-fi
+. /usr/local/lib/combine-xfs-mkfs-opts
+
+DEFAULT_MKFS_OPTIONS="-bsize=4096"
 
 function check_filesystem()
 {
@@ -34,12 +33,10 @@ function xfs_adjust_mkfs_opts()
     if test -z "$MKFS_CONFIG_FILE" ; then
 	return
     fi
-    if test -z "$XFS_MKFS_OPTIONS" ; then
-	XFS_MKFS_OPTIONS="-c options=$MKFS_CONFIG_FILE"
-    else
-	XFS_MKFS_OPTIONS="$XFS_MKFS_OPTIONS -c options=$MKFS_CONFIG_FILE"
-    fi
-    export XFS_MKFS_OPTIONS
+    xfs_combine_reset
+    xfs_combine_config_file < "$MKFS_CONFIG_FILE"
+    xfs_combine_opt_string "$XFS_MKFS_OPTIONS"
+    export XFS_MKFS_OPTIONS=$(xfs_combine_output_opts)
 }
 
 adjust_mkfs_options=xfs_adjust_mkfs_opts
