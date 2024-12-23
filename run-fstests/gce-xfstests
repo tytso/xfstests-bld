@@ -846,6 +846,7 @@ SENDGRID_API_KEY="$GCE_SG_API"
     declare -p TZ
     declare -p GCE_LTM_MACHTYPE
     declare -p GCE_KCS_MACHTYPE
+    declare -p GIT_REPOS
 } 2>/dev/null > $TMP_CONFIG
 
 local_config="/tmp/.gce_xfststs.config.$USER-$GCE_PROJECT"

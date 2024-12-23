@@ -675,6 +675,8 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    if test -n "${GIT_REPOS[$1]}" ; then
 		GIT_REPO="${GIT_REPOS[$1]}"
+	    elif test -n "${DEF_GIT_REPOS[$1]}" ; then
+		GIT_REPO="${DEF_GIT_REPOS[$1]}"
 	    else
 		GIT_REPO="$1"
 	    fi
@@ -1036,7 +1038,15 @@ fi
 
 if test -n "$COMMIT" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
 then
-    echo "Commit id only works with LTM or KCS"
+    echo "Specifying a commit id only makes sense with LTM or KCS"
+    exit 1
+fi
+
+if test -n "$GIT_REPO" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+then
+    echo "GIT_REPO: $GIT_REPO"
+    echo ""
+    echo "Specifying a git repository only makes sense with LTM or KCS"
     exit 1
 fi
 

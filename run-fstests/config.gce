@@ -42,15 +42,22 @@ GCE_MIN_SCR_SIZE=100
 GCE_SERIAL_PORT_ACCESS=TRUE
 GIT_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
+# GIT_REPOS can be used to define user-specific git repository aliases
+# in ~/.config/gce-xfstests.  It will override any default mappings defined
+# by DEF_GIT_REPOS
 declare -A GIT_REPOS
-GIT_REPOS[stable.git]=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
-GIT_REPOS[next.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
-GIT_REPOS[next-history.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next-history.git
-GIT_REPOS[stable-rc.git]=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable-rc.git
-GIT_REPOS[ext4.git]=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
-GIT_REPOS[xfs.git]=https://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
-GIT_REPOS[btrfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux.git
-GIT_REPOS[f2fs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
-GIT_REPOS[nfs.git]=git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
-GIT_REPOS[overlayfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/overlayfs/vfs.git
-GIT_REPOS[vfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+declare -A DEF_GIT_REPOS
+DEF_GIT_REPOS[stable.git]=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+DEF_GIT_REPOS[next.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+DEF_GIT_REPOS[next-history.git]=https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next-history.git
+DEF_GIT_REPOS[stable-rc.git]=https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable-rc.git
+DEF_GIT_REPOS[ext4.git]=https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+DEF_GIT_REPOS[xfs.git]=https://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+DEF_GIT_REPOS[btrfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux.git
+DEF_GIT_REPOS[f2fs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
+DEF_GIT_REPOS[nfs.git]=git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+DEF_GIT_REPOS[overlayfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/overlayfs/vfs.git
+DEF_GIT_REPOS[vfs.git]=https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+DEF_GIT_REPOS[suse.git]=https://github.com/SUSE/kernel-source
+DEF_GIT_REPOS[uek.git]=https://github.com/oracle/linux-uek
+DEF_GIT_REPOS[ubuntu-22.04.git]="https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
