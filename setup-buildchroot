@@ -67,6 +67,7 @@ select_packages()
     flex
     gettext
     git
+    golang-go
     libacl1-dev
     libblkid-dev
     libdbus-1-3
@@ -88,14 +89,6 @@ select_packages()
     uuid-dev
     zlib1g-dev
     )
-    case "$DEBIAN_RELEASE" in
-	bullseye)
-	    BUILD_PACKAGES+=(golang-1.15-go) ;;
-	buster)
-	    BUILD_PACKAGES+=(golang-1.11-go) ;;
-	stretch)
-	    BUILD_PACKAGES+=(golang-1.8-go) ;;
-    esac
 }
 
 die()
