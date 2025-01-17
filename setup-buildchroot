@@ -39,6 +39,9 @@ CHROOT_USER=
 DO_OVERLAY=
 DO_OVERLAY_DEFAULT=no
 
+DO_CCACHE=
+DO_CCACHE_DEFAULT=yes
+
 QEMU=
 BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
 
@@ -89,6 +92,9 @@ select_packages()
     uuid-dev
     zlib1g-dev
     )
+    if [ "${DO_CCACHE}" = "yes" ]; then
+       BUILD_DEPENDENCIES+=(ccache)
+    fi
 }
 
 die()
@@ -144,6 +150,8 @@ Options:
     --proxy             Web proxy to use when fetching the packages.
     --use-overlay       Use the overlay file system when creating the chroot
     --no-overlay        Don't use the overlay file system in the chroot
+    --ccache		Use ccache to accelerate builds in the chroot
+    --no-ccache		Don't use ccache in the chroot
     --ports		Change the defaults for debian-ports architectures.
     --noninteractive    Use the defaults rather than prompting
 EOF
@@ -263,6 +271,11 @@ select_chroot_user()
     prompt_for_param "chroot user" CHROOT_USER "${SUDO_USER:-}"
 }
 
+select_ccache()
+{
+    prompt_for_param "yes to use ccache" DO_CCACHE "$DO_CCACHE_DEFAULT"
+}
+
 select_proxy()
 {
     prompt_for_param "proxy" PROXY "${PROXY}"
@@ -283,6 +296,8 @@ parse_options()
     longopts+=",proxy:"
     longopts+=",use-overlay"
     longopts+=",no-overlay"
+    longopts+=",ccache"
+    longopts+=",no-ccache"
     longopts+=",noninteractive"
     longopts+=",ports"
 
@@ -335,6 +350,12 @@ parse_options()
 	    ;;
 	--no-overlay)
 	    DO_OVERLAY=no
+	    ;;
+	--ccache)
+	    DO_CCACHE=yes
+	    ;;
+	--no-ccache)
+	    DO_CCACHE=no
 	    ;;
 	--ports)
 	    DEBIAN_ARCH_DEFAULT="$DEBIAN_PORTS_ARCH_DEFAULT"
@@ -650,6 +671,14 @@ apt-get install -y ${BUILD_DEPENDENCIES[@]}
 EOF
 }
 
+setup_ccache()
+{
+    mkdir -p "$CHROOT_DIR/usr/local/bin"
+    for i in c++ cc clang g++ gcc ld ; do
+	ln -s /bin/ccache "$CHROOT_DIR/usr/local/bin/$i"
+    done
+}
+
 # preparation
 parse_options "$@"
 check_prerequisites
@@ -660,6 +689,7 @@ select_debian_keyring
 select_chroot_dir
 select_chroot_name
 select_chroot_user
+select_ccache
 select_proxy
 check_for_conflicting_schroot_entry
 if ! is_native_chroot; then
@@ -673,6 +703,9 @@ add_schroot_conf_entry
 create_schroot_fstab
 setup_mtab
 install_build_dependencies
+if [ "${DO_CCACHE}" = "yes" ]; then
+    setup_ccache
+fi
 
 log "Build chroot was successfully set up.  To use it to build a test" \
     "appliance, run './build-appliance --chroot=$CHROOT_NAME'; or to have" \
