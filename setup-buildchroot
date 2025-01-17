@@ -561,6 +561,22 @@ run_in_chroot()
 	LC_ALL=C LANGUAGE=C LANG=C chroot "$CHROOT_DIR" /bin/sh -l -c "$1"
 }
 
+copy_in_user()
+{
+    local user="$1"
+    local group
+
+    if ! group="$(id -g $user 2>/dev/null)" ; then
+	return;
+    fi
+    if ! grep -q "^$user:" "$CHROOT_DIR/etc/passwd" ; then
+	getent passwd "$user" >> "$CHROOT_DIR/etc/passwd"
+    fi
+    if ! grep -q "^group:" "$CHROOT_DIR/etc/group" ; then
+	getent group "$(id -g "$user")" >> "$CHROOT_DIR/etc/group"
+    fi
+}
+
 create_chroot()
 {
     mkdir -p -m0755 "$CHROOT_DIR"
@@ -602,9 +618,11 @@ EOF
 	mkdir -p "$CHROOT_DIR/run/shm"
 	chmod 1777 "$CHROOT_DIR/run/shm"
     fi
+    # copy in those users that be created when we install packages
+    # needed for the build chroot
+    copy_in_user messagebus
     if [ -n "$CHROOT_USER" ]; then
-	getent passwd "$CHROOT_USER" >> "$CHROOT_DIR/etc/passwd"
-	getent group "$(id -g "$CHROOT_USER")" >> "$CHROOT_DIR/etc/group"
+	copy_in_user "$CHROOT_USER"
 	run_in_chroot "adduser $CHROOT_USER sudo"
     fi
 }
