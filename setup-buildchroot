@@ -32,8 +32,9 @@ DEBIAN_MIRROR=
 DEBIAN_MIRROR_DEFAULT=http://ftp.debian.org/debian
 DEBIAN_PORTS_MIRROR_DEFAULT=http://ftp.ports.debian.org/debian-ports
 
-CHROOT_DIR=
 CHROOT_NAME=
+CHROOT_DIR=
+CHROOT_FILE=
 CHROOT_USER=
 
 DO_OVERLAY=
@@ -41,6 +42,9 @@ DO_OVERLAY_DEFAULT=no
 
 DO_CCACHE=
 DO_CCACHE_DEFAULT=yes
+
+DO_TAR=
+DO_TAR_DEFAULT=no
 
 QEMU=
 BINFMT_MISC_MNT=/proc/sys/fs/binfmt_misc
@@ -152,6 +156,8 @@ Options:
     --no-overlay        Don't use the overlay file system in the chroot
     --ccache		Use ccache to accelerate builds in the chroot
     --no-ccache		Don't use ccache in the chroot
+    --tar		Generate a compressed tar file containing the chroot
+    --no-tar		Generate the chroot as a directory
     --ports		Change the defaults for debian-ports architectures.
     --noninteractive    Use the defaults rather than prompting
 EOF
@@ -250,20 +256,45 @@ add_fstab_bind()
     return 1
 }
 
-select_chroot_dir()
-{
-    prompt_for_param "chroot directory" \
-	    CHROOT_DIR "/chroots/${DEBIAN_RELEASE}-${DEBIAN_ARCH}"
-    if [ -e "$CHROOT_DIR" ]; then
-	add_fstab_bind && exit 0
-	die "$CHROOT_DIR already exists and $SCHROOT_FSTAB_FILE up-to-date!"
-    fi
-}
-
 select_chroot_name()
 {
-    prompt_for_param "chroot name" CHROOT_NAME "$(basename "$CHROOT_DIR")"
-    prompt_for_param "yes to use overlay file system" DO_OVERLAY "$DO_OVERLAY_DEFAULT"
+    prompt_for_param "chroot name" CHROOT_NAME \
+		     "${DEBIAN_RELEASE}-${DEBIAN_ARCH}"
+    prompt_for_param "yes to store the chroot in a compressed tar file" \
+		     DO_TAR "$DO_TAR_DEFAULT"
+    if test "$DO_TAR" = "yes" ; then
+	if test -n "$CHROOT_DIR" ; then
+	    die "--chroot-dir and --tar are not compatile"
+	fi
+	prompt_for_param "chroot file" CHROOT_FILE \
+			 "/chroots/${CHROOT_NAME}.tar.zstd"
+	case "$CHROOT_FILE" in
+	    *.tar.gz|*.tar.xz|*.tar.bz2|*.tar.zstd)
+		: ;;
+	    *)
+		die "Invalid chroot file: $CHROOT_FILE"
+		;;
+	esac
+
+	if [ -e "$CHROOT_FILE" ]; then
+	    add_fstab_bind && exit 0
+	    die "$CHROOT_FILE already exists and $SCHROOT_FSTAB_FILE up-to-date!"
+	fi
+	if test "$DO_OVERLAY" = "yes" ; then
+	    die "Using an overay file system incompatible with a tar file"
+	fi
+    else
+	if test -n "$CHROOT_FILE" ; then
+	    die "--chroot-file and --no-tar are not compatile"
+	fi
+	prompt_for_param "chroot directory" CHROOT_DIR \
+			 "/chroots/${CHROOT_NAME}"
+	if [ -e "$CHROOT_DIR" ]; then
+	    add_fstab_bind && exit 0
+	    die "$CHROOT_DIR already exists and $SCHROOT_FSTAB_FILE up-to-date!"
+	fi
+	prompt_for_param "yes to use overlay file system" DO_OVERLAY "$DO_OVERLAY_DEFAULT"
+    fi
 }
 
 select_chroot_user()
@@ -291,6 +322,7 @@ parse_options()
     longopts+=",mirror:"
     longopts+=",keyring:"
     longopts+=",chroot-dir:"
+    longopts+=",chroot-file:"
     longopts+=",chroot-name:"
     longopts+=",chroot-user:"
     longopts+=",proxy:"
@@ -298,6 +330,8 @@ parse_options()
     longopts+=",no-overlay"
     longopts+=",ccache"
     longopts+=",no-ccache"
+    longopts+=",tar"
+    longopts+=",no-tar"
     longopts+=",noninteractive"
     longopts+=",ports"
 
@@ -333,6 +367,10 @@ parse_options()
 	    CHROOT_DIR="$2"
 	    shift
 	    ;;
+	--chroot-file)
+	    CHROOT_FILE="$2"
+	    shift
+	    ;;
 	--chroot-name)
 	    CHROOT_NAME="$2"
 	    shift
@@ -356,6 +394,12 @@ parse_options()
 	    ;;
 	--no-ccache)
 	    DO_CCACHE=no
+	    ;;
+	--tar)
+	    DO_TAR=yes
+	    ;;
+	--no-tar)
+	    DO_TAR=no
 	    ;;
 	--ports)
 	    DEBIAN_ARCH_DEFAULT="$DEBIAN_PORTS_ARCH_DEFAULT"
@@ -477,6 +521,8 @@ extract_schroot_entry()
 
 generate_schroot_entry()
 {
+    local tar="$*"
+
     # See `man schroot.conf`
     #
     # Note: 'setup.nssdatabases=' prevents NSS databases, such as passwd
@@ -485,16 +531,29 @@ generate_schroot_entry()
     # break things and/or make building things much slower.
     cat <<EOF
 description=xfstests-bld chroot with Debian $DEBIAN_RELEASE ($DEBIAN_ARCH)
+EOF
+    if [ "$tar" = "--tar" ]; then
+	cat <<EOF
+type=file
+file=$CHROOT_FILE
+EOF
+    else
+	cat <<EOF
 type=directory
 directory=$CHROOT_DIR
+EOF
+    fi
+    cat <<EOF
 users=${CHROOT_USER:+$CHROOT_USER,}root
 root-users=$CHROOT_USER
 setup.fstab=$SCHROOT_FSTAB
 setup.nssdatabases=
 EOF
-    if [ "${DO_OVERLAY}" != "no" ]; then
+    if [ "${DO_OVERLAY}" = "yes" ]; then
+	echo "union-type=overlay"
+    fi
+    if [ "${DO_OVERLAY}" = "yes" -o "$tar" = "--tar" ]; then
 	cat <<EOF
-union-type=overlay
 source-users=${CHROOT_USER:+$CHROOT_USER,}root
 source-root-users=$CHROOT_USER
 EOF
@@ -600,6 +659,11 @@ copy_in_user()
 
 create_chroot()
 {
+    if test "${DO_TAR}" = "yes" ; then
+	CHROOT_DIR=$(mktemp --tmpdir -d "${CHROOT_NAME}.XXXXXXXX")
+	chmod 755 "${CHROOT_DIR}"
+    fi
+
     mkdir -p -m0755 "$CHROOT_DIR"
 
     test -z "${PROXY}" || export http_proxy=${PROXY}
@@ -641,6 +705,7 @@ EOF
     fi
     # copy in those users that be created when we install packages
     # needed for the build chroot
+    copy_in_user _apt
     copy_in_user messagebus
     if [ -n "$CHROOT_USER" ]; then
 	copy_in_user "$CHROOT_USER"
@@ -659,15 +724,18 @@ install_build_dependencies()
     local chroot
 
     log "Installing build dependencies: ${BUILD_DEPENDENCIES[*]}"
-    if [ "${DO_OVERLAY}" = "no" ]; then
-	chroot="${CHROOT_NAME}"
-    else
+    if [ "${DO_OVERLAY}" = "yes" ]; then
 	chroot="source:${CHROOT_NAME}"
+    else
+	chroot="${CHROOT_NAME}"
     fi
     schroot -c "$chroot" -u root -- <<EOF
 test -z "${PROXY}" || export http_proxy=${PROXY}
 apt-get update
+apt-get upgrade
 apt-get install -y ${BUILD_DEPENDENCIES[@]}
+apt-get autoremove
+apt-get clean
 EOF
 }
 
@@ -679,6 +747,37 @@ setup_ccache()
     done
 }
 
+generate_tar()
+{
+    case "${CHROOT_FILE}" in
+	*.gz)
+	    if type -P pigz >/dev/null; then
+		compress="pigz -9nm"
+	    else
+		compress="gzip -9n"
+	    fi
+	    ;;
+	*.bz2)
+	    compress="bzip2"
+	    ;;
+	*.xz)
+	    compress="xz"
+	    ;;
+	*.zstd)
+	    compress="zstd -T0 -14"
+	    ;;
+    esac
+
+    tar -C "${CHROOT_DIR}" -cf - . | $compress > "${CHROOT_FILE}"
+    rm -rf "${CHROOT_DIR}"
+    {
+	echo
+	echo "# entry added by $SCRIPTNAME"
+	echo "[$CHROOT_NAME]"
+	generate_schroot_entry --tar
+    } > "$SCHROOT_CHROOT_D/$CHROOT_NAME"
+}
+
 # preparation
 parse_options "$@"
 check_prerequisites
@@ -686,7 +785,6 @@ select_debian_release
 select_debian_arch
 select_debian_mirror
 select_debian_keyring
-select_chroot_dir
 select_chroot_name
 select_chroot_user
 select_ccache
@@ -705,6 +803,9 @@ setup_mtab
 install_build_dependencies
 if [ "${DO_CCACHE}" = "yes" ]; then
     setup_ccache
+fi
+if [ "${DO_TAR}" = "yes" ]; then
+    generate_tar
 fi
 
 log "Build chroot was successfully set up.  To use it to build a test" \
