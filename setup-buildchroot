@@ -56,6 +56,16 @@ SCHROOT_FSTAB_FILE=/etc/schroot/$SCHROOT_FSTAB
 
 PROXY=
 
+if type -P zstd >& /dev/null ; then
+    TAR_COMPRESS=zstd
+elif type -P xz >& /dev/null; then
+    TAR_COMPRESS=xz
+elif type -P bzip2 >& /dev/null ; then
+    TAR_COMPRESS=bz2
+else
+    TAR_COMPRESS=gz
+fi
+
 select_packages()
 {
     # Additional packages to install in the build chroot
@@ -144,9 +154,13 @@ be prompted for the various options, or specify them on the command line.
 Options:
     --release=RELEASE   Debian release to use.  Default: $DEBIAN_RELEASE_DEFAULT
     --arch=ARCH         Debian architecture to use.  Default: $DEBIAN_ARCH_DEFAULT
-    --mirror=MIRROR     Debian mirror to use.  Default: $DEBIAN_MIRROR_DEFAULT
-    --keyring=KEYRING   Debian keyring to use.  Default: $DEBIAN_KEYRING_DEFAULT
+    --mirror=MIRROR     Debian mirror to use.
+			    Default: $DEBIAN_MIRROR_DEFAULT
+    --keyring=KEYRING   Debian keyring to use.
+			    Default: $DEBIAN_KEYRING_DEFAULT
     --chroot-dir=DIR    Chroot directory.  Default: /chroots/\$RELEASE-\$ARCH
+    --chroot-file=FILE	Chroot file used if --tar is enabled.
+			    Default: /tmp/\$RELEASE-\$ARCH.tar.$TAR_COMPRESS
     --chroot-name=NAME  Name of chroot.  Default: basename of \$DIR
     --chroot-user=USER  User which will be allowed to access the chroot,
                         ***including passwordless root access***.  Default:
@@ -158,6 +172,8 @@ Options:
     --no-ccache		Don't use ccache in the chroot
     --tar		Generate a compressed tar file containing the chroot
     --no-tar		Generate the chroot as a directory
+    --tar-compress	Default compression format to use
+			   (valid options: bz2 gz xz zstd)
     --ports		Change the defaults for debian-ports architectures.
     --noninteractive    Use the defaults rather than prompting
 EOF
@@ -267,7 +283,7 @@ select_chroot_name()
 	    die "--chroot-dir and --tar are not compatile"
 	fi
 	prompt_for_param "chroot file" CHROOT_FILE \
-			 "/chroots/${CHROOT_NAME}.tar.zstd"
+			 "/chroots/${CHROOT_NAME}.tar.${TAR_COMPRESS}"
 	case "$CHROOT_FILE" in
 	    *.tar.gz|*.tar.xz|*.tar.bz2|*.tar.zstd)
 		: ;;
@@ -332,6 +348,7 @@ parse_options()
     longopts+=",no-ccache"
     longopts+=",tar"
     longopts+=",no-tar"
+    longopts+=",tar-compress:"
     longopts+=",noninteractive"
     longopts+=",ports"
 
@@ -369,6 +386,7 @@ parse_options()
 	    ;;
 	--chroot-file)
 	    CHROOT_FILE="$2"
+	    DO_TAR=yes
 	    shift
 	    ;;
 	--chroot-name)
@@ -400,6 +418,34 @@ parse_options()
 	    ;;
 	--no-tar)
 	    DO_TAR=no
+	    ;;
+	--tar-compress)
+	    DO_TAR=yes
+	    TAR_COMPRESS="$2"
+	    shift
+	    case "$TAR_COMPRESS" in
+		bz2)
+		    if ! type -P bzip2 >& /dev/null ; then
+			die "bzip2 is not available"
+		    fi
+		    ;;
+		xz)
+		    if ! type -P xz >& /dev/null ; then
+			die "xz is not available"
+		    fi
+		    ;;
+		zstd)
+		    if ! type -P zstd >& /dev/null ; then
+			die "zstd is not available"
+		    fi
+		    ;;
+		gz)
+		    :
+		    ;;
+		*)
+		    die "Invalid tar compression extension $TAR_COMPRESS"
+		    ;;
+	    esac
 	    ;;
 	--ports)
 	    DEBIAN_ARCH_DEFAULT="$DEBIAN_PORTS_ARCH_DEFAULT"
@@ -765,6 +811,9 @@ generate_tar()
 	    ;;
 	*.zstd)
 	    compress="zstd -T0 -14"
+	    ;;
+	*)
+	    die "Unknown compression program for ${CHROOT_FILE}"
 	    ;;
     esac
 
