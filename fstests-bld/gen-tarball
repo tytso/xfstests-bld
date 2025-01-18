@@ -52,11 +52,13 @@ if test -z "$SOURCE_DATE_EPOCH" ; then
     export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 fi
 
-LTP_DIR=
-rm -rf ltp
-if test -d ltp-dev ; then
-    LTP_DIR=ltp
+LTP_DIR=ltp
+if ! test -d ltp-dev ; then
+    LTP_DIR=
+    rm -rf ltp
+elif test "$fast" != "yes" ; then
     echo "GEN ltp"
+    rm -rf ltp
     (D=$(pwd) ; cd ltp-dev ; make DESTDIR=$D SKIP_IDCHECK=1 install)
     echo "STRIP ltp/*"
     find ltp -mindepth 2 -type f -perm /0111 | xargs -n 50 $STRIP 2> /dev/null \
