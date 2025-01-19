@@ -544,7 +544,7 @@ get_schroot_config()
     then
 	(cd $SCHROOT_CHROOT_D ;
 	 find . -maxdepth 1 -type f |
-	     grep -E '^./[a-ZA-Z0-9_-][a-ZA-Z0-9_.-]*$' |
+	     grep -E '^./[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$' |
 	     xargs cat)
     fi
 }
@@ -817,6 +817,7 @@ generate_tar()
 	    ;;
     esac
 
+    mkdir -p -m0755 $(basename "$CHROOT_FILE")
     tar -C "${CHROOT_DIR}" -cf - . | $compress > "${CHROOT_FILE}"
     rm -rf "${CHROOT_DIR}"
     {
