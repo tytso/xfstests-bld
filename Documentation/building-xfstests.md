@@ -108,7 +108,7 @@ using the following command:
     $ sudo apt-get install autoconf autoconf2.64 \
 		automake autopoint bison build-essential ca-certificates \
 		debootstrap e2fslibs-dev ed fakechroot flex gettext git \
-		golang-1.11-go libacl1-dev libblkid-dev libdbus-1-3 \
+		golang-go libacl1-dev libblkid-dev libdbus-1-3 \
 		libgdbm-dev libicu-dev libkeyutils-dev libsqlite3-dev \
 		libssl-dev libsystemd-dev libtool-bin liburcu-dev \
 		lsb-release meson pkg-config python3-setuptools rsync \
