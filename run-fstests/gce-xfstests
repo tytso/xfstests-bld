@@ -1099,8 +1099,7 @@ then
     ARG="$ARG kexec=$GS_KERNEL"
 fi
 
-# MT_PRICE is in millidollars, as of 9/7/2015
-# MT_PRICE for arm64 (t2a) updated 09/15/2022
+# MT_PRICE is in millidollars, as of 1/20/2025 in us-central1 (Iowa)
 function get_machtype_stats() {
     local mt=$1
     case "$mt" in
@@ -1109,37 +1108,42 @@ function get_machtype_stats() {
 	e2-small)	MT_PRICE=0017	; MT_CPU=1   ; MT_RAM=2048 ;;
 	g1-micro)	MT_PRICE=0026	; MT_CPU=1   ; MT_RAM=1740 ;;
 	e2-medium)	MT_PRICE=0034	; MT_CPU=1   ; MT_RAM=4096 ;;
-	n1-standard-1)	MT_PRICE=0048	; MT_CPU=1   ; MT_RAM=3840 ;;
-	e2-standard-2)  MT_PRICE=0067	; MT_CPU=2   ; MT_RAM=8192 ;;
-	n1-standard-2)	MT_PRICE=0095	; MT_CPU=2   ; MT_RAM=7680 ;;
-	e2-highmem-2)   MT_PRICE=0090	; MT_CPU=2   ; MT_RAM=16384 ;;
-	n1-highmem-2)	MT_PRICE=0118	; MT_CPU=2   ; MT_RAM=13312 ;;
+	n1-standard-1)	MT_PRICE=0047	; MT_CPU=1   ; MT_RAM=3840 ;;
 	e2-highcpu-2)   MT_PRICE=0049	; MT_CPU=2   ; MT_RAM=2048 ;;
-	n1-highcpu-2)	MT_PRICE=0071	; MT_CPU=2   ; MT_RAM=1843 ;;
-	e2-standard-4)  MT_PRICE=0134	; MT_CPU=4   ; MT_RAM=16384 ;;
-	n1-standard-4)	MT_PRICE=0190	; MT_CPU=4   ; MT_RAM=15360 ;;
-	e2-highmem-4)   MT_PRICE=0181	; MT_CPU=4   ; MT_RAM=32768 ;;
-	n1-highmem-4)	MT_PRICE=0237	; MT_CPU=4   ; MT_RAM=26624 ;;
+	e2-standard-2)  MT_PRICE=0067	; MT_CPU=2   ; MT_RAM=8192 ;;
+	e2-highmem-2)   MT_PRICE=0090	; MT_CPU=2   ; MT_RAM=16384 ;;
+	n1-standard-2)	MT_PRICE=0095	; MT_CPU=2   ; MT_RAM=7680 ;;
 	e2-highcpu-4)   MT_PRICE=0099	; MT_CPU=4   ; MT_RAM=4096 ;;
+	n1-highcpu-2)	MT_PRICE=0071	; MT_CPU=2   ; MT_RAM=1843 ;;
+	n1-highmem-2)	MT_PRICE=0118	; MT_CPU=2   ; MT_RAM=13312 ;;
+	e2-standard-4)  MT_PRICE=0134	; MT_CPU=4   ; MT_RAM=16384 ;;
 	n1-highcpu-4)	MT_PRICE=0142	; MT_CPU=4   ; MT_RAM=3686 ;;
-	e2-standard-8)  MT_PRICE=0268	; MT_CPU=8   ; MT_RAM=32768 ;;
-	n1-standard-8)	MT_PRICE=0380	; MT_CPU=8   ; MT_RAM=30720 ;;
-	e2-highmem-8)   MT_PRICE=0362	; MT_CPU=8   ; MT_RAM=65536 ;;
-	n1-highmem-8)	MT_PRICE=0474	; MT_CPU=8   ; MT_RAM=53248 ;;
+	e2-highmem-4)   MT_PRICE=0181	; MT_CPU=4   ; MT_RAM=32768 ;;
+	n1-standard-4)	MT_PRICE=0190	; MT_CPU=4   ; MT_RAM=15360 ;;
 	e2-highcpu-8)   MT_PRICE=0198	; MT_CPU=8   ; MT_RAM=8192 ;;
+	n1-highmem-4)	MT_PRICE=0237	; MT_CPU=4   ; MT_RAM=26624 ;;
+	e2-standard-8)  MT_PRICE=0268	; MT_CPU=8   ; MT_RAM=32768 ;;
 	n1-highcpu-8)	MT_PRICE=0284	; MT_CPU=8   ; MT_RAM=7372 ;;
+	e2-highmem-8)   MT_PRICE=0362	; MT_CPU=8   ; MT_RAM=65536 ;;
+	n1-standard-8)	MT_PRICE=0380	; MT_CPU=8   ; MT_RAM=30720 ;;
+	e2-highcpu-16)  MT_PRICE=0396	; MT_CPU=16  ; MT_RAM=16384 ;;
+	n1-highmem-8)	MT_PRICE=0473	; MT_CPU=8   ; MT_RAM=53248 ;;
 	e2-standard-16) MT_PRICE=0536	; MT_CPU=16  ; MT_RAM=65536 ;;
+	n1-highcpu-16)	MT_PRICE=0567	; MT_CPU=16  ; MT_RAM=14745 ;;
 	n1-standard-16)	MT_PRICE=0760	; MT_CPU=16  ; MT_RAM=61440 ;;
 	e2-highmem-16)  MT_PRICE=0723	; MT_CPU=16  ; MT_RAM=131072 ;;
-	n1-highmem-16)	MT_PRICE=0947	; MT_CPU=16  ; MT_RAM=106496 ;;
-	n1-highcpu-16)	MT_PRICE=0567	; MT_CPU=16  ; MT_RAM=14745 ;;
-	n1-standard-32)	MT_PRICE=1520	; MT_CPU=32  ; MT_RAM=122880 ;;
-	n1-highmem-32)	MT_PRICE=1894	; MT_CPU=32  ; MT_RAM=212992 ;;
-	e2-highcpu-16)  MT_PRICE=0396	; MT_CPU=16  ; MT_RAM=16384 ;;
+	e2-highcpu-32)  MT_PRICE=0791	; MT_CPU=32  ; MT_RAM=32768 ;;
+	n1-highmem-16)	MT_PRICE=0946	; MT_CPU=16  ; MT_RAM=106496 ;;
+	e2-standard-32) MT_PRICE=1072	; MT_CPU=32  ; MT_RAM=131072 ;;
 	n1-highcpu-32)	MT_PRICE=1134	; MT_CPU=32  ; MT_RAM=29491 ;;
+	n1-standard-32)	MT_PRICE=1520	; MT_CPU=32  ; MT_RAM=122880 ;;
+	n1-highmem-32)	MT_PRICE=1893	; MT_CPU=32  ; MT_RAM=212992 ;;
+	n1-highcpu-64)	MT_PRICE=2267	; MT_CPU=64  ; MT_RAM=58982 ;;
 	n1-standard-64)	MT_PRICE=3040	; MT_CPU=64  ; MT_RAM=245760 ;;
+	n1-highcpu-96)  MT_PRICE=3401   ; MT_CPU=96  ; MT_RAM=88474 ;;
 	n1-highmem-64)	MT_PRICE=3789	; MT_CPU=64  ; MT_RAM=425984 ;;
-	n1-highcpu-64)	MT_PRICE=2269	; MT_CPU=64  ; MT_RAM=58982 ;;
+	n1-standard-96) MT_PRICE=4560   ; MT_CPU=96  ; MT_RAM=368640 ;;
+	n1-highmem-96)  MT_PRICE=5679   ; MT_CPU=96  ; MT_RAM=638976 ;;
 	t2a-standard-1)		MT_PRICE=0039; MT_CPU=1   ; MT_RAM=4096 ;;
 	t2a-standard-2)		MT_PRICE=0077; MT_CPU=2   ; MT_RAM=8192 ;;
 	t2a-standard-4)		MT_PRICE=0154; MT_CPU=4   ; MT_RAM=16384 ;;
