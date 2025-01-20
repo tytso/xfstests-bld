@@ -3,7 +3,7 @@
 1.  Make sure the necessary packages are installed.  For Debian/Ubuntu
     systems:
 
-        apt-get install qemu-kvm wget gcc git make
+        apt-get install qemu-system-x86 qemu-system-arm wget gcc git make
 
     For Fedora systems:
 
