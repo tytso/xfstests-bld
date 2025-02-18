@@ -71,7 +71,6 @@ select_packages()
     # Additional packages to install in the build chroot
     BUILD_DEPENDENCIES=(
     autoconf
-    autoconf2.64
     automake
     autopoint
     bison
@@ -109,6 +108,10 @@ select_packages()
     if [ "${DO_CCACHE}" = "yes" ]; then
        BUILD_DEPENDENCIES+=(ccache)
     fi
+    case "$DEBIAN_RELEASE" in
+	bookworm|bullseye|buster|stretch)
+	    BUILD_PACKAGES+=(autoconf2.64) ;;
+    esac
 }
 
 die()
