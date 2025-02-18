@@ -3,15 +3,20 @@
 1.  Make sure the necessary packages are installed.  For Debian/Ubuntu
     systems:
 
-        apt-get install qemu-system-x86 qemu-system-arm wget gcc git make
+        sudo apt-get install qemu-system-x86 qemu-system-arm wget gcc git \
+                make bc binutils bison dwarves flex openssl pahole \
+                perl-base libssl-dev libelf-dev debhelper
 
     For Fedora systems:
 
-        dnf install qemu-kvm wget2 gcc git make
+        sudo dnf install qemu-kvm wget2 gcc git make binutils \
+                /usr/include/{libelf.h,openssl/pkcs7.h} \
+                /usr/bin/{bc,bison,flex,gcc,git,openssl,make,perl,pahole}
 
     For openSUSE Tumbleweed:
 
-        zypper in qemu wget2 gcc git make
+        sudo zypper in qemu wget2 gcc git make bc binutils bison dwarves \
+                flex gcc git make perl-base openssl openssl-devel libelf-dev
 
 2.  Run the following commands to install the xfstests-bld repository
     and install the necessary scripts into the bin directory in your
