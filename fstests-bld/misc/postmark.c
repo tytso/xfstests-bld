@@ -61,6 +61,7 @@ Versions:
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <fcntl.h>
 
@@ -110,6 +111,8 @@ extern int cli_load();
 extern int cli_show();
 extern int cli_help();
 extern int cli_quit();
+
+int read_config_file(char *filename, char *buffer, int ignore);
 
 cmd command_list[]={ /* table of CLI commands */
    {"set size",cli_set_size,"Sets low and high bounds of files"},
@@ -243,10 +246,14 @@ char *param; /* remainder of command line */
    return(1);
 }
 
-int cli_generic_int(var,param,error)
-int *var; /* pointer to variable to set */
-char *param; /* remainder of command line */
-char *error; /* error message */
+/**
+ * cli_generic_int: Parse an integer
+ * @var:	pointer to variable to set
+ * @param:	remainder of command line
+ * @error:	error message
+ *
+ */
+int cli_generic_int(int *var, char *param, char *error)
 {
    int value;
 
@@ -1189,12 +1196,15 @@ char *buffer; /* line of user input */
    return(result); /* return 1 unless exit requested, then return 0 */
 }
 
-/* read config file if present and process it line by line
-   - if 'quit' is in file then function returns 0 */
-int read_config_file(filename,buffer,ignore)
-char *filename; /* file name of config file */
-char *buffer;   /* temp storage for each line read from file */
-int ignore;     /* ignore file not found */
+/**
+ * read config file: Read config file if present and process it line by line
+ * @filename:	file name of config file
+ * @buffer:	temp storage for each line read from file
+ * @ignore:	ignore file not found
+ *
+ *   - if 'quit' is in file then function returns 0
+ */
+int read_config_file(char *filename, char *buffer, int ignore)
 {
    int result=1; /* default exit value - proceed with UI */
    FILE *fp;
@@ -1219,9 +1229,7 @@ int ignore;     /* ignore file not found */
 }
 
 /* main function - reads config files then enters get line/parse line loop */
-main(argc,argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
    char buffer[MAX_LINE+1]; /* storage for input command line */
 
