@@ -97,6 +97,7 @@ select_packages()
     liburcu-dev
     lsb-release
     meson
+    pigz
     pkg-config
     python3-setuptools
     qemu-utils
