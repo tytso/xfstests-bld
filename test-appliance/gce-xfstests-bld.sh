@@ -90,7 +90,6 @@ PACKAGES="$ADD_PACKAGES acl \
 	procps \
 	psmisc \
 	python3-pip \
-	python3-future \
 	reiserfsprogs \
 	rsync \
 	strace \
@@ -229,10 +228,14 @@ else
 fi
 
 if test "$NEW_SUITE" = "bullseye" ; then
-    PACKAGES="$PACKAGES xxd liburing1"
+    PACKAGES="$PACKAGES python3-future xxd liburing1"
 fi
 
 if test "$NEW_SUITE" = "bookworm" ; then
+    PACKAGES="$PACKAGES python3-future xxd liburing2"
+fi
+
+if test "$NEW_SUITE" = "trixie" ; then
     PACKAGES="$PACKAGES xxd liburing2"
 fi
 
@@ -403,11 +406,11 @@ chmod 755 /root
 cp -f /lib/systemd/system/serial-getty@.service \
 	/etc/systemd/system/telnet-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
-    -e '/ExecStart/s/-p/-p -f/' \
+    -e "/ExecStart/s/-o '/-o '-f /" \
     -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
 	/lib/systemd/system/serial-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
-    -e '/ExecStart/s/-p/-p -f/' \
+    -e "/ExecStart/s/-o '/-o '-f /" \
     -e 's/After=rc.local.service/After=network.target/' \
 	/etc/systemd/system/telnet-getty@.service
 
@@ -423,7 +426,8 @@ systemctl disable multipathd
 cp /usr/share/systemd/tmp.mount /etc/systemd/system/
 systemctl enable tmp.mount
 
-if test -f /etc/default/nfs-kernel-server ; then
+if test -f $ROOTDIR/etc/default/nfs-kernel-server -a
+   grep -q RPCNFSDCOUNT $ROOTDIR/etc/default/nfs-kernel-server ; then
     ed /etc/default/nfs-kernel-server <<EOF
 /RPCNFSDCOUNT/c
 RPCNFSDCOUNT="8 --nfs-version 2"

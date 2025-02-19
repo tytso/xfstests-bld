@@ -140,6 +140,26 @@ setup_for_bookworm()
 	BACKPORTS=/bookworm-backports
 }
 
+setup_for_trixie()
+{
+	case "$ARCH" in
+	    amd64)
+		IMAGE_FAMILY=debian-12
+		;;
+	    arm64)
+		IMAGE_FAMILY=debian-12-arm64
+		;;
+	esac
+	IMAGE_PROJECT=debian-cloud
+	SUITE=trixie
+	E2FSPROGS=e2fsprogs
+	LIBCOMERR=libcom-err2
+	LIBSS=libss2
+	BTRFS_PROGS=btrfs-progs
+	F2FS_TOOLS=f2fs-tools
+	BACKPORTS=
+}
+
 setup_for_buster
 
 GS_TAR="gs://$GS_BUCKET/gce-xfstests.image.tar.gz"
@@ -168,6 +188,9 @@ if test -f ../fstests-bld/xfstests/build-distro ; then
 	    ;;
 	bookworm)
 	    setup_for_bookworm
+	    ;;
+	trixie)
+	    setup_for_trixie
 	    ;;
 	*)
 	    echo "No support for build gce image for $distro"
