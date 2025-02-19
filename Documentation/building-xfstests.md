@@ -78,10 +78,9 @@ For gce-xfstests test appliances, you'll need an amd64 chroot:
 
     $ sudo ./setup-buildchroot --arch=amd64
 
-For android-xfstests test appliances, you'll need an armhf or arm64
+For android-xfstests test appliances, you'll need an arm64
 chroot:
 
-    $ sudo ./setup-buildchroot --arch=armhf
     $ sudo ./setup-buildchroot --arch=arm64
 
 Normally ARM will be a foreign architecture, so `setup-buildchroot`
@@ -92,8 +91,8 @@ Afterwards, it will behave just like a native chroot.
 Once you're created a chroot, you should be able to use the `schroot`
 program to enter it, e.g.:
 
-    $ schroot -c bullseye-amd64         # enter chroot as regular user
-    $ schroot -c bullseye-amd64 -u root # enter chroot as root
+    $ schroot -c bookworm-amd64         # enter chroot as regular user
+    $ schroot -c bookworm-amd64 -u root # enter chroot as root
 
 The `-c` option must specify the name of the chroot as listed in
 `/etc/schroot/schroot.conf`.  By default `setup-buildchroot` names the

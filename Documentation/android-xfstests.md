@@ -17,8 +17,8 @@ devices.  If you encounter a problem, please submit a fix!
 ## Requirements
 
 - The android-xfstests script installed:
-  run `make android-xfstests.sh` in the top-level directory of
-  xfstests-bld, then move `android-xfstests.sh` to
+  run `make android-xfstests` in the top-level directory of
+  xfstests-bld, then move `android-xfstests` to
   `~/bin/android-xfstests` or another location on your `$PATH`.
 
 - A rooted Android device with sufficient internal storage.  For most
