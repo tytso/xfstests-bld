@@ -27,11 +27,12 @@ fi
 
 if test -f ../fstests-bld/xfstests/build-distro ; then
     distro=$(cat ../fstests-bld/xfstests/build-distro)
-    if test "$distro" = bookworm -o "$distro" = bullseye; then
-	SUITE="$distro"
-    else
-	SUITE=buster
-    fi
+    case "$distro" in
+	trixie|bookworm|bullseye)
+	    SUITE="$distro" ;;
+	*)
+	    SUITE=buster ;;
+    esac
 fi
 
 if test -r config.custom ; then
@@ -444,11 +445,11 @@ fi
 cp $ROOTDIR/lib/systemd/system/serial-getty@.service \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
-    -e '/ExecStart/s/-p/-p -f/' \
+    -e "/ExecStart/s/-o '/-o '-f /" \
     -e 's/After=rc.local.service/After=kvm-xfstests.service/' \
 	$ROOTDIR/lib/systemd/system/serial-getty@.service
 sed -i -e '/ExecStart/s/agetty/agetty -a root/' \
-    -e '/ExecStart/s/-p/-p -f/' \
+    -e "/ExecStart/s/-o '/-o '-f /" \
     -e 's/After=rc.local.service/After=network.target/' \
 	$ROOTDIR/etc/systemd/system/telnet-getty@.service
 run_in_chroot "systemctl enable kvm-xfstests.service"
@@ -497,7 +498,8 @@ EOF
     fi
 fi
 
-if test -f $ROOTDIR/etc/default/nfs-kernel-server ; then
+if test -f $ROOTDIR/etc/default/nfs-kernel-server -a
+   grep -q RPCNFSDCOUNT $ROOTDIR/etc/default/nfs-kernel-server ; then
     ed $ROOTDIR/etc/default/nfs-kernel-server <<EOF
 /RPCNFSDCOUNT/c
 RPCNFSDCOUNT="8 --nfs-version 2"

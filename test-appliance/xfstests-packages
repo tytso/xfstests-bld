@@ -31,7 +31,6 @@ libkeyutils1
 libsqlite3-0
 lvm2
 lz4
-makedev
 mg
 mtd-utils
 multipath-tools
@@ -45,7 +44,6 @@ pciutils
 procps
 psmisc
 python3
-python3-future
 openssl
 reiserfsprogs
 strace
