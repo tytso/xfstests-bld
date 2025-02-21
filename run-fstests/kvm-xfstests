@@ -60,7 +60,19 @@ if test -z "$EXPLICIT_ROOT_FS" ; then
 	f=root_fs.img.$ARCH
 	ROOT_FS="$(dirname $DIR)/test-appliance/$f"
 	echo "Downloading $f..."
-	wget -nv --show-progress -O "$ROOT_FS.new" "$DOWNLOAD_BASE_URL/$f"
+
+	# wget1 and 2 have different flags to show progress bar
+	WGET_VERSION=$(wget --version | head -n1 | awk '{print $3}' | cut -d. -f1)
+	if [[ "$WGET_VERSION" -eq 1 ]]; then
+			PROGRESS_FLAG="--show-progress"
+	elif [[ "$WGET_VERSION" -eq 2 ]]; then
+			PROGRESS_FLAG="--force-progress"
+	else
+			# don't show progress bar if we can't determine version
+			PROGRESS_FLAG=""
+	fi
+	wget -nv $PROGRESS_FLAG -O "$ROOT_FS.new" "$DOWNLOAD_BASE_URL/$f"
+
 	mv "$ROOT_FS.new" "$ROOT_FS"
     fi
 fi
