@@ -458,6 +458,8 @@ run_in_chroot "systemctl enable telnet-getty@ttyS2.service"
 run_in_chroot "systemctl enable telnet-getty@ttyS3.service"
 run_in_chroot "systemctl disable multipathd"
 run_in_chroot "systemctl disable nvmf-autoconnect"
+run_in_chroot "systemctl disable nfs-server"
+run_in_chroot  "systemctl disable nfs-blkmap"
 find $ROOTDIR/usr/share/doc -type f -print0 ! -name copyright | xargs -0 rm
 find $ROOTDIR/usr/share/doc -mindepth 2 -type l -print0 | xargs -0 rm
 find $ROOTDIR/usr/share/doc -type d -print0 | xargs -0 rmdir --ignore-fail-on-non-empty -p

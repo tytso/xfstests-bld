@@ -423,6 +423,10 @@ systemctl enable gce-finalize.timer
 systemctl enable gen-ssh-keys.service
 systemctl stop multipathd
 systemctl disable multipathd
+systemctl stop nfs-server
+systemctl disable nfs-server
+systemctl stop nfs-blkmap
+systemctl disable nfs-blkmap
 cp /usr/share/systemd/tmp.mount /etc/systemd/system/
 systemctl enable tmp.mount
 
