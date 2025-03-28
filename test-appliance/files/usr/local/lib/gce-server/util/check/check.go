@@ -196,3 +196,14 @@ func NoError(err error, log *logrus.Entry, msg string) bool {
 	}
 	return true
 }
+
+// ContainsStr searches an array of strings for a target string,
+// returning true if the target is found and false otherwise.
+func ContainsStr(strings []string, target string) bool {
+	for _, s := range strings {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
