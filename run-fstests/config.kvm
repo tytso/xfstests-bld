@@ -51,6 +51,12 @@ CONSOLE=" -serial mon:stdio"
 # production systems.
 AIO=",aio=native"
 
+# Uncomment this or define VIRTCONSOLE with something like this
+# to enable using virtio-console
+#VIRTCONSOLE="-device virtio-serial-pci \
+#		     -device virtconsole,chardev=vconsole \
+#		     -chardev file,id=vconsole,path=VIRTCONFILE"
+
 if test "$(uname -o)" = "Darwin" ; then
     AIO=
     CACHE=

@@ -115,6 +115,10 @@ else
     LOGFILE="$DIR/logs/log.$TESTRUNID"
     RESULTFILE="$DIR/logs/results-$TESTRUNID.tar.xz"
 fi
+if test -n "$VIRTCONSOLE" ; then
+    vc=$(echo "$VIRTCONSOLE" | sed -e "s;VIRTCONFILE;/tmp/console.$TESTRUNID;")
+    VIRTCONSOLE="$vc"
+fi
 
 if test -n "$INITRD" ; then
     INITRD="--initrd $INITRD"
@@ -236,6 +240,10 @@ fi
 if test -n "$CACHE" ; then
     CACHE="cache=$CACHE,"
 fi
+CONARG="console=$CONSOLE_DEV,115200"
+if test -n "$VIRTCONSOLE" ; then
+    CONARG="console=hvc0 $CONARG"
+fi
 
 $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-machine $MACHINE_TYPE,accel=$ACCEL -cpu $CPU_TYPE \
@@ -252,6 +260,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	-vga none -nographic -smp $NR_CPU -m $MEM \
 	$VIRTFS \
 	$VIRTIO_RNG \
+	$VIRTCONSOLE \
 	$CONSOLE \
 	$MONITOR \
 	$SERIAL \
@@ -259,7 +268,7 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	$NUMA \
 	--kernel $KERNEL \
 	$INITRD \
-	--append "$QUIET root=$ROOT_DEV console=$CONSOLE_DEV,115200 nokaslr $ARG $EXTRA_ARG" |\
+	--append "$QUIET root=$ROOT_DEV $CONARG nokaslr $ARG $EXTRA_ARG" |\
 tee $LOGFILE
 
 if test -n "$DO_ARCHIVE"; then
