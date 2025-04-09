@@ -6,6 +6,7 @@ then
 fi
 
 . /usr/local/lib/gce-funcs
+. /root/runtests_utils
 
 if test -f /run/self-shutdown-requested
 then
@@ -59,6 +60,7 @@ function gen_blktests_summary()
 }
 
 reason=$(gce_attribute shutdown_reason)
+shutdown_reason=
 
 if test "$reason" != "abort" -a -f /results/runtests.log -a \
     $(stat -c %s /results/runtests.log) -gt 0
@@ -70,8 +72,29 @@ then
     fi
     if test -f /results/shutdown_reason
     then
-	echo "Shutdown reason: $(cat /results/shutdown_reason)" \
+	shutdown_reason=$(cat /results/shutdown_reason)
+	echo "Shutdown reason: $shutdown_reason" \
 	     >> /results/runtests.log
+    fi
+
+    copy_xunit_results
+    if test "$shutdown_reason" == "Timeout"
+    then
+	RESULT_BASE="$(cat /run/result-base)"
+	last_test="$(tail -n 1 "$RESULT_BASE/completed")"
+	# if we have something written to completed (last started test)
+	# and it does not show up in the result.xml, treat this test
+	# like an error
+	if test -n "$last_test" && ! grep -qs "$last_test" "$RESULT_BASE/result.xml"
+	then
+	    record_test_error "$last_test"
+	    record_test_error "timeout"
+	fi
+	if test -s /tmp/results.xml && test ! -s /results/report
+	then
+	    /usr/local/bin/gen_results_summary /results \
+	        --merge_file /tmp/results.xml > /results/report
+	fi
     fi
 
     if test -f /run/do_blktests ; then

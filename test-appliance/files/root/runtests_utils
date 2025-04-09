@@ -230,7 +230,8 @@ function copy_xunit_results()
 	then
 	    merge_xunit "$RESULTS" "$RESULT"
 	else
-	    if ! update_properties_xunit --fsconfig "$FS_PREFIX$FS/$TC" "$RESULTS" \
+	    local fsconfig="$(cat /run/fstest-config)"
+	    if ! update_properties_xunit --fsconfig "$fsconfig" "$RESULTS" \
 		 "$RESULT" "$RUNSTATS"
 	    then
 		mv "$RESULT" "$RESULT.broken"
@@ -240,6 +241,22 @@ function copy_xunit_results()
     fi
 
     /root/xfstests/bin/syncfs $RESULT_BASE
+}
+
+function record_test_error()
+{
+    local failure="$1"
+    # if results.xml already exists, add to it
+    if test -f "$RESULT_BASE/results.xml"
+    then
+	add_error_xunit "$RESULT_BASE/results.xml" "$failure" "xfstests.global"
+    # otherwise, we add directly to result.xml
+    else
+	add_error_xunit "$RESULT_BASE/result.xml" "$failure" "xfstests.global"
+	# in the case that the first test crashes, make sure results.xml gets
+	# setup correctly via copy_xunit_results
+	copy_xunit_results
+    fi
 }
 
 # check to see if a device is assigned to be used

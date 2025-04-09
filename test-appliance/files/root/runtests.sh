@@ -293,6 +293,7 @@ do
 	setup_mount_opts
 	gen_version_files
 	export RESULT_BASE="$RESULTS/${FS_PREFIX//:/-}$FS/results-$TC"
+	echo "$RESULT_BASE" > /run/result-base
 	if test ! -d "$RESULT_BASE" -a -d "$RESULTS/results-$TC" ; then
 	    mkdir -p "$RESULTS/$FS"
 	    mv "$RESULTS/results-$TC" "$RESULT_BASE"
@@ -468,14 +469,7 @@ do
 		fi
 		if test -n "$last_test"
 		then
-		    if test -f "$RESULT_BASE/results.xml"; then
-			add_error_xunit "$RESULT_BASE/results.xml" "$last_test" "xfstests.global"
-		    else
-			# if first test crashes, make sure results.xml gets
-			# setup correctly via copy_xunit_results
-			add_error_xunit "$RESULT_BASE/result.xml" "$last_test" "xfstests.global"
-			copy_xunit_results
-		    fi
+		    record_test_error "$last_test"
 		fi
 		/root/xfstests/bin/syncfs $RESULT_BASE
 		sort "$RESULT_BASE/completed" > /tmp/completed
@@ -496,12 +490,12 @@ do
 		echo "No tests to run"
 	    fi
 	    gce_run_hooks post-xfstests $TC $j
+	    rm -f "$RESULT_BASE/completed"
 	    umount "$TEST_DEV" >& /dev/null
 	    check_filesystem "$TEST_DEV" >& $RESULT_BASE/fsck.out
 	    if test $? -gt 0 ; then
 		cat $RESULT_BASE/fsck.out
 	    fi
-	    rm -f "$RESULT_BASE/completed"
 	done
 	rm -f "$RESULT_BASE/rpt_status"
 	if test -n "$RUN_ON_GCE"

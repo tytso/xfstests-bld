@@ -100,7 +100,6 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		"--kernel", sharder.gsKernel,
 		"--bucket-subdir", sharder.bucketSubdir,
 		"--no-email",
-		"--no-vm-timeout",
 		"-c", config,
 	}
 
@@ -112,16 +111,18 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 		shard.args = append(shard.args, "--kernel-arch", sharder.kernelArch)
 	}
 
-	var imgProjFlag bool = false
-	for _, arg := range sharder.validArgs {
-		if arg == "--image-project" {
-			imgProjFlag = true
-			break
-		}
+	if !check.ContainsStr(sharder.validArgs, "--image-project") && len(sharder.imgProjID) > 0 {
+		shard.args = append(shard.args, "--image-project", sharder.imgProjID)
 	}
 
-	if !imgProjFlag && len(sharder.imgProjID) > 0 {
-		shard.args = append(shard.args, "--image-project", sharder.imgProjID)
+	// outside of ltm -> default is vms timeout
+	// inside ltm -> default is no timeout (since ltm monitors vms and forces
+	//               reboot and test skip if a test is crashed or stuck)
+	// users can override default ltm no timeout by passing --vm-timeout flag
+	// below sets no-vm-timeout by default if we do not explictly set anything
+	if !check.ContainsStr(sharder.validArgs, "--vm-timeout") &&
+			!check.ContainsStr(sharder.validArgs, "--no-vm-timeout"){
+		shard.args = append(shard.args, "--no-vm-timeout")
 	}
 
 	shard.args = append(shard.args, sharder.validArgs...)

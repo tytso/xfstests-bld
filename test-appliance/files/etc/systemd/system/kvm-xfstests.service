@@ -8,7 +8,8 @@ Wants=local-fs.target network-online.target network.target
 Type=oneshot
 IgnoreSIGPIPE=no
 ExecStart=/root/kvm-xfstests.boot
-TimeoutSec=0
+TimeoutStartSec=0
+TimeoutStopSec=10
 StandardOutput=tty
 
 [Install]

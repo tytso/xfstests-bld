@@ -92,9 +92,16 @@ print_help ()
 	echo "	--bucket-subdir	- Use the next argument as a bucket subdir"
     fi
     if flavor_in gce ; then
-	echo "	--monitor-timeout time	- LTM option to reboot test VM if no"
-	echo "		status update after specified time. Accepted time"
-	echo "		suffixes include \"h\", \"m\", \"s\"."
+	echo "	--monitor-timeout time"
+	echo "			- LTM option to reboot test VM if no status update"
+	echo "			after specified time. Accepted time suffixes include"
+	echo "			\"h\", \"m\", \"s\""
+    fi
+    if flavor_in gce ; then
+	echo "	--[no-]vm-timeout"
+	echo "			- Sets whether or not to abort test VM after 24 hr."
+	echo "			By default, timeout is enabled for normal runs and"
+	echo "			disabled for LTM runs"
     fi
     echo ""
     echo "Common file system configurations are:"
@@ -376,6 +383,7 @@ virtfs-model:
 virtfs-scratch:
 virtfs-test:
 virtfs:
+vm-timeout
 watch:
 )
 longopts=$(echo "${longopts[*]}" | tr ' ' ,)
@@ -842,6 +850,10 @@ while (( $# >= 1 )); do
 	--virtfs-model) shift
 	    supported_flavors kvm
 	    VIRTFS_MODEL="$1"
+	    ;;
+	--vm-timeout)
+	    supported_flavors gce
+	    unset GCE_NO_VM_TIMEOUT
 	    ;;
 	--archive)
 	    supported_flavors kvm
