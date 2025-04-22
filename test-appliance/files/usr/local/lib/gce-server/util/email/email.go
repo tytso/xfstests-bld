@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime/debug"
+	"strings"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/gcp"
@@ -17,12 +18,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Send sends an email with subject and content to the receiver.
+// Send sends an email with subject and content to the receivers.
 // Sender is configured to be receiver if not set in config.
-func Send(subject string, content string, receiver string) error {
-	if receiver == "" {
+func Send(subject string, content string, receivers string) error {
+	if receivers == "" {
 		return fmt.Errorf("No destination for report to be sent to")
 	}
+	receiversSlice := strings.Split(receivers, ",")
 
 	apiKey, err := gcp.GceConfig.Get("SENDGRID_API_KEY")
 	if err != nil {
@@ -30,7 +32,7 @@ func Send(subject string, content string, receiver string) error {
 	}
 	sender, err := gcp.GceConfig.Get("GCE_REPORT_SENDER")
 	if err != nil {
-		sender = receiver
+		sender = receiversSlice[0]
 	}
 
 	m := mail.NewV3Mail()
@@ -39,8 +41,12 @@ func Send(subject string, content string, receiver string) error {
 	m.Subject = subject
 
 	p := mail.NewPersonalization()
-	to := mail.NewEmail("", receiver)
-	p.AddTos(to)
+
+	for _, receiver := range receiversSlice {
+		to := mail.NewEmail("", receiver)
+		p.AddTos(to)
+	}
+
 	m.AddPersonalizations(p)
 
 	c := mail.NewContent("text/plain", content)
