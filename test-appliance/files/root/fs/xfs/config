@@ -2,7 +2,13 @@
 # Configuration file for xfs
 #
 
-. /usr/local/lib/combine-xfs-mkfs-opts
+if test -f /usr/local/lib/combine-xfs-mkfs-opts; then
+    . /usr/local/lib/combine-xfs-mkfs-opts
+elif test -f $DIR/../test-appliance/files/usr/local/lib/combine-xfs-mkfs-opts; then
+    . $DIR/../test-appliance/files/usr/local/lib/combine-xfs-mkfs-opts
+else
+    echo "Error: Could not find file combine-xfs-mkfs-opts"
+fi
 
 DEFAULT_MKFS_OPTIONS="-bsize=4096"
 
