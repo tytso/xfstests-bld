@@ -501,17 +501,6 @@ EOF
     fi
 fi
 
-if test -f $ROOTDIR/etc/default/nfs-kernel-server -a
-   grep -q RPCNFSDCOUNT $ROOTDIR/etc/default/nfs-kernel-server ; then
-    ed $ROOTDIR/etc/default/nfs-kernel-server <<EOF
-/RPCNFSDCOUNT/c
-RPCNFSDCOUNT="8 --nfs-version 2"
-.
-w
-q
-EOF
-fi
-
 if test $DO_DRGN = "yes" ; then
     run_in_chroot "pip3 install drgn"
 fi
