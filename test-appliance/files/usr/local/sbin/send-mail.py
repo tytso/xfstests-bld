@@ -13,7 +13,7 @@ def main(argv):
     if sendgrid_api_key is None:
         print("missing Sendgrid API key")
         sys.exit(1)
-    
+
     parser = argparse.ArgumentParser(description='Send mail using Sendgrid.')
     parser.add_argument('--sender', help='from address')
     parser.add_argument('-f', '--file', help='input file')
@@ -23,11 +23,12 @@ def main(argv):
     args = parser.parse_args()
 
     sg = sendgrid.SendGridAPIClient(api_key=sendgrid_api_key)
+    receivers = args.dest.split(',')
+
     if args.sender is None:
-        from_email = Email(args.dest)
+        from_email = Email(receivers[0])
     else:
         from_email = Email(args.sender)
-    to_email = To(args.dest)
     subject = args.subject
     if args.file is None:
         file = sys.stdin
@@ -35,7 +36,7 @@ def main(argv):
         file = open(args.file, 'r')
     content = Content("text/plain", file.read())
     file.close()
-    mail = Mail(from_email, to_email, subject, content)
+    mail = Mail(from_email, receivers, subject, content)
     response = sg.client.mail.send.post(request_body=mail.get())
     status = response.status_code
     if status // 100 != 2:

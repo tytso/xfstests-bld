@@ -152,13 +152,15 @@ configuration parameters in order to have reports e-mailed to you:
 * GCE_SG_API
   * The Sendgrid API used to send the test report
 * GCE_REPORT_EMAIL
-  * The email addressed for which test results should be sent.
+  * The comma separated list of email addresses for which test
+    results should be sent.
 * GCE_REPORT_SENDER
   * The email used as the sender for the test report.  This defaults
-    to the `GCE_REPORT_EMAIL` configuration parameter.  If the domain used
-    by `GCE_REPORT_EMAIL` has restrictive SPF settings, and you don't have
-    control over the domain used by `GCE_REPORT_EMAIL`, you may need to
-    choose a different sender address.
+    to the first address in the `GCE_REPORT_EMAIL` configuration
+    parameter.  If the domain used by `GCE_REPORT_EMAIL` has
+    restrictive SPF settings, and you don't have control over the
+    domain used by `GCE_REPORT_EMAIL`, you may need to choose a
+    different sender address.
 
 Other optional parameters include:
 

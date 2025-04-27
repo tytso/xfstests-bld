@@ -1,6 +1,7 @@
 package email
 
 import (
+	"thunk.org/gce-server/util/email"
 	"thunk.org/gce-server/util/gcp"
 	"os"
 	"testing"
@@ -20,7 +21,7 @@ func TestEmail(t *testing.T) {
 		t.Error(err)
 	}
 	msg := "test msg"
-	err = Send("test", msg, receiver)
+	err = email.Send("test", msg, receiver)
 	if err != nil {
 		t.Error(err)
 	}

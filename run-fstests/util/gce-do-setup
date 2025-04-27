@@ -249,7 +249,8 @@ if test -n "$GCE_REPORT_EMAIL" ; then
     if test -n "$GCE_REPORT_SENDER" ; then
 	addr="$GCE_REPORT_SENDER"
     else
-	addr="$GCE_REPORT_EMAIL"
+	# take first email in the comma separated list
+	addr="${GCE_REPORT_EMAIL%,*}"
     fi
     addr=$(echo $addr | sed -e 's/.*@//')
     spf=$(dig -t txt +short "$addr" | grep v=spf1)
