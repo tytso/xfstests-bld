@@ -363,6 +363,7 @@ trap cleanup_on_abort INT TERM
 if test "$RESUME" -le 2 ; then
     stage_start "stage 2: debootstrap"
     debootstrap --variant=minbase --include=$PACKAGES $EXCLUDE \
+		--components=main,contrib,non-free \
 		$FOREIGN $SUITE $ROOTDIR $MIRROR $DIR/debootstrap.script
 else
     true

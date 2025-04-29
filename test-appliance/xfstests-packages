@@ -19,6 +19,7 @@ ed
 f2fs-tools
 file
 gawk
+hfsprogs
 jfsutils
 joe-jupp
 keyutils
@@ -31,6 +32,7 @@ libkeyutils1
 libsqlite3-0
 lvm2
 lz4
+mdadm
 mg
 mtd-utils
 multipath-tools

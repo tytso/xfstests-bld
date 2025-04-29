@@ -54,6 +54,7 @@ PACKAGES="$ADD_PACKAGES acl \
 	gcc \
 	gcc-aarch64-linux-gnu \
 	git	\
+	hfsprogs \
 	jfsutils \
 	jq \
 	kexec-tools \
@@ -74,6 +75,7 @@ PACKAGES="$ADD_PACKAGES acl \
 	lighttpd \
 	lvm2 \
 	lz4 \
+	mdadm \
 	mg \
 	mtd-utils \
 	multipath-tools \
@@ -233,6 +235,13 @@ fi
 
 if test "$NEW_SUITE" = "bookworm" ; then
     PACKAGES="$PACKAGES python3-future xxd liburing2"
+fi
+
+if test -f /etc/apt/sources.list.d/debian.sources ; then
+    sed -e "/Components/s/main/contrib non-free non-free-firmware/" \
+	/etc/apt/sources.list.d/debian.sources \
+	> /etc/apt/sources.list.d/debian-non-free.sources
+    apt-get update
 fi
 
 if test "$NEW_SUITE" = "trixie" ; then
