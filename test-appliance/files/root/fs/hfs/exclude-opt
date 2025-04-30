@@ -1,0 +1,13 @@
+-x clone
+-x shutdown
+-x punch
+-x collapse
+-x encrypt
+-x verity
+-x copy_range
+-x acl
+-x attr
+-x quota
+-x prealloc
+-x splice
+-x fiemap
