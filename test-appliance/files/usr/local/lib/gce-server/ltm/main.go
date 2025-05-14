@@ -47,6 +47,10 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 
 	testID := mymath.GetTimeStamp()
 
+	if c.Options.ReportFailEmail == "" {
+		c.Options.ReportFailEmail = c.Options.ReportEmail
+	}
+
 	if c.ExtraOptions == nil {
 		if c.Options.TestRunID == "" {
 			log.WithField("testID", testID).Info("User request, generating testID")

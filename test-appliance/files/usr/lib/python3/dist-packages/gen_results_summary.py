@@ -169,6 +169,52 @@ def get_testsuite_stats(testsuite):
 
     return Stats
 
+def testsuite_failed(testsuite, Stats=None,
+                     hard_failure=True,
+                     flake=True,
+                     skip=False,
+                     error=True,
+                     timeout=True,
+                     preempt=False):
+    """Returns whether a testsuite is considered failed.
+
+    Can pass in Stats struct if you already have it.
+    The additional parameters define which events are considered as failure.
+    """
+    if error and testsuite.errors > 0:
+        return True
+    if skip and testsuite.skipped > 0:
+        return True
+    if flake and hard_failure and testsuite.failures > 0:
+        return True
+
+    if Stats is None:
+        Stats = get_testsuite_stats(testsuite)
+
+    if preempt is True and PREEMPTED in Stats:
+        return True
+    if timeout is True and TIMEOUT in Stats:
+        return True
+
+    if not hard_failure and not flake:
+        return False
+
+    if testsuite.failures == 0:
+        return False
+
+    for t in Stats:
+        if t == PREEMPTED or t == TIMEOUT:
+            continue
+        s = Stats[t]
+        if s.failed > 0:
+            if s.total == s.failed:
+                if hard_failure:
+                    return True
+            else:
+                if flake:
+                    return True
+    return False
+
 def print_summary(out_f, testsuite, verbose):
     """Print a summary for a particular test suite
 
@@ -262,6 +308,8 @@ def print_summary(out_f, testsuite, verbose):
         if errors > 0:
             print_tests(out_f, testsuite, Error, 'Errors')
 
+    return Stats
+
 def print_property_line(out_f, props, key):
     """Print a line containing the given property."""
     value = get_property(props, key)
@@ -315,7 +363,8 @@ def check_for_ltm(results_dir, props):
         return False
 
 def gen_results_summary(results_dir, output_fn=None, merge_fn=None,
-                        verbose=False, verbosity_threshold=30):
+                        verbose=False, verbosity_threshold=30,
+                        fail_fn=None):
     """Scan a results directory and generate a summary file"""
     reports = []
     combined = JUnitXml()
@@ -345,7 +394,17 @@ def gen_results_summary(results_dir, output_fn=None, merge_fn=None,
         verbose = True
 
     for testsuite in sorted(reports, key=sort_by):
-        print_summary(out_f, testsuite, verbose)
+        stats = print_summary(out_f, testsuite, verbose)
+
+        if fail_fn is not None and not os.path.exists(fail_fn):
+            if testsuite_failed(testsuite, Stats=stats,
+                                    hard_failure=True, flake=False,
+                                    skip=False, error=True,
+                                    timeout=True, preempt=False):
+                # touch file
+                fail_fd = os.open(fail_fn, os.O_RDWR | os.O_CREAT)
+                os.close(fail_fd)
+
         combined.add_testsuite(testsuite)
         nr_files += 1
 

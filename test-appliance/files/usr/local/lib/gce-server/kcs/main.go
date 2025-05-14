@@ -40,6 +40,11 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 	}).Info("Received build request")
 
 	testID := mymath.GetTimeStamp()
+
+	if c.Options.ReportFailEmail == "" {
+		c.Options.ReportFailEmail = c.Options.ReportEmail
+	}
+
 	response := server.SimpleResponse{
 		Status: true,
 		TestID: testID,

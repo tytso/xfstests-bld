@@ -14,6 +14,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -47,23 +48,25 @@ type ShardScheduler struct {
 	imgProjID string
 	origCmd   string
 
-	zone           string
-	region         string
-	gsBucket       string
-	bucketSubdir   string
-	gsKernel       string
-	kernelVersion  string
-	kernelArch     string
-	arch           string
-	reportReceiver string
-	junitReceiver  string
-	maxShards      int
-	keepDeadVM     bool
-	monitorTimeout time.Duration
+	zone               string
+	region             string
+	gsBucket           string
+	bucketSubdir       string
+	gsKernel           string
+	kernelVersion      string
+	kernelArch         string
+	arch               string
+	reportReceiver     string
+	reportFailReceiver string
+	junitReceiver      string
+	maxShards          int
+	keepDeadVM         bool
+	monitorTimeout     time.Duration
 
 	reportKCS   bool
 	testRequest server.TaskRequest
 	testResult  server.ResultType
+	failed      bool
 
 	log     *logrus.Entry
 	logDir  string
@@ -123,16 +126,17 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		imgProjID: imgProjID,
 		origCmd:   origCmd,
 
-		zone:           zone,
-		region:         region,
-		gsBucket:       gsBucket,
-		bucketSubdir:   bucketSubdir,
-		gsKernel:       c.Options.GsKernel,
-		kernelVersion:  "unknown_kernel_version",
-		kernelArch:     "",
-		arch:           c.Options.Arch,
-		reportReceiver: c.Options.ReportEmail,
-		junitReceiver:  c.Options.JunitEmail,
+		zone:               zone,
+		region:             region,
+		gsBucket:           gsBucket,
+		bucketSubdir:       bucketSubdir,
+		gsKernel:           c.Options.GsKernel,
+		kernelVersion:      "unknown_kernel_version",
+		kernelArch:         "",
+		arch:               c.Options.Arch,
+		reportReceiver:     c.Options.ReportEmail,
+		reportFailReceiver: c.Options.ReportFailEmail,
+		junitReceiver:      c.Options.JunitEmail,
 		maxShards:      0,
 		keepDeadVM:     false,
 		monitorTimeout: defaultMonitorTimeout,
@@ -140,6 +144,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 		reportKCS:   false,
 		testRequest: c,
 		testResult:  server.DefaultResult,
+		failed:      false,
 
 		log:     log,
 		logDir:  logDir,
@@ -156,6 +161,9 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	}
 	if sharder.bucketSubdir == "" {
 		sharder.bucketSubdir = "results"
+	}
+	if sharder.reportFailReceiver == "" {
+		sharder.reportFailReceiver = sharder.reportReceiver
 	}
 	if c.Options.MonitorTimeout != "" {
 		sharder.monitorTimeout, err = time.ParseDuration(c.Options.MonitorTimeout)
@@ -361,7 +369,7 @@ func (sharder *ShardScheduler) Run() {
 	var wg sync.WaitGroup
 
 	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
-	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportReceiver, subject)
+	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportFailReceiver, subject)
 
 	defer sharder.clean()
 
@@ -578,12 +586,21 @@ If any shard has non-default testResult, append the sharder info to the result f
 */
 func (sharder *ShardScheduler) genResultsSummary() {
 	sharder.log.Info("Creating LTM test result summary")
-	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report", "--merge_file", sharder.aggDir+"results.xml")
+	cmd := exec.Command(genResultsSummaryPath, sharder.aggDir, "--output_file", sharder.aggDir+"report", "--merge_file", sharder.aggDir+"results.xml", "--check_failure")
+
+
 	cmdLog := sharder.log.WithField("cmd", cmd.String())
 	w := cmdLog.Writer()
 	defer w.Close()
 	err := check.LimitedRun(cmd, check.RootDir, check.EmptyEnv, w, w)
-	check.NoError(err, cmdLog, "Failed to run python script gen_results_summary")
+	if !check.NoError(err, cmdLog, "Failed to run python script gen_results_summary") {
+		sharder.failed = true
+	}
+
+	_, err = os.Stat(sharder.aggDir+"report.failed")
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
+		sharder.failed = true
+	}
 
 	var testFailure, testError, reportInfo bool
 
@@ -594,6 +611,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 		case server.Error:
 			testError = true
 			reportInfo = true
+			sharder.failed = true
 		case server.Pass:
 			fallthrough
 		case server.Fail:
@@ -601,6 +619,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 		default:
 			testFailure = true
 			reportInfo = true
+			sharder.failed = true
 		}
 	}
 
@@ -632,21 +651,33 @@ func (sharder *ShardScheduler) genResultsSummary() {
 
 // emailReport sends the email.
 func (sharder *ShardScheduler) emailReport() {
-	if sharder.reportReceiver == "" {
+	if sharder.reportReceiver == "" && sharder.reportFailReceiver == "" {
 		sharder.log.Info("Skipping e-mail report")
 	} else {
-		sharder.log.Info("Sending e-mail report")
 		subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
 
 		b, err := ioutil.ReadFile(sharder.aggDir + "report")
 		content := string(b)
 		if !check.NoError(err, sharder.log, "Failed to read the report file") {
 			content = "Unable to generate test summary report"
+			sharder.failed = true
 		}
 
-		err = email.Send(subject, content, sharder.reportReceiver)
-		check.Panic(err, sharder.log, "Failed to send the report email")
+		emailReceiver := sharder.reportReceiver
+		if sharder.failed {
+			emailReceiver = sharder.reportFailReceiver
+			sharder.log.Info("Sharder found failure")
+		}
+
+		if emailReceiver != "" {
+			sharder.log.Info("Sending e-mail report to " + emailReceiver)
+			err = email.Send(subject, content, emailReceiver)
+			check.Panic(err, sharder.log, "Failed to send the report email")
+		} else {
+			sharder.log.Info("Skipping e-mail report")
+		}
 	}
+
 	if sharder.junitReceiver == "" {
 		sharder.log.Info("Skipping junit file e-mail")
 	} else {

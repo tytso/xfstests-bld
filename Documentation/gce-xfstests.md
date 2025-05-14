@@ -154,6 +154,10 @@ configuration parameters in order to have reports e-mailed to you:
 * GCE_REPORT_EMAIL
   * The comma separated list of email addresses for which test
     results should be sent.
+* GCE_REPORT_FAIL_EMAIL
+  * If set, reports with hard failures or errors will be redirected
+    to this comma separated recipient list instead of going to
+    GCE_REPORT_EMAIL.
 * GCE_REPORT_SENDER
   * The email used as the sender for the test report.  This defaults
     to the first address in the `GCE_REPORT_EMAIL` configuration

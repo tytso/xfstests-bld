@@ -10,15 +10,24 @@ def main():
     parser.add_argument('--merge_file',
                         help='Combined output file for XML xUnit')
     parser.add_argument('--output_file', help='Combined text output file')
+    parser.add_argument('--check_failure', help='Create .failed file if unclean test run',
+                        action='store_true')
     parser.add_argument('--verbose', help='Generate a verbose output',
                         action='store_true')
     parser.add_argument('--verbosity_threshold', help='Threshold limit for verbose output',
                         action='store', type=int, default=30)
     args = parser.parse_args()
 
+    check_failure_fn = None
+    if args.check_failure:
+        if args.output_file:
+            check_failure_fn = args.output_file + ".failed"
+        else:
+            check_failure_fn = ".failed"
+
     if gen_results_summary(args.results_dir, args.output_file,
                            args.merge_file, args.verbose,
-                           args.verbosity_threshold) == 0:
+                           args.verbosity_threshold, check_failure_fn) == 0:
         sys.exit('No results file found in ' + args.results_dir)
 
 if __name__ == "__main__":

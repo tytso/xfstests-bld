@@ -27,6 +27,7 @@ var invalidOpts = []string{
 	"--bucket-subdir",
 	"--gs-bucket",
 	"--email",
+	"--fail-email",
 	"--junit-email",
 	"--gce-zone",
 	"--testrunid",

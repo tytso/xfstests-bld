@@ -35,14 +35,15 @@ type GitWatcher struct {
 	testID  string
 	origCmd string
 
-	gsBucket       string
-	bucketSubdir   string
-	reportReceiver string
-	testRequest    server.TaskRequest
-	testHistory    []server.TestInfo
-	packHistory    []string
-	historyLock    sync.Mutex
-	buildID        int
+	gsBucket           string
+	bucketSubdir       string
+	reportReceiver     string
+	reportFailReceiver string
+	testRequest        server.TaskRequest
+	testHistory        []server.TestInfo
+	packHistory        []string
+	historyLock        sync.Mutex
+	buildID            int
 
 	repo *git.RemoteRepository
 	done chan bool
@@ -110,13 +111,14 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 		testID:  testID,
 		origCmd: origCmd,
 
-		gsBucket:       gsBucket,
-		bucketSubdir:   bucketSubdir,
-		reportReceiver: c.Options.ReportEmail,
-		testRequest:    c,
-		testHistory:    []server.TestInfo{},
-		packHistory:    []string{},
-		buildID:        0,
+		gsBucket:           gsBucket,
+		bucketSubdir:       bucketSubdir,
+		reportReceiver:     c.Options.ReportEmail,
+		reportFailReceiver: c.Options.ReportFailEmail,
+		testRequest:        c,
+		testHistory:        []server.TestInfo{},
+		packHistory:        []string{},
+		buildID:            0,
 
 		repo:       repo,
 		done:       done,
@@ -148,7 +150,7 @@ func (watcher *GitWatcher) watch() {
 	var skip, skipAmount int
 
 	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
-	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportReceiver, subject)
+	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportFailReceiver, subject)
 
 	checkTicker := time.NewTicker(checkInterval)
 	defer checkTicker.Stop()

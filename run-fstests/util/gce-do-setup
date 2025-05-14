@@ -242,15 +242,20 @@ if test -n "$bad_config"; then
     exit 1
 fi
 
-if test -n "$GCE_REPORT_EMAIL" ; then
+addr=
+if test -n "$GCE_REPORT_EMAIL" -o -n "$GCE_REPORT_FAIL_EMAIL"; then
     if test -z "$GCE_SG_API" ; then
 	echo "Missing Sendgrid API key; you need to set GCE_SG_API"
     fi
     if test -n "$GCE_REPORT_SENDER" ; then
 	addr="$GCE_REPORT_SENDER"
-    else
+    elif test -n "$GCE_REPORT_EMAIL" ; then
 	# take first email in the comma separated list
 	addr="${GCE_REPORT_EMAIL%,*}"
+    else
+	# this is needed to support the case where we only
+	# want emails sent upon failure
+	addr="${GCE_REPORT_FAIL_EMAIL%,*}"
     fi
     addr=$(echo $addr | sed -e 's/.*@//')
     spf=$(dig -t txt +short "$addr" | grep v=spf1)
@@ -264,8 +269,8 @@ if test -n "$GCE_REPORT_EMAIL" ; then
 	echo -e "If you can change the SPF record, please add"
 	echo -e "'include:sendgrid.net' before the 'all' mechanism"
 	echo -e "in the spf record for $addr.  Otherwise, mail sent to"
-	echo -e "'$GCE_REPORT_EMAIL' from '$GCE_REPORT_SENDER' may be"
-	echo -e "rejected as spam.\n"
+	echo -e "'$GCE_REPORT_EMAIL $GCE_REPORT_FAIL_EMAIL' from"
+	echo -e "'$GCE_REPORT_SENDER' may be rejected as spam.\n"
     fi
 fi
 

@@ -317,6 +317,7 @@ cpu-type:
 disable-serial
 email:
 enable-serial
+fail-email:
 fail-loop-count:
 gce-disk-spec:
 gce-network:
@@ -798,9 +799,14 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    GCE_REPORT_EMAIL="$1"
 	    ;;
+	--fail-email) shift
+	    supported_flavors gce
+	    GCE_REPORT_FAIL_EMAIL="$1"
+	    ;;
 	--no-email)
 	    supported_flavors gce
 	    GCE_REPORT_EMAIL=""
+	    GCE_REPORT_FAIL_EMAIL=""
 	    ;;
 	--junit-email) shift
 	    supported_flavors gce
