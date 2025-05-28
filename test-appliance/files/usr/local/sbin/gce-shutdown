@@ -77,10 +77,10 @@ then
 	     >> /results/runtests.log
     fi
 
+    RESULT_BASE="$(cat /run/result-base)"
     copy_xunit_results
     if test "$shutdown_reason" == "Timeout"
     then
-	RESULT_BASE="$(cat /run/result-base)"
 	last_test="$(tail -n 1 "$RESULT_BASE/completed")"
 	# if we have something written to completed (last started test)
 	# and it does not show up in the result.xml, treat this test
