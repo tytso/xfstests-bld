@@ -93,7 +93,8 @@ then
 	if test -s /tmp/results.xml && test ! -s /results/report
 	then
 	    /usr/local/bin/gen_results_summary /results \
-	        --merge_file /tmp/results.xml > /results/report
+	        --merge_file /tmp/results.xml --check_failure \
+	        --output_file /results/report
 	fi
     fi
 
@@ -112,28 +113,46 @@ then
     fi
 
     REPORT_EMAIL=$(gce_attribute report_email)
+    REPORT_FAIL_EMAIL=$(gce_attribute report_fail_email)
+    # default to use normal email if no fail email specified
+    if test -z "$REPORT_FAIL_EMAIL"
+    then
+	REPORT_FAIL_EMAIL="$REPORT_EMAIL"
+    fi
     JUNIT_EMAIL=$(gce_attribute junit_email)
     run_hooks send-email
-    if test -n "$REPORT_EMAIL" -a -n "$SENDGRID_API_KEY"
+
+    if [  -n "$REPORT_EMAIL" -o  -n "$REPORT_FAIL_EMAIL" ] && [ -n "$SENDGRID_API_KEY" ]
     then
 	if test -s /results/report
 	then
 	    RESULTS_REPORT=/results/report
+	    if test -e "${RESULTS_REPORT}.failed"
+	    then
+		REPORT_EMAIL="$REPORT_FAIL_EMAIL"
+	    fi
 	else
 	    RESULTS_REPORT=/results/runtests.log
+	    REPORT_EMAIL="$REPORT_FAIL_EMAIL"
 	fi
 	subj="$suite results $TESTRUNID - $(uname -r)"
 	if test -f /run/powerbtn
 	then
 	    subj="$subj - test run aborted"
+	    REPORT_EMAIL="$REPORT_FAIL_EMAIL"
 	fi
 	if test -z "$GCE_REPORT_SENDER"
 	then
 	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
 	fi
 	export SENDGRID_API_KEY
-	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
-		-s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
+	# REPORT_EMAIL could be empty at this point if GCE_REPORT_EMAIL is
+	# not set, GCE_REPORT_FAIL_EMAIL is set, and we had no failures
+	if test -n "$REPORT_EMAIL"
+	then
+	    /usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
+	        -s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
+	fi
     fi
     if test -n "$JUNIT_EMAIL" -a -n "$SENDGRID_API_KEY" -a -f /tmp/results.xml
     then

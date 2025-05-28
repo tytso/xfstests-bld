@@ -74,6 +74,9 @@ function send_to_ltm() {
     if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
     fi
+    if [ -n "${GCE_REPORT_FAIL_EMAIL+x}" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_fail_email\":\"$GCE_REPORT_FAIL_EMAIL\""
+    fi
     if [ -n "${GCE_JUNIT_EMAIL+x}" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"junit_email\":\"$GCE_JUNIT_EMAIL\""
     fi

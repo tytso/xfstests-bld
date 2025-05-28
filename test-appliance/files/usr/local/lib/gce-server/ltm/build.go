@@ -20,7 +20,7 @@ func ForwardKCS(req server.TaskRequest, testID string) {
 	defer logging.CloseLog(log)
 
 	subject := "xfstests LTM forwarding request failure " + testID
-	defer email.ReportFailure(log, logFile, req.Options.ReportEmail, subject)
+	defer email.ReportFailure(log, logFile, req.Options.ReportFailEmail, subject)
 
 	server.SendInternalRequest(req, log, true)
 }
