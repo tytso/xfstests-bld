@@ -1066,7 +1066,7 @@ if test -z "$FSTESTCFG" ; then
     FSTESTCFG=all
 fi
 
-if test -z "$KBUILD_OPTS" ; then
+if test -z "$KBUILD_OPTS" -a -n "$DO_KBUILD"; then
    KBUILD_OPTS="--oldconfig"
    if test "$XFSTESTS_FLAVOR" = "kvm" ; then
        KBUILD_OPTS="--oldconfig --no-dpkg"
