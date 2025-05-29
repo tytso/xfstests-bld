@@ -71,6 +71,9 @@ do
 	    DO_DPKG=
 	    DPKG_EXPLICIT=yes
 	    ;;
+	--oldconfig)
+	    DO_OLDCONFIG=yes
+	    ;;
 	--get-build-dir)
 	    DO_GET_BUILD_DIR=yes
 	    ;;
@@ -175,6 +178,10 @@ fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
     MAKE_ARGS+=("CC=clang")
+fi
+
+if test -n "$DO_OLDCONFIG" ; then
+    time make "${MAKE_ARGS[@]}" olddefconfig
 fi
 
 rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
