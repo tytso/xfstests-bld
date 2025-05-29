@@ -556,3 +556,8 @@ if test -z "$NO_TRUNCATE" ; then
 fi
 
 runtests_save_results_tar
+exit_code=0
+if [ $(/usr/local/bin/get_error_count /tmp/results.xml) -gt 0 ]; then
+    exit_code=1
+fi
+echo "$exit_code" > /tmp/retdir/exit_code

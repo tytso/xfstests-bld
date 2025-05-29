@@ -113,8 +113,8 @@ if test -n "$SKIP_LOG" ; then
 else
     mkdir -p "$DIR/logs"
     LOGFILE="$DIR/logs/log.$TESTRUNID"
-    RESULTFILE="$DIR/logs/results-$TESTRUNID.tar.xz"
 fi
+RESULTFILE="$DIR/logs/results-$TESTRUNID.tar.xz"
 if test -n "$VIRTCONSOLE" ; then
     vc=$(echo "$VIRTCONSOLE" | sed -e "s;VIRTCONFILE;/tmp/console.$TESTRUNID;")
     VIRTCONSOLE="$vc"
@@ -271,10 +271,16 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 	--append "$QUIET root=$ROOT_DEV $CONARG nokaslr $ARG $EXTRA_ARG" |\
 tee $LOGFILE
 
-if test -n "$DO_ARCHIVE"; then
-    tar -O -xf "$VDH" results.tar.xz > $RESULTFILE
-    echo "result  in $RESULTFILE"
+TDIR=$(mktemp -d /tmp/files.XXXXXXXX)
+tar -C "$TDIR" -xf "$VDH" .
+if test -f "$TDIR/exit_code" ; then
+    read exit_code < "$TDIR/exit_code"
 fi
+if test -f "$TDIR/results.tar.xz" ; then
+    mv "$TDIR/results.tar.xz" $RESULTFILE
+    echo "result in $RESULTFILE"
+fi
+rm -rf "$TDIR"
 if test -n "$SKIP_LOG" ; then
     rm $LOGFILE
 else
@@ -283,3 +289,4 @@ else
 fi
 # Fix line wrap from qemu
 echo -ne '\e[?7h'
+exit $exit_code

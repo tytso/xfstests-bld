@@ -167,10 +167,13 @@ then
 	script -c "/bin/bash -vx /usr/local/sbin/gce-shutdown" /dev/console
 	/bin/rm -f /run/gce-finalize-wait
     else
+	if test -b /dev/vdh ; then
+	   tar -c -f /dev/vdh -T /dev/null
+	fi
 	/root/runblktests.sh
-	if test -b /dev/vdh -a -n "$FSTEST_ARCHIVE"
+	if test -b /dev/vdh -a -d /tmp/retdir
 	then
-	    tar -C /tmp -cf /dev/vdh results.tar.xz
+	    tar -C /tmp/retdir -cf /dev/vdh .
 	fi
 	umount /results
 	poweroff -f > /dev/null 2>&1
@@ -186,10 +189,13 @@ then
 	/usr/local/lib/gce-logger tests complete
 	/bin/rm -f /run/gce-finalize-wait
     else
+	if test -b /dev/vdh ; then
+	   tar -c -f /dev/vdh -T /dev/null
+	fi
 	/root/runtests.sh
-	if test -b /dev/vdh -a -n "$FSTEST_ARCHIVE"
+	if test -b /dev/vdh -a -d /tmp/retdir
 	then
-	    tar -C /tmp -cf /dev/vdh results.tar.xz
+	    tar -C /tmp/retdir -cf /dev/vdh .
 	fi
 	umount /results
 	poweroff -f > /dev/null 2>&1

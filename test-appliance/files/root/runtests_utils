@@ -545,8 +545,9 @@ function runtests_after_tests()
 
 function runtests_save_results_tar()
 {
+    mkdir -p /tmp/retdir
     if test -n "$FSTEST_ARCHIVE" ; then
 	tar -C $RESULTS -cf - . | \
-	    xz -6e > /tmp/results.tar.xz
+	    xz -6e > /tmp/retdir/results.tar.xz
     fi
 }
