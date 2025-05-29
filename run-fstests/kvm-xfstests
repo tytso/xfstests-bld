@@ -272,7 +272,9 @@ $NO_ACTION $IONICE $QEMU -boot order=c $NET \
 tee $LOGFILE
 
 TDIR=$(mktemp -d /tmp/files.XXXXXXXX)
-tar -C "$TDIR" -xf "$VDH" .
+if test -z "$NO_ACTION" ; then
+    tar -C "$TDIR" -xf "$VDH" .
+fi
 if test -f "$TDIR/exit_code" ; then
     read exit_code < "$TDIR/exit_code"
 fi

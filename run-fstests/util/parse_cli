@@ -334,6 +334,7 @@ instance-name:
 junit-email:
 kernel:
 kernel-arch:
+kbuild
 kbuild-opts:
 kconfig-opts:
 local-ssd
@@ -638,6 +639,9 @@ while (( $# >= 1 )); do
 		print_help
 	    fi
 	    ;;
+	--kbuild)
+	    DO_KBUILD=true
+	    ;;
 	--local-ssd)
 	    supported_flavors gce
 	    DO_LOCAL_SSD=SCSI
@@ -789,7 +793,6 @@ while (( $# >= 1 )); do
 	    KCONFIG_OPTS="$1"
 	    ;;
 	--kbuild-opts) shift
-	    supported_flavors gce
 	    KBUILD_OPTS="$1"
 	    ;;
 	--testrunid) shift
@@ -1063,6 +1066,21 @@ if test -z "$FSTESTCFG" ; then
     FSTESTCFG=all
 fi
 
+if test -z "$KBUILD_OPTS" ; then
+   KBUILD_OPTS="--oldconfig"
+   if test "$XFSTESTS_FLAVOR" = "kvm" ; then
+       KBUILD_OPTS="--oldconfig --no-dpkg"
+   fi
+fi
+
+if test -n "$DO_KBUILD" ; then
+    if test ! -x "$KBUILD_DIR/kbuild" ; then
+	    echo "kbuild not supported in this installation"
+	    exit 1
+    fi
+    $NO_ACTION "$KBUILD_DIR/kbuild" $KBUILD_OPTS || exit 1
+fi
+
 if test -n "$RUN_ON_LTM" -a -n "$DO_BLKTESTS"
 then
     echo "Block tests can not be using LTM"
@@ -1071,7 +1089,7 @@ fi
 
 if test -n "$RUN_ON_KCS" -a -n "$DO_BLKTESTS"
 then
-    echo "Block tests can not be using KCS"
+    echo "Block tests can not be run using KCS"
     exit 1
 fi
 
@@ -1092,7 +1110,7 @@ if test -z "$GIT_REPO" -a -n "$BRANCH" ; then
     set_git_repo $(get_default_repo_branch "$BRANCH")
 fi
 
-if test -n "$NO_ACTION" ; then
+if test -n "$NO_ACTION" -a -n "$GIT_REPO" ; then
    echo "GIT_REPO: $GIT_REPO"
 fi
 
@@ -1173,9 +1191,10 @@ then
     exit 1
 fi
 
-if test -n "$KBUILD_OPTS" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
+if test -n "$KBUILD_OPTS" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS" \
+	-a -z "$DO_KBUILD"
 then
-    echo "--kbuild-opts only is supported with LTM or KCS"
+    echo "--kbuild-opts only is supported with LTM or KCS or --kbuild"
     exit 1
 fi
 
