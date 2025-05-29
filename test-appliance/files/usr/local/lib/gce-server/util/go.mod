@@ -1,7 +1,8 @@
 module thunk.org/gce-server/util
 
-go 1.21
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.24.2
 
 require (
 	cloud.google.com/go/storage v1.28.1
