@@ -62,6 +62,7 @@ PACKAGES="$ADD_PACKAGES acl \
 	less \
 	libcap2-bin \
 	$LIBCOMERR \
+	libdw-dev \
 	libelf-dev \
 	libgdbm6 \
 	libsasl2-modules \
