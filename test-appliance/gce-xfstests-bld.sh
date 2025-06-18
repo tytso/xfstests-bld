@@ -246,7 +246,7 @@ if test -f /etc/apt/sources.list.d/debian.sources ; then
 fi
 
 if test "$NEW_SUITE" = "trixie" ; then
-    PACKAGES="$PACKAGES xxd liburing2"
+    PACKAGES="$PACKAGES xxd liburing2 libicu76"
 fi
 
 apt-get install -y $PACKAGES
