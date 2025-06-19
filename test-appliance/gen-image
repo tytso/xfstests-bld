@@ -333,6 +333,10 @@ detect_foreign_chroot
 mkdir -p var.cache.apt.archives
 mkdir -p var.lib.apt.lists
 mkdir -p debs
+DEBS_DIR=debs
+if test -d debs.$distro ; then
+    DEBS_DIR=debs.$distro
+fi
 if test -z "$DO_FAKECHROOT"; then
     if test "$RESUME" -le 1 ; then
 	stage_start "stage 1: format file system"
@@ -349,13 +353,13 @@ mkdir -p $ROOTDIR/vtmp
 if test -z "$DO_FAKECHROOT"; then
    mount --bind var.cache.apt.archives $ROOTDIR/var/cache/apt/archives
    mount --bind var.lib.apt.lists $ROOTDIR/var/lib/apt/lists
-   mount --bind debs $ROOTDIR/debs
+   mount --bind $DEBS_DIR $ROOTDIR/debs
    mount --bind $(dirname $RAW_ROOT_FS) $ROOTDIR/imgdir
 else
    ln var.cache.apt.archives/* $ROOTDIR/var/cache/apt/archives
    ln var.lib.apt.lists/* $ROOTDIR/var/lib/apt/lists
-   if ! find debs -maxdepth 0 -empty | grep -q . > /dev/null ; then
-       ln debs/* $ROOTDIR/debs
+   if ! find $DEBS_DIR -maxdepth 0 -empty | grep -q . > /dev/null ; then
+       ln $DEBS_DIR/* $ROOTDIR/debs
    fi
    export FAKECHROOT_CMD_SUBST=/usr/bin/chfn=/bin/true
 fi

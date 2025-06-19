@@ -305,7 +305,11 @@ fi
 rm -rf $td
 
 mkdir -p debs
-gsutil -m rsync -cd debs gs://$GS_BUCKET/debs
+DEBS_DIR=debs
+if test -d debs.$distro ; then
+    DEBS_DIR=debs.$distro
+fi
+gsutil -m rsync -cd $DEBS_DIR gs://$GS_BUCKET/debs
 
 run_gcloud compute -q instances delete "$BLD_INST" \
        --zone "$GCE_ZONE" 2> /dev/null
