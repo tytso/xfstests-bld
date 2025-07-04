@@ -49,6 +49,7 @@ PACKAGES="$ADD_PACKAGES acl \
 	ed \
 	$F2FS_TOOLS \
 	file \
+	fuse2fs \
 	flex \
 	gawk \
 	gcc \

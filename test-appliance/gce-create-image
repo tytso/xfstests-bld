@@ -93,6 +93,7 @@ setup_for_buster()
 	IMAGE_PROJECT=debian-cloud
 	SUITE=buster
 	E2FSPROGS=e2fsprogs/buster-backports
+	FUSE2FS=fuse2fs/buster-backports
 	LIBCOMERR=libcom-err2/buster-backports
 	LIBSS=libss2/buster-backports
 	BTRFS_PROGS=btrfs-progs/buster-backports
@@ -113,6 +114,7 @@ setup_for_bullseye()
 	IMAGE_PROJECT=debian-cloud
 	SUITE=bullseye
 	E2FSPROGS=e2fsprogs
+	FUSE2FS=fuse2fs
 	LIBCOMERR=libcom-err2
 	LIBSS=libss2
 	BTRFS_PROGS=btrfs-progs
@@ -133,6 +135,7 @@ setup_for_bookworm()
 	IMAGE_PROJECT=debian-cloud
 	SUITE=bookworm
 	E2FSPROGS=e2fsprogs/bookworm-backports
+	FUSE2FS=fuse2fs/bookworm-backports
 	LIBCOMERR=libcom-err2/bookworm-backports
 	LIBSS=libss2/bookworm-backports
 	BTRFS_PROGS=btrfs-progs
@@ -153,6 +156,7 @@ setup_for_trixie()
 	IMAGE_PROJECT=debian-cloud
 	SUITE=trixie
 	E2FSPROGS=e2fsprogs
+	FUSE2FS=fuse2fs
 	LIBCOMERR=libcom-err2
 	LIBSS=libss2
 	BTRFS_PROGS=btrfs-progs

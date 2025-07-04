@@ -18,6 +18,7 @@ dump
 ed
 f2fs-tools
 file
+fuse2fs
 gawk
 hfsprogs
 jfsutils
