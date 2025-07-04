@@ -218,6 +218,11 @@ if test -n "$NEW_SUITE" -a "$OLD_SUITE" != "$NEW_SUITE" ; then
     apt-get -o Dpkg::Options::="--force-confnew" --force-yes -fuy dist-upgrade
     apt-get -fy autoremove
     logger -s "Update to $NEW_SUITE complete"
+    # Hack to work around buggy grub update on arm64
+    if test -f /boot/efi/EFI/debian/grubaa64.efi -a \
+	    -f /boot/efi/EFI/BOOT/grubaa64.efi ; then
+	cp /boot/efi/EFI/debian/grubaa64.efi /boot/efi/EFI/BOOT/grubaa64.efi
+    fi
 else
     apt-get update
     # Temporary workaround to fix networking breakage
