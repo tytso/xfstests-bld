@@ -99,6 +99,9 @@ do
 	--no-action)
 	    NO_ACTION=echo
 	    ;;
+	--kunit|--test)
+	    DO_KUNIT=yes
+	    ;;
 	-j)
 	    shift
 	    N="$1"
@@ -186,6 +189,11 @@ fi
 
 rm -f "$BLD_DIR/linux-image.deb" "$BLD_DIR/linux-image-dbg.deb" \
    "$BLD_DIR/linux-headers.deb" "$BLD_DIR/linux-libc-dev.deb"
+
+if test -n "$DO_KUNIT" ; then
+    $NO_ACTION ./tools/testing/kunit/kunit.py run
+    exit 0
+fi
 
 if test -n "$DO_DPKG" ; then
     test -f "$BLD_DIR/modules.order" || touch "$BLD_DIR/modules.order"
