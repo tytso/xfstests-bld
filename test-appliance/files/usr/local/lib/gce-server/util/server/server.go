@@ -109,11 +109,11 @@ func (r ResultType) String() string {
 }
 
 const (
-	kcsTimeout     = 3 * time.Minute
-	ltmTimeout     = 3 * time.Minute
-	checkInterval  = 10 * time.Second
+	kcsTimeout     = 5 * time.Minute
+	ltmTimeout     = 5 * time.Minute
+	checkInterval  = 1 * time.Minute
 	launchInterval = 2 * time.Minute
-	maxAttempts    = 5
+	maxAttempts    = 10
 )
 
 // UserOptions contains configs user sends to LTM or KCS.
