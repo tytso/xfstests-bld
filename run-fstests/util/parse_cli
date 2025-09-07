@@ -337,6 +337,7 @@ kernel-arch:
 kbuild
 kbuild-opts:
 kconfig-opts:
+kernel-build
 local-ssd
 local-ssd-nvme
 log
@@ -486,6 +487,10 @@ while (( $# >= 1 )); do
 	    else
 		FSTESTEXC="$1"
 	    fi
+	    ;;
+	--kernel-build)
+	    supported_flavors kvm
+	    DO_KERNEL_BUILD=yes
 	    ;;
 	--arch) shift
 	    supported_flavors kvm gce
@@ -1300,6 +1305,17 @@ fi
 
 if test -n "$DO_ARCHIVE" ; then
     ARG="$ARG fstestarc=$DO_ARCHIVE"
+fi
+
+if test -n "$DO_KERNEL_BUILD"; then
+    if test ! -f MAINTAINERS -o ! -f Makefile ; then
+	echo "Not at top-level of kernel sources"
+	exit 125
+    fi
+    if test -n "$OVERRIDE_KERNEL" ; then
+	echo "The --kernel and --kernel-build options can not be combined"
+	exit 125
+    fi
 fi
 
 set_canonicalized_arch "$ARCH"

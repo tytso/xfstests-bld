@@ -82,6 +82,12 @@ if ! test -f "$ROOT_FS" ; then
     exit 1
 fi
 
+if test -n "$DO_KERNEL_BUILD"; then
+    echo "Building kernel before running test"
+    "$DIR/../kernel-build/install-kconfig" --arch "$ARCH" || exit 125
+    "$DIR/../kernel-build/kbuild" --no-dpkg --arch "$ARCH" || exit 125
+fi
+
 if ! test -f "$KERNEL"; then
      echo "$KERNEL: kernel not found"
      exit 1
