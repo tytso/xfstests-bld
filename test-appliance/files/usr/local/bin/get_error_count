@@ -1,0 +1,25 @@
+#!/usr/bin/python3
+import argparse
+import os
+import sys
+from junitparser import JUnitXml, TestSuite, TestCase, Result, Error
+
+def get_test_suite(filename):
+    if not os.path.exists(filename):
+        ts = TestSuite()
+    else:
+        try:
+            ts = JUnitXml.fromfile(filename)
+        except IOError as e:
+            sys.exit("Couldn't open %s: %s" % (filename, e[1]))
+
+    return ts
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('input_file', help='input xUnit result file')
+args = parser.parse_args()
+
+ts = get_test_suite(args.input_file)
+
+print(ts.errors +ts.failures);

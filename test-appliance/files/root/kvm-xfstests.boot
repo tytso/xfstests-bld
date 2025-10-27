@@ -108,6 +108,8 @@ else
 	    rm -f /tmp/upload/modules.tar.xz
 	    depmod -a
 	fi
+	mkdir -p /tmp/retdir
+	tar -C /tmp/retdir -cf /dev/vdh .
     fi
 fi
 
