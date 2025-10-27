@@ -254,7 +254,7 @@ do
 	fi
 
 	case "$TEST_DEV" in
-	    */ovl|9p*) ;;
+	    */ovl|9p*|virtiofs-*) ;;
 	    *:/*) ;;
 	    *)
 		if ! [ -b $TEST_DEV -o -c $TEST_DEV ]; then

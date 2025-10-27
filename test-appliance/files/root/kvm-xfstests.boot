@@ -79,27 +79,35 @@ then
     ln -s "$LG_SCR_DEV" /dev/vde
     ln -s "$LG_TST_DEV" /dev/vdf
     systemctl start lighttpd.service
-elif test -b /dev/vdh
-then
-    mkdir /tmp/upload
-    tar -C /tmp/upload -xf /dev/vdh
-    if test -f /tmp/upload/xfstests.tar.gz ; then
-	rm -rf /root/xfstests
-	tar -C /root -xzf /tmp/upload/xfstests.tar.gz
-	rm -f /tmp/upload/xfstests.tar.gz
+else
+    if test -f /sys/bus/virtio/drivers/9pnet_virtio/virtio0/mount_tag ; then
+	mount -t 9p -o trans=virtio,version=9p2000.L,msize=262144 v_tmp	/vtmp
     fi
-    if test -f /tmp/upload/extra-tests.tar.gz ; then
-	tar -C /root -xzf /tmp/upload/extra-tests.tar.gz
-	rm -f /tmp/upload/extra-tests.tar.gz
+    if test -f /sys/fs/virtiofs/0/tag ; then
+	mount -t virtiofs vtmp /vtmp
     fi
-    if test -f /tmp/upload/files.tar.gz ; then
-	tar -C / -xzf /tmp/upload/files.tar.gz
-	rm -f /tmp/upload/files.tar.gz
-    fi
-    if test -f /tmp/upload/modules.tar.xz ; then
-       tar -C / -xJf /tmp/upload/modules.tar.xz
-       rm -f /tmp/upload/modules.tar.xz
-       depmod -a
+    if test -b /dev/vdh
+    then
+	mkdir /tmp/upload
+	tar -C /tmp/upload -xf /dev/vdh
+	if test -f /tmp/upload/xfstests.tar.gz ; then
+	    rm -rf /root/xfstests
+	    tar -C /root -xzf /tmp/upload/xfstests.tar.gz
+	    rm -f /tmp/upload/xfstests.tar.gz
+	fi
+	if test -f /tmp/upload/extra-tests.tar.gz ; then
+	    tar -C /root -xzf /tmp/upload/extra-tests.tar.gz
+	    rm -f /tmp/upload/extra-tests.tar.gz
+	fi
+	if test -f /tmp/upload/files.tar.gz ; then
+	    tar -C / -xzf /tmp/upload/files.tar.gz
+	    rm -f /tmp/upload/files.tar.gz
+	fi
+	if test -f /tmp/upload/modules.tar.xz ; then
+	    tar -C / -xJf /tmp/upload/modules.tar.xz
+	    rm -f /tmp/upload/modules.tar.xz
+	    depmod -a
+	fi
     fi
 fi
 

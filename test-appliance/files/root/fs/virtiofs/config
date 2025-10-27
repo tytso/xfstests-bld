@@ -1,0 +1,45 @@
+#
+# Configuration file for virtiofs
+#
+
+DEFAULT_MKFS_OPTIONS=""
+
+function check_filesystem()
+{
+	return 0
+}
+
+function format_filesystem()
+{
+	return 0
+}
+
+function setup_mount_opts()
+{
+	return 0
+}
+
+function get_mkfs_opts()
+{
+	return 0
+}
+
+function show_mkfs_opts()
+{
+	return 0
+}
+
+function show_mount_opts()
+{
+	return 0
+}
+
+function test_name_alias()
+{
+	echo "$1"
+}
+
+function reset_vars()
+{
+	return 0
+}

@@ -386,7 +386,9 @@ update-xfstests-tar
 virtfs-model:
 virtfs-scratch:
 virtfs-test:
+virtfs-type:
 virtfs:
+virtiofsd:
 vm-timeout
 watch:
 )
@@ -854,6 +856,10 @@ while (( $# >= 1 )); do
 	    supported_flavors kvm
 	    VIRTFS_PATH="$1"
 	    ;;
+	--virtfs-type) shift
+	    supported_flavors kvm
+	    VIRTFS_TYPE="$1"
+	    ;;
 	--virtfs-test) shift
 	    supported_flavors kvm
 	    VIRTFS_TEST_PATH="$1"
@@ -865,6 +871,10 @@ while (( $# >= 1 )); do
 	--virtfs-model) shift
 	    supported_flavors kvm
 	    VIRTFS_MODEL="$1"
+	    ;;
+	--virtiofsd) shift
+	    supported_flavors kvm
+	    VIRTIOFSD="$1"
 	    ;;
 	--vm-timeout)
 	    supported_flavors gce

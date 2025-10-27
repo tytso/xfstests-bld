@@ -150,24 +150,86 @@ if type ionice >& /dev/null ; then
     IONICE="ionice -n 5"
 fi
 
+if test -z "$VIRTIOFSD" ; then
+   for i in /usr/libexec/virtiofsd /usr/lib/virtiofsd /usr/lib/qemu/virtiofsd
+   do
+       if test -x "$i" ; then
+	   VIRTIOFSD="$i"
+	   break
+       fi
+   done
+else
+    if ! test -x "$VIRTIOFSD" ; then
+	echo "Virtiofsd daemon $VIRTIOFSD not available"
+	exit 1
+    fi
+fi
+
+if test -z "$VIRTFS_TYPE"; then
+    VIRTFS_TYPE=9p
+else
+    case "$VIRTFS_TYPE" in
+	9p) ;;
+	virtiofs)
+	    if test -z "$VIRTIOFSD" ; then
+		echo "virtiofsd not available can't use virtiofs"
+		exit 1
+	    fi
+	    ;;
+	*)
+	    echo "Unsupported virtfs type: $VIRTFS_TYPE"
+	    exit 1
+    esac
+fi
 if test -z "$VIRTFS_PATH"; then
     VIRTFS_PATH=/tmp/kvm-xfstests-$USER
+    mkdir -p "$VIRTFS_PATH"
 fi
-VIRTFS="-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none "
-VIRTFS+="-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp "
+
+if test "$VIRTFS_TYPE" = "9p" ; then
+    VIRTFS="-fsdev local,id=v_tmp,path=$VIRTFS_PATH,security_model=none "
+    VIRTFS+="-device virtio-9p-pci,fsdev=v_tmp,mount_tag=v_tmp "
+else
+    V_SOCK_PATH="/tmp/virtiofs-$USER"
+    "$VIRTIOFSD" --shared-dir $VIRTFS_PATH --socket-path "$V_SOCK_PATH" \
+		 >& /tmp/virtiofsd-$USER.log &
+    VIRTFS="-chardev socket,id=char0,path=$V_SOCK_PATH "
+    VIRTFS+="-device vhost-user-fs-pci,queue-size=1024,chardev=char0,tag=vtmp "
+    VIRTFS+="-object memory-backend-file,id=mem,size=${MEM}m,mem-path=/dev/shm,share=on -numa node,memdev=mem "
+fi
 
 if test -z "$VIRTFS_MODEL"; then
     VIRTFS_MODEL=none
 fi
 if test -n "$VIRTFS_TEST_PATH"; then
-    VIRTFS+="-fsdev local,id=p9test,path=$VIRTFS_TEST_PATH,"
-    VIRTFS+="security_model=$VIRTFS_MODEL "
-    VIRTFS+="-device virtio-9p-pci,fsdev=p9test,mount_tag=9ptest "
+    if test "$VIRTFS_TYPE" = "9p" ; then
+	VIRTFS+="-fsdev local,id=p9test,path=$VIRTFS_TEST_PATH,"
+	VIRTFS+="security_model=$VIRTFS_MODEL "
+	VIRTFS+="-device virtio-9p-pci,fsdev=p9test,mount_tag=9ptest "
+    else
+	V_SOCK_PATH="/tmp/virtiofs-test-$USER"
+	"$VIRTIOFSD" --shared-dir "$VIRTFS_TEST_PATH" \
+		     --socket-path "$V_SOCK_PATH" \
+		     >& /tmp/virtiofsd-test-$USER.log &
+	VIRTFS+="-chardev socket,id=char1,path=$V_SOCK_PATH "
+	VIRTFS+="-device vhost-user-fs-pci,queue-size=1024,"
+	VIRTFS+="chardev=char1,tag=virtiofs-test "
+    fi
 fi
 if test -n "$VIRTFS_SCRATCH_PATH"; then
-    VIRTFS+=" -fsdev local,id=p9scratch,path=$VIRTFS_SCRATCH_PATH,"
-    VIRTFS+="security_model=$VIRTFS_MODEL "
-    VIRTFS+="-device virtio-9p-pci,fsdev=p9scratch,mount_tag=9pscratch "
+    if test "$VIRTFS_TYPE" = "9p" ; then
+	VIRTFS+=" -fsdev local,id=p9scratch,path=$VIRTFS_SCRATCH_PATH,"
+	VIRTFS+="security_model=$VIRTFS_MODEL "
+	VIRTFS+="-device virtio-9p-pci,fsdev=p9scratch,mount_tag=9pscratch "
+    else
+	V_SOCK_PATH="/tmp/virtiofs-scratch-$USER"
+	"$VIRTIOFSD" --shared-dir "$VIRTFS_SCRATCH_PATH" \
+		     --socket-path "$V_SOCK_PATH" \
+		     >& /tmp/virtiofsd-scratch-$USER.log &
+	VIRTFS+="-chardev socket,id=char2,path=$V_SOCK_PATH "
+	VIRTFS+="-device vhost-user-fs-pci,queue-size=1024,"
+	VIRTFS+="chardev=char2,tag=virtiofs-scratch "
+    fi
 fi
 
 VDH="$ourtmp/kvm-vdh"

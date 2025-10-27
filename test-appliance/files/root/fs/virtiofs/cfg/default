@@ -1,0 +1,6 @@
+export TEST_DEV=virtiofs-test
+export TEST_DIR=/mnt/test
+export SCRATCH_DEV=virtiofs-scratch
+export SCRATCH_MNT=/mnt/scratch
+TESTNAME="virtiofs"
+mkdir -p /mnt/test /mnt/scratch
