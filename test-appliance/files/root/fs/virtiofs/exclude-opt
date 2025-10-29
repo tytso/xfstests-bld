@@ -1,1 +1,11 @@
 -x clone
+-x shutdown
+-x trim
+-x fiemap
+-x collapse
+-x punch
+-x insert
+-x quota
+-x swap
+-x zero
+-x freeze
