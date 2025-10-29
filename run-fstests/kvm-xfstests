@@ -166,7 +166,14 @@ else
 fi
 
 if test -z "$VIRTFS_TYPE"; then
-    VIRTFS_TYPE=9p
+    case "$FSTESTCFG" in
+	virtiofs*|*virtiofs*|*virtiofs)
+	    VIRTFS_TYPE=virtiofs
+	    ;;
+	*)
+	    VIRTFS_TYPE=9p
+	    ;;
+    esac
 else
     case "$VIRTFS_TYPE" in
 	9p) ;;
@@ -201,7 +208,18 @@ fi
 if test -z "$VIRTFS_MODEL"; then
     VIRTFS_MODEL=none
 fi
+case "$FSTESTCFG" in
+    virtiofs*|*virtiofs*|*virtiofs|9p*|*9p*|*9p)
+	if test -z "$VIRTFS_TEST_PATH" ; then
+	    VIRTFS_TEST_PATH=/tmp/virtfs-$USER-testdir
+	fi
+	if test -z "$VIRTFS_SCRATCHTEST_PATH" ; then
+	    VIRTFS_SCRATCH_PATH=/tmp/virtfs-$USER-scratchdir
+	fi
+	;;
+esac
 if test -n "$VIRTFS_TEST_PATH"; then
+    mkdir -p "$VIRTFS_TEST_PATH"
     if test "$VIRTFS_TYPE" = "9p" ; then
 	VIRTFS+="-fsdev local,id=p9test,path=$VIRTFS_TEST_PATH,"
 	VIRTFS+="security_model=$VIRTFS_MODEL "
@@ -217,6 +235,7 @@ if test -n "$VIRTFS_TEST_PATH"; then
     fi
 fi
 if test -n "$VIRTFS_SCRATCH_PATH"; then
+    mkdir -p "$VIRTFS_SCRATCH_PATH"
     if test "$VIRTFS_TYPE" = "9p" ; then
 	VIRTFS+=" -fsdev local,id=p9scratch,path=$VIRTFS_SCRATCH_PATH,"
 	VIRTFS+="security_model=$VIRTFS_MODEL "
