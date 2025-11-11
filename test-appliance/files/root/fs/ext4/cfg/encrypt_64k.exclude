@@ -1,0 +1,3 @@
+// exclude file for ext4/encrypt_64k
+
+#include "encrypt.exclude"
