@@ -147,10 +147,10 @@ setup_for_trixie()
 {
 	case "$ARCH" in
 	    amd64)
-		IMAGE_FAMILY=debian-12
+		IMAGE_FAMILY=debian-13
 		;;
 	    arm64)
-		IMAGE_FAMILY=debian-12-arm64
+		IMAGE_FAMILY=debian-13-arm64
 		;;
 	esac
 	IMAGE_PROJECT=debian-cloud
