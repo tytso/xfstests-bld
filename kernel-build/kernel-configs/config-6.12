@@ -226,3 +226,7 @@ CONFIG_FAULT_INJECTION_DEBUG_FS=y
 # Added because after 4bddf4587c13 ("tpm: Disable TPM2_TCG_HMAC by default")
 # in v6.18-rc1 CONFIG_CRYPTO_SHA512 is no longer enabled by default
 CONFIG_CRYPTO_SHA512=y
+# Needed to test large blocksize patches
+CONFIG_TRANSPARENT_HUGEPAGE=y
+CONFIG_HUGETLB_PAGE=y
+CONFIG_HUGETLBFS=y
