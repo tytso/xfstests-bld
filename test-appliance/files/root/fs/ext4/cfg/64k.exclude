@@ -1,0 +1,6 @@
+// exclude file for ext4/64k
+
+// These tests fail due to ENOSPC without a really large device
+ext4/033
+generic/435
+generic/620
