@@ -1,2 +1,7 @@
 // This test takes over 3 hours to run on f2fs
 generic/017
+
+// This test is causing VM's to hang on recent linux-next kernels as of
+// early December 2026.  Context:
+// https://lore.kernel.org/all/20251202043952.GA70808@macsyma.lan/
+generic/204
