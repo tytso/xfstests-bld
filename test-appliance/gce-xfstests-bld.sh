@@ -18,7 +18,7 @@ BTRFS_PROGS="@BTRFS_PROGS@"
 F2FS_TOOLS="@F2FS_TOOLS@"
 ADD_PACKAGES="@ADD_PACKAGES@"
 # Hardcoded go version
-GO_VERSION=1.24.2
+GO_VERSION=1.24.11
 
 PACKAGES="$ADD_PACKAGES acl \
 	acpid \
@@ -361,7 +361,7 @@ case "$GO_ARCH" in
 	;;
 esac
 
-curl -o "$GO_TEMP/go.tar.gz" https://storage.googleapis.com/golang/go$GO_VERSION.linux-$GO_ARCH.tar.gz
+curl -o "$GO_TEMP/go.tar.gz" "https://dl.google.com/go/go$GO_VERSION.linux-$GO_ARCH.tar.gz"
 if [ $? -ne 0 ]; then
     echo "Go download failed! Exiting."
     exit 1
