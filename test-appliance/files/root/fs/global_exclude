@@ -55,3 +55,9 @@ generic/743
 // This test is flaky due to a VFS race between freeze/thaw and mount/umount
 // See https://lore.kernel.org/r/20240611085210.GA1838544@mit.edu
 generic/085
+
+// This teset is failing until we the following commit is landed:
+// filelock: add lease_dispose_list() helper
+// (and possibly follow-on patches in the patch series?)
+// See https://lore.kernel.org/fstests/20251205172554.pmzqzdmwpmflh5bi@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com
+generic/787
