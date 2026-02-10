@@ -214,3 +214,9 @@ CONFIG_BLK_DEV_IO_TRACE=y
 CONFIG_FAULT_INJECTION=y
 CONFIG_FAIL_MAKE_REQUEST=y
 CONFIG_FAULT_INJECTION_DEBUG_FS=y
+#
+# Added because after fe11ac191ce0 ("btrfs: switch to library APIs for
+# checksums") CONFIG_CRYPTO_SHA256 is no longer enabled when enabling btrfs
+# but which is needed for fsverity tests
+#
+CONFIG_CRYPTO_SHA256=y
