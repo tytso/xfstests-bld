@@ -71,6 +71,14 @@ do
 	    DO_DPKG=
 	    DPKG_EXPLICIT=yes
 	    ;;
+	--install-kconfig)
+	    DO_INSTALL_KCONFIG=yes
+	    ;;
+	--install-kconfig-opts)
+	    shift
+	    DO_INSTALL_KCONFIG=yes
+	    INSTALL_KCONFIG_OPTS="$1"
+	    ;;
 	--oldconfig)
 	    DO_OLDCONFIG=yes
 	    ;;
@@ -181,6 +189,13 @@ fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
     MAKE_ARGS+=("CC=clang")
+fi
+
+if test -n "$DO_INSTALL_KCONFIG" ; then
+    if test -n "$KERN_ARCH" ; then
+	INSTALL_KCONFIG_OPTS="--arch $KERN_ARCH $INSTALL_KCONFIG_OPTS"
+    fi
+    $NO_ACTION $DIR/../kernel-build/install-kconfig $INSTALL_KCONFIG_OPTS
 fi
 
 if test -n "$DO_OLDCONFIG" ; then
