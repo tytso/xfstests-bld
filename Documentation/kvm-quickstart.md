@@ -3,13 +3,14 @@
 1.  Make sure the necessary packages are installed.  For Debian/Ubuntu
     systems:
 
-        sudo apt-get install qemu-system-x86 qemu-system-arm wget gcc git \
-                make bc binutils bison dwarves flex openssl pahole \
-                perl-base libssl-dev libelf-dev debhelper
+        sudo apt-get install qemu-system-x86 qemu-system-arm qemu-utils \
+		wget gcc git make bc binutils bison dwarves flex openssl \
+		pahole perl-base libssl-dev libelf-dev debhelper
 
     For Fedora systems:
 
-        sudo dnf install qemu-kvm wget2 gcc git make binutils \
+        sudo dnf install qemu-system-x86 qemu-system-aarch64 qemu-img \
+		wget2 gcc git make binutils \
                 /usr/include/{libelf.h,openssl/pkcs7.h} \
                 /usr/bin/{bc,bison,flex,gcc,git,openssl,make,perl,pahole}
 
