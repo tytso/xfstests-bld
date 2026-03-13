@@ -3,7 +3,7 @@ XFSTESTS_GIT=https://github.com/tytso/xfstests
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 XFSPROGS_COMMIT=b42033308360655616fc9bd77678c46bf518b7c8 # v5.13.0
 
-FIO_GIT=https://git.kernel.dk/fio.git
+FIO_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/axboe/fio.git
 FIO_COMMIT=9b46661c289d01dbfe5182189a7abea9ce2f9e04 # fio-3.29
 
 LIBAIO_GIT=https://pagure.io/libaio.git
