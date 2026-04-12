@@ -285,7 +285,7 @@ function gen_version_files ()
     local vi_sh=/run/version_info.sh
 
     read version patchlevel sublevel <<< \
-	 $(uname -r | sed -e 's/-.*$//' | tr . ' ')
+	 $(uname -r | sed -e 's/[-+/:=a-zA-Z].*$//' | tr . ' ')
 
     echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + \
 	((c) > 255 ? 255 : (c)))' > $vi_cpp
