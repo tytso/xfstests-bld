@@ -104,6 +104,46 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
 	fi
     }
 
+    function gcs_cp ()
+    {
+        run_gcloud storage cp "$@"
+    }
+
+    function gcs_cp_always ()
+    {
+        run_gcloud_always storage cp "$@"
+    }
+
+    function gcs_rm ()
+    {
+        run_gcloud storage rm "$@"
+    }
+
+    function gcs_ls ()
+    {
+        run_gcloud storage ls "$@"
+    }
+
+    function gcs_ls_always ()
+    {
+        run_gcloud_always storage ls "$@"
+    }
+
+    function gcs_cat ()
+    {
+        run_gcloud_always storage cat "$@"
+    }
+
+    function gcs_rsync ()
+    {
+        run_gcloud storage rsync --checksums-only "$@"
+    }
+
+    function gcs_exists ()
+    {
+        run_gcloud_always storage ls "$@" >& /dev/null
+    }
+
     GCE_DASHBOARD_SERVICE_IAM=dashboard
     SERVICE_ACCOUNT_VM="test-vm@$GCE_PROJECT.iam.gserviceaccount.com"
     SERVICE_ACCOUNT_LTM="ltm-kcs@$GCE_PROJECT.iam.gserviceaccount.com"

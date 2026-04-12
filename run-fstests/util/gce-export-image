@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -vx
 
 XFSTESTS_FLAVOR=gce
 DIR=..
@@ -30,7 +30,7 @@ EXP_INST="xfstests-exp-$DATECODE"
 EXP_DISK="xfstests-exp-$DATECODE"
 IMG_DISK="xfstests-img-$DATECODE"
 TMP_DISK="xfstests-tmp-$DATECODE"
-DEB_IMAGE_FAMILY=debian-9
+DEB_IMAGE_FAMILY=debian-13
 DEB_IMAGE_PROJECT=debian-cloud
 NOACTION=
 
@@ -125,7 +125,7 @@ if test -n "$DO_DEBUG" ; then
     exit 0
 fi
 
-gsutil cp $t $GS_SCRIPT
+gcs_cp $t $GS_SCRIPT
 /bin/rm -f $t
 
 NO_ACTION="$NOACTION"

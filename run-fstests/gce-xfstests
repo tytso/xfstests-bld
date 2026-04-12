@@ -32,14 +32,14 @@ KERNEL="$GCE_KERNEL"
 
 get_local_hash()
 {
-    LOCAL_HASH=$(gsutil hash "$1" 2> /dev/null | grep "Hash (md5)" \
-			| awk '{print $3}')
+    LOCAL_HASH=$(run_gcloud_always storage hash "$1" 2> /dev/null \
+		     | awk '/^md5_hash:/{print $2}')
 }
 
 get_remote_hash()
 {
-    REMOTE_HASH=$(gsutil stat "$1" 2> /dev/null | grep "Hash (md5)" \
-			 | awk '{print $3}')
+    REMOTE_HASH=$(run_gcloud_always storage hash "$1" 2> /dev/null \
+		      | awk '/^md5_hash:/{print $2}')
 }
 
 verify_single_uri()
@@ -67,18 +67,18 @@ do_get_results_uri()
 	    SUBDIR=$(echo $1 | sed -e "s;/.*;;")
 	    # RESULTS_NAME is everything after slash
 	    RESULTS_NAME=$(echo $1 | sed -e "s;.*/;;")
-	    URI=$(gsutil ls "gs://$GS_BUCKET/${SUBDIR:-results}/$RESULTS_NAME" \
+	    URI=$(gcs_ls_always "gs://$GS_BUCKET/${SUBDIR:-results}/$RESULTS_NAME" \
 			 2>/dev/null)
 	    verify_single_uri $1
 	    ;;
 	results*)
 	    # try in all subdirs
-	    URI=$(gsutil ls "gs://$GS_BUCKET/**$1" 2>/dev/null)
+	    URI=$(gcs_ls_always "gs://$GS_BUCKET/**$1" 2>/dev/null)
 	    verify_single_uri $1
 	    ;;
 	*)
 	    # try in all subdirs
-	    URI=$(gsutil ls "gs://$GS_BUCKET/**results.$1.*.tar.xz" \
+	    URI=$(gcs_ls_always "gs://$GS_BUCKET/**results.$1.*.tar.xz" \
 			 2>/dev/null)
 	    verify_single_uri $1
 	    ;;
@@ -95,12 +95,12 @@ do_get_results()
 	get_remote_hash "$URI"
 	if test "$LOCAL_HASH" != "$REMOTE_HASH"
 	then
-	    $NO_ACTION gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	    gcs_cp "$URI" "$TARBALL" 2> /dev/null
 	fi
     else
 	if ! test -f "$TARBALL"
 	then
-	    $NO_ACTION gsutil cp "$URI" "$TARBALL" 2> /dev/null
+	    gcs_cp "$URI" "$TARBALL" 2> /dev/null
 	fi
     fi
     if test -n "$NO_ACTION" ; then
@@ -361,7 +361,7 @@ case "$1" in
 		arg="gs://$GS_BUCKET/results/results*"
 	    fi
 	fi
-	$NO_ACTION gsutil ls $opt "$arg"
+	gcs_ls $opt "$arg"
 	exit $?
 	;;
     rm-results|rm-gcs)
@@ -374,12 +374,12 @@ case "$1" in
 	for i in "$@"
 	do
 	    do_get_results_uri "$i"
-	    gsutil rm "$URI"
+	    gcs_rm "$URI"
 	    if test -n "$GCE_UPLOAD_SUMMARY"
 	    then
 		URI=$(echo $URI | sed -e "s;results\.;summary.;" | \
 		    sed -e "s;\.tar\.xz;.txt;")
-		$NO_ACTION gsutil rm "$URI" 2> /dev/null
+		gcs_rm "$URI" 2> /dev/null
 	    fi
 	done
 	exit 0
@@ -654,7 +654,7 @@ case "$1" in
 		    ;;
 		--gs-bucket) shift
 		    GS_BUCKET="$1"
-		    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+		    if ! gcs_exists -b "gs://$GS_BUCKET" ; then
 			echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
 			exit 1
 		    fi
@@ -690,15 +690,24 @@ case "$1" in
 	get_kernel_file_info "$KERNEL"
 	gs_meta=
 	if test -n "$KERNEL_ARCH" ; then
-	    gs_meta="$gs_meta -h x-goog-meta-arch=$KERNEL_ARCH"
+	    if test -n "${gs_meta}" ; then
+		gs_meta="${gs_meta},"
+	    fi
+	    gs_meta="${gs_meta}arch=$KERNEL_ARCH"
 	fi
 	if test -n "$KERNEL_VERSION" ; then
-	    gs_meta="$gs_meta -h x-goog-meta-ver=$KERNEL_VERSION"
+	    if test -n "${gs_meta}" ; then
+		gs_meta="${gs_meta},"
+	    fi
+	    gs_meta="${gs_meta}ver=$KERNEL_VERSION"
 	fi
-	echo "gsutil cp $KERNEL $GS_KERNEL"
+	if test -n "${gs_meta}" ; then
+	    gs_meta="--custom-metadata=${gs_meta}"
+	fi
 	if test -z "$NO_ACTION" ; then
-	    gsutil -q $gs_meta cp $KERNEL $GS_KERNEL
+	    echo "Uploading $KERNEL to $GS_KERNEL"
 	fi
+	gcs_cp --no-user-output-enabled $gs_meta $KERNEL $GS_KERNEL
 	exit $?
 	;;
     launch-ltm)
@@ -757,7 +766,7 @@ case "$1" in
 	;;
     ltm-batch)
 	shift
-	gsutil cp "$@" gs://$GS_BUCKET/ltm-batch/
+	gcs_cp "$@" gs://$GS_BUCKET/ltm-batch/
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
 		   --zone "$GCE_ZONE" > /dev/null
@@ -780,7 +789,7 @@ case "$1" in
 	    cat /tmp/ltm-batch.$$
 	    echo ""
 	fi
-	$NO_ACTION gsutil cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
+	gcs_cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
 	/bin/rm -f /tmp/ltm-batch.$$
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
@@ -798,7 +807,7 @@ case "$1" in
 	;;
     stop-ltm)
 	echo "poweroff -f" > /tmp/stop-ltm.$$
-	$NO_ACTION gsutil cp /tmp/stop-ltm.$$  gs://$GS_BUCKET/ltm-batch/stop-ltm
+	gcs_cp /tmp/stop-ltm.$$  gs://$GS_BUCKET/ltm-batch/stop-ltm
 	/bin/rm -f /tmp/stop-ltm.$$
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
@@ -810,7 +819,7 @@ esac
 
 GS_CONFIG="gs://$GS_BUCKET/gce_xfstests.config"
 
-if ! gsutil -q stat "$GS_CONFIG"
+if ! gcs_exists "$GS_CONFIG"
 then
     export GCE_XFSTESTS_DIR="$DIR"
     if ! XFSTESTS_FLAVOR=$XFSTESTS_FLAVOR "$DIR/util/gce-do-setup"; then
@@ -859,7 +868,7 @@ then
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
 	echo "Updating config file at $GS_CONFIG"
-	gsutil cp "$TMP_CONFIG" "$GS_CONFIG"
+	gcs_cp_always "$TMP_CONFIG" "$GS_CONFIG"
 	mv "$TMP_CONFIG" "$local_config"
     else
 	if ! test -f "$local_config" ; then
@@ -970,13 +979,13 @@ then
     get_remote_hash "$GS_KERNEL"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp "$GCE_KERNEL" "$GS_KERNEL"
+	gcs_cp_always "$GCE_KERNEL" "$GS_KERNEL"
     fi
 fi
 
 if test -n "$NO_ACTION" ; then
     if test -n "$GCE_KERNEL" ; then
-	echo gsutil cp "$GCE_KERNEL" "$GS_KERNEL"
+	echo run_gcloud_always storage cp "$GCE_KERNEL" "$GS_KERNEL"
     else
 	echo "Using kernel $GS_KERNEL"
     fi
@@ -1002,7 +1011,7 @@ then
     get_remote_hash "$GS_HOOKS"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp "$GCE_HOOKS" "$GS_HOOKS"
+	gcs_cp_always "$GCE_HOOKS" "$GS_HOOKS"
     fi
     if test -n "$tmpfile"
     then
@@ -1020,7 +1029,7 @@ then
     get_remote_hash "$GS_XFSTESTS"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp "$LOCAL_XFSTESTS" "$GS_XFSTESTS"
+	gcs_cp "$LOCAL_XFSTESTS" "$GS_XFSTESTS"
     fi
     ARG="$ARG tarxfstests=$GS_XFSTESTS"
 fi
@@ -1042,7 +1051,7 @@ then
     get_remote_hash "$GS_FILES"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp "$LOCAL_FILES" "$GS_FILES"
+	gcs_cp "$LOCAL_FILES" "$GS_FILES"
     fi
     ARG="$ARG tarfiles=$GS_FILES"
     rm -f "$LOCAL_FILES"
@@ -1086,7 +1095,7 @@ then
     get_remote_hash "$GS_MODULES"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gsutil cp "$GCE_MODULES" "$GS_MODULES"
+	gcs_cp "$GCE_MODULES" "$GS_MODULES"
     fi
 fi
 
@@ -1303,11 +1312,11 @@ if test -n "$RUN_ON_LTM"; then
     fi
     exit 0
 elif test -n "$RUN_ON_KCS"; then
-    if ! gsutil -q stat "gs://$GS_BUCKET/build_config" &> /dev/null
+    if ! gcs_exists "gs://$GS_BUCKET/build_config"
     then
         echo "Couldn't find build config in $GS_BUCKET"
         echo "Using default build config for kernel build"
-        gsutil cp "$DIR/../kernel-build/kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
+        gcs_cp_always "$DIR/../kernel-build/kernel-configs/x86_64-config-5.4" "gs://$GS_BUCKET/build_config"
     fi
     . "$DIR/util/gce-kcs-funcs"
     if ! send_to_kcs $ORIG_CMDLINE_B64; then

@@ -167,3 +167,33 @@ function run_hooks() {
 	run-parts /root/hooks/pre-setup.d
     fi
 }
+
+function gcs_cp ()
+{
+    gcloud storage cp "$@"
+}
+
+function gcs_rm ()
+{
+    gcloud storage rm "$@"
+}
+
+function gcs_ls ()
+{
+    gcloud storage ls "$@"
+}
+
+function gcs_cat ()
+{
+    gcloud storage cat "$@"
+}
+
+function gcs_rsync ()
+{
+    gcloud storage rsync --checksums-only "$@"
+}
+
+function gcs_exists ()
+{
+    gcloud storage ls "$@" >& /dev/null
+}

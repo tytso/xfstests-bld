@@ -92,7 +92,7 @@ then
 	NO_ACTION=": "
     fi
 fi
-if ! gsutil -q stat "gs://$GS_BUCKET/ltm-pass" &> /dev/null
+if ! gcs_exists "gs://$GS_BUCKET/ltm-pass"
 then
     echo "There is no password in your GS bucket $GS_BUCKET"
     echo "for the LTM to authenticate requests with."
@@ -143,7 +143,7 @@ then
     ARG="$ARG skip-rc=Y"
 fi
 
-if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+if ! gcs_exists gs://$GS_BUCKET/gce_xfstests.config
 then
     echo "You must run gce-xfstests setup to upload a .config file"
     echo "to your GCS bucket."
@@ -152,7 +152,7 @@ fi
 
 "$DIR/util/gce-setup-cert"
 
-$NO_ACTION gsutil rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
+gcs_rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
 
 echo "Launching LTM server..."
 touch $DIR/.ltm_instance_$GCE_PROJECT
@@ -212,8 +212,7 @@ if test -n "$RUN_INTERNAL"; then
 fi
 
 echo -n "Fetching password..."
-wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
 echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance_$GCE_PROJECT
-gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
+gcs_cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
 LAUNCH_LTM_EXIT_STATUS=0
 echo "Done!"

@@ -9,7 +9,7 @@ ltm_wait=$(gce_attribute ltm_wait)
 while /bin/true
 do
     script -c "/usr/local/lib/gce-run-batch --gce-dir ltm-batch" /run/ltm-batch.$$
-    gsutil cp /run/ltm-batch.$$ gs://$GS_BUCKET/ltm-batch.log
+    gcs_cp /run/ltm-batch.$$ gs://$GS_BUCKET/ltm-batch.log
     /bin/rm -f /run/ltm-batch.$$
     if test -n "$ltm_wait" ; then
 	ltm_wait=$(gce_attribute ltm_wait?wait_for_change=true)

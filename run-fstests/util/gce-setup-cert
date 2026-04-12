@@ -43,8 +43,8 @@ done
 
 tmpdir=$(mktemp -d)
 if test -n "$FORCE_REGEN" ||
-	! gsutil cp gs://$GS_BUCKET/gce-xfstests-cert.pem $tmpdir/ 2>/dev/null ||
-	! gsutil cp gs://$GS_BUCKET/gce-xfstests-key.pem $tmpdir/ 2>/dev/null
+	! gcs_cp_always gs://$GS_BUCKET/gce-xfstests-cert.pem $tmpdir/ 2>/dev/null ||
+	! gcs_cp_always gs://$GS_BUCKET/gce-xfstests-key.pem $tmpdir/ 2>/dev/null
 then
     echo "Regenerating GCE certificate files"
 
@@ -68,12 +68,12 @@ else
 fi
     
 if test -n "$UPDATE_COMBINED" ||
-	! gsutil -q stat gs://$GS_BUCKET/gce-xfstests-server.pem
+	! gcs_exists gs://$GS_BUCKET/gce-xfstests-server.pem
 then
     cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
 	> "$tmpdir/gce-xfstests-server.pem"
 
-    gsutil -m cp "$tmpdir/*" gs://$GS_BUCKET/
+    gcs_cp "$tmpdir/*" gs://$GS_BUCKET/
 fi
 if test -n "$UPDATE_COMBINED" -o \
 	 ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem

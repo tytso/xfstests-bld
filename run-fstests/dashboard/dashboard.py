@@ -49,7 +49,7 @@ def run_shell_command(cmd):
     return subprocess.check_output(cmd.split(' '), stderr = subprocess.STDOUT)
 
 def gs_rsync(gs_path, mirror_path):
-    output = run_shell_command("gsutil -m rsync %s %s" % (gs_path, mirror_path))
+    output = run_shell_command("gcloud storage rsync %s %s" % (gs_path, mirror_path))
     return len(output.splitlines()) > 2
 
 def extract_tarballs(mirror_path, extract_path):

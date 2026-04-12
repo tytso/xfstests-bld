@@ -108,7 +108,7 @@ then
 
     if test -n "$GCE_UPLOAD_SUMMARY"
     then
-	gsutil cp /results/summary \
+	gcs_cp /results/summary \
 	    "gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/summary.$TESTRUNID.$(uname -r).txt"
     fi
 
@@ -170,9 +170,9 @@ then
 		-s "$subj" "$JUNIT_EMAIL" < /tmp/results.xml
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
-    gsutil cp /tmp/results.tar.xz \
+    gcs_cp /tmp/results.tar.xz \
 	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).tar.xz"
-    gsutil cp /tmp/results.xml \
+    gcs_cp /tmp/results.xml \
 	"gs://$GS_BUCKET/${BUCKET_SUBDIR:-results}/results.$TESTRUNID.$(uname -r).xml"
 fi
 

@@ -339,17 +339,14 @@ for `gcloud compute --project "$GCE_PROJECT" disks delete DISK`
 
 ALIAS: `gce-xfstests rm-disk`
 
-### gce-xfstests ls-results|ls-gce
+### gce-xfstests ls-results
 
 List the available results tarballs stored in the Google Cloud
-Storage bucket.  This is a convenience command for
-`gsutil ls gs://GS_BUCKET/results.*` (`ls-results`) or
-`gsutil ls gs://GS_BUCKET` (`ls-gcs`).
+Storage bucket.
 
 ### gce-xfstests rm-results RESULT_FILE
 
-Delete a specified result tarball.  This is a convenience
-command for `gsutil rm gs://GS_BUCKET/RESULT_FILE`.
+Delete a specified result tarball.
 
 ### gce-xfstests get-results [--unpack | --summary | --failures ] RESULT_FILE
 

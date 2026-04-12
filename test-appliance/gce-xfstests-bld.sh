@@ -111,6 +111,12 @@ then
     declare -r MDS_TRIES=${MDS_TRIES:-100}
 fi
 
+if test -z "$MDS_PREFIX"
+then
+    declare -r MDS_PREFIX=http://metadata.google.internal/computeMetadata/v1
+    declare -r MDS_TRIES=${MDS_TRIES:-100}
+fi
+
 function print_metadata_value() {
   local readonly tmpfile=$(mktemp)
   http_code=$(curl -f "${1}" -H "Metadata-Flavor: Google" -w "%{http_code}" \
@@ -165,6 +171,11 @@ function get_metadata_value_with_retries() {
 
 function gce_attribute() {
 	get_metadata_value_with_retries attributes/$1
+}
+
+function gcs_cp ()
+{
+    gcloud storage cp "$@"
 }
 
 touch /run/gce-xfstests-bld
@@ -293,7 +304,7 @@ fi
 
 sed -i.bak -e "/PermitRootLogin no/s/no/yes/" /etc/ssh/sshd_config
 
-gsutil -m cp gs://$BUCKET/create-image/xfstests.tar.gz \
+gcs_cp gs://$BUCKET/create-image/xfstests.tar.gz \
        gs://$BUCKET/create-image/files.tar.gz /root/
 ls -shF /root
 tar -C /root -xzf /root/xfstests.tar.gz
@@ -351,17 +362,17 @@ chown root:root /root
 # build go server
 GO_TEMP=$(mktemp -d)
 
-GO_ARCH=$(uname -m)
-case "$GO_ARCH" in
+MY_ARCH=$(uname -m)
+case "$MY_ARCH" in
     x86_64)
-	GO_ARCH=amd64
+	MY_ARCH=amd64
 	;;
     aarch64)
-	GO_ARCH=arm64
+	MY_ARCH=arm64
 	;;
 esac
 
-curl -o "$GO_TEMP/go.tar.gz" "https://dl.google.com/go/go$GO_VERSION.linux-$GO_ARCH.tar.gz"
+curl -o "$GO_TEMP/go.tar.gz" "https://dl.google.com/go/go$GO_VERSION.linux-$MY_ARCH.tar.gz"
 if [ $? -ne 0 ]; then
     echo "Go download failed! Exiting."
     exit 1
@@ -457,8 +468,7 @@ q
 EOF
 fi
 
-# TODO: what does this do? / do we need to do this for arm64?
-if gsutil -m cp gs://$BUCKET/debs/*_amd64.deb /run
+if gcs_cp gs://$BUCKET/debs/*_$MY_ARCH.deb /run
 then
     dpkg -i --ignore-depends=e2fsprogs --auto-deconfigure /run/*.deb
     rm -f /run/*.deb

@@ -746,7 +746,7 @@ while (( $# >= 1 )); do
 	--gs-bucket) shift
 	    supported_flavors gce
 	    GS_BUCKET="$1"
-	    if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+	    if ! gcs_exists -b "gs://$GS_BUCKET" ; then
 		echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
 		exit 1
 	    fi
@@ -796,7 +796,7 @@ while (( $# >= 1 )); do
 		*)
 		    if test -e "$KCONFIG"
 		    then
-			gsutil cp "$KCONFIG" "gs://$GS_BUCKET/build_config"
+			gcs_cp "$KCONFIG" "gs://$GS_BUCKET/build_config"
 			KCONFIG="gs://$GS_BUCKET/build_config"
 		    else
 			echo -e "Could not find: $1\n"

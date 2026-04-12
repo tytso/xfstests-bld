@@ -98,7 +98,7 @@ then
 	NO_ACTION=": "
     fi
 fi
-if ! gsutil -q stat "gs://$GS_BUCKET/ltm-pass" &> /dev/null
+if ! gcs_exists "gs://$GS_BUCKET/ltm-pass"
 then
     echo "There is no password in your GS bucket $GS_BUCKET"
     echo "for the build server to authenticate requests with."
@@ -144,7 +144,7 @@ then
     ARG="$ARG enable-oslogin-2fa=GCE_OSLOGIN_2FA"
 fi
 
-if ! gsutil -q stat gs://$GS_BUCKET/gce_xfstests.config
+if ! gcs_exists gs://$GS_BUCKET/gce_xfstests.config
 then
     echo "You must run gce-xfstests setup to upload a .config file"
     echo "to your GCS bucket."
@@ -212,8 +212,7 @@ if test -n "$RUN_INTERNAL"; then
 fi
 
 echo -n "Fetching password..."
-wait_for_command "gsutil -q stat gs://$GS_BUCKET/ltm-pass"
 echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance_$GCE_PROJECT
-gsutil cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance_$GCE_PROJECT
+gcs_cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance_$GCE_PROJECT
 LAUNCH_KCS_EXIT_STATUS=0
 echo "Done!"

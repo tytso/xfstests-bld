@@ -23,7 +23,7 @@ then
     hooks=$(gce_attribute hooks)
     if test -n "$hooks"
     then
-	gsutil cp $hooks /run/hooks.tar.gz
+	gcs_cp $hooks /run/hooks.tar.gz
 	if test -f /run/hooks.tar.gz
 	then
 	    tar -C /root/hooks -xzf /run/hooks.tar.gz
@@ -56,14 +56,14 @@ tarmodules=$(gce_attribute tarmodules)
 nfssrv=$(gce_attribute nfssrv)
 
 if test -n "$tarxfstests" ; then
-    gsutil cp "$tarxfstests" /run/xfstests.tar.gz
+    gcs_cp "$tarxfstests" /run/xfstests.tar.gz
     rm -rf /root/xfstests
     tar -C /root -xzf /run/xfstests.tar.gz
     rm /run/xfstests.tar.gz
 fi
 
 if test -n "$tarfiles" ; then
-    gsutil cp "$tarfiles" /run/files.tar.gz
+    gcs_cp "$tarfiles" /run/files.tar.gz
     tar -C / -xzf /run/files.tar.gz
     rm /run/files.tar.gz
     sed -e 's;/dev/;/dev/mapper/xt-;' < /root/test-config > /tmp/test-config
@@ -74,7 +74,7 @@ if test -n "$tarfiles" ; then
 fi
 
 if test -n "$tarmodules" ; then
-    gsutil cp "$tarmodules" /run/modules.tar.xz
+    gcs_cp "$tarmodules" /run/modules.tar.xz
     tar -C / -xJf /run/modules.tar.xz
     rm /run/modules.tar.xz
     depmod -a
@@ -147,8 +147,8 @@ if [[ $kexec == *.deb ]] ; then
 GRUB_CMDLINE_LINUX="$kopt"
 EOF
     if ! test -f "/root/kernel-deb.deb" ; then
-	if ! gsutil cp $kexec /root/kernel-deb.deb ; then
-	    echo "gsutil cp $kexec /root/kernel-deb.deb failed"
+	if ! gcs_cp $kexec /root/kernel-deb.deb ; then
+	    echo "gcs_cp $kexec /root/kernel-deb.deb failed"
 	    exit 1
 	fi
     fi
@@ -177,7 +177,7 @@ fi
 
 if ! test -f /root/bzImage
 then
-    if ! gsutil cp $kexec /root/bzImage
+    if ! gcs_cp $kexec /root/bzImage
     then
 	logger "Couldn't find $kexec"
 	exit 1

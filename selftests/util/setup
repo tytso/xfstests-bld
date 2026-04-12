@@ -12,6 +12,36 @@ function log_debug()
     echo "$@" >> $DEBUG_OUTPUT
 }
 
+function gcs_cp ()
+{
+    gcloud storage cp "$@"
+}
+
+function gcs_rm ()
+{
+    gcloud storage rm "$@"
+}
+
+function gcs_ls ()
+{
+    gcloud storage ls "$@"
+}
+
+function gcs_cat ()
+{
+    gcloud storage cat "$@"
+}
+
+function gcs_rsync ()
+{
+    gcloud storage rsync --checksums-only "$@"
+}
+
+function gcs_exists ()
+{
+    gcloud storage ls "$@" >& /dev/null
+}
+
 function get_gs_kernel()
 {
     log_debug "get_gs_kernel"
@@ -19,7 +49,7 @@ function get_gs_kernel()
     local kernel="$1"
 
     # see if kernel is at GS
-    if gsutil ls "$kernel" &>> /dev/null; then
+    if gcs_exists "$kernel" ; then
 	echo "$kernel"
 	return 0
     fi

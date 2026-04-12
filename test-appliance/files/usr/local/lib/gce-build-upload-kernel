@@ -5,6 +5,8 @@ set -vx
 # Environment variables can be set:
 # REPO_DIR GS_BUCKET GS_PATH GS_CONFIG KCONFIG_OPTS KBUILD_ARCH
 
+. /usr/local/lib/gce-funcs
+
 function install_kconfig () {
     if test -z "$KCONFIG_OPTS" ; then
 	(cd "$REPO_DIR" ; gce-xfstests install-kconfig \
@@ -45,7 +47,7 @@ if test -z "$GS_PATH"; then
 fi
 
 if test -n "$GS_CONFIG" ; then
-    if gsutil cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
+    if gcs_cp "$GS_CONFIG" "$REPO_DIR/.config" ; then
 	if test $(stat -c %s "$REPO_DIR/.config") -gt 16384 ; then
 	    (cd "$REPO_DIR" ; make oldconfig) || exit 1
 	else

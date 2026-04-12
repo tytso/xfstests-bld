@@ -2,6 +2,9 @@
 
 API_MAJOR=1
 API_MINOR=5
+if test -f /usr/local/lib/gce-funcs ; then
+    . /usr/local/lib/gce-funcs
+fi
 . /root/test-config
 . /root/runtests_utils
 
@@ -500,7 +503,7 @@ do
 	rm -f "$RESULT_BASE/rpt_status"
 	if test -n "$RUN_ON_GCE"
 	then
-	    gsutil cp "gs://$GS_BUCKET/check-time.tar.gz" /tmp >& /dev/null
+	    gcs_cp "gs://$GS_BUCKET/check-time.tar.gz" /tmp >& /dev/null
 	    if test -f /tmp/check-time.tar.gz
 	    then
 		tar -C /tmp -xzf /tmp/check-time.tar.gz
@@ -521,7 +524,7 @@ END	{ if (NR > 0) {
 	    mv "${check_time}.new" "$check_time"
 	    (cd /tmp ; tar -cf - check.time.* | gzip -9 \
 						     > /tmp/check-time.tar.gz)
-	    gsutil cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null
+	    gcs_cp /tmp/check-time.tar.gz "gs://$GS_BUCKET" >& /dev/null
 	fi
 	if test ! -f /.dockerenv ; then
 	    echo 3 > /proc/sys/vm/drop_caches

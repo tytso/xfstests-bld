@@ -14,7 +14,7 @@ do
 done
 
 if ! test -f "$GCE_CONFIG_FILE" ; then
-    gsutil cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
+    gcs_cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
 fi
 
 if test -n "$RUN_ON_GCE" ; then
@@ -132,7 +132,7 @@ kexec=$(gce_attribute kexec)
 
 case "$kexec" in
     *-onetime|*-onetime.*)
-	gsutil rm "$kexec" &
+	gcs_rm "$kexec" &
 	;;
 esac
 
@@ -140,7 +140,7 @@ tarmodules=$(gce_attribute tarmodules)
 
 case "$tarmodules" in
     *-onetime)
-	gsutil rm "$tarmodules" &
+	gcs_rm "$tarmodules" &
 	;;
 esac
 

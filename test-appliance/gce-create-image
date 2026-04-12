@@ -300,7 +300,7 @@ rm -rf $td/tmp2
 $GZIP -c -9 -n $td/files.tar > $td/files.tar.gz
 rm -f $td/files.tar
 
-gsutil -m rsync -c $td gs://$GS_BUCKET/create-image
+gcs_rsync $td gs://$GS_BUCKET/create-image
 
 if test -f files/root/xfstests/git-versions
 then
@@ -313,7 +313,7 @@ DEBS_DIR=debs
 if test -d debs.$distro ; then
     DEBS_DIR=debs.$distro
 fi
-gsutil -m rsync -cd $DEBS_DIR gs://$GS_BUCKET/debs
+gcs_rsync --delete-unmatched-destination-objects $DEBS_DIR gs://$GS_BUCKET/debs
 
 run_gcloud compute -q instances delete "$BLD_INST" \
        --zone "$GCE_ZONE" 2> /dev/null

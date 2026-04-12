@@ -98,16 +98,23 @@ function get_kernel_file_info () {
 
     if test -n "$is_gs" ; then
 	local f=$(mktemp --tmpdir gs_stat_XXXXXX)
-	if gsutil stat "$KERNEL" > "$f" ; then
-	    cat "$f" | sed -e '1,/^    Metadata:/d' | \
-		sed -e '/^    [A-Z]/,$d' > "$f.new"
+	if run_gcloud_always storage objects describe "$KERNEL" > "$f" ; then
+	    cat "$f" | sed -e '1,/^custom_fields:/d' | \
+		sed -e '/^[a-z]/,$d' > "$f.new"
 	    mv "$f.new" "$f"
 	else
 	    rm -f "$f"
 	    exit 1
 	fi
-	KERNEL_ARCH=$(cat "$f" | grep arch= | sed -e 's/^ *arch=//' -e 's/: *$//')
-	KERNEL_VERSION=$(cat "$f" | grep ver= | sed -e 's/^ *ver=//' -e 's/: *$//')
+	if grep -q arch: "$f" ; then
+	    KERNEL_ARCH=$(cat "$f" | grep arch: | sed -e 's/^ *arch: *//')
+	    KERNEL_VERSION=$(cat "$f" | grep ver: | sed -e 's/^ *ver: *//')
+	else
+	    KERNEL_ARCH=$(cat "$f" | grep arch= | sed -e 's/^ *arch=//' \
+						      -e 's/:.*//')
+	    KERNEL_VERSION=$(cat "$f" | grep ver= | sed -e 's/^ *ver=//' \
+							-e 's/:.*//')
+	fi
 	rm -f "$f"
     else
 	if test ! -f "$KERNEL" ; then

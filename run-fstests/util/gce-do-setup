@@ -22,9 +22,9 @@ function gce_gen_cert() {
     # Making an SSL cert for a project, storing it in GCS bucket.
 
     if [ -z "$REGEN_CERT" ] && \
-      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-cert.pem && \
-      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-server.pem && \
-      gsutil -q stat gs://$GS_BUCKET/gce-xfstests-key.pem
+      gcs_exists gs://$GS_BUCKET/gce-xfstests-cert.pem && \
+      gcs_exists gs://$GS_BUCKET/gce-xfstests-server.pem && \
+      gcs_exists gs://$GS_BUCKET/gce-xfstests-key.pem
     then
         return 0
     fi
@@ -39,12 +39,12 @@ function gce_gen_cert() {
     cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
 	> "$tmpdir/gce-xfstests-server.pem"
 
-    gsutil -m cp "$tmpdir/*" gs://$GS_BUCKET/
+    gcs_cp "$tmpdir/*" gs://$GS_BUCKET/
     rm -rf "$tmpdir"
 }
 
 function gce_gen_ltm_pass() {
-    if gsutil -q stat gs://$GS_BUCKET/ltm-pass &>/dev/null
+    if gcs_exists gs://$GS_BUCKET/ltm-pass
     then
 	return 0
     fi
@@ -52,7 +52,7 @@ function gce_gen_ltm_pass() {
 	echo 1>&2 "Please install pwgen, or upload a password to ltm-pass"
 	exit 1
     fi
-    pwgen -n -s 15 1 | gsutil cp - gs://$GS_BUCKET/ltm-pass
+    pwgen -n -s 15 1 | gcs_cp - gs://$GS_BUCKET/ltm-pass
 }
 
 if ! type gcloud >& /dev/null ; then
@@ -202,7 +202,7 @@ if ! run_gcloud_prj projects describe "$GCE_PROJECT" > /dev/null ; then
     bad_config=yes
 fi
 
-if ! gsutil ls -b "gs://$GS_BUCKET" > /dev/null ; then
+if ! gcs_exists -b "gs://$GS_BUCKET" ; then
     echo -e "Invalid Cloud Storage Bucket: $GS_BUCKET\n"
     bad_config=yes
 fi

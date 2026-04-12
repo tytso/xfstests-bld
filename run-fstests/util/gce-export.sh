@@ -71,7 +71,7 @@ cd /mnt/tmp
 tar cvf - disk.raw | pigz > myimage.tar.gz
 
 date
-gsutil -q cp /mnt/tmp/myimage.tar.gz $GS_TAR
-gsutil -q cp /root/gce-export.log "gs://$BUCKET/gce-export.log"
+gcloud storage cp /mnt/tmp/myimage.tar.gz $GS_TAR
+gcloud storage cp /root/gce-export.log "gs://$BUCKET/gce-export.log"
 
 gcloud compute -q instances delete "$EXP_INST" --zone "$GCE_ZONE"

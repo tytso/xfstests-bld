@@ -44,14 +44,14 @@ mount $CREATED_PTS_DEV /pts
 
 if ! test -d /pts/phoronix-test-suite ; then
     mkdir -p /pts/phoronix-test-suite
-    if gsutil cp "gs://$GS_BUCKET/pts-state.tar.xz" /tmp ; then
+    if gcs_cp "gs://$GS_BUCKET/pts-state.tar.xz" /tmp ; then
 	tar -C /pts -xJf /tmp/pts-state.tar.xz
     fi
-    if gsutil cp "gs://$GS_BUCKET/pts-results.tar.xz" /tmp ; then
+    if gcs_cp "gs://$GS_BUCKET/pts-results.tar.xz" /tmp ; then
 	tar -C /pts/phoronix-test-suite -xJf /tmp/pts-results.tar.xz
     fi
     if test "$instance" != "pts" &&
-	    gsutil cp "gs://$GS_BUCKET/${instance}-results.tar.xz" /tmp ; then
+	    gcs_cp "gs://$GS_BUCKET/${instance}-results.tar.xz" /tmp ; then
 	tar -C /pts/phoronix-test-suite -xJf "/tmp/${instance}-results.tar.xz"
     fi
 fi
