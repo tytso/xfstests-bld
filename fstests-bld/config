@@ -20,10 +20,10 @@ BLKTESTS_GIT=https://github.com/osandov/blktests.git
 # NVME_CLI_GIT=https://github.com/linux-nvme/nvme-cli
 # LTP_GIT=https://github.com/linux-test-project/ltp
 
-FIO_COMMIT=fio-3.28
-LIBAIO_COMMIT=libaio-0.3.113
-QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
-XFSPROGS_COMMIT=v5.13.0
+FIO_COMMIT=fio-3.42
+LIBAIO_COMMIT=b8eadc9f89e8f7ab0338eacda9f98a6caea76883
+QUOTA_COMMIT=b3d30798d98efc5493e9f8331246561c3d7cacd9
+XFSPROGS_COMMIT=v6.19.0
 
 # TOOLCHAIN_DIR=/u1/arm64-toolchain
 # CROSS_COMPILE=aarch64-linux-android
