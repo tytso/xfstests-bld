@@ -1,25 +1,25 @@
 XFSTESTS_GIT=https://github.com/tytso/xfstests
 
 XFSPROGS_GIT=https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-XFSPROGS_COMMIT=b42033308360655616fc9bd77678c46bf518b7c8 # v5.13.0
+XFSPROGS_COMMIT=2dd2852fd91b48217f91f8205788f09586e95f46 # v6.19.0
 
-FIO_GIT=https://git.kernel.dk/fio.git
-FIO_COMMIT=9b46661c289d01dbfe5182189a7abea9ce2f9e04 # fio-3.29
+FIO_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/axboe/fio.git
+FIO_COMMIT=ab77643023f5d7e3c1b71a7576a564f368bf577a # fio-3.42
 
 LIBAIO_GIT=https://pagure.io/libaio.git
-LIBAIO_COMMIT=1b18bfafc6a2f7b9fa2c6be77a95afed8b7be448 # libaio-0.3.113
+LIBAIO_COMMIT=b8eadc9f89e8f7ab0338eacda9f98a6caea76883 # libaio-0.3.113 plus bugfix
 
 QUOTA_GIT=https://git.kernel.org/pub/scm/utils/quota/quota-tools.git
-QUOTA_COMMIT=d2256ac2d44b0a5be9c0b49ce4ce8e5f6821ce2a
+QUOTA_COMMIT=b3d30798d98efc5493e9f8331246561c3d7cacd9 # v4.11
 
 # SYZKALLER_GIT=https://github.com/google/syzkaller
 # SYZKALLER_COMMIT=2f93b54f26aa40233a0a584ce8714e55c8dd159a
 
 FSVERITY_GIT=https://git.kernel.org/pub/scm/fs/fsverity/fsverity-utils.git
-FSVERITY_COMMIT=ddc6bc9daeb79db932aa12edb85c7c2f4647472a
+FSVERITY_COMMIT=96d12bd0d34a034d6e0b85512422f0d6df3c7c4a # v1.7
 
 IMA_EVM_UTILS_GIT=https://git.code.sf.net/p/linux-ima/ima-evm-utils.git
-IMA_EVM_UTILS_COMMIT=00a0e66a14d3663edd9d37c8a01db6d182c88bdd # v1.3.2
+IMA_EVM_UTILS_COMMIT=1803accc3ff8a4e347f9a93e68b14ed9cbbb56f7 # v1.5
 
 BLKTESTS_GIT=https://github.com/tytso/blktests.git
 

@@ -7,7 +7,7 @@
 # privileges.
 #
 # VERSION 0.1
-FROM debian:bullseye
+FROM debian:trixie
 
 # Install dependencies
 RUN apt-get update && \
@@ -15,36 +15,43 @@ RUN apt-get update && \
 	    autoconf \
 	    automake \
 	    autopoint \
-	    bc \
 	    bison \
 	    build-essential \
-	    curl \
+	    ca-certificates \
+	    debootstrap \
+	    e2fslibs-dev \
+	    ed \
+	    fakechroot \
+	    flex \
 	    gettext \
 	    git \
+	    golang-go \
+	    libacl1-dev \
 	    libblkid-dev \
 	    libdbus-1-3 \
-	    libkeyutils-dev \
-	    libtool \
 	    libgdbm-dev \
+	    libicu-dev \
 	    libkeyutils-dev \
+	    libsqlite3-dev \
 	    libssl-dev \
+	    libsystemd-dev \
 	    libtool-bin \
 	    liburcu-dev \
-	    pkg-config \
+	    lsb-release \
+	    meson \
 	    pigz \
-	    uuid-dev \
-	    zlib1g-dev \
-	    procps \
-	    python3 \
-	    python3-future \
+	    pkg-config \
+	    python3-setuptools \
+	    qemu-utils \
 	    rsync \
-	    symlinks && \
+	    symlinks \
+	    uuid-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* \
        /usr/share/doc /usr/share/doc-base \
        /usr/share/man /usr/share/locale /usr/share/zoneinfo
 
-MAINTAINER Theodore Y. Ts'o tytso@mit.edu
+LABEL maintainer="Theodore Y. Ts'o tytso@mit.edu"
 
 COPY . /devel/xfstests-bld
 
