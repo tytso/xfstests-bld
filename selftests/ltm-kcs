@@ -72,8 +72,8 @@ function test-kcs ()
 	a="--arch $ARCH"
     fi
     echo "gce-xfstests ltm -c ext4/4k,btrfs/4k generic/001 btrfs/001 btrfs/064 $a " \
-	 "--repo https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git " \
-	 "--no-email --no-junit-email --commit v5.15.79 " \
+	 "--repo https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git " \
+	 "--no-email --no-junit-email --commit v6.18.22 " \
 	 "--testrunid testkcs-$DATECODE-$ARCH" \
 	 >> $LTM_TEST_FILE
 	GCE_TEST_VMS="$GCE_TEST_VMS ltm-testkcs-$DATECODE-$ARCH"

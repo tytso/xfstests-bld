@@ -26,7 +26,7 @@ import (
 const (
 	RepoRootDir       = "/cache/repositories/"
 	RefRepoDir        = RepoRootDir + "linux.reference"
-	RefRepoURL        = "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+	RefRepoURL        = "https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
 	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
 	watchInterval     = 10
 )
