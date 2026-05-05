@@ -19,6 +19,7 @@ fi
 RPT_COUNT=1
 FAIL_LOOP_COUNT=4
 NO_TRUNCATE=
+NEW_COUNT=
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -28,6 +29,9 @@ while [ "$1" != "" ]; do
     count) shift
 	RPT_COUNT=$1
 	FAIL_LOOP_COUNT=0
+	;;
+    new_count)
+	NEW_COUNT=t
 	;;
     fail_loop_count) shift
 	FAIL_LOOP_COUNT=$1
@@ -140,6 +144,15 @@ fail_test_loop=
 if test $RPT_COUNT -eq 1 && test $FAIL_LOOP_COUNT -gt 0 && \
 	grep -q -- "-L <n>" /tmp/check-help ; then
     fail_test_loop="-L $FAIL_LOOP_COUNT"
+fi
+check_loop_flag=
+if test $RPT_COUNT -gt 1 && test -n "$NEW_COUNT" ; then
+    if grep -q -- --loop= ./check ; then
+	check_loop_flag="--loop=$RPT_COUNT"
+    else
+	check_loop_flag="-i $RPT_COUNT"
+    fi
+    RPT_COUNT=1
 fi
 
 runtests_before_tests
@@ -483,11 +496,13 @@ do
 	    fi
 	    if test -s /tmp/tests-to-run
 	    then
-		echo ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
-		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run) \
+		echo ./check -R $report_fmt $fail_test_loop $check_loop_flag \
+		     -T $EXTRA_OPT $AEX $TEST_SET_EXCLUDE \
+		     $(cat /tmp/tests-to-run) \
 		     >> "$RESULT_BASE/check-cmd"
-		bash ./check -R $report_fmt $fail_test_loop -T $EXTRA_OPT \
-		     $AEX $TEST_SET_EXCLUDE $(cat /tmp/tests-to-run)
+		bash ./check -R $report_fmt $fail_test_loop $check_loop_flag \
+		     -T $EXTRA_OPT $AEX $TEST_SET_EXCLUDE \
+		     $(cat /tmp/tests-to-run)
 		copy_xunit_results
 	    else
 		echo "No tests to run"

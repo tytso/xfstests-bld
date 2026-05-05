@@ -347,6 +347,7 @@ machtype:
 mkfs-config:
 modules:
 monitor-timeout:
+new-count
 nfssrv:
 note:
 oslogin
@@ -529,6 +530,9 @@ while (( $# >= 1 )); do
 	--fail-loop-count) shift
 	    FAIL_LOOP_COUNT="$1"
 	    FAIL_LOOP_COUNT_EXPLICIT=yes
+	    ;;
+	--new-count)
+	    NEW_COUNT=yes
 	    ;;
 	--update-xfstests-tar)
 	    supported_flavors kvm gce
@@ -1217,6 +1221,10 @@ if test -n "$LOOP_COUNT" ; then
     # Older test appliances don't clear fail_loop_count default
     # This can be removed in the future...
     FSTESTOPT="$FSTESTOPT,fail_loop_count,0"
+fi
+
+if test -n "$NEW_COUNT" ; then
+    FSTESTOPT="$FSTESTOPT,new_count"
 fi
 
 if test -n "$KCONFIG" -a -z "$RUN_ON_LTM" -a -z "$RUN_ON_KCS"
