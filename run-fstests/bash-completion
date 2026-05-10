@@ -1,0 +1,159 @@
+# Bash completion for xfstests-bld scripts
+
+_xfstests_bld_completions() {
+    local cur prev opts commands gce_commands kvm_commands kbuild_opts install_opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Common commands for test scripts
+    commands="smoke quick full syz launch shell maint pts phoronix ver"
+    gce_commands="ls-instances rm-instances abort-instances start-instance start-instances stop-instance stop-instances simulate-maintenance-event ls-disks ls-disk rm-disks rm-disk ls-images rm-images ls-results ls-gcs rm-results rm-gcs get-bucket get-kernel-arch get-kernel-version get-kernel-info get-results setup ssh scp console enable-serial disable-serial describe-vm describe-image describe-disk serial create-image export-image import-image copy-image install-kconfig kbuild upload-kernel launch-ltm launch-kcs refresh-machtype-file cache-machtype-file ltm kcs ltm-info ltm-batch ltm-batch-cmd launch-dashboard stop-kcs stop-ltm"
+    kvm_commands="install-kconfig kbuild setup"
+
+    # Options for test scripts
+    short_opts="-a -c -C -g -h -I -m -n -N -o -O -r -v -x -X"
+    long_opts="--aio --arch --arm64 --archive --bisect-bad --bisect-good --blktests --bucket-subdir --cache --commit --config --cpu-type --disable-serial --email --enable-serial --fail-email --fail-loop-count --gce-disk-spec --gce-network --gce-zone --gs-bucket --help --hooks --i386 --image-family --image-project --initrd --install-kconfig --install-kconfig-opts --instance-name --junit-email --kernel --kernel-arch --kbuild --kbuild-opts --kconfig-opts --kernel-build --local-ssd --local-ssd-nvme --log --machtype --mkfs-config --modules --monitor-timeout --nfssrv --note --oslogin --no-oslogin --oslogin-2fa --no-oslogin-2fa --no-action --no-archive --no-collapse --no-insert --no-zero --no-log --no-preemptible --no-spot-fallback --no-spot --no-punch --no-region-shard --no-virtio-rng --no-vm-timeout --numa --pmem-device --pts-size --preemptible --spot --spot-fallback --primary_fstype --repo --skip-kernel-arch-probe --soak-duration --stress-mem --stress-opts --testrunid --unwatch --update-files --update-xfstests --update-xfstests-tar --virtfs-model --virtfs-scratch --virtfs-test --virtfs-type --virtfs --virtiofsd --vm-timeout --watch"
+
+    # Options for kbuild
+    kbuild_opts="--arch --arm64 --dpkg --no-dpkg --install-kconfig --install-kconfig-opts --oldconfig --get-build-dir --get-kbuild-config --get-kbuild-dir --i386 -32 --no-action --kunit --test -j"
+
+    # Options for install-kconfig
+    install_opts="--perf --blktests --i386 --arm64 --arch --dept --kasan --kcsan --lockdep --no-action --ubsan --full-debug-info --debug-info --extra-debug debug --get-config-fn --generic --help help"
+
+    local cmd="${COMP_WORDS[0]}"
+    cmd="${cmd##*/}" # Strip path
+
+    case "${cmd}" in
+        get-results)
+            COMPREPLY=( $(compgen -W "--summary -s --failures -F" -- ${cur}) )
+            return 0
+            ;;
+        kbuild|kbuild32)
+            if [[ ${cur} == -* ]] ; then
+                COMPREPLY=( $(compgen -W "${kbuild_opts}" -- ${cur}) )
+                return 0
+            fi
+            ;;
+        install-kconfig)
+            if [[ ${cur} == -* ]] ; then
+                COMPREPLY=( $(compgen -W "${install_opts}" -- ${cur}) )
+                return 0
+            fi
+            ;;
+        *)
+            # Specific completions for gce-xfstests sub-commands
+            if [[ ${cmd} == "gce-xfstests" ]]; then
+                case "${COMP_WORDS[1]}" in
+                    ls|ls-instances)
+                        COMPREPLY=( $(compgen -W "--gce" -- ${cur}) )
+                        return 0
+                        ;;
+                    rm|rm-instances|abort|abort-instances)
+                        COMPREPLY=( $(compgen -W "--wait" -- ${cur}) )
+                        return 0
+                        ;;
+                    rm-disks|rm-disk)
+                        COMPREPLY=( $(compgen -W "--zone" -- ${cur}) )
+                        return 0
+                        ;;
+                    ls-images)
+                        COMPREPLY=( $(compgen -W "--project --image-project" -- ${cur}) )
+                        return 0
+                        ;;
+                    rm-images)
+                        COMPREPLY=( $(compgen -W "--project" -- ${cur}) )
+                        return 0
+                        ;;
+                    ls-results|ls-gcs)
+                        COMPREPLY=( $(compgen -W "--all -a --bucket-subdir" -- ${cur}) )
+                        return 0
+                        ;;
+                    rm-results|rm-gcs)
+                        COMPREPLY=( $(compgen -W "--bucket-subdir" -- ${cur}) )
+                        return 0
+                        ;;
+                    get-results)
+                        local get_res_opts="--bucket-subdir --checksum -c --syslog --unpack --unpack-dir --summary -s --failures -F --no-cache"
+                        COMPREPLY=( $(compgen -W "${get_res_opts}" -- ${cur}) )
+                        return 0
+                        ;;
+                    ssh)
+                        COMPREPLY=( $(compgen -W "--user -u --" -- ${cur}) )
+                        return 0
+                        ;;
+                    serial)
+                        COMPREPLY=( $(compgen -W "--port" -- ${cur}) )
+                        return 0
+                        ;;
+                    upload-kernel)
+                        local upload_opts="--no-action --arch --arm64 --i386 --kernel --gs-bucket"
+                        COMPREPLY=( $(compgen -W "${upload_opts}" -- ${cur}) )
+                        return 0
+                        ;;
+                esac
+            fi
+
+            case "${prev}" in
+                -c|--config)
+                    local fs_types="9p btrfs exfat ext2 ext3 ext4 f2fs hfs jfs local msdos nfs ntfs ntfs3 overlay reiserfs tmpfs ubifs udf vfat virtiofs xfs"
+                    if [[ ${cur} == */* ]]; then
+                        local fs="${cur%%/*}"
+                        local base_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/test-appliance/files/root/fs"
+                        if [[ -d "${base_dir}/${fs}/cfg" ]]; then
+                            local configs=$(ls "${base_dir}/${fs}/cfg" 2>/dev/null | grep -v '\.exclude$' | sed -e 's/\.list$//')
+                            COMPREPLY=( $(compgen -W "${configs}" -- "${cur#*/}") )
+                        fi
+                        return 0
+                    fi
+                    COMPREPLY=( $(compgen -W "${fs_types}" -S '/' -- ${cur}) )
+                    compopt -o nospace
+                    return 0
+                    ;;
+                -g|-x)
+                    local groups="auto quick smoke"
+                    COMPREPLY=( $(compgen -W "${groups}" -- ${cur}) )
+                    return 0
+                    ;;
+                --arch)
+                    local arches="i386 amd64 arm64"
+                    COMPREPLY=( $(compgen -W "${arches}" -- ${cur}) )
+                    return 0
+                    ;;
+                --aio)
+                    COMPREPLY=( $(compgen -W "native threads" -- ${cur}) )
+                    return 0
+                    ;;
+                --cache)
+                    COMPREPLY=( $(compgen -W "none writethrough writeback directsync unsafe" -- ${cur}) )
+                    return 0
+                    ;;
+                --kernel|--initrd|--modules|--config|-I)
+                    COMPREPLY=( $(compgen -f -- ${cur}) )
+                    return 0
+                    ;;
+            esac
+
+            if [[ ${cur} == -* ]] ; then
+                COMPREPLY=( $(compgen -W "${short_opts} ${long_opts}" -- ${cur}) )
+                return 0
+            fi
+
+            local all_commands="${commands}"
+            local test_prefixes="btrfs/ ceph/ cifs/ ext4/ f2fs/ generic/ nfs/ ocfs2/ overlay/ perf/ shared/ udf/ xfs/ selftest/"
+            local blktest_prefixes="block/ loop/ meta/ nbd/ nvme/ nvmeof-mp/ scsi/ srp/"
+
+            if [[ ${cmd} == *"gce-xfstests"* ]] ; then
+                all_commands="${all_commands} ${gce_commands}"
+            elif [[ ${cmd} == *"kvm-xfstests"* || ${cmd} == *"qemu-xfstests"* ]] ; then
+                all_commands="${all_commands} ${kvm_commands}"
+            elif [[ ${cmd} == *"android-xfstests"* ]] ; then
+                all_commands="${all_commands} ${kvm_commands}"
+            fi
+
+            COMPREPLY=( $(compgen -W "${all_commands} ${test_prefixes} ${blktest_prefixes}" -- ${cur}) )
+            ;;
+    esac
+}
+
+complete -F _xfstests_bld_completions gce-xfstests kvm-xfstests android-xfstests qemu-xfstests kbuild kbuild32 install-kconfig
