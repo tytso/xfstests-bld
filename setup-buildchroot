@@ -95,6 +95,7 @@ select_packages()
     libsystemd-dev
     libtool-bin
     liburcu-dev
+    liburing-dev
     lsb-release
     meson
     pigz
