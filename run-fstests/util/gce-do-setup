@@ -184,19 +184,6 @@ function SetupServiceAccountCloudBuild () {
 get_cache_dir
 rm -f "$GCE_CACHE_DIR/service-accounts-opts.$GCE_PROJECT"
 
-SetupRole TestVM
-SetupRole LTMKCS
-SetupRole ImgCreate
-SetupRole Dashboard
-
-SetupServiceAccount "$SERVICE_ACCOUNT_VM" "forTestVM" "test-vm" "Test VM"
-SetupServiceAccount "$SERVICE_ACCOUNT_LTM" "forLTMKCS" "ltm-kcs" "LTM/KCS"
-SetupServiceAccount "$SERVICE_ACCOUNT_IMG" "forImgCreate" "img-create" \
-		    "Image Creation"
-SetupServiceAccount "$SERVICE_ACCOUNT_DASH" "forDashboard" "dashboard" \
-		    "GCE xfstests dashboard"
-SetupServiceAccountCloudBuild
-
 if ! run_gcloud_prj projects describe "$GCE_PROJECT" > /dev/null ; then
     echo -e "Invalid GCE project: $GCE_PROJECT\n"
     bad_config=yes
@@ -292,5 +279,18 @@ fi
 
 $DIR/util/gce-setup-cert $REGEN_OPTS
 gce_gen_ltm_pass
+
+SetupRole TestVM
+SetupRole LTMKCS
+SetupRole ImgCreate
+SetupRole Dashboard
+
+SetupServiceAccount "$SERVICE_ACCOUNT_VM" "forTestVM" "test-vm" "Test VM"
+SetupServiceAccount "$SERVICE_ACCOUNT_LTM" "forLTMKCS" "ltm-kcs" "LTM/KCS"
+SetupServiceAccount "$SERVICE_ACCOUNT_IMG" "forImgCreate" "img-create" \
+		    "Image Creation"
+SetupServiceAccount "$SERVICE_ACCOUNT_DASH" "forDashboard" "dashboard" \
+		    "GCE xfstests dashboard"
+SetupServiceAccountCloudBuild
 
 exit 0
