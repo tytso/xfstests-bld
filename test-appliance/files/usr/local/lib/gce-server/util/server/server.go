@@ -127,6 +127,7 @@ type UserOptions struct {
 	CommitID        string `json:"commit_id"`
 	GitRepo         string `json:"git_repo"`
 	BranchName      string `json:"branch_name"`
+	WatchSkipInitial bool   `json:"watch_skip_initial"`
 	UnWatch         string `json:"unwatch"`
 	BadCommit       string `json:"bad_commit"`
 	GoodCommit      string `json:"good_commit"`

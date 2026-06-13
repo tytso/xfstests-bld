@@ -97,6 +97,9 @@ print_help ()
 	echo "			- LTM option to reboot test VM if no status update"
 	echo "			after specified time. Accepted time suffixes include"
 	echo "			\"h\", \"m\", \"s\""
+	echo "	--watch branch	- LTM option to watch a git branch"
+	echo "	--watch-skip-initial"
+	echo "			- LTM option to skip initial test run when watching"
     fi
     if flavor_in gce ; then
 	echo "	--[no-]vm-timeout"
@@ -394,6 +397,7 @@ virtfs:
 virtiofsd:
 vm-timeout
 watch:
+watch-skip-initial
 )
 longopts=$(echo "${longopts[*]}" | tr ' ' ,)
 
@@ -772,6 +776,9 @@ while (( $# >= 1 )); do
 	    supported_flavors gce
 	    OVERRIDE_KERNEL="none"
 	    BRANCH="$1"
+	    ;;
+	--watch-skip-initial)
+	    WATCH_SKIP_INITIAL=yes
 	    ;;
 	--unwatch) shift
 	    supported_flavors gce
@@ -1249,6 +1256,12 @@ fi
 if test -n "$BRANCH" -a -z "$RUN_ON_LTM"
 then
     echo "Repo watcher only works with LTM"
+    exit 1
+fi
+
+if test -n "$WATCH_SKIP_INITIAL" -a -z "$BRANCH"
+then
+    echo "--watch-skip-initial only works with --watch"
     exit 1
 fi
 

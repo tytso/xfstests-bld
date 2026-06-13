@@ -158,7 +158,11 @@ func (watcher *GitWatcher) watch() {
 	defer aggTicker.Stop()
 
 	start := time.Now()
-	watcher.InitTest()
+	if !watcher.testRequest.Options.WatchSkipInitial {
+		watcher.InitTest()
+	} else {
+		watcher.log.Info("Skipping initial test run as requested")
+	}
 
 	for {
 		select {

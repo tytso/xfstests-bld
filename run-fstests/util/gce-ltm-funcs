@@ -89,6 +89,9 @@ function send_to_ltm() {
     if [ -n "$BRANCH" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"branch_name\":\"$BRANCH\""
     fi
+    if [ -n "$WATCH_SKIP_INITIAL" ]; then
+	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"watch_skip_initial\":true"
+    fi
     if [ -n "$WATCHER_ID" ]; then
 	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":\"$WATCHER_ID\""
     fi
