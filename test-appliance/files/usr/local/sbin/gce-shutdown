@@ -122,7 +122,7 @@ then
     JUNIT_EMAIL=$(gce_attribute junit_email)
     run_hooks send-email
 
-    if [  -n "$REPORT_EMAIL" -o  -n "$REPORT_FAIL_EMAIL" ] && [ -n "$SENDGRID_API_KEY" ]
+    if [  -n "$REPORT_EMAIL" -o  -n "$REPORT_FAIL_EMAIL" ] && [ -s "$SEND_MAIL_INI" ]
     then
 	if test -s /results/report
 	then
@@ -141,33 +141,23 @@ then
 	    subj="$subj - test run aborted"
 	    REPORT_EMAIL="$REPORT_FAIL_EMAIL"
 	fi
-	if test -z "$GCE_REPORT_SENDER"
-	then
-	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
-	fi
-	export SENDGRID_API_KEY
 	# REPORT_EMAIL could be empty at this point if GCE_REPORT_EMAIL is
 	# not set, GCE_REPORT_FAIL_EMAIL is set, and we had no failures
 	if test -n "$REPORT_EMAIL"
 	then
-	    /usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
-	        -s "$subj" "$REPORT_EMAIL" < "$RESULTS_REPORT"
+	    /usr/local/sbin/send_mail.py -s "$subj" \
+		"$REPORT_EMAIL" < "$RESULTS_REPORT"
 	fi
     fi
-    if test -n "$JUNIT_EMAIL" -a -n "$SENDGRID_API_KEY" -a -f /tmp/results.xml
+    if test -n "$JUNIT_EMAIL" -a -s "$SEND_MAIL_INI" -a -f /tmp/results.xml
     then
 	subj="$suite junit results $TESTRUNID - $(uname -r)"
 	if test -f /run/powerbtn
 	then
 	    subj="$subj - test run aborted"
 	fi
-	if test -z "$GCE_REPORT_SENDER"
-	then
-	    GCE_REPORT_SENDER="$USER@$HOSTNAME"
-	fi
-	export SENDGRID_API_KEY
-	/usr/local/sbin/send-mail.py --sender "$GCE_REPORT_SENDER" \
-		-s "$subj" "$JUNIT_EMAIL" < /tmp/results.xml
+	/usr/local/sbin/send_mail.py -s "$subj" \
+		"$JUNIT_EMAIL" < /tmp/results.xml
     fi
     tar -C /results -cf - . | xz -6e > /tmp/results.tar.xz
     gcs_cp /tmp/results.tar.xz \

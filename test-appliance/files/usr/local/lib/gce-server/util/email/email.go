@@ -1,68 +1,37 @@
 /*
-Package email sends test reports or failure logs with package sendgrid.
+Package email sends test reports or failure logs.
 */
 package email
 
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"runtime/debug"
 	"strings"
 
 	"thunk.org/gce-server/util/check"
-	"thunk.org/gce-server/util/gcp"
 	"thunk.org/gce-server/util/logging"
 
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/sirupsen/logrus"
 )
 
 // Send sends an email with subject and content to the receivers.
-// Sender is configured to be receiver if not set in config.
 func Send(subject string, content string, receivers string) error {
 	if receivers == "" {
 		return fmt.Errorf("No destination for report to be sent to")
 	}
-	receiversSlice := strings.Split(receivers, ",")
 
-	apiKey, err := gcp.GceConfig.Get("SENDGRID_API_KEY")
+	cmd := exec.Command("/usr/local/sbin/send_mail.py",
+		"-s", subject,
+		receivers,
+	)
+	cmd.Stdin = strings.NewReader(content)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("send_mail.py failed: %v, output: %s", err, string(output))
 	}
-	sender, err := gcp.GceConfig.Get("GCE_REPORT_SENDER")
-	if err != nil {
-		sender = receiversSlice[0]
-	}
-
-	m := mail.NewV3Mail()
-	from := mail.NewEmail("Xfstests Reporter", sender)
-	m.SetFrom(from)
-	m.Subject = subject
-
-	p := mail.NewPersonalization()
-
-	for _, receiver := range receiversSlice {
-		to := mail.NewEmail("", receiver)
-		p.AddTos(to)
-	}
-
-	m.AddPersonalizations(p)
-
-	c := mail.NewContent("text/plain", content)
-	m.AddContent(c)
-
-	client := sendgrid.NewSendClient(apiKey)
-	response, err := client.Send(m)
-
-	if err != nil {
-		return err
-	}
-
-	if response.StatusCode >= 200 && response.StatusCode <= 299 {
-		return nil
-	}
-	return fmt.Errorf("Send failed with code %d, response: %s", response.StatusCode, response.Body)
+	return nil
 }
 
 // ReportFailure catches panic and sends a failure report email to user.

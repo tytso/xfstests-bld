@@ -832,12 +832,24 @@ fi
 TMP_CONFIG=$(mktemp /tmp/gce_xfstests.config.XXXXXXXX)
 trap "rm -f $TMP_CONFIG" EXIT
 SENDGRID_API_KEY="$GCE_SG_API"
+SMTP_SERVER="$GCE_SMTP_SERVER"
+SMTP_PORT="$GCE_SMTP_PORT"
+SMTP_USER="$GCE_SMTP_USER"
+SMTP_PASSWORD="$GCE_SMTP_PASSWORD"
+SMTP_CAFILE="$GCE_SMTP_CAFILE"
+TLS_MODE="$GCE_TLS_MODE"
 {
     declare -p GCE_REPORT_SENDER
     declare -p GCE_REPORT_EMAIL
     declare -p GCE_REPORT_FAIL_EMAIL
     declare -p GCE_JUNIT_EMAIL
     declare -p SENDGRID_API_KEY
+    declare -p SMTP_SERVER
+    declare -p SMTP_PORT
+    declare -p SMTP_USER
+    declare -p SMTP_PASSWORD
+    declare -p SMTP_CAFILE
+    declare -p TLS_MODE
     declare -p GCE_UPLOAD_SUMMARY
     declare -p PRIMARY_FSTYPE
     declare -p GCE_PROJECT

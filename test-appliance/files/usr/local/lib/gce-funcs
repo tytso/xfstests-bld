@@ -1,6 +1,7 @@
 #!/bin/bash
 
 GCE_STATE_DIR=/var/lib/gce-xfstests
+SEND_MAIL_INI="/run/send_mail.ini"
 
 if test -z "$MDS_PREFIX"
 then

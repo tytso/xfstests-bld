@@ -40,4 +40,34 @@ touch $DIR/config.common
 cat "$GCE_CONFIG_FILE" >> $DIR/config.gce
 echo SKIP_GS_CONFIG_UPDATE=yes >> $DIR/config.gce
 
+# Create send_mail.ini in /run if SMTP or SendGrid configuration is present
+cp /dev/null "$SEND_MAIL_INI"
+chmod 0600 "$SEND_MAIL_INI"
+if [ -n "$SENDGRID_API_KEY" ]; then
+    echo "[sendgrid]" >> "$SEND_MAIL_INI"
+    echo "api_key = $SENDGRID_API_KEY" >> "$SEND_MAIL_INI"
+fi
+if [ -n "$SMTP_SERVER" -a -n "$SMTP_USER" -a -n "$SMTP_PASSWORD" ] ; then
+    if [ -s "$SEND_MAIL_INI" ] ; then
+        echo "" >> "$SEND_MAIL_INI"
+    fi
+
+    echo "[smtp]" >> "$SEND_MAIL_INI"
+    [ -n "$SMTP_SERVER" ] && echo "server = $SMTP_SERVER" >> "$SEND_MAIL_INI"
+    [ -n "$SMTP_PORT" ] && echo "port = $SMTP_PORT" >> "$SEND_MAIL_INI"
+    [ -n "$SMTP_USER" ] && echo "user = $SMTP_USER" >> "$SEND_MAIL_INI"
+    [ -n "$SMTP_PASSWORD" ] && echo "password = $SMTP_PASSWORD" >> "$SEND_MAIL_INI"
+    [ -n "$SMTP_CAFILE" ] && echo "cafile = $SMTP_CAFILE" >> "$SEND_MAIL_INI"
+    [ -n "$TLS_MODE" ] && echo "tls_mode = $TLS_MODE" >> "$SEND_MAIL_INI"
+fi
+if [ -s "$SEND_MAIL_INI" -a -n "$GCE_REPORT_SENDER" ] ; then
+    if ! grep -q "\[smtp\]" "$SEND_MAIL_INI" ; then
+        echo "" >> "$SEND_MAIL_INI"
+	echo "[smtp]" >> "$SEND_MAIL_INI"
+    fi
+    echo "sender = $GCE_REPORT_SENDER" >> "$SEND_MAIL_INI"
+fi
+if [ ! -s "$SEND_MAIL_INI" ] ; then
+    rm "$SEND_MAIL_INI"
+fi
 exit 0
