@@ -6,5 +6,6 @@ usr/local/lib/pkg
 root/xfstests/local.config
 etc/lighttpd
 var/www
+AGENTS.md
 gce-*
 *~
