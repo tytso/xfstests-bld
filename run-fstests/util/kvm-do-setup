@@ -8,10 +8,18 @@ else
     DIR="$(dirname "$(dirname "$0")")"
 fi
 
+if which mke2fs 2>&1 > /dev/null ; then
+    MKE2FS=$(which mke2fs)
+elif test -x /sbin/mke2fs ; then
+    MKE2FS=/sbin/mke2fs
+else
+    echo "Can't find mke2fs"
+    exit 1
+fi
 mkdir -p $DIR/disks
 if test ! -f "$DIR/disks/vdb" ; then
     qemu-img create -f raw "$DIR/disks/vdb" 5g
-    /sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdb"
+    $MKE2FS -q -t ext4 -F "$DIR/disks/vdb"
 fi
 if test ! -f "$DIR/disks/vdc" ; then
     qemu-img create -f raw "$DIR/disks/vdc" 5g
@@ -27,7 +35,7 @@ if test ! -f "$DIR/disks/vdf" ; then
 fi
 if test ! -f "$DIR/disks/vdg" ; then
     qemu-img create -f raw "$DIR/disks/vdg" 5g
-    /sbin/mke2fs -q -t ext4 -F "$DIR/disks/vdg"
+    $MKE2FS -q -t ext4 -F "$DIR/disks/vdg"
 fi
 if test ! -f "$DIR/disks/vdi" ; then
     qemu-img create -f raw "$DIR/disks/vdi" 1g
