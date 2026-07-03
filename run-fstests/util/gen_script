@@ -1,0 +1,38 @@
+#!/bin/bash
+
+src=$1
+dest=$2
+
+bash=/bin/bash
+if test -n "$BASH" -a -x "$BASH" ; then
+    bash="$BASH"
+fi
+major_vers="${BASH_VERSINFO[0]}"
+if test -z "$major_vers" -o "$major_vers" -lt 4 ; then
+   bash=$(which bash)
+fi
+dir=$(pwd -P)
+
+if ! test -f "$src" ; then
+    echo "Source file $src does not exist!"
+    exit 1
+fi
+
+if test -e "$dest" ; then
+    if test -f "$dest" ; then
+       outfn="${dest}.new"
+    elif test -c "$dest" ; then
+	outfn="$dest"
+    else
+	echo "Destination file $dest exists but is not supported type"
+	exit 1
+    fi
+else
+    outfn="${dest}.new"
+fi
+
+sed -e "s;@DIR@;$dir;" -e "s;@BASH@;$bash;" < "$src" > "$outfn"
+
+if test "$outfn" != "$dest" ; then
+    mv "$outfn" "$dest"
+fi

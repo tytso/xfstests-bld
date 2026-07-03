@@ -4,6 +4,7 @@ SCRIPTS =	android-xfstests \
 		qemu-xfstests
 
 KBUILD_SCRIPTS = kbuild kbuild32 install-kconfig
+GEN_SCRIPT = ./run-fstests/util/gen_script
 
 bindir= $(HOME)/bin
 completiondir= $(HOME)/.local/share/bash-completion/completions
@@ -26,10 +27,10 @@ install: $(SCRIPTS) $(KBUILD_SCRIPTS)
 	done
 
 
-$(SCRIPTS): %: run-fstests/%.sh.in
-	sed -e "s;@DIR@;$$(pwd);" < $< > $@
+$(SCRIPTS): %: run-fstests/%.sh.in Makefile
+	$(GEN_SCRIPT) $< $@
 	chmod +x $@
 
-$(KBUILD_SCRIPTS): %: kernel-build/%.sh.in
-	sed -e "s;@DIR@;$$(pwd);" < $< > $@
+$(KBUILD_SCRIPTS): %: kernel-build/%.sh.in Makefile
+	$(GEN_SCRIPT) $< $@
 	chmod +x $@

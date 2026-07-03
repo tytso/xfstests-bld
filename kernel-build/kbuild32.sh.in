@@ -4,4 +4,4 @@ DIR=@DIR@
 
 KBUILD_DIR=$DIR/kernel-build
 export KBUILD_DIR
-exec $KBUILD_DIR/kbuild --32 "$@"
+exec @BASH@ $KBUILD_DIR/kbuild --32 "$@"

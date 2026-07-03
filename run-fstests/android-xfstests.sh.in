@@ -4,4 +4,4 @@ DIR=@DIR@
 
 ANDROID_XFSTESTS_DIR=$DIR/run-fstests
 export ANDROID_XFSTESTS_DIR
-exec $ANDROID_XFSTESTS_DIR/android-xfstests "$@"
+exec @BASH@ $ANDROID_XFSTESTS_DIR/android-xfstests "$@"

@@ -4,4 +4,4 @@ DIR=@DIR@
 
 GCE_XFSTESTS_DIR=$DIR/run-fstests
 export GCE_XFSTESTS_DIR
-exec $GCE_XFSTESTS_DIR/gce-xfstests "$@"
+exec @BASH@ $GCE_XFSTESTS_DIR/gce-xfstests "$@"
