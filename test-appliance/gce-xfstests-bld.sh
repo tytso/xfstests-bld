@@ -75,6 +75,8 @@ PACKAGES="$ADD_PACKAGES acl \
 	libssl-dev \
 	libssl-dev:arm64 \
 	lighttpd \
+	lld \
+	llvm \
 	lvm2 \
 	lz4 \
 	mdadm \
