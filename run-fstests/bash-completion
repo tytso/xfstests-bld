@@ -13,7 +13,31 @@ _xfstests_bld_completions() {
 
     # Options for test scripts
     short_opts="-a -c -C -g -h -I -m -n -N -o -O -r -v -x -X"
-    long_opts="--aio --arch --arm64 --archive --bisect-bad --bisect-good --blktests --bucket-subdir --cache --commit --config --cpu-type --disable-serial --email --enable-serial --fail-email --fail-loop-count --gce-disk-spec --gce-network --gce-zone --gs-bucket --help --hooks --i386 --image-family --image-project --initrd --install-kconfig --install-kconfig-opts --instance-name --junit-email --kernel --kernel-arch --kbuild --kbuild-opts --kconfig-opts --kernel-build --local-ssd --local-ssd-nvme --log --machtype --mkfs-config --modules --monitor-timeout --nfssrv --note --oslogin --no-oslogin --oslogin-2fa --no-oslogin-2fa --no-action --no-archive --no-collapse --no-insert --no-zero --no-log --no-preemptible --no-spot-fallback --no-spot --no-punch --no-region-shard --no-virtio-rng --no-vm-timeout --numa --pmem-device --pts-size --preemptible --spot --spot-fallback --primary_fstype --repo --skip-kernel-arch-probe --soak-duration --stress-mem --stress-opts --testrunid --unwatch --update-files --update-xfstests --update-xfstests-tar --virtfs-model --virtfs-scratch --virtfs-test --virtfs-type --virtfs --virtiofsd --vm-timeout --watch --watch-skip-initial"
+    long_opts="--arch --arm64 --blktests --fail-loop-count \
+	--help --i386 --install-kconfig --install-kconfig-opts \
+	--kernel --kernel-arch --kbuild --kbuild-opts --kconfig-opts \
+	--machtype --mkfs-config --monitor-timeout --nfssrv --note \
+	--no-action --no-collapse --no-insert --no-zero \
+	--no-punch --primary_fstype --skip-kernel-arch-probe \
+	--soak-duration --update-files --update-xfstests \
+	--update-xfstests-tar"
+    android_long_opts="--log --no-log"
+    kvm_long_opts="--aio --archive --no-archive --numa --cache --cpu-type \
+	--initrd --kernel-build --log --no-log --modules --no-virtio-rng \
+	--numa --stress-mem --stress-opts --testrunid \
+	--virtfs-model --virtfs-scratch --virtfs-test --virtfs-type \
+	--virtfs --virtiofsd"
+    gce_long_opts="--bisect-bad --bisect-good --bucket-subdir --commit \
+	--config --disable-serial --email --enable-serial --fail-email \
+	--gce-disk-spec --gce-network --gce-zone --gs-bucket --hooks \
+	--image-family --image-project --instance-name --junit-email \
+	--local-ssd --local-ssd-nvme --modules \
+	--no-preemptible --no-spot-fallback --no-spot --no-region-shard \
+	--no-vm-timeout --pmem-device --pts-size --preemptible --spot \
+	--spot-fallback --repo \
+	--oslogin --no-oslogin --oslogin-2fa --no-oslogin-2fa \
+	--stress-mem --stress-opts --testrunid --unwatch \
+	--vm-timeout --watch --watch-skip-initial"
 
     # Options for kbuild
     kbuild_opts="--arch --arm64 --dpkg --no-dpkg --install-kconfig --install-kconfig-opts --oldconfig --get-build-dir --get-kbuild-config --get-kbuild-dir --i386 -32 --no-action --kunit --test -j"
@@ -134,8 +158,19 @@ _xfstests_bld_completions() {
                     ;;
             esac
 
+	    local all_long_opts="${long_opts}"
+
+            if [[ ${cmd} == *"gce-xfstests"* ]] ; then
+               all_long_opts="${all_long_opts} ${gce_long_opts}"
+            elif [[ ${cmd} == *"kvm-xfstests"* || \
+		    ${cmd} == *"qemu-xfstests"* ]] ; then
+                all_long_opts="${all_long_opts} ${kvm_long_opts}"
+            elif [[ ${cmd} == *"android-xfstests"* ]] ; then
+                all_long_opts="${all_long_opts} ${android_long_opts}"
+            fi
+
             if [[ ${cur} == -* ]] ; then
-                COMPREPLY=( $(compgen -W "${short_opts} ${long_opts}" -- ${cur}) )
+                COMPREPLY=( $(compgen -W "${short_opts} ${all_long_opts}" -- ${cur}) )
                 return 0
             fi
 
