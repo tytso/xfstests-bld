@@ -188,7 +188,11 @@ if test -n "$CROSS_COMPILE" ; then
 fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
-    MAKE_ARGS+=("CC=clang")
+    if type ld.lld >& /dev/null ; then
+	MAKE_ARGS+=("LLVM=1")
+    else
+	MAKE_ARGS+=("CC=clang")
+    fi
 fi
 
 if test -n "$DO_INSTALL_KCONFIG" ; then
