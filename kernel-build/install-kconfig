@@ -50,6 +50,9 @@ do
 	--no-action)
 	    NO_ACTION="echo"
 	    ;;
+	--clang|--llvm)
+	    DO_LLVM=yes
+	    ;;
 	--ubsan)
 	    DO_UBSAN=yes
 	    ;;
@@ -70,7 +73,7 @@ do
 		 "[--extra-debug]"
 	    echo "	[--kasan] [--kcsan] [--ubsan] [--lockdep]" \
 		 "[--full-debug-info]"
-	    echo "	[--get-config-fn] [--no-action]"
+	    echo "	[--cclang] [--get-config-fn] [--no-action]"
 	    exit 0
 	    ;;
 	*)
@@ -195,7 +198,15 @@ if test "$BLD_DIR" != "." ; then
 fi
 
 if grep -q CONFIG_CC_IS_CLANG=y "$BLD_DIR/.config" 2>/dev/null ; then
-    ARGS+=("CC=clang")
+    DO_LLVM=yes
+fi
+
+if test -n "$DO_LLVM" ; then
+    if type ld.lld >& /dev/null ; then
+	ARGS+=("LLVM=1")
+    else
+	ARGS+=("CC=clang")
+    fi
 fi
 
 if test -n "$CROSS_COMPILE" ; then
