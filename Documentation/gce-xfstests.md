@@ -51,26 +51,77 @@ for this purpose.  Detailed instructions for creating a new bucket can
 be found in the [GCS
 Quickstart](https://cloud.google.com/storage/docs/quickstart-console).
 
-### Setting up a Sendgrid account
+### Setting up e-mail reports
 
 Since virtual machines in GCE aren't allowed to send connect to the
-normal outgoing mail ports (in order prevent abuse by spammers), in
-order to send e-mail we have to use a cloud mail service.  Using a
-cloud mail service is optional --- you can wait for the test to
-complete and then use the gce-xfstests ls-results and get-results
+normal SMTP mail ports (in order prevent abuse by spammers), in order
+to send e-mail we need to use either a cloud mail service such as
+sendgrid, or use an authenticated SMTP service which supports password
+authentication.  (GMail and Microsoft Outlook no longer support
+password authentication, and require using OATH2 authentication, which
+is not supported by gce-xfstests.)
+
+Setting up e-mailed reports is optional --- you can wait for the test
+to complete and then use the gce-xfstests ls-results and get-results
 command to fetch the test results --- but it's very handy to have the
 test reports show up in your inbox once they are finished.
 
-The gce-xfstests system uses sendgrid, so if you would like to get
-e-mailed reports, you will need to sign up for a free Sendgrid
-account.  The Sendgrid free account provides 100 e-mails per day and
-it's unlikely that you will be running more than 100 test runs per day.
+#### Using an authenticated SMTP service
 
-To start, visit the [Sendgrid website](http://www.sendgrid.com) and
-click on the "Start for Free" button. It may take a day or two
-for sendgrid to decide you are a not a robot spammer, so please start
-the process right away while you familiarize yourself with the rest of
-gce-xfstests.
+If you run your own SMTP server, you enable password authentication
+using port 587 with TLS authentication (recommended) or port 465 with
+implicit TLS authentication.  There are various resources available on
+the web explaining how to configure
+[postfix](https://serverfault.com/questions/1046542/how-to-enable-tls-with-port-587-with-secure-authentication-on-postfix)
+and
+[exim](https://serverfault.com/questions/591133/set-up-exim-to-authenticate-users-and-then-relay-smtp-mail-via-smarthost-using-d),
+or you can get help from a friendly neighborhood Unix/Linux sysadmin.
+Once your SMTP server has been configured, you just need to set the
+configuration variables GCE_SMTP_SERVER, GCE_SMTP_USER, and
+GCE_SMTP_PASSWORD in gce-xfstests's config file.  See the "Configure
+gce-xfstests" section below for more details.
+
+If you are using fastmail.fm, you will need to configure an
+app-specific password use that for GCE_SMTP_PASSWORD, set
+GCE_SMTP_USER to your fastmail username, and set the GCE_SMTP_SERVER
+to smtp.fastmail.com.  See this [help
+article](https://www.fastmail.help/hc/en-us/articles/1500000279921-IMAP-POP-and-SMTP)
+for more information.
+
+If you have a username@kernel.org mail alias, you can use that
+send-email, by setting the GCE_SMTP_SERVER to mail.kernel.org, and
+setting GCE_SMTP_USER, GCE_SMTP_PASSWORD as described in the
+kernel.org [documentation](https://korg.docs.kernel.org/mail.html).
+(Note: the kernel.org documentation recommends using port 465, but it
+also supports port 587, which is the more modern and standardized SMTP
+submission port.)
+
+If you wish, you can set up a mailjet account and configure use its
+SMTP relay service.  The Google Cloud documentation has
+[instructions](https://docs.cloud.google.com/compute/docs/tutorials/sending-mail/using-mailjet)
+on how to set up a mailjet account.  The mailjet site also has
+[documentation](https://www.mailjet.com/blog/email-best-practices/how-to-use-sinch-mailjet-smtp-server/).
+The basic steps are to register for a free mailjet account, [configure
+your sender e-mail address](https://app.mailjet.com/account/sender)
+with mailjet, set up an [API
+key](https://app.mailjet.com/account/apikeys) with a secret key, and
+then configure GCE_SMTP_USER using the API key and GE_SMTP_PASSWORD
+with the secret key, and set GCE_SMTP_SERVER to in-v3.mailjet.com).
+
+#### Using Sendgrid
+
+Sendgrid used to offer a free tier, and so this was the only method
+which gce-xfstests supported.  Unfortunately, sendgrid has limited the
+free tier to 60 days, and after that point, the cheapest plan is
+$19.95/month.  As such, it is no longer recommended, and it is
+deprecated.  However, it is still supported (for now) in case there
+are gce-xfstests users who are still using sendgrid.  
+
+To start using sendgrid, visit the [Sendgrid
+website](http://www.sendgrid.com) and click on the "Start for Free"
+button. It may take a day or two for sendgrid to decide you are a not
+a robot spammer, so please start the process right away while you
+familiarize yourself with the rest of gce-xfstests.
 
 > **_NOTE:_** Starting from April 6 2020, Sendgrid requires new users to
 verify their Sender Identities before using the service. You could check
@@ -146,11 +197,23 @@ You will need to set up the following configuration parameters in
   * The pathname to kernel that should be used for gce-xfstests
     by default.
 
-If you have a sendgrid account, you can set the following
-configuration parameters in order to have reports e-mailed to you:
+If you have a sendgrid or SMTP submission account, you can set the
+following configuration parameters in order to have reports e-mailed
+to you:
 
 * GCE_SG_API
   * The Sendgrid API used to send the test report
+* GCE_SMTP_SERVER
+  * The SMTP server with an SMTP service on either port 587 or 465.
+* GCE_SMTP_USER
+  * The username used to authenticate to the SMTP submission server
+* GCE_SMTP_PASSWORD
+  * The password used to authenticate to the SMTP submission server
+* GCE_SMTP_PORT
+  * The SMTP submission port.  If not specified, the default is port 587
+    with TLS enabled before sending the username and password.  If
+    port 465 is used, TLS will be attempted as soon as the TCP/IP
+    connection is established.
 * GCE_REPORT_EMAIL
   * The comma separated list of email addresses for which test
     results should be sent.
