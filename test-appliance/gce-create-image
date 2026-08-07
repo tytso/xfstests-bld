@@ -286,7 +286,8 @@ ln -s / $xfs_bld_dir/test-appliance/files
 # essentially, we run a "make gce-xfstests.sh" here, except with a hardcoded
 # DIR replacement path because we know where we're putting kvm-xfstests and
 # the rest of xfstests_bld in the test appliance.
-sed -e "s;@DIR@;/root/xfstests_bld;" < ../run-fstests/gce-xfstests.sh.in > \
+sed -e "s;@DIR@;/root/xfstests_bld;" \
+    -e "s;@BASH@;/bin/bash;" < ../run-fstests/gce-xfstests.sh.in > \
     $td/tmp2/usr/local/sbin/gce-xfstests
 chmod +x $td/tmp2/usr/local/sbin/gce-xfstests
 
