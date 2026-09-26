@@ -670,18 +670,27 @@ create_schroot_fstab()
 	return
     fi
     mkdir -p "$(dirname "$SCHROOT_FSTAB_FILE")"
+    HOMEDIR=/home
+    CHROOT_UID=$(id -u "$CHROOT_USER" 2> /dev/null)
+    if test -n "$CHROOT_UID" ; then
+	CHROOT_HOME=$(getent passwd "$CHROOT_UID" | cut -d: -f6)
+	log "CHROOT_USER $CHROOT_USER HOME is $CHROOT_HOME"
+	HOMEDIR=$(dirname "$CHROOT_HOME")
+	if test "$HOMEDIR" = "/" ; then
+	   HOMEDIR="$CHROOT_HOME"
+	fi
+    fi
 
     cat >"$SCHROOT_FSTAB_FILE" <<EOF
 /proc           /proc           none    rw,bind         0       0
 /sys            /sys            none    rw,bind         0       0
 /dev            /dev            none    rw,bind         0       0
 /dev/pts        /dev/pts        none    rw,bind         0       0
-/home           /home           none    rw,bind         0       0
+$HOMEDIR        $HOMEDIR           none    rw,bind         0       0
 /tmp            /tmp            none    rw,bind         0       0
-$SCRIPTDIR      $SCRIPTDIR      none    rw,bind         0       0
 EOF
-    log "Created $SCHROOT_FSTAB_FILE" \
-	"(bind-mount path: $SCRIPTDIR)"
+    log "Created $SCHROOT_FSTAB_FILE"
+    add_fstab_bind || true
 }
 
 run_in_chroot()
