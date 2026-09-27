@@ -38,31 +38,11 @@ if test -n "$TOOLCHAIN_DIR" -a -d "$TOOLCHAIN_DIR"; then
     PATH=$TOOLCHAIN_DIR/bin:$PATH
 fi
 
-if test -n "$CROSS_COMPILE" ; then
-    cross="--build=$(e2fsprogs-libs/config/config.guess) --host=$CROSS_COMPILE"
-    crossfio="--cc=$CROSS_COMPILE-gcc"
-fi
-
-if test -z "$USE_LOCAL_E2FSLIBS" -o -d util-linux; then
-    SKIP_E2FSLIBS=yes
-fi
-
-case "$CROSS_COMPILE" in
-    *-android|*-androideabi)
-	DO_ANDROID=yes
-	SKIP_KVM_UTILS=yes
-	SKIP_QUOTA=yes
-	SKIP_FIO=yes
-	SKIP_DBENCH=yes
-	;;
-esac
-
 function build_start () {
     echo "----------------- $(date '+%Y-%m-%d %H:%M:%S'): Starting build of $*"
 }
 
 function set_skip_all () {
-    SKIP_E2FSLIBS=yes
     SKIP_POPT=yes
     SKIP_AIO=yes
     SKIP_DBENCH=yes
@@ -109,10 +89,6 @@ while [ "$1" != "" ]; do
 	--aio-only)
 	    set_skip_all
 	    unset SKIP_AIO
-	    ;;
-	--e2fslibs-only)
-	    set_skip_all
-	    unset SKIP_E2FSLIBS
 	    ;;
 	--dbench-only)
 	    set_skip_all
@@ -205,17 +181,6 @@ DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
 
-if test -n "$DO_ANDROID" ; then
-    build_start "Android compatibility library"
-    (cd android-compat; ./configure $cross ;  $MAKE_CLEAN ; \
-     make $J prefix=$DESTDIR install)
-    android_compat="-landroid_compat"
-    LCF="-fpie -include android_compat.h"
-    LLF="-pie"
-else
-    LCF="-g -O2"
-fi
-
 # To make the build more reproducible...
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 export BUILD_PATH_PREFIX_MAP="xfstests-bld=$(pwd)"
@@ -225,15 +190,6 @@ LCF="$LCF $CPU_CFLAGS"
 # GCC doesn't yet understand BUILD_PATH_PREFIX_MAP
 LCF="$LCF -fdebug-prefix-map=$(pwd)=xfstests-bld -gno-record-gcc-switches"
 
-
-if test -z "$SKIP_E2FSLIBS" ; then
-    build_start "e2fslibs"
-    (cd e2fsprogs-libs; \
-     CFLAGS="$LCF -I$DESTDIR/include" \
-     LDFLAGS="$LLF $EXEC_LDFLAGS -L$DESTDIR/lib" \
-     ./configure $cross --prefix=/ --disable-nls; $MAKE_CLEAN ; make $J; \
-     make DESTDIR=$DESTDIR $J install)
-fi
 
 if test -z "$SKIP_POPT" ; then
     build_start "POPT library"
@@ -363,14 +319,6 @@ fi
 
 if test -z "$SKIP_XFSPROGS" ; then
     build_start "xfsprogs"
-    unset disable_blkid
-    # If libblkid.a exists and util-linux is not present, then it
-    # must have come from e2fslibs, and that v1 version of libblkid doesn't
-    # have the topology functions which xfsprogs needs; hence, we have to
-    # disable xfsprogs's use of blkid.
-    if test -f $DESTDIR/lib/libblkid.a -a ! -d util-linux; then
-	 export disable_blkid="--disable-blkid"
-    fi
     (cd libinih ; \
      if [ -n "$CROSS_COMPILE" ]; then
 	export CC="$CROSS_COMPILE-gcc"
@@ -383,7 +331,7 @@ if test -z "$SKIP_XFSPROGS" ; then
      export CPPFLAGS="-I$DESTDIR/include" ; \
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
-     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext $DISABLE_LIBICU --without-selinux $disable_blkid" ; \
+     export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext $DISABLE_LIBICU --without-selinux" ; \
      make $J realclean ; make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
@@ -391,7 +339,6 @@ if test -z "$SKIP_XFSPROGS" ; then
      make $J LLDFLAGS="$ALL_STATIC" V=1 PLDLIBS="$android_compat" ; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install; \
      DIST_ROOT=$DESTDIR make prefix=/ $J install-dev ; rm -f $DESTDIR/lib/*.so)
-    unset disable_blkid
 fi
 
 find . -name \*.la | xargs rm -f      # Die, libtool, die!!!!

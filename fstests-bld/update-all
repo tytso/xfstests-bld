@@ -13,9 +13,6 @@ DESTDIR=$(pwd)/bld
 
 mkdir -p $DESTDIR
 
-(cd e2fsprogs-libs; \
-	make $J; make DESTDIR=$DESTDIR $J install)
-
 (cd attr; \
     make $J ; \
     make $J install-dev ; make install)

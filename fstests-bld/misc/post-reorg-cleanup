@@ -4,7 +4,7 @@
 # top-level directories has been pulled or merged.
 #
 
-CLEAN_DIRS="acl android-compat attr dbench e2fsprogs-libs libaio \
+CLEAN_DIRS="acl attr dbench libaio \
 	libinih misc popt"
 
 TO_MOVE="fio quota xfsprogs-dev xfstests-dev fsverity blktests \

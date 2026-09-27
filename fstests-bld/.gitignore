@@ -2,14 +2,6 @@
 /xfstests-amd64.tar.gz
 /xfstests-arm64.tar.gz
 /xfstests-i386.tar.gz
-/android-compat/Makefile
-/android-compat/autom4te.cache
-/android-compat/aio.h
-/android-compat/libandroid_compat.a
-/android-compat/libandroid_compat.so.1.0
-/android-compat/libpthread.a
-/android-compat/librt.a
-/android-compat/librt.so.1.0
 /bld/
 /blktests/
 /build-distro
@@ -25,9 +17,6 @@
 /dbench/dbench
 /dbench/tbench
 /dbench/tbench_srv
-/e2fsprogs-libs/intl/libgnuintl.h
-/e2fsprogs-libs/lib/blkid/blkid.h
-/e2fsprogs-libs/lib/uuid/uuid.h
 /fio/
 /fsverity/
 /ima-evm-utils/
