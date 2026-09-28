@@ -5,7 +5,9 @@
 
         sudo apt-get install qemu-system-x86 qemu-system-arm qemu-utils \
 		wget gcc git make bc binutils bison dwarves flex openssl \
-		pahole perl-base libssl-dev libelf-dev debhelper
+		pahole perl-base libssl-dev libelf-dev debhelper \
+		crossbuild-essential-arm64 libssl-dev:arm64 \
+		gcc-i686-linux-gnu
 
     For Fedora systems:
 
