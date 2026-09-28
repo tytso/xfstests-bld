@@ -332,7 +332,8 @@ if test -z "$SKIP_XFSPROGS" ; then
      export LDFLAGS="$LLF -static -L$DESTDIR/lib" ; \
      export LIBS=-lpthread ; \
      export LOCAL_CONFIGURE_OPTIONS="$cross --prefix=/ --disable-lib64 --disable-gettext $DISABLE_LIBICU --without-selinux" ; \
-     make $J realclean ; make $J configure ; \
+     make $J realclean ; find . -type f -name \*.o -delete ; \
+     make $J configure ; \
      ver=$(git describe --always --dirty); echo "xfsprogs	$ver ($(git log -1 --pretty=%cD))" > ../xfsprogs.ver ; \
      aclocal -I m4 ; autoconf -I m4 ; \
      ./configure $LOCAL_CONFIGURE_OPTIONS ; \
