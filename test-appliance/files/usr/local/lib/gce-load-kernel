@@ -34,7 +34,7 @@ fi
 
 kexec=$(gce_attribute kexec)
 
-kopt=$(gce_attribute kopt | sed -e 's/:/ /')
+kopt=$(gce_attribute kopt | sed -e 's/:/ /g')
 cmd=$(gce_attribute cmd)
 mem=$(gce_attribute mem)
 cpus=$(gce_attribute nr_cpus)

@@ -109,7 +109,7 @@ else
     fi
 fi
 
-EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /')
+EXTRA_ARG=$(echo "$EXTRA_ARG" | sed -e 's/:/ /g')
 
 if test -z "$TESTRUNID" ; then
     TESTRUNID=$(date +%Y%m%d%H%M)
