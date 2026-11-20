@@ -269,6 +269,14 @@ Other optional parameters include:
   * Optional string. If specified as a non-empty string, the LTM
     instance will preserve VMs that are presumed to have wedged/timed
     out rather than deleting the VM.
+* GCE_CURL
+  * The program which is used to send requests to the LTM and KCS
+    servers.  The default is `curl`.  Setting this to `gce-gcs-curl`
+    causes the requests to be relayed via the GCS bucket instead of
+    being sent directly to the server's VM; see [Using the GCS relay
+    to reach the LTM and KCS
+    servers](#using-the-gcs-relay-to-reach-the-ltm-and-kcs-servers)
+    below.
 * GIT_REPO
   * Optional git repo url. If specified, all kernel building requests
     will use this repo be default. It can be overridden by command
@@ -497,6 +505,69 @@ Sometimes you might apply some patches only to find some xfstests tests fails, a
 The KCS server will use a binary search approach to find which commit between two endpoints that introduced a bug causing any of the tests to fail. This process involves multiple rounds of building kernels and running xfstests. If the server encounters a kernel build error or any test error (e.g. crashed test VMs), the corresponding commit is skipped.
 
 After git bisect finishes, you will receive an email containing the bisect log report. Test results are also uploaded to the GCS bucket.
+
+## Using the GCS relay to reach the LTM and KCS servers
+
+Normally the gce-xfstests command sends its requests to the LTM and KCS
+servers by using curl to connect to the https port of the VM where the
+server is running.  This requires that the machine where gce-xfstests is
+run be able to connect to that VM, which normally means that the VM has
+to have firewall rules which allow the connection.  If that is not
+possible, or not wanted --- for example, because you would rather not
+have the LTM and KCS servers be reachable from the Internet --- the
+requests can be relayed through the GCS bucket instead.  To do this, add
+the following line to `~/.config/gce-xfstests`:
+
+        GCE_CURL=gce-gcs-curl
+
+When this feature is enabled, commands such as `gce-xfstests ltm`,
+`gce-xfstests ltm-info`, and `gce-xfstests kcs` relay commands through
+files in the GCS bucket directory `gs://$GS_BUCKET/gcs-relay` instead of
+using a TCP connection to port 443.  This means that the LTM and KCS VMs
+do not need to have firewall rule which allows connections from the
+public network.  There are some tradeoffs, however:
+
+* It is slower.  Each request takes several seconds, most of which is
+  the time it takes to run the gcloud command a few times, instead of
+  a fraction of a second.  (A `gce-xfstests ltm` command sends one
+  request, or two if it needs to log in to the server first.)
+* The LTM and KCS VMs must have been launched using a test appliance
+  image which includes the `gce-gcs-relay` service.  If a VM was
+  launched using an older image, requests to it will fail with a
+  timeout after two minutes.
+
+A request is passed to the server at most once, and a request which
+could not be delivered before gce-xfstests gave up waiting is
+discarded instead of being delivered late.  So if a timeout is
+reported, the request has normally not been acted upon.  The exception
+is when the server did receive the request, but took too long to
+answer; `gce-xfstests ltm-info` can be used to check whether a test
+run was started.
+
+Setting `GCE_CURL` only affects the client machine where it is set.
+It does not change how the LTM and KCS servers are launched, how they
+communicate with each other over the VPC internal network, or whether
+the same servers can also be reached directly.  The `gce-gcs-relay`
+service finds out that there is something for it to do by waiting for
+the `gcs_relay` attribute to change, so it does not access the bucket,
+and so costs nothing, while the relay is not being used.
+
+How long to wait for a response can be changed by adding, for example,
+
+        export GCE_GCS_CURL_TIMEOUT=300
+
+to `~/.config/gce-xfstests`; the default is 120 seconds.  If the relay
+does not seem to be working, setting the environment variable
+`GCE_GCS_CURL_DEBUG=1` will show the gcloud commands as they are run,
+and the log of the relay service can be examined by running
+`journalctl -u gce-gcs-relay` on the server VM.
+
+`GCE_CURL` can also be set to the pathname of some other program which
+accepts curl's command-line options, for sites which have some other
+way of reaching the server VMs.  The name of the VM which the request
+is for is passed to the program in the `GCE_INSTANCE` environment
+variable, along with `GCE_PROJECT`, `GCE_ZONE`, `GS_BUCKET`, and
+`GCE_ACCOUNT`.
 
 # Creating a new GCE test appliance image
 

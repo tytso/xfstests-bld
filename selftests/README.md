@@ -7,6 +7,7 @@ this order:
 * build-kernel
 * appliance
 * ltm-kcs
+* gcs-relay/test_gcs_relay.py
 
 These self-test scripts should be run out of the top-level directory
 of xfstests-bld or the alternatively, the self-tests directory.
@@ -38,3 +39,12 @@ gce-xfstests.
 ## ltm-kcs
 
 This test script will run self-tests for the LTM and KCS server.
+
+## gcs-relay
+
+`gcs-relay/test_gcs_relay.py` runs local, offline end-to-end self-tests
+for `GCE_CURL`, `run-fstests/util/gce-gcs-curl`, and
+`test-appliance/files/usr/local/lib/gce-gcs-relay` against loopback
+fakes of GCS, the GCE metadata server, `gcloud`, and LTM/KCS.  It does
+not require GCP access or built kernels.  See
+[gcs-relay/README.md](gcs-relay/README.md) for options and details.

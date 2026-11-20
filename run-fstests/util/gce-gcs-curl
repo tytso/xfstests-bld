@@ -1,0 +1,1011 @@
+#!/usr/bin/env python3
+#
+# gce-gcs-curl --- send a request to the LTM or KCS server via GCS
+#
+# This program accepts (a subset of) the command-line options of curl,
+# but instead of connecting to the LTM or KCS server, it relays the
+# request through the gce-xfstests GCS bucket: the request is uploaded
+# to the bucket, the gce-gcs-relay daemon running on the server's VM
+# hands it to the server, and uploads the server's response to the
+# bucket, where this program picks it up.  It is used when gce-xfstests
+# is configured with GCE_CURL=gce-gcs-curl, which makes it possible to
+# use the LTM and KCS servers when there is no direct network path from
+# the machine running gce-xfstests to the server VM's https port (for
+# example, because of firewall rules, or because the VM has no external
+# IP address).  The price is latency: each request takes a number of
+# seconds instead of a fraction of a second.
+#
+# See the "GCS relay" section of Documentation/gce-xfstests.md for how
+# to use this, and the comments at the beginning of
+# test-appliance/files/usr/local/lib/gce-gcs-relay for a description of
+# the protocol.
+#
+# The gcloud command is used for all access to GCS and GCE, so that it
+# works with however the user has set up gcloud's credentials.
+#
+# The following environment variables, which are set up by gce-xfstests
+# (see run_gce_curl in util/get-config), say where the request should
+# be sent:
+#
+#     GS_BUCKET       the GCS bucket used by gce-xfstests
+#     GCE_PROJECT     the GCE project
+#     GCE_ZONE        the zone of the VM running the LTM or KCS server
+#     GCE_INSTANCE    the name of the VM running the LTM or KCS server
+#     GCE_ACCOUNT     (optional) the account which gcloud should use
+#
+# The following environment variables may be used to tune its behavior:
+#
+#     GCE_GCS_CURL_TIMEOUT    how many seconds to wait for the response
+#                             if -m/--max-time is not given (default: 120)
+#     GCE_GCS_CURL_DEBUG      if non-empty, act as if -v had been given
+#
+# Differences from curl:
+#
+#   * Only the options listed by "gce-gcs-curl --help" are supported,
+#     only https:// URLs are supported, and the port must be 443.
+#   * The host name in the URL is used for the Host header and for
+#     cookies, but it is not otherwise used to find the server; that is
+#     done using GCE_INSTANCE.  Options having to do with setting up the
+#     connection (--resolve, --cacert, -k, etc.) are accepted and
+#     ignored, since the connection to the server is made by the relay
+#     daemon, on the server's own VM.
+#   * Fatal errors are always reported on stderr, even if -s is given
+#     without -S, since otherwise problems with the relay are very hard
+#     to diagnose.
+#   * If no response was received, the cookie jar named by -c is left
+#     alone instead of being overwritten with an empty one.
+#
+# The exit status follows curl's conventions: 0 if a response was
+# received (whatever its HTTP status, unless -f is given), 2 for usage
+# errors, 7 if the server could not be reached, 22 for an HTTP error
+# when -f is given, 28 for a timeout, 56 for other relay failures.
+
+import base64
+import calendar
+import email.utils
+import json
+import math
+import os
+import random
+import re
+import secrets
+import shlex
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+
+PROG = 'gce-gcs-curl'
+VERSION = '1.0'
+
+# These must match gce-gcs-relay
+PROTOCOL_VERSION = 1
+RELAY_PREFIX = 'gcs-relay'
+RELAY_ATTRIBUTE = 'gcs_relay'
+
+DEFAULT_TIMEOUT = 120.0
+MAX_TIMEOUT = 3600.0
+
+# How many times to try to signal the instance via its metadata, and
+# how long to keep waiting for a response once that has failed.  (The
+# relay daemon may be awake anyway if it has been used recently, or if
+# another parallel invocation signalled it.)  Metadata fingerprint
+# conflicts and rate limits get more attempts, with jittered backoff,
+# because GCE rejects concurrent setMetadata calls with HTTP 412.
+SIGNAL_ATTEMPTS = 3
+SIGNAL_CONFLICT_ATTEMPTS = 8
+SIGNAL_GRACE = 30.0
+RESIGNAL_UPLOAD_SECS = 20.0
+
+INSTANCE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$')
+PROJECT_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$')
+BUCKET_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{1,221}$')
+
+TRANSIENT_SIGNAL_ERRORS = (
+    'fingerprint',
+    'conditionnotmet',
+    'not ready',
+    'operationinprogress',
+    'rate limit',
+    'quota',
+    'backend error',
+    'service unavailable',
+    'internal error',
+)
+
+# Exit codes, as used by curl
+E_UNSUPPORTED_PROTOCOL = 1
+E_FAILED_INIT = 2
+E_URL_MALFORMAT = 3
+E_COULDNT_CONNECT = 7
+E_HTTP_RETURNED_ERROR = 22
+E_WRITE_ERROR = 23
+E_READ_ERROR = 26
+E_OPERATION_TIMEDOUT = 28
+E_RECV_ERROR = 56
+
+USAGE = """\
+Usage: gce-gcs-curl [options...] <url>
+Send a request to a gce-xfstests LTM or KCS server via the GCS relay.
+
+ -b, --cookie <data|filename>  Send cookies from string/file
+ -c, --cookie-jar <filename>   Write cookies to <filename> afterwards
+ -d, --data <data>             HTTP POST data (@file reads it from a file)
+     --data-ascii <data>       Same as --data
+     --data-binary <data>      HTTP POST binary data
+     --data-raw <data>         HTTP POST data, '@' allowed
+ -f, --fail                    Fail (exit status 22) on HTTP errors
+ -h, --help                    Print this help text
+ -H, --header <header>         Pass custom header to the server
+ -i, --include                 Include the response headers in the output
+     --json <data>             HTTP POST JSON
+ -m, --max-time <seconds>      How long to wait for the response
+ -o, --output <file>           Write the response body to <file>
+ -e, --referer <URL>           Referer URL
+ -X, --request <method>        Specify the request method to use
+ -S, --show-error              Show errors (they are always shown)
+ -s, --silent                  Silent mode
+     --url <url>               URL to work with
+ -A, --user-agent <name>       Send User-Agent <name> to the server
+ -v, --verbose                 Explain what is being done
+ -V, --version                 Show the version number
+
+The following options are accepted for compatibility with curl, but
+are ignored: --cacert, --capath, --connect-timeout, --connect-to,
+--http1.1, -k/--insecure, -4/--ipv4, -6/--ipv6, --noproxy, --resolve,
+--tlsv1.2, --tlsv1.3
+
+The server is located using the GS_BUCKET, GCE_PROJECT, GCE_ZONE, and
+GCE_INSTANCE environment variables, which are set by gce-xfstests.
+"""
+
+# The options which take a parameter: long name -> short name
+PARAM_OPTS = {
+    'cookie': 'b',
+    'cookie-jar': 'c',
+    'data': 'd',
+    'data-ascii': None,
+    'data-binary': None,
+    'data-raw': None,
+    'header': 'H',
+    'json': None,
+    'max-time': 'm',
+    'output': 'o',
+    'referer': 'e',
+    'request': 'X',
+    'url': None,
+    'user-agent': 'A',
+    # Accepted, but ignored
+    'cacert': None,
+    'capath': None,
+    'connect-timeout': None,
+    'connect-to': None,
+    'noproxy': None,
+    'resolve': None,
+}
+
+# The options which do not take a parameter: long name -> short name
+FLAG_OPTS = {
+    'fail': 'f',
+    'help': 'h',
+    'include': 'i',
+    'show-error': 'S',
+    'silent': 's',
+    'verbose': 'v',
+    'version': 'V',
+    # Accepted, but ignored
+    'http1.1': None,
+    'insecure': 'k',
+    'ipv4': '4',
+    'ipv6': '6',
+    'tlsv1.2': None,
+    'tlsv1.3': None,
+}
+
+SHORT_PARAM = {v: k for k, v in PARAM_OPTS.items() if v}
+SHORT_FLAG = {v: k for k, v in FLAG_OPTS.items() if v}
+
+DATA_OPTS = ('data', 'data-ascii', 'data-binary', 'data-raw', 'json')
+
+debugging = False
+
+
+class Fatal(Exception):
+    """An error which ends the program with a curl-style exit status"""
+
+    def __init__(self, code, msg):
+        super().__init__(msg)
+        self.code = code
+        self.msg = msg
+
+
+def debug(msg):
+    if debugging:
+        sys.stderr.write('* %s\n' % msg)
+        sys.stderr.flush()
+
+
+#
+# Command-line parsing
+#
+
+class Options:
+    def __init__(self):
+        self.urls = []
+        self.headers = []
+        self.data = []          # list of (option name, parameter)
+        self.params = {}
+        self.flags = set()
+
+    def set_param(self, name, value):
+        if name == 'url':
+            self.urls.append(value)
+        elif name == 'header':
+            self.headers.append(value)
+        elif name in DATA_OPTS:
+            self.data.append((name, value))
+        else:
+            self.params[name] = value
+
+    def set_flag(self, name, value):
+        if value:
+            self.flags.add(name)
+        else:
+            self.flags.discard(name)
+
+
+def usage_error(msg):
+    raise Fatal(E_FAILED_INIT, "%s\n%s: try '%s --help' for more information"
+                % (msg, PROG, PROG))
+
+
+def parse_args(argv):
+    opts = Options()
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        i += 1
+        if arg.startswith('--') and len(arg) > 2:
+            name = arg[2:]
+            value = None
+            if '=' in name and name.split('=', 1)[0] in PARAM_OPTS:
+                name, value = name.split('=', 1)
+            if name in PARAM_OPTS:
+                if value is None:
+                    if i >= len(argv):
+                        usage_error('option %s: requires parameter' % arg)
+                    value = argv[i]
+                    i += 1
+                opts.set_param(name, value)
+            elif name in FLAG_OPTS:
+                opts.set_flag(name, True)
+            elif name.startswith('no-') and name[3:] in FLAG_OPTS:
+                opts.set_flag(name[3:], False)
+            else:
+                usage_error('option %s: is unknown' % arg)
+        elif arg.startswith('-') and len(arg) > 1 and arg != '--':
+            j = 1
+            while j < len(arg):
+                ch = arg[j]
+                j += 1
+                if ch in SHORT_PARAM:
+                    if j < len(arg):
+                        value = arg[j:]
+                    elif i < len(argv):
+                        value = argv[i]
+                        i += 1
+                    else:
+                        usage_error('option -%s: requires parameter' % ch)
+                    opts.set_param(SHORT_PARAM[ch], value)
+                    break
+                elif ch in SHORT_FLAG:
+                    opts.set_flag(SHORT_FLAG[ch], True)
+                else:
+                    usage_error('option -%s: is unknown' % ch)
+        elif arg == '--':
+            usage_error('option --: is unknown')
+        else:
+            opts.urls.append(arg)
+    return opts
+
+
+def parse_url(url):
+    """Returns the tuple (host, path, request target)"""
+    try:
+        u = urllib.parse.urlsplit(url)
+        port = u.port
+    except ValueError:
+        raise Fatal(E_URL_MALFORMAT, 'malformed URL: %s' % url)
+    if u.scheme.lower() != 'https':
+        raise Fatal(E_UNSUPPORTED_PROTOCOL,
+                    'only https:// URLs are supported: %s' % url)
+    if not u.hostname:
+        raise Fatal(E_URL_MALFORMAT, 'no host name in URL: %s' % url)
+    if port not in (None, 443):
+        raise Fatal(E_COULDNT_CONNECT,
+                    'the GCS relay can only reach port 443 of the server: %s'
+                    % url)
+    path = u.path or '/'
+    target = path
+    if u.query:
+        target += '?' + u.query
+    return u.hostname.lower(), path, target
+
+
+def read_data(name, value):
+    """Returns the bytes which a --data (etc.) option adds to the body"""
+    if name == 'data-raw' or not value.startswith('@'):
+        return os.fsencode(value)
+    filename = value[1:]
+    try:
+        if filename == '-':
+            content = sys.stdin.buffer.read()
+        else:
+            with open(filename, 'rb') as f:
+                content = f.read()
+    except OSError as e:
+        raise Fatal(E_READ_ERROR,
+                    'cannot read %s: %s' % (filename, e.strerror))
+    if name in ('data', 'data-ascii'):
+        for ch in (b'\r', b'\n', b'\0'):
+            content = content.replace(ch, b'')
+    return content
+
+
+def build_body(opts):
+    """Returns the request body, or None if there isn't one"""
+    body = None
+    prev = None
+    for name, value in opts.data:
+        piece = read_data(name, value)
+        if body is None:
+            body = piece
+        elif name == 'json' and prev == 'json':
+            body += piece
+        else:
+            body += b'&' + piece
+        prev = name
+    return body
+
+
+def build_headers(opts, host, body, cookies):
+    """Returns the list of [name, value] request headers
+
+    This follows what curl does: there is a default set of headers,
+    which can be overridden or removed using -H.
+    """
+    is_json = any(name == 'json' for name, _ in opts.data)
+    defaults = [
+        ['Host', host],
+        ['User-Agent', opts.params.get('user-agent',
+                                       '%s/%s' % (PROG, VERSION))],
+        ['Accept', 'application/json' if is_json else '*/*'],
+    ]
+    if cookies:
+        defaults.append(['Cookie', cookies])
+    if 'referer' in opts.params:
+        defaults.append(['Referer', opts.params['referer']])
+    if body is not None:
+        defaults.append(['Content-Type',
+                         'application/json' if is_json else
+                         'application/x-www-form-urlencoded'])
+
+    custom = []
+    for raw in opts.headers:
+        if ':' in raw:
+            name, value = raw.split(':', 1)
+        elif raw.endswith(';'):
+            # "Name;" means send the header with an empty value
+            name, value = raw[:-1], None
+        else:
+            continue
+        name = name.strip()
+        if not name:
+            continue
+        defaults = [h for h in defaults if h[0].lower() != name.lower()]
+        if value is None:
+            custom.append([name, ''])
+        elif value.strip():
+            custom.append([name, value.strip()])
+        # else "Name:" means just remove the default header
+    return defaults + custom
+
+
+#
+# Cookies, stored in the same Netscape cookie file format as used by
+# curl, so that a cookie jar can be used interchangeably with curl.
+#
+
+COOKIE_FILE_HEADER = """\
+# Netscape HTTP Cookie File
+# https://curl.se/docs/http-cookies.html
+# This file was generated by gce-gcs-curl! Edit at your own risk.
+
+"""
+
+
+class Cookie:
+    def __init__(self, domain, tailmatch, path, secure, expires, name,
+                 value, httponly=False):
+        self.domain = domain        # without any leading '.'
+        self.tailmatch = tailmatch  # matches subdomains, too
+        self.path = path
+        self.secure = secure
+        self.expires = expires      # seconds since the epoch; 0=session
+        self.name = name
+        self.value = value
+        self.httponly = httponly
+
+    def key(self):
+        return (self.domain, self.path, self.name)
+
+    def expired(self, now):
+        return self.expires != 0 and self.expires <= now
+
+    def matches(self, host, path):
+        if self.tailmatch:
+            if host != self.domain and not host.endswith('.' + self.domain):
+                return False
+        elif host != self.domain:
+            return False
+        if path == self.path:
+            return True
+        if path.startswith(self.path):
+            if self.path.endswith('/') or path[len(self.path)] == '/':
+                return True
+        return False
+
+    def to_line(self):
+        return '\t'.join([
+            ('#HttpOnly_' if self.httponly else '') +
+            ('.' if self.tailmatch else '') + self.domain,
+            'TRUE' if self.tailmatch else 'FALSE',
+            self.path,
+            'TRUE' if self.secure else 'FALSE',
+            str(self.expires),
+            self.name,
+            self.value]) + '\n'
+
+
+def is_ip_address(host):
+    return ':' in host or host.replace('.', '').isdigit()
+
+
+def default_cookie_path(path):
+    if not path.startswith('/') or path.count('/') == 1:
+        return '/'
+    return path[:path.rindex('/')]
+
+
+def parse_set_cookie(header, host, path, now):
+    """Returns the Cookie for a Set-Cookie header, or None if it is bad"""
+    parts = header.split(';')
+    if '=' not in parts[0]:
+        return None
+    name, value = parts[0].split('=', 1)
+    name = name.strip()
+    value = value.strip()
+    if not name or '\t' in name or '\t' in value:
+        return None
+    cookie = Cookie(host, False, default_cookie_path(path), False, 0,
+                    name, value)
+    max_age = None
+    for attr in parts[1:]:
+        key, _, val = attr.partition('=')
+        key = key.strip().lower()
+        val = val.strip()
+        if key == 'domain' and val:
+            domain = val.lstrip('.').lower()
+            if is_ip_address(host):
+                if domain != host:
+                    return None
+            elif host == domain or host.endswith('.' + domain):
+                cookie.domain = domain
+                cookie.tailmatch = True
+            else:
+                return None
+        elif key == 'path':
+            if val.startswith('/') and '\t' not in val:
+                cookie.path = val
+        elif key == 'max-age':
+            try:
+                max_age = int(val)
+            except ValueError:
+                pass
+        elif key == 'expires':
+            try:
+                when = email.utils.parsedate_to_datetime(val)
+                if when.tzinfo is None:
+                    cookie.expires = calendar.timegm(when.timetuple())
+                else:
+                    cookie.expires = int(when.timestamp())
+            except (TypeError, ValueError, OverflowError):
+                pass
+        elif key == 'secure':
+            cookie.secure = True
+        elif key == 'httponly':
+            cookie.httponly = True
+    if max_age is not None:
+        cookie.expires = int(now) + max_age if max_age > 0 else 1
+    return cookie
+
+
+class CookieJar:
+    def __init__(self):
+        self.cookies = []
+
+    def store(self, cookie, now):
+        self.cookies = [c for c in self.cookies if c.key() != cookie.key()]
+        if not cookie.expired(now):
+            self.cookies.append(cookie)
+
+    def load(self, filename, now):
+        try:
+            with open(filename, 'r', errors='surrogateescape') as f:
+                lines = f.readlines()
+        except OSError as e:
+            # Like curl, treat a cookie file which can't be read as empty
+            debug('cannot read cookies from %s: %s' % (filename, e.strerror))
+            return
+        for line in lines:
+            line = line.rstrip('\r\n')
+            httponly = False
+            if line.startswith('#HttpOnly_'):
+                httponly = True
+                line = line[len('#HttpOnly_'):]
+            elif line.startswith('#') or not line.strip():
+                continue
+            fields = line.split('\t')
+            if len(fields) == 6:
+                fields.append('')
+            if len(fields) != 7:
+                continue
+            try:
+                expires = int(fields[4])
+            except ValueError:
+                continue
+            self.store(Cookie(fields[0].lstrip('.').lower(),
+                              fields[1].upper() == 'TRUE', fields[2],
+                              fields[3].upper() == 'TRUE', expires,
+                              fields[5], fields[6], httponly), now)
+
+    def header(self, host, path, now):
+        """Returns the value for the Cookie request header, or None"""
+        found = [c for c in self.cookies
+                 if c.matches(host, path) and not c.expired(now)]
+        if not found:
+            return None
+        # Cookies with more specific paths go first
+        found.sort(key=lambda c: -len(c.path))
+        return '; '.join('%s=%s' % (c.name, c.value) for c in found)
+
+    def update(self, headers, host, path, now):
+        for name, value in headers:
+            if name.lower() != 'set-cookie':
+                continue
+            cookie = parse_set_cookie(value, host, path, now)
+            if cookie is not None:
+                self.store(cookie, now)
+
+    def save(self, filename, now):
+        data = COOKIE_FILE_HEADER + ''.join(
+            c.to_line() for c in self.cookies if not c.expired(now))
+        if filename == '-':
+            sys.stdout.write(data)
+            sys.stdout.flush()
+            return
+        try:
+            replace = stat.S_ISREG(os.stat(filename).st_mode)
+        except OSError:
+            replace = True
+        if replace:
+            # The cookie is a credential, so don't let other users
+            # read it, and replace the file atomically.
+            tmp = None
+            try:
+                fd, tmp = tempfile.mkstemp(
+                    prefix=os.path.basename(filename) + '.',
+                    dir=os.path.dirname(filename) or '.')
+                with os.fdopen(fd, 'w', errors='surrogateescape') as f:
+                    f.write(data)
+                os.replace(tmp, filename)
+                return
+            except OSError:
+                if tmp:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+        with open(filename, 'w', errors='surrogateescape') as f:
+            f.write(data)
+
+
+#
+# The GCS relay client
+#
+
+class Relay:
+    def __init__(self, timeout):
+        def getenv(name, required=True):
+            value = os.environ.get(name, '').strip()
+            if required and not value:
+                raise Fatal(E_FAILED_INIT,
+                            '%s is not set in the environment\n'
+                            '%s: this program is meant to be run by '
+                            'gce-xfstests; see GCE_CURL in\n'
+                            '%s: Documentation/gce-xfstests.md'
+                            % (name, PROG, PROG))
+            return value
+
+        self.bucket = getenv('GS_BUCKET')
+        if self.bucket.startswith('gs://'):
+            self.bucket = self.bucket[len('gs://'):]
+        self.bucket = self.bucket.strip('/')
+        if not BUCKET_RE.match(self.bucket):
+            raise Fatal(E_FAILED_INIT, 'bad GS_BUCKET value: %s' % self.bucket)
+        self.project = getenv('GCE_PROJECT')
+        if not PROJECT_RE.match(self.project) or self.project in ('.', '..'):
+            raise Fatal(E_FAILED_INIT,
+                        'bad GCE_PROJECT value: %s' % self.project)
+        self.zone = getenv('GCE_ZONE')
+        self.instance = getenv('GCE_INSTANCE')
+        if not INSTANCE_RE.match(self.instance) or self.instance in (
+                '.', '..'):
+            raise Fatal(E_FAILED_INIT,
+                        'bad GCE_INSTANCE value: %s' % self.instance)
+        self.timeout = timeout
+        self.gcloud = ['gcloud']
+        account = getenv('GCE_ACCOUNT', required=False)
+        if account:
+            self.gcloud += ['--account', account]
+        self.gcloud += ['--project', self.project]
+        self.signal_attempts = 0
+        self.signal_value = None
+        self.signal_retry_at = None
+        self.signal_proc = None
+        self.signal_stderr = None
+        self.signal_error = None
+        self.signal_failed = False
+        self.claimed = False
+
+    def url(self, kind, request_id):
+        return 'gs://%s/%s/%s-%s/%s/%s.json' % (
+            self.bucket, RELAY_PREFIX, self.instance, self.project,
+            kind, request_id)
+
+    def run_gcloud(self, args, data=None, timeout=None):
+        """Runs gcloud, and returns (exit status, stdout, stderr)"""
+        cmd = self.gcloud + args
+        debug('running: ' + ' '.join(shlex.quote(c) for c in cmd))
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE if data is not None
+                else subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except OSError as e:
+            raise Fatal(E_FAILED_INIT,
+                        'cannot run gcloud: %s' % e.strerror)
+        try:
+            out, err = proc.communicate(data, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            return None, b'', 'gcloud timed out'
+        return proc.returncode, out, err.decode('utf-8', 'replace').strip()
+
+    def spawn_gcloud(self, args, stderr=subprocess.DEVNULL):
+        """Starts gcloud in the background, detached from this program
+
+        It must not inherit stdout, since that would keep whatever is
+        reading our output waiting until gcloud is finished.
+        """
+        cmd = self.gcloud + args
+        debug('running in the background: ' +
+              ' '.join(shlex.quote(c) for c in cmd))
+        try:
+            return subprocess.Popen(
+                cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                stderr=stderr, start_new_session=True)
+        except OSError as e:
+            raise Fatal(E_FAILED_INIT,
+                        'cannot run gcloud: %s' % e.strerror)
+
+    def remove(self, urls):
+        """Removes objects from the bucket, in the background"""
+        for url in urls:
+            try:
+                self.spawn_gcloud(['storage', 'rm', url])
+            except Fatal:
+                pass
+
+    def signal(self, value):
+        """Tells the relay daemon to look for requests in the bucket
+
+        This is done by setting the gcs_relay metadata attribute of
+        the instance, which the relay daemon is watching.  Since this
+        takes a while, it is done in the background, while the request
+        is being uploaded.
+        """
+        self.signal_value = value
+        self.signal_attempts += 1
+        self.signal_stderr = tempfile.TemporaryFile()
+        self.signal_proc = self.spawn_gcloud(
+            ['compute', '-q', 'instances', 'add-metadata', self.instance,
+             '--zone', self.zone,
+             '--metadata', '%s=%s' % (RELAY_ATTRIBUTE, value)],
+            stderr=self.signal_stderr)
+
+    def check_signal(self, retry=True):
+        """Checks how signalling the instance went; retries if it failed"""
+        if self.signal_retry_at is not None:
+            if (retry and not self.claimed and
+                    time.monotonic() >= self.signal_retry_at):
+                self.signal_retry_at = None
+                self.signal(self.signal_value)
+            return
+        if self.signal_proc is None:
+            return
+        status = self.signal_proc.poll()
+        if status is None:
+            return
+        self.signal_proc = None
+        if status == 0:
+            debug('signalled %s' % self.instance)
+            self.signal_error = None
+        else:
+            self.signal_stderr.seek(0)
+            self.signal_error = self.signal_stderr.read().decode(
+                'utf-8', 'replace').strip()
+            debug('signalling %s failed: %s'
+                  % (self.instance, self.signal_error))
+        self.signal_stderr.close()
+        if status == 0 or not retry or self.claimed:
+            return
+        low = self.signal_error.lower()
+        transient = any(s in low for s in TRANSIENT_SIGNAL_ERRORS)
+        limit = SIGNAL_CONFLICT_ATTEMPTS if transient else SIGNAL_ATTEMPTS
+        if self.signal_attempts < limit:
+            if transient:
+                # Parallel clients updating metadata on the same VM can
+                # collide on GCE's metadata fingerprint (HTTP 412); back
+                # off with jitter so retries do not collide again.
+                base = min(0.5 * (2 ** (self.signal_attempts - 1)), 8.0)
+                self.signal_retry_at = (time.monotonic() +
+                                        base * random.uniform(0.5, 1.5))
+            else:
+                self.signal(self.signal_value)
+        else:
+            self.signal_failed = True
+
+    def request_claimed(self, req_url, deadline):
+        """Returns True if the relay daemon has already removed req_url"""
+        status, _, err = self.run_gcloud(
+            ['storage', 'ls', req_url],
+            timeout=max(deadline - time.monotonic(), 10))
+        return status != 0 and 'matched no objects' in err.lower()
+
+    def transact(self, request):
+        """Sends a request via the relay; returns the raw response"""
+        request_id = '%s-%d-%s' % (
+            time.strftime('%Y%m%d%H%M%S', time.gmtime()), os.getpid(),
+            secrets.token_hex(8))
+        req_url = self.url('req', request_id)
+        rsp_url = self.url('rsp', request_id)
+        start = time.monotonic()
+        deadline = start + self.timeout
+
+        self.signal(request_id)
+        status, _, err = self.run_gcloud(
+            ['storage', 'cp', '-', req_url],
+            data=json.dumps(request).encode('utf-8'),
+            timeout=max(self.timeout, 10))
+        if status != 0:
+            raise Fatal(E_COULDNT_CONNECT,
+                        'could not upload the request to %s:\n%s'
+                        % (req_url, err))
+        uploaded = time.monotonic()
+        debug('uploaded %s after %.1f seconds' % (req_url, uploaded - start))
+        if uploaded - start > RESIGNAL_UPLOAD_SECS:
+            # If the upload was slow, the earlier wakeup's burst window
+            # may already be ending; nudge the relay again now that the
+            # request object is actually in the bucket.
+            self.check_signal()
+            if (self.signal_proc is None and self.signal_retry_at is None and
+                    not self.signal_failed):
+                self.signal_attempts = 0
+                self.signal(request_id + '-u')
+
+        try:
+            delay = 1.0
+            while True:
+                now = time.monotonic()
+                if now >= deadline:
+                    break
+                time.sleep(min(delay, deadline - now))
+                self.check_signal()
+                status, out, err = self.run_gcloud(
+                    ['storage', 'cat', rsp_url],
+                    timeout=max(deadline - time.monotonic(), 10))
+                now = time.monotonic()
+                if status == 0:
+                    debug('received %s after %.1f seconds'
+                          % (rsp_url, now - start))
+                    self.remove([rsp_url])
+                    return out
+                if (self.signal_failed and not self.claimed and
+                        now - uploaded > SIGNAL_GRACE):
+                    # Another parallel invocation may already have woken
+                    # the relay, or it may already have been awake.  If
+                    # our request object is gone, the relay claimed it
+                    # and is working on it, so keep waiting for rsp_url.
+                    if self.request_claimed(req_url, deadline):
+                        debug('request was claimed by %s despite signal error'
+                              % self.instance)
+                        self.claimed = True
+                        self.signal_failed = False
+                    else:
+                        self.remove([req_url])
+                        raise Fatal(E_COULDNT_CONNECT,
+                                    'could not signal the instance %s in '
+                                    'zone %s:\n%s' % (self.instance, self.zone,
+                                                      self.signal_error))
+                delay = 0.5 if now - uploaded < 30 else 2.0
+        except KeyboardInterrupt:
+            self.remove([req_url, rsp_url])
+            raise
+
+        self.remove([req_url, rsp_url])
+        self.check_signal(retry=False)
+        msg = ('timed out after %g seconds waiting for the response '
+               'from %s\n' % (self.timeout, self.instance) +
+               '%s: Is %s running, and was it created using a test '
+               'appliance image\n' % (PROG, self.instance) +
+               '%s: which includes the gce-gcs-relay service?'
+               % PROG)
+        if self.signal_error and not self.claimed:
+            msg += ('\n%s: Signalling the instance failed:\n%s'
+                    % (PROG, self.signal_error))
+        raise Fatal(E_OPERATION_TIMEDOUT, msg)
+
+
+def get_timeout(opts):
+    value = opts.params.get('max-time')
+    what = '--max-time'
+    if value is None:
+        value = os.environ.get('GCE_GCS_CURL_TIMEOUT', '').strip()
+        what = 'GCE_GCS_CURL_TIMEOUT'
+    if not value:
+        return DEFAULT_TIMEOUT
+    try:
+        timeout = float(value)
+        if not 0 < timeout < float('inf'):
+            raise ValueError
+    except ValueError:
+        raise Fatal(E_FAILED_INIT, 'bad value for %s: %s' % (what, value))
+    return min(timeout, MAX_TIMEOUT)
+
+
+def decode_response(raw, instance):
+    """Returns (status, reason, headers, body) from the relay's response"""
+    try:
+        rsp = json.loads(raw.decode('utf-8'))
+        if not isinstance(rsp, dict):
+            raise ValueError
+        if 'error' in rsp:
+            code = {'connect': E_COULDNT_CONNECT,
+                    'timeout': E_OPERATION_TIMEDOUT}.get(rsp.get('kind'),
+                                                         E_RECV_ERROR)
+            raise Fatal(code, 'relay on %s: %s' % (instance, rsp['error']))
+        status = int(rsp['status'])
+        reason = str(rsp.get('reason') or '')
+        headers = [(str(k), str(v)) for k, v in rsp.get('headers') or []]
+        body = base64.b64decode(rsp.get('body') or '')
+    except (ValueError, KeyError, TypeError):
+        raise Fatal(E_RECV_ERROR,
+                    'malformed response from the relay on %s' % instance)
+    return status, reason, headers, body
+
+
+def main(argv):
+    global debugging
+
+    opts = parse_args(argv)
+    if 'help' in opts.flags:
+        sys.stdout.write(USAGE)
+        return 0
+    if 'version' in opts.flags:
+        print('%s %s (curl work-alike for the gce-xfstests GCS relay)'
+              % (PROG, VERSION))
+        return 0
+    debugging = ('verbose' in opts.flags or
+                 bool(os.environ.get('GCE_GCS_CURL_DEBUG')))
+    if not opts.urls:
+        usage_error('no URL specified')
+    if len(opts.urls) > 1:
+        usage_error('only one URL may be specified')
+    host, path, target = parse_url(opts.urls[0])
+    relay = Relay(get_timeout(opts))
+
+    now = time.time()
+    jar = CookieJar()
+    cookies = None
+    cookie_opt = opts.params.get('cookie')
+    if cookie_opt is not None:
+        if '=' in cookie_opt:
+            cookies = cookie_opt
+        else:
+            jar.load(cookie_opt, now)
+            cookies = jar.header(host, path, now)
+
+    body = build_body(opts)
+    method = opts.params.get('request')
+    if not method:
+        method = 'GET' if body is None else 'POST'
+    request = {
+        'version': PROTOCOL_VERSION,
+        'method': method,
+        'path': target,
+        'headers': build_headers(opts, host, body, cookies),
+        'timeout': int(math.ceil(relay.timeout)),
+    }
+    if body is not None:
+        request['body'] = base64.b64encode(body).decode('ascii')
+    debug('%s %s via gs://%s/%s/%s-%s/' % (
+        method, target, relay.bucket, RELAY_PREFIX, relay.instance,
+        relay.project))
+
+    raw = relay.transact(request)
+    status, reason, headers, data = decode_response(raw, relay.instance)
+    debug('HTTP status %d %s' % (status, reason))
+
+    jar_file = opts.params.get('cookie-jar')
+    if jar_file is not None:
+        jar.update(headers, host, path, time.time())
+        try:
+            jar.save(jar_file, time.time())
+        except OSError as e:
+            sys.stderr.write('%s: cannot write the cookie jar %s: %s\n'
+                             % (PROG, jar_file, e.strerror))
+
+    failed = 'fail' in opts.flags and status >= 400
+    output = b''
+    if 'include' in opts.flags:
+        output += ('HTTP/1.1 %d %s\r\n' % (status, reason)).encode('latin-1')
+        for name, value in headers:
+            output += ('%s: %s\r\n' % (name, value)).encode('latin-1',
+                                                           'replace')
+        output += b'\r\n'
+    if not failed:
+        output += data
+    try:
+        out_file = opts.params.get('output')
+        if out_file is None or out_file == '-':
+            sys.stdout.buffer.write(output)
+            sys.stdout.buffer.flush()
+        else:
+            with open(out_file, 'wb') as f:
+                f.write(output)
+    except OSError as e:
+        if isinstance(e, BrokenPipeError):
+            # Keep python from complaining again when it exits
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        raise Fatal(E_WRITE_ERROR, 'cannot write the output: %s' % e.strerror)
+    if failed:
+        if 'silent' not in opts.flags or 'show-error' in opts.flags:
+            sys.stderr.write('%s: (%d) The requested URL returned error: %d\n'
+                             % (PROG, E_HTTP_RETURNED_ERROR, status))
+        return E_HTTP_RETURNED_ERROR
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Fatal as e:
+        sys.stderr.write('%s: (%d) %s\n' % (PROG, e.code, e.msg))
+        sys.exit(e.code)
+    except KeyboardInterrupt:
+        sys.exit(130)

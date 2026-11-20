@@ -1,0 +1,14 @@
+[Unit]
+Description=GCS relay for the GCE LTM or KCS server
+ConditionPathExists=/usr/local/lib/gce-gcs-relay
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+ExecStart=/usr/local/lib/gce-gcs-relay
+
+[Install]
+WantedBy=multi-user.target

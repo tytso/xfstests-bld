@@ -49,3 +49,84 @@ To run the server in debug mode, set `DEBUG = true` in [logging.go](../test-appl
 In debug mode, logs are redirected to the console with human-friendly format, and KCS server will not shut down itself automatically.
 
 Check code docs and function comments for more details about how the server works.
+
+## The GCS relay
+
+When gce-xfstests is configured with `GCE_CURL=gce-gcs-curl` (see
+[Using the GCS relay to reach the LTM and KCS
+servers](gce-xfstests.md#using-the-gcs-relay-to-reach-the-ltm-and-kcs-servers)),
+requests do not arrive at the server directly from the user's
+machine.  Instead the [gce-gcs-curl](../run-fstests/util/gce-gcs-curl)
+script uploads each request to the GCS bucket, and the
+[gce-gcs-relay](../test-appliance/files/usr/local/lib/gce-gcs-relay)
+daemon, which runs on the LTM and KCS VMs as `gce-gcs-relay.service`,
+fetches the request and sends it to `https://127.0.0.1:443`.  From the
+point of view of the LTM or KCS server, the request comes from the
+local host.  The comments at the beginning of the gce-gcs-relay script
+describe the protocol.
+
+The relay daemon logs one line for each request (but never the
+contents of a request or response) to the journal:
+
+        journalctl -u gce-gcs-relay.service
+
+To get more details about what it is doing, it can be run by hand:
+
+        systemctl stop gce-gcs-relay.service
+        /usr/local/lib/gce-gcs-relay --debug
+
+While a request is in transit it can be found in the GCS bucket as
+`gs://$GS_BUCKET/gcs-relay/<instance>-$GCE_PROJECT/req/<id>.json`, and
+its response as
+`gs://$GS_BUCKET/gcs-relay/<instance>-$GCE_PROJECT/rsp/<id>.json`.
+
+### Instance separation and concurrency
+
+Although `gce-ltm-funcs` and `gce-kcs-funcs` use the same URL hostname
+(`a.$GCE_PROJECT.gce-xfstests`) to match the wildcard certificate,
+`run_gce_curl` (in `run-fstests/util/get-config`) passes the target VM
+name (`xfstests-ltm` or `xfstests-kcs`) via `GCE_INSTANCE`, along with
+`GCE_PROJECT`.  `gce-gcs-curl` uses both to scope objects under
+`gcs-relay/<instance>-$GCE_PROJECT/` and updates `gcs_relay` only on
+that VM's instance metadata.  On the appliance side, each VM's
+`gce-gcs-relay` queries `instance/name` and `project/project-id` from
+the GCE metadata server at startup, watches only its own instance
+attributes, and lists only its own `gcs-relay/<instance>-$GCE_PROJECT/`
+prefix.  This keeps LTM and KCS traffic separate (waking one VM does
+not wake the other) and also allows multiple GCE projects using
+gce-xfstests to share a single GCS bucket without colliding on
+`xfstests-ltm` or `xfstests-kcs`.  Internal RPCs between LTM and
+KCS (`/internal` and `/internal-status`) do not go through the relay;
+the Go servers talk directly to each other over their VPC internal IPs.
+
+Parallel client invocations against the same VM are also supported:
+
+* Each request carries a unique `<id>` (`<UTC timestamp>-<pid>-<64-bit
+  random hex>`), giving every in-flight call its own `req/<id>.json`
+  and `rsp/<id>.json` objects.  Cookie jars written by `gce-gcs-curl`
+  are replaced atomically via a temporary file.
+* `gce-gcs-relay` keeps its metadata long-poll and bucket scan on the
+  main thread and dispatches requests across a worker thread pool
+  (`--max-workers`, default 8), tracking in-flight `(name, generation)`
+  pairs and claiming each object with an `ifGenerationMatch` delete
+  before forwarding it to `https://127.0.0.1:443`.  A slow endpoint
+  therefore does not head-of-line block other concurrent requests, and
+  `SIGTERM` waits for already-claimed requests to finish while leaving
+  any unclaimed ones in `req/` for the next run.
+* `gcs_relay` is only a wakeup signal, not a single-slot mailbox; a
+  single wakeup causes the daemon to list and claim all pending objects
+  under `req/` and continue burst-scanning.  If simultaneous
+  `gcloud compute instances add-metadata` calls hit a GCE metadata
+  fingerprint conflict (HTTP 412), `gce-gcs-curl` retries with jittered
+  backoff, and before failing on a persistent signal error it checks
+  whether `req/<id>.json` has already been claimed by a relay woken by
+  another client.
+
+### Testing the relay locally
+
+An offline loopback self-test suite is located in
+[selftests/gcs-relay/](../selftests/gcs-relay/README.md) and exercises
+`gce-gcs-curl`, `gce-gcs-relay`, and the `run_gce_curl` shell hooks
+without touching real GCP or GCS resources:
+
+        ./selftests/gcs-relay/test_gcs_relay.py

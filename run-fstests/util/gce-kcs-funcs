@@ -6,10 +6,12 @@
 KCS_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
 function kcs_post_json() {
     if test -n "$GCE_KCS_INT_IP"; then
-    curl -s --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+    run_gce_curl "${GCE_KCS_NAME:-xfstests-kcs}" -s \
+	--cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
 	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_INT_IP" -X POST "$@" | jq '.'
     else
-    curl -s --cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
+    run_gce_curl "${GCE_KCS_NAME:-xfstests-kcs}" -s \
+	--cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
 	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_EXT_IP" -X POST "$@" | jq '.'
     fi
 }

@@ -1,0 +1,872 @@
+#!/usr/bin/python3
+#
+# gce-gcs-relay --- relay requests from GCS to the LTM or KCS server
+#
+# Normally the gce-xfstests command sends requests to the LTM and KCS
+# servers by connecting to the https port of the VM where the server is
+# running.  This daemon, which runs on that VM, provides an alternative
+# for when that isn't possible (for example, because of firewall rules,
+# or because the VM has no external IP address): the request is placed
+# in the gce-xfstests GCS bucket, this daemon passes it to the server
+# using the loopback interface, and puts the server's response into
+# the bucket.  The client side of this is run-fstests/util/gce-gcs-curl;
+# see the "GCS relay" section of Documentation/gce-xfstests.md.
+#
+# The protocol is as follows.  The objects used all live under
+#
+#     gs://$GS_BUCKET/gcs-relay/<instance name>-<project>/
+#
+# (qualifying the instance name with the GCE project ID so that
+# multiple GCE projects can safely share a single GCS bucket).
+#
+# 1) The client picks a unique request id, and uploads the request as
+#    req/<id>.json.  This is a JSON object with the following members:
+#
+#        "version"   The protocol version; must be 1
+#        "method"    The HTTP method (e.g., "POST")
+#        "path"      The request target (e.g., "/login")
+#        "headers"   The request headers, as a list of [name, value] lists
+#        "body"      (optional) The request body, base64-encoded
+#        "timeout"   How long (in seconds) the client is going to wait
+#                    for the response
+#
+# 2) The client sets the gcs_relay metadata attribute of the instance
+#    (to any value which is different from its previous value; the
+#    request id is used for this).  This is what wakes up this daemon,
+#    which uses a "hanging GET" on the metadata server to wait for
+#    changes to the instance's attributes.  This means that the daemon
+#    doesn't have to poll the bucket while nobody is using the relay,
+#    and so it costs (almost) nothing to have it running.
+#
+# 3) The daemon downloads the request, and then deletes it.  The
+#    request is only acted upon if it was this daemon which managed to
+#    delete it; this guarantees that a request is passed to the server
+#    at most once.  A request which is older than its timeout is
+#    deleted without being acted upon, since the client will have given
+#    up on it, and will have told the user so.
+#
+# 4) The daemon sends the request to the server, and uploads the
+#    response as rsp/<id>.json.  Up to --max-workers requests (8 by
+#    default) are handled in parallel, so a slow request does not hold
+#    up other requests arriving at the same time.  The response is a
+#    JSON object with the following members:
+#
+#        "version"   The protocol version (1)
+#        "status"    The HTTP status code
+#        "reason"    The HTTP reason phrase
+#        "headers"   The response headers, as a list of [name, value] lists
+#        "body"      The response body, base64-encoded
+#
+#    or, if no response could be obtained from the server:
+#
+#        "version"   The protocol version (1)
+#        "error"     A description of what went wrong
+#        "kind"      "connect" if the server could not be reached,
+#                    "timeout" if it did not answer in time,
+#                    "request" if the request was malformed,
+#                    or "transport" for anything else
+#
+# 5) The client, which has been polling for the response, downloads
+#    and deletes it.  Any responses which get left behind are deleted
+#    by the daemon after five minutes.
+#
+# After being woken up, the daemon checks the bucket for requests once
+# a second for 30 seconds, since the request may take a little while to
+# show up, and since a request is usually followed by more requests.
+# After that it checks every 15 seconds, and once there has been no
+# activity for 10 minutes, it goes back to only watching the instance's
+# metadata.
+#
+# Access to the bucket is authenticated using the VM's service account.
+# The relay does not add to or replace the server's own authentication;
+# it passes requests along as they are, and the server checks the
+# session cookie or password in each request as it normally does.
+# Note that this means that requests and responses, which can contain
+# the LTM password or a session cookie, are briefly stored in the
+# bucket.  Anyone who can read the bucket can already read the password
+# (gs://$GS_BUCKET/ltm-pass), so this does not make things any worse.
+#
+# Nothing but the Python standard library is used, so that there are no
+# additional packages which need to be installed in the test appliance.
+
+import argparse
+import base64
+import calendar
+import concurrent.futures
+import email.utils
+import http.client
+import json
+import re
+import signal
+import socket
+import ssl
+import sys
+import threading
+import time
+import traceback
+import urllib.error
+import urllib.parse
+import urllib.request
+
+# These must match gce-gcs-curl
+PROTOCOL_VERSION = 1
+RELAY_PREFIX = 'gcs-relay'
+RELAY_ATTRIBUTE = 'gcs_relay'
+
+METADATA_URL = 'http://metadata.google.internal/computeMetadata/v1'
+STORAGE_URL = 'https://storage.googleapis.com'
+SERVER_URL = 'https://127.0.0.1:443'
+
+DEFAULT_TIMEOUT = 120
+MAX_TIMEOUT = 3600
+DEFAULT_MAX_WORKERS = 8
+MAX_REQUEST_SIZE = 4 << 20      # of the JSON object, in bytes
+MAX_RESPONSE_SIZE = 8 << 20     # of the response body, in bytes
+
+OBJECT_RE = re.compile(r'^(req|rsp)/([A-Za-z0-9][A-Za-z0-9._-]{0,127})\.json$')
+METHOD_RE = re.compile(r'^[A-Z]{1,16}$')
+HEADER_NAME_RE = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
+TIME_RE = re.compile(r'^(\d{4})-(\d\d)-(\d\d)[Tt](\d\d):(\d\d):(\d\d)'
+                     r'(\.\d+)?([Zz]|[+-]\d\d:\d\d)$')
+
+# Headers which describe a single connection, and so which must not be
+# passed along.  (Content-Length is recalculated.)
+HOP_BY_HOP = frozenset([
+    'connection', 'content-length', 'expect', 'keep-alive',
+    'proxy-authenticate', 'proxy-authorization', 'proxy-connection', 'te',
+    'trailer', 'transfer-encoding', 'upgrade'])
+
+NETWORK_ERRORS = (urllib.error.URLError, http.client.HTTPException, OSError)
+
+debugging = False
+log_lock = threading.Lock()
+
+
+class Stop(Exception):
+    """Raised by the signal handler to make the daemon exit"""
+
+
+class RelayError(Exception):
+    """Something went wrong talking to the metadata server or to GCS"""
+
+
+class BadRequest(Exception):
+    """A request which can't be passed to the server"""
+
+
+def log(msg):
+    with log_lock:
+        sys.stderr.write(msg + '\n')
+        sys.stderr.flush()
+
+
+def debug(msg):
+    if debugging:
+        log(msg)
+
+
+def parse_time(when):
+    """Converts an RFC 3339 timestamp to seconds since the epoch"""
+    m = TIME_RE.match(when or '')
+    if not m:
+        return None
+    t = calendar.timegm(tuple(int(m.group(i)) for i in range(1, 7)))
+    if m.group(7):
+        t += float(m.group(7))
+    zone = m.group(8)
+    if zone not in ('Z', 'z'):
+        offset = int(zone[1:3]) * 3600 + int(zone[4:6]) * 60
+        t += -offset if zone[0] == '+' else offset
+    return t
+
+
+class Metadata:
+    """The GCE metadata server"""
+
+    def __init__(self, url):
+        self.url = url.rstrip('/')
+        # The metadata server must never be accessed via a proxy
+        self.opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}))
+        self.token_lock = threading.Lock()
+        self.access_token = None
+        self.token_expires = 0
+
+    def get(self, path, timeout=30):
+        """Returns (contents, ETag); the contents are None if not found"""
+        req = urllib.request.Request(self.url + '/' + path,
+                                     headers={'Metadata-Flavor': 'Google'})
+        try:
+            with self.opener.open(req, timeout=timeout) as resp:
+                return resp.read().decode('utf-8'), resp.headers.get('ETag')
+        except urllib.error.HTTPError as e:
+            if e.code in (304, 404):
+                return None, None
+            raise RelayError('metadata server: HTTP status %d for %s'
+                             % (e.code, path))
+        except NETWORK_ERRORS as e:
+            raise RelayError('metadata server: %s' % e)
+
+    def attributes(self, last_etag, wait):
+        """Returns (the instance's attributes, their ETag)
+
+        If last_etag is not None, this does not return until the
+        attributes are different from those identified by last_etag,
+        or until (roughly) wait seconds have gone by.  The attributes
+        are returned as None if they are known not to have changed.
+        """
+        path = 'instance/attributes/?recursive=true&alt=json'
+        timeout = 30
+        if last_etag is not None:
+            wait = max(1, int(wait))
+            path += ('&wait_for_change=true&timeout_sec=%d&last_etag=%s'
+                     % (wait, urllib.parse.quote(last_etag, safe='')))
+            timeout += wait
+        contents, etag = self.get(path, timeout)
+        if contents is None and last_etag is not None:
+            return None, last_etag
+        try:
+            attrs = json.loads(contents) if contents else {}
+            if not isinstance(attrs, dict):
+                raise ValueError
+        except ValueError:
+            raise RelayError('metadata server: malformed attributes')
+        return attrs, etag or ''
+
+    def token(self):
+        """Returns an access token for the VM's service account"""
+        with self.token_lock:
+            now = time.monotonic()
+            if self.access_token is None or now >= self.token_expires:
+                contents, _ = self.get(
+                    'instance/service-accounts/default/token')
+                try:
+                    tok = json.loads(contents or '')
+                    self.access_token = tok['access_token']
+                    self.token_expires = (now + int(tok.get('expires_in', 0))
+                                          - 120)
+                except (ValueError, KeyError, TypeError):
+                    raise RelayError('metadata server: could not get an '
+                                     'access token for the service account')
+            return self.access_token
+
+    def forget_token(self, token):
+        with self.token_lock:
+            if self.access_token == token:
+                self.access_token = None
+
+
+class Storage:
+    """A GCS bucket, accessed using the JSON API"""
+
+    def __init__(self, url, bucket, metadata):
+        self.url = url.rstrip('/')
+        self.bucket = urllib.parse.quote(bucket, safe='')
+        self.metadata = metadata
+        self.opener = urllib.request.build_opener()
+
+    def call(self, method, path, query, data=None):
+        """Returns (HTTP status, headers, body)"""
+        url = '%s%s?%s' % (self.url, path, urllib.parse.urlencode(query))
+        delay = 1
+        error = None
+        for attempt in range(4):
+            token = self.metadata.token()
+            headers = {'Authorization': 'Bearer ' + token}
+            if data is not None:
+                headers['Content-Type'] = 'application/json'
+            req = urllib.request.Request(url, data=data, headers=headers,
+                                         method=method)
+            try:
+                with self.opener.open(req, timeout=60) as resp:
+                    return resp.status, resp.headers, resp.read()
+            except urllib.error.HTTPError as e:
+                status, headers, body = e.code, e.headers, e.read()
+                if status == 401 and attempt == 0:
+                    self.metadata.forget_token(token)
+                    continue
+                if status not in (408, 429) and status < 500:
+                    return status, headers, body
+                error = 'HTTP status %d' % status
+            except NETWORK_ERRORS as e:
+                error = str(e)
+            if attempt < 3:
+                time.sleep(delay)
+                delay *= 2
+        raise RelayError('GCS: %s %s: %s' % (method, path, error))
+
+    def object_path(self, name):
+        return '/storage/v1/b/%s/o/%s' % (self.bucket,
+                                          urllib.parse.quote(name, safe=''))
+
+    def list(self, prefix):
+        """Returns (the objects with the given prefix, now, listed_at)
+
+        Each object is a dict with the members "name", "generation",
+        "timeCreated", and "size".  "now" is the time according to GCS,
+        so that it can be compared to the objects' creation times, and
+        "listed_at" is the local monotonic time when it was recorded.
+        """
+        items = []
+        now = None
+        listed_at = None
+        query = {'prefix': prefix,
+                 'fields': 'items(name,generation,timeCreated,size),'
+                           'nextPageToken'}
+        while True:
+            status, headers, body = self.call(
+                'GET', '/storage/v1/b/%s/o' % self.bucket, query)
+            if status != 200:
+                raise RelayError('GCS: listing gs://%s/%s: HTTP status %d'
+                                 % (self.bucket, prefix, status))
+            if now is None:
+                listed_at = time.monotonic()
+                try:
+                    now = email.utils.parsedate_to_datetime(
+                        headers.get('Date')).timestamp()
+                except (TypeError, ValueError):
+                    now = time.time()
+            try:
+                doc = json.loads(body.decode('utf-8'))
+                items.extend(doc.get('items') or [])
+                query['pageToken'] = doc.get('nextPageToken')
+            except (ValueError, AttributeError):
+                raise RelayError('GCS: malformed object listing')
+            if not query['pageToken']:
+                return items, now, listed_at
+
+    def get(self, name, generation):
+        """Returns the contents of an object, or None if it is gone"""
+        status, _, body = self.call('GET', self.object_path(name),
+                                    {'alt': 'media', 'generation': generation})
+        if status == 200:
+            return body
+        if status == 404:
+            return None
+        raise RelayError('GCS: reading %s: HTTP status %d' % (name, status))
+
+    def put(self, name, data):
+        status, _, _ = self.call('POST', '/upload/storage/v1/b/%s/o'
+                                 % self.bucket,
+                                 {'uploadType': 'media', 'name': name}, data)
+        if status != 200:
+            raise RelayError('GCS: writing %s: HTTP status %d'
+                             % (name, status))
+
+    def delete(self, name, generation):
+        """Deletes an object; returns False if someone else already did"""
+        status, _, _ = self.call('DELETE', self.object_path(name),
+                                 {'ifGenerationMatch': generation})
+        if status in (200, 204):
+            return True
+        if status in (404, 412):
+            return False
+        raise RelayError('GCS: deleting %s: HTTP status %d' % (name, status))
+
+
+class Request:
+    """A request from a client, which has been checked for sanity"""
+
+    def __init__(self, data):
+        try:
+            req = json.loads(data.decode('utf-8'))
+        except ValueError:
+            raise BadRequest('the request is not valid JSON')
+        if not isinstance(req, dict):
+            raise BadRequest('the request is not a JSON object')
+        if req.get('version') != PROTOCOL_VERSION:
+            raise BadRequest('unsupported protocol version: %r'
+                             % (req.get('version'),))
+
+        self.method = req.get('method')
+        if (not isinstance(self.method, str) or
+                not METHOD_RE.match(self.method)):
+            raise BadRequest('bad request method')
+
+        self.path = req.get('path')
+        if (not isinstance(self.path, str) or
+                not self.path.startswith('/') or len(self.path) > 8192 or
+                any(ord(ch) <= 0x20 or ord(ch) == 0x7f for ch in self.path)):
+            raise BadRequest('bad request path')
+
+        self.headers = []
+        headers = req.get('headers') or []
+        if not isinstance(headers, list) or len(headers) > 100:
+            raise BadRequest('bad request headers')
+        for header in headers:
+            if (not isinstance(header, list) or len(header) != 2 or
+                    not isinstance(header[0], str) or
+                    not isinstance(header[1], str) or
+                    not HEADER_NAME_RE.match(header[0]) or
+                    any(ch in header[1] for ch in '\r\n\0')):
+                raise BadRequest('bad request header')
+            self.headers.append((header[0], header[1]))
+
+        self.body = None
+        if req.get('body') is not None:
+            try:
+                self.body = base64.b64decode(req['body'], validate=True)
+            except (TypeError, ValueError):
+                raise BadRequest('bad request body')
+
+        timeout = req.get('timeout', DEFAULT_TIMEOUT)
+        if (isinstance(timeout, bool) or
+                not isinstance(timeout, (int, float)) or
+                not 0 < timeout < float('inf')):
+            raise BadRequest('bad request timeout')
+        self.timeout = min(timeout, MAX_TIMEOUT)
+
+
+def error_response(kind, msg):
+    return {'version': PROTOCOL_VERSION, 'kind': kind, 'error': msg}
+
+
+class Relay:
+    def __init__(self, args):
+        self.args = args
+        self.metadata = Metadata(args.metadata_url)
+        self.storage = None
+        self.instance = None
+        self.project = None
+        self.executor = None
+        self.lock = threading.Lock()
+        self.in_flight = set()          # (name, generation) queued or running
+        self.last_activity = None       # None means that we are dormant
+        self.max_in_flight = max(64, args.max_workers * 4)
+        self.stopping = False
+        self.interruptible = False
+
+        server = urllib.parse.urlsplit(args.server_url)
+        if server.scheme not in ('http', 'https') or not server.hostname:
+            raise SystemExit('bad server URL: ' + args.server_url)
+        self.server_tls = server.scheme == 'https'
+        self.server_host = server.hostname
+        self.server_port = server.port or (443 if self.server_tls else 80)
+        self.server_netloc = server.netloc
+        self.ssl_context = None
+        if self.server_tls:
+            # The server uses a self-signed certificate.  It is not
+            # checked, since this is a connection to the local host.
+            self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            self.ssl_context.check_hostname = False
+            self.ssl_context.verify_mode = ssl.CERT_NONE
+
+    def on_signal(self, signum, frame):
+        """Stop taking new requests; finish any that were already claimed"""
+        self.stopping = True
+        if self.interruptible:
+            raise Stop()
+
+    def sleep(self, seconds):
+        if self.stopping or seconds <= 0:
+            return
+        self.interruptible = True
+        try:
+            if not self.stopping:
+                time.sleep(seconds)
+        finally:
+            self.interruptible = False
+
+    def touch_activity(self):
+        with self.lock:
+            self.last_activity = time.monotonic()
+
+    def setup(self):
+        """Finds out the instance name, GCE project, and bucket to use"""
+        delay = 5
+        while not self.stopping:
+            try:
+                self.instance = self.args.instance
+                if not self.instance:
+                    self.instance = (self.metadata.get('instance/name')[0]
+                                     or '').strip()
+                self.project = self.args.project
+                if not self.project:
+                    self.project = (self.metadata.get('project/project-id')[0]
+                                    or '').strip()
+                bucket = self.args.bucket
+                for where in ('instance', 'project'):
+                    if not bucket:
+                        bucket = (self.metadata.get(
+                            where + '/attributes/gs_bucket')[0] or '').strip()
+                if self.instance and self.project and bucket:
+                    break
+                if not self.instance:
+                    missing = 'instance name'
+                elif not self.project:
+                    missing = 'GCE project ID'
+                else:
+                    missing = ('GCS bucket (the gs_bucket metadata attribute '
+                               'is not set)')
+                log('cannot determine the %s; will retry in %d seconds'
+                    % (missing, delay))
+            except RelayError as e:
+                log('%s; will retry in %d seconds' % (e, delay))
+            self.sleep(delay)
+            delay = min(delay * 2, 300)
+        if self.stopping:
+            raise Stop()
+        self.storage = Storage(self.args.storage_url, bucket, self.metadata)
+        self.prefix = '%s/%s-%s/' % (RELAY_PREFIX, self.instance, self.project)
+        log('relaying requests from gs://%s/%s to %s'
+            % (bucket, self.prefix, self.args.server_url))
+
+    def forward(self, req, timeout):
+        """Passes a request to the server, and returns the response"""
+        if self.server_tls:
+            conn = http.client.HTTPSConnection(
+                self.server_host, self.server_port, timeout=timeout,
+                context=self.ssl_context)
+        else:
+            conn = http.client.HTTPConnection(
+                self.server_host, self.server_port, timeout=timeout)
+        try:
+            try:
+                conn.connect()
+            except OSError as e:
+                return error_response(
+                    'connect', 'cannot connect to the server at %s: %s'
+                    % (self.args.server_url, e))
+            conn.putrequest(req.method, req.path, skip_host=True,
+                            skip_accept_encoding=True)
+            have_host = False
+            for name, value in req.headers:
+                if name.lower() in HOP_BY_HOP:
+                    continue
+                if name.lower() == 'host':
+                    have_host = True
+                conn.putheader(name, value)
+            if not have_host:
+                conn.putheader('Host', self.server_netloc)
+            if req.body is not None or req.method in ('POST', 'PUT', 'PATCH'):
+                conn.putheader('Content-Length', str(len(req.body or b'')))
+            conn.putheader('Connection', 'close')
+            conn.endheaders(req.body or None)
+            resp = conn.getresponse()
+            body = resp.read(MAX_RESPONSE_SIZE + 1)
+            if len(body) > MAX_RESPONSE_SIZE:
+                return error_response('transport',
+                                      "the server's response is too large")
+            return {
+                'version': PROTOCOL_VERSION,
+                'status': resp.status,
+                'reason': resp.reason,
+                'headers': [[name, value] for name, value in resp.getheaders()
+                            if name.lower() not in HOP_BY_HOP],
+                'body': base64.b64encode(body).decode('ascii'),
+            }
+        except socket.timeout:
+            return error_response(
+                'timeout', 'the server did not respond within %d seconds'
+                % timeout)
+        except (http.client.HTTPException, OSError, ValueError) as e:
+            return error_response('transport',
+                                  'request to the server failed: %s'
+                                  % (e or type(e).__name__))
+        finally:
+            conn.close()
+
+    def respond(self, request_id, response):
+        try:
+            self.storage.put('%srsp/%s.json' % (self.prefix, request_id),
+                             json.dumps(response).encode('utf-8'))
+        except RelayError as e:
+            log('%s: could not upload the response: %s' % (request_id, e))
+
+    def handle(self, name, generation, request_id, size, age_at_list,
+               listed_at):
+        """Claims a request and forwards it to the server (runs in a worker)"""
+        if self.stopping:
+            return
+        try:
+            if size > MAX_REQUEST_SIZE:
+                raise BadRequest('the request is too large')
+            data = self.storage.get(name, generation)
+            if data is None:
+                return
+            req = Request(data)
+        except BadRequest as e:
+            if not self.stopping and self.storage.delete(name, generation):
+                log('%s: rejected: %s' % (request_id, e))
+                self.respond(request_id, error_response('request', str(e)))
+            return
+
+        age = age_at_list + max(0.0, time.monotonic() - listed_at)
+        if age > req.timeout:
+            if not self.stopping and self.storage.delete(name, generation):
+                log('%s: ignored, since it is %d seconds old'
+                    % (request_id, age))
+            return
+
+        if self.stopping:
+            return
+
+        # Bodies and headers are never logged, since they can contain
+        # the password or the session cookie.
+        what = '%s: %s %s' % (request_id, req.method, req.path.split('?')[0])
+        # Whoever deletes the request owns it, and the request is gone
+        # before anything is done with it.  So even if things go wrong,
+        # or another scan runs concurrently, the request is acted upon
+        # at most once.  Once deleted, finish handling it even if a
+        # shutdown signal arrives.
+        if not self.storage.delete(name, generation):
+            return
+        self.touch_activity()
+        age = age_at_list + max(0.0, time.monotonic() - listed_at)
+        start = time.monotonic()
+        response = self.forward(req, max(5, req.timeout - age))
+        log('%s: %s (%.1f seconds)'
+            % (what, response.get('error') or
+               'HTTP status %s' % response.get('status'),
+               time.monotonic() - start))
+        self.respond(request_id, response)
+        self.touch_activity()
+
+    def expire_response(self, name, generation, request_id):
+        if not self.stopping and self.storage.delete(name, generation):
+            debug('%s: removed the unclaimed response' % request_id)
+
+    def run_task(self, key, request_id, fn, *args):
+        try:
+            fn(*args)
+        except RelayError as e:
+            log('%s: %s' % (request_id, e))
+        except Exception:
+            log('%s: unexpected error:\n%s'
+                % (request_id, traceback.format_exc()))
+        finally:
+            with self.lock:
+                self.in_flight.discard(key)
+
+    def submit(self, key, request_id, fn, *args):
+        """Queues work for an object; returns None if the queue is full"""
+        with self.lock:
+            if self.stopping or key in self.in_flight:
+                return False
+            if len(self.in_flight) >= self.max_in_flight:
+                return None
+            self.in_flight.add(key)
+        try:
+            self.executor.submit(self.run_task, key, request_id, fn, *args)
+        except RuntimeError:
+            with self.lock:
+                self.in_flight.discard(key)
+            return False
+        return True
+
+    def scan(self):
+        """Dispatches pending requests in the bucket to the worker pool
+
+        This also queues the removal of responses which were never
+        picked up.  Returns True if the in-flight limit was reached
+        before every object could be queued.
+        """
+        items, now, listed_at = self.storage.list(self.prefix)
+        requests = []
+        stale_responses = []
+        for item in sorted(items, key=lambda item: str(item.get('name'))):
+            name = str(item.get('name'))
+            generation = item.get('generation')
+            m = OBJECT_RE.match(name[len(self.prefix):])
+            if not m or generation is None:
+                continue
+            created = parse_time(item.get('timeCreated'))
+            age = max(0.0, now - created) if created is not None else 0.0
+            if m.group(1) == 'rsp':
+                if age > self.args.response_ttl:
+                    stale_responses.append((name, generation, m.group(2)))
+                continue
+            try:
+                size = int(item.get('size') or 0)
+            except ValueError:
+                size = 0
+            requests.append((name, generation, m.group(2), size, age))
+
+        # Queue requests ahead of cleaning up unclaimed responses so
+        # cleanup can never starve live requests.
+        for name, generation, request_id, size, age in requests:
+            if self.stopping:
+                return False
+            if self.submit((name, generation), request_id, self.handle,
+                           name, generation, request_id, size, age,
+                           listed_at) is None:
+                return True
+        for name, generation, request_id in stale_responses:
+            if self.stopping:
+                return False
+            if self.submit((name, generation), request_id,
+                           self.expire_response, name, generation,
+                           request_id) is None:
+                return True
+        return False
+
+    def run(self):
+        args = self.args
+        self.setup()
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=args.max_workers) as executor:
+            self.executor = executor
+            if args.once:
+                while not self.stopping and self.scan():
+                    self.sleep(0.2)
+                return
+            self.serve()
+
+    def serve(self):
+        args = self.args
+        etag = None             # of the instance's attributes
+        value = None            # of the gcs_relay attribute
+        saturated = False       # previous scan reached max_in_flight
+        delay = 0
+        while not self.stopping:
+            try:
+                with self.lock:
+                    last = self.last_activity
+                    busy = bool(self.in_flight)
+                if saturated:
+                    wait = args.burst_interval
+                elif last is None:
+                    wait = args.active_interval if busy else args.dormant_wait
+                else:
+                    idle = time.monotonic() - last
+                    if idle < args.burst_secs:
+                        wait = args.burst_interval
+                    elif idle < args.active_secs or busy:
+                        wait = args.active_interval
+                    else:
+                        # Make sure nothing gets left in the bucket
+                        # before going back to sleep.
+                        saturated = self.scan()
+                        with self.lock:
+                            if not saturated and not self.in_flight and (
+                                    self.last_activity is None or
+                                    time.monotonic() - self.last_activity
+                                    >= args.active_secs):
+                                self.last_activity = None
+                                debug('no more activity; going dormant')
+                        continue
+
+                start = time.monotonic()
+                self.interruptible = True
+                try:
+                    if self.stopping:
+                        break
+                    attrs, new_etag = self.metadata.attributes(etag, wait)
+                finally:
+                    self.interruptible = False
+                if attrs is None:
+                    new_value = value
+                else:
+                    new_value = attrs.get(RELAY_ATTRIBUTE)
+                if new_value is not None and (etag is None or
+                                              new_value != value):
+                    with self.lock:
+                        was_dormant = self.last_activity is None
+                        self.last_activity = time.monotonic()
+                    if was_dormant:
+                        debug('woken up (%s=%s)'
+                              % (RELAY_ATTRIBUTE, new_value))
+                elif (etag is not None and new_etag == etag and
+                      time.monotonic() - start < min(wait, 1)):
+                    # This should not happen, but make sure that we
+                    # can't end up in a tight loop.
+                    self.sleep(1)
+                etag = new_etag
+                value = new_value
+
+                with self.lock:
+                    awake = (self.last_activity is not None or
+                             bool(self.in_flight) or saturated)
+                if awake and not self.stopping:
+                    saturated = self.scan()
+                delay = 0
+            except RelayError as e:
+                delay = min(max(2 * delay, 1), 60)
+                log('%s; will retry in %d seconds' % (e, delay))
+                self.sleep(delay)
+            except Stop:
+                break
+            except Exception:
+                delay = min(max(2 * delay, 1), 60)
+                log('unexpected error; will retry in %d seconds:\n%s'
+                    % (delay, traceback.format_exc()))
+                self.sleep(delay)
+
+
+def positive_int(value):
+    try:
+        n = int(value)
+        if n >= 1:
+            return n
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError('must be a positive integer')
+
+
+def main():
+    global debugging
+
+    parser = argparse.ArgumentParser(
+        description='Relay requests from the gce-xfstests GCS bucket to '
+        'the LTM or KCS server running on this VM.')
+    parser.add_argument('--debug', action='store_true',
+                        help='log more about what is going on')
+    parser.add_argument('--once', action='store_true',
+                        help='handle the requests which are currently in '
+                        'the bucket, and exit')
+    parser.add_argument('--max-workers', type=positive_int,
+                        default=DEFAULT_MAX_WORKERS, metavar='N',
+                        help='maximum number of requests to handle in '
+                        'parallel (default: %(default)d)')
+    parser.add_argument('--server-url', default=SERVER_URL, metavar='URL',
+                        help='where to send the requests '
+                        '(default: %(default)s)')
+    parser.add_argument('--bucket',
+                        help='the GCS bucket (default: the gs_bucket '
+                        'metadata attribute)')
+    parser.add_argument('--instance',
+                        help='the instance name (default: from the '
+                        'metadata server)')
+    parser.add_argument('--project',
+                        help='the GCE project ID (default: from the '
+                        'metadata server)')
+    parser.add_argument('--metadata-url', default=METADATA_URL,
+                        metavar='URL', help=argparse.SUPPRESS)
+    parser.add_argument('--storage-url', default=STORAGE_URL, metavar='URL',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--burst-secs', type=float, default=30,
+                        metavar='SECS',
+                        help='how long to check the bucket frequently '
+                        'after being woken up (default: %(default)g)')
+    parser.add_argument('--burst-interval', type=float, default=1,
+                        metavar='SECS', help='how often that is '
+                        '(default: %(default)g)')
+    parser.add_argument('--active-secs', type=float, default=600,
+                        metavar='SECS',
+                        help='how long to keep checking the bucket after '
+                        'the last activity (default: %(default)g)')
+    parser.add_argument('--active-interval', type=float, default=15,
+                        metavar='SECS', help='how often that is '
+                        '(default: %(default)g)')
+    parser.add_argument('--dormant-wait', type=float, default=60,
+                        metavar='SECS', help=argparse.SUPPRESS)
+    parser.add_argument('--response-ttl', type=float, default=300,
+                        metavar='SECS',
+                        help='how long to keep responses which have not '
+                        'been picked up (default: %(default)g)')
+    args = parser.parse_args()
+    debugging = args.debug
+
+    relay = Relay(args)
+    signal.signal(signal.SIGTERM, relay.on_signal)
+    signal.signal(signal.SIGINT, relay.on_signal)
+    try:
+        relay.run()
+    except Stop:
+        pass
+    log('exiting')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
