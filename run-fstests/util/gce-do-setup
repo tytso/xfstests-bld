@@ -176,6 +176,194 @@ function SetupServiceAccountCloudBuild () {
     fi
 }
 
+GCS_RELAY_TOPIC="gce-xfstests-gcs-relay"
+
+function SetupGcsRelay () {
+    local gce_proj_num bucket_proj_num bucket_proj existing_proj
+    local enable_err topic_err topic_verified topic_project topic
+    local notifs notif_id inst sub filter desc cur_topic cur_filter
+    local -a topic_gcloud topic_project_opt
+
+    if ! type jq >& /dev/null ; then
+	echo "jq is required to configure Pub/Sub for the GCS relay" >&2
+	return 1
+    fi
+
+    if ! run_gcloud services enable pubsub.googleapis.com --quiet ; then
+	echo "Failed to enable pubsub.googleapis.com in $GCE_PROJECT" >&2
+	return 1
+    fi
+
+    if ! notifs=$(run_gcloud storage buckets notifications list \
+		  "gs://$GS_BUCKET" --format=json --quiet) ; then
+	echo "Failed to list notifications on gs://$GS_BUCKET" >&2
+	return 1
+    fi
+
+    # When GS_BUCKET is owned by GCE_PROJECT (the common case), keep the
+    # topic, notification, and subscriptions entirely inside GCE_PROJECT
+    # with no cross-project calls.  When GS_BUCKET belongs to a different
+    # project (for example in another GCP organization whose Cloud
+    # Storage service agent would be rejected by GCE_PROJECT's
+    # iam.allowedPolicyMemberDomains policy), place or reuse the topic
+    # and bucket notification in the bucket's project and attach
+    # GCE_PROJECT's subscriptions to it.
+    topic_project="$GCE_PROJECT"
+    topic_verified=
+    gce_proj_num=$(run_gcloud projects describe "$GCE_PROJECT" \
+		   --format="value(projectNumber)" --quiet 2> /dev/null)
+    bucket_proj_num=$(run_gcloud storage buckets describe "gs://$GS_BUCKET" \
+		      --raw --format="value(projectNumber)" --quiet 2> /dev/null)
+    if test -n "$gce_proj_num" -a -n "$bucket_proj_num" -a \
+	    "$bucket_proj_num" != "$gce_proj_num" ; then
+	existing_proj=$(printf '%s\n' "$notifs" | jq -r \
+	    --arg p "//pubsub.googleapis.com/projects/" \
+	    --arg s "/topics/$GCS_RELAY_TOPIC" \
+	    '[.[] | ."Notification Configuration" |
+	      select(.object_name_prefix == "gcs-relay/" and
+		     (.event_types == null or
+		      (.event_types | index("OBJECT_FINALIZE") != null)) and
+		     (.topic | type == "string" and startswith($p)
+			       and endswith($s))) |
+	      .topic | ltrimstr($p) | rtrimstr($s)] | first // ""')
+	if test -n "$existing_proj" -a "$existing_proj" != "$GCE_PROJECT" ; then
+	    if topic_err=$(run_gcloud_prj --project "$existing_proj" \
+			   pubsub topics describe "$GCS_RELAY_TOPIC" \
+			   --quiet 2>&1)
+	    then
+		topic_project="$existing_proj"
+		topic_verified=yes
+	    else
+		case "$topic_err" in
+		    *NOT_FOUND*)
+			;;
+		    *)
+			topic_project="$existing_proj"
+			topic_verified=yes
+			;;
+		esac
+	    fi
+	fi
+	if test "$topic_project" = "$GCE_PROJECT" ; then
+	    bucket_proj=$(run_gcloud_prj projects describe "$bucket_proj_num" \
+			  --format="value(projectId)" --quiet 2> /dev/null)
+	    if test -n "$bucket_proj" ; then
+		if enable_err=$(run_gcloud_prj --project "$bucket_proj" \
+				services enable pubsub.googleapis.com \
+				--quiet 2>&1) || \
+		   run_gcloud_prj --project "$bucket_proj" \
+				pubsub topics list --limit=1 \
+				--quiet >& /dev/null
+		then
+		    echo "Using bucket project $bucket_proj for GCS relay Pub/Sub topic..."
+		    topic_project="$bucket_proj"
+		else
+		    echo "Note: could not enable pubsub.googleapis.com in bucket project $bucket_proj ($enable_err); falling back to $GCE_PROJECT" >&2
+		fi
+	    fi
+	fi
+    fi
+
+    topic="projects/$topic_project/topics/$GCS_RELAY_TOPIC"
+    if test "$topic_project" = "$GCE_PROJECT" ; then
+	topic_gcloud=(run_gcloud)
+	topic_project_opt=()
+    else
+	topic_gcloud=(run_gcloud_prj --project "$topic_project")
+	topic_project_opt=(--topic-project="$topic_project")
+    fi
+
+    # "notifications create" creates the topic (if needed), grants the
+    # bucket's Cloud Storage service agent roles/pubsub.publisher on it,
+    # and always adds a new notification configuration.  Look for ours
+    # first so re-running setup stays idempotent.
+    notif_id=$(printf '%s\n' "$notifs" | jq -r \
+	--arg t "//pubsub.googleapis.com/$topic" \
+	'[.[] | ."Notification Configuration" |
+	  select(.topic == $t and .object_name_prefix == "gcs-relay/" and
+		 (.event_types == null or
+		  (.event_types | index("OBJECT_FINALIZE") != null))) |
+	  .id] | first // ""')
+
+    if test -n "$notif_id" -a -z "$topic_verified" && \
+	    ! topic_err=$("${topic_gcloud[@]}" pubsub topics describe \
+			  "$GCS_RELAY_TOPIC" --quiet 2>&1)
+    then
+	case "$topic_err" in
+	    *NOT_FOUND*)
+		echo "GCS relay topic $topic was deleted; recreating notification..."
+		if ! "${topic_gcloud[@]}" storage buckets notifications delete \
+			"projects/_/buckets/$GS_BUCKET/notificationConfigs/$notif_id" \
+			--quiet ; then
+		    echo "Failed to remove dangling notification $notif_id on gs://$GS_BUCKET" >&2
+		    return 1
+		fi
+		notif_id=
+		;;
+	esac
+    fi
+
+    if test -z "$notif_id" ; then
+	if ! "${topic_gcloud[@]}" storage buckets notifications create \
+		"gs://$GS_BUCKET" \
+		--topic="$topic" \
+		--event-types=OBJECT_FINALIZE \
+		--object-prefix=gcs-relay/ \
+		--payload-format=none \
+		--quiet ; then
+	    echo "Failed to create GCS notification on gs://$GS_BUCKET" >&2
+	    if test -n "$bucket_proj_num" -a \
+		    "$bucket_proj_num" != "$gce_proj_num" -a \
+		    "$topic_project" = "$GCE_PROJECT" ; then
+		echo "Hint: gs://$GS_BUCKET belongs to project ${bucket_proj:-$bucket_proj_num}; grant your gcloud account access to create the notification on a topic in that project (or have the bucket owner create it and grant you roles/pubsub.subscriber on the topic)." >&2
+	    fi
+	    return 1
+	fi
+    fi
+
+    for inst in xfstests-ltm xfstests-kcs ; do
+	sub="$inst-gcs-relay"
+	filter="hasPrefix(attributes.objectId, \"gcs-relay/$inst-$GCE_PROJECT/req/\")"
+	if desc=$(run_gcloud pubsub subscriptions describe "$sub" \
+		  --format=json --quiet 2> /dev/null) ; then
+	    cur_topic=$(printf '%s\n' "$desc" | jq -r '.topic // ""')
+	    cur_filter=$(printf '%s\n' "$desc" | jq -r '.filter // ""')
+	    if test "$cur_topic" != "$topic" -o \
+		    "$cur_filter" != "$filter" ; then
+		echo "Recreating Pub/Sub subscription $sub (topic or filter changed)..."
+		if ! run_gcloud pubsub subscriptions delete "$sub" \
+			--quiet ; then
+		    echo "Failed to delete stale Pub/Sub subscription $sub" >&2
+		    return 1
+		fi
+		desc=
+	    fi
+	else
+	    desc=
+	fi
+	if test -z "$desc" ; then
+	    if ! run_gcloud pubsub subscriptions create "$sub" \
+		    --topic="$GCS_RELAY_TOPIC" \
+		    "${topic_project_opt[@]}" \
+		    --message-filter="$filter" \
+		    --ack-deadline=10 \
+		    --message-retention-duration=10m \
+		    --expiration-period=never \
+		    --quiet ; then
+		echo "Failed to create Pub/Sub subscription $sub" >&2
+		return 1
+	    fi
+	fi
+	if ! run_gcloud pubsub subscriptions add-iam-policy-binding "$sub" \
+		--member="serviceAccount:$SERVICE_ACCOUNT_LTM" \
+		--role="roles/pubsub.subscriber" \
+		--quiet > /dev/null ; then
+	    echo "Failed to grant roles/pubsub.subscriber on $sub to $SERVICE_ACCOUNT_LTM" >&2
+	    return 1
+	fi
+    done
+}
+
 get_cache_dir
 rm -f "$GCE_CACHE_DIR/service-accounts-opts.$GCE_PROJECT"
 
@@ -286,6 +474,12 @@ SetupServiceAccount "$SERVICE_ACCOUNT_IMG" "forImgCreate" "img-create" \
 		    "Image Creation"
 SetupServiceAccount "$SERVICE_ACCOUNT_DASH" "forDashboard" "dashboard" \
 		    "GCE xfstests dashboard"
+if ! SetupGcsRelay ; then
+    echo "Warning: failed to configure Pub/Sub for the GCS relay; gce-gcs-curl will not work." >&2
+    if test "$GCE_CURL" = "gce-gcs-curl" ; then
+	exit 1
+    fi
+fi
 SetupServiceAccountCloudBuild
 
 exit 0

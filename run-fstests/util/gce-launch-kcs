@@ -124,7 +124,8 @@ fi
 GS_RW=https://www.googleapis.com/auth/devstorage.read_write
 LOG_WR=https://www.googleapis.com/auth/logging.write
 COMPUTE_RW=https://www.googleapis.com/auth/compute
-SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR"
+PUBSUB=https://www.googleapis.com/auth/pubsub
+SCOPES="$GS_RW,$COMPUTE_RW,$LOG_WR,$PUBSUB"
 
 PREEMPTIBLE="--maintenance-policy MIGRATE"
 

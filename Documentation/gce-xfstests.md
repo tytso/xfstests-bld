@@ -531,26 +531,31 @@ public network.  There are some tradeoffs, however:
   the time it takes to run the gcloud command a few times, instead of
   a fraction of a second.  (A `gce-xfstests ltm` command sends one
   request, or two if it needs to log in to the server first.)
-* The LTM and KCS VMs must have been launched using a test appliance
-  image which includes the `gce-gcs-relay` service.  If a VM was
-  launched using an older image, requests to it will fail with a
-  timeout after two minutes.
+* For a newly updated installation, `gce-xfstests setup` must be run to
+  set up the Cloud Pub/Sub topic and subscriptions, and the LTM and KCS
+  VMs must be relaunched with an updated appliance image which includes
+  the Pub/Sub-capable `gce-gcs-relay` service.
 
 A request is passed to the server at most once, and a request which
 could not be delivered before gce-xfstests gave up waiting is
 discarded instead of being delivered late.  So if a timeout is
-reported, the request has normally not been acted upon.  The exception
-is when the server did receive the request, but took too long to
-answer; `gce-xfstests ltm-info` can be used to check whether a test
-run was started.
+reported and `gce-gcs-curl` says the request was never picked up, it
+was not acted upon.  If it reports that the request was claimed by the
+relay before timing out, the server did receive the request but took
+too long to answer; `gce-xfstests ltm-info` can be used to check
+whether a test run was started.
 
 Setting `GCE_CURL` only affects the client machine where it is set.
 It does not change how the LTM and KCS servers are launched, how they
 communicate with each other over the VPC internal network, or whether
-the same servers can also be reached directly.  The `gce-gcs-relay`
-service finds out that there is something for it to do by waiting for
-the `gcs_relay` attribute to change, so it does not access the bucket,
-and so costs nothing, while the relay is not being used.
+the same servers can also be reached directly.  Clients using
+`gce-gcs-curl` only need object access on `gs://$GS_BUCKET` (no
+Compute Engine `setMetadata` permission is required).  The
+`gce-gcs-relay` service waits for Cloud Storage `OBJECT_FINALIZE`
+notifications on its Pub/Sub pull subscription, so it makes no Cloud
+Storage API calls while the relay is idle, and the small attribute-only
+notifications and empty pulls fit comfortably within Pub/Sub's monthly
+free tier.
 
 How long to wait for a response can be changed by adding, for example,
 
@@ -560,7 +565,9 @@ to `~/.config/gce-xfstests`; the default is 120 seconds.  If the relay
 does not seem to be working, setting the environment variable
 `GCE_GCS_CURL_DEBUG=1` will show the gcloud commands as they are run,
 and the log of the relay service can be examined by running
-`journalctl -u gce-gcs-relay` on the server VM.
+`journalctl -u gce-gcs-relay` on the server VM (missing subscriptions,
+missing IAM bindings, disabled APIs, or a missing Pub/Sub OAuth scope
+are logged there directly).
 
 `GCE_CURL` can also be set to the pathname of some other program which
 accepts curl's command-line options, for sites which have some other

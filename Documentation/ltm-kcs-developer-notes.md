@@ -80,24 +80,39 @@ While a request is in transit it can be found in the GCS bucket as
 its response as
 `gs://$GS_BUCKET/gcs-relay/<instance>-$GCE_PROJECT/rsp/<id>.json`.
 
-### Instance separation and concurrency
+### Instance separation, Pub/Sub notifications, and concurrency
 
 Although `gce-ltm-funcs` and `gce-kcs-funcs` use the same URL hostname
 (`a.$GCE_PROJECT.gce-xfstests`) to match the wildcard certificate,
 `run_gce_curl` (in `run-fstests/util/get-config`) passes the target VM
 name (`xfstests-ltm` or `xfstests-kcs`) via `GCE_INSTANCE`, along with
 `GCE_PROJECT`.  `gce-gcs-curl` uses both to scope objects under
-`gcs-relay/<instance>-$GCE_PROJECT/` and updates `gcs_relay` only on
-that VM's instance metadata.  On the appliance side, each VM's
-`gce-gcs-relay` queries `instance/name` and `project/project-id` from
-the GCE metadata server at startup, watches only its own instance
-attributes, and lists only its own `gcs-relay/<instance>-$GCE_PROJECT/`
-prefix.  This keeps LTM and KCS traffic separate (waking one VM does
-not wake the other) and also allows multiple GCE projects using
-gce-xfstests to share a single GCS bucket without colliding on
-`xfstests-ltm` or `xfstests-kcs`.  Internal RPCs between LTM and
-KCS (`/internal` and `/internal-status`) do not go through the relay;
-the Go servers talk directly to each other over their VPC internal IPs.
+`gcs-relay/<instance>-$GCE_PROJECT/` and uploads the request directly
+without touching GCE instance metadata.
+
+`gce-xfstests setup` configures a Cloud Storage `OBJECT_FINALIZE`
+notification on `gs://$GS_BUCKET` (`--object-prefix=gcs-relay/`,
+`--payload-format=none`) publishing to the `gce-xfstests-gcs-relay`
+Pub/Sub topic (in `$GCE_PROJECT` when `$GS_BUCKET` belongs to
+`$GCE_PROJECT`, or in the bucket's owning project when `$GS_BUCKET`
+lives in another project or organization), and creates one filtered pull
+subscription per server VM in `$GCE_PROJECT` (`xfstests-ltm-gcs-relay`
+and `xfstests-kcs-gcs-relay`) with filter:
+
+        hasPrefix(attributes.objectId, "gcs-relay/<instance>-<project>/req/")
+
+On the appliance side, each VM's `gce-gcs-relay` queries
+`instance/name` and `project/project-id` from the GCE metadata server
+at startup, long-polls its own `<instance>-gcs-relay` subscription over
+the Pub/Sub REST API, and only reads or lists objects under its own
+`gcs-relay/<instance>-$GCE_PROJECT/` prefix.  This keeps LTM and KCS
+traffic separate (an LTM upload is filtered out before reaching KCS)
+and also allows multiple GCE projects using gce-xfstests to share a
+single GCS bucket without colliding on `xfstests-ltm` or `xfstests-kcs`
+(sharing the single bucket notification and topic in the bucket's
+owning project).  Internal RPCs between LTM and KCS
+(`/internal` and `/internal-status`) do not go through the relay; the
+Go servers talk directly to each other over their VPC internal IPs.
 
 Parallel client invocations against the same VM are also supported:
 
@@ -105,22 +120,35 @@ Parallel client invocations against the same VM are also supported:
   random hex>`), giving every in-flight call its own `req/<id>.json`
   and `rsp/<id>.json` objects.  Cookie jars written by `gce-gcs-curl`
   are replaced atomically via a temporary file.
-* `gce-gcs-relay` keeps its metadata long-poll and bucket scan on the
-  main thread and dispatches requests across a worker thread pool
-  (`--max-workers`, default 8), tracking in-flight `(name, generation)`
-  pairs and claiming each object with an `ifGenerationMatch` delete
-  before forwarding it to `https://127.0.0.1:443`.  A slow endpoint
-  therefore does not head-of-line block other concurrent requests, and
-  `SIGTERM` waits for already-claimed requests to finish while leaving
-  any unclaimed ones in `req/` for the next run.
-* `gcs_relay` is only a wakeup signal, not a single-slot mailbox; a
-  single wakeup causes the daemon to list and claim all pending objects
-  under `req/` and continue burst-scanning.  If simultaneous
-  `gcloud compute instances add-metadata` calls hit a GCE metadata
-  fingerprint conflict (HTTP 412), `gce-gcs-curl` retries with jittered
-  backoff, and before failing on a persistent signal error it checks
-  whether `req/<id>.json` has already been claimed by a relay woken by
-  another client.
+* `gce-gcs-relay` keeps its Pub/Sub pull loop on the main thread and
+  dispatches requests across a worker thread pool (`--max-workers`,
+  default 8).  Notifications are acknowledged on receipt and treated as
+  untrusted hints; each worker validates the object, enforces the size
+  and timeout limits, tracks in-flight `(name, generation)` pairs, and
+  claims the object with an `ifGenerationMatch` delete before
+  forwarding it to `https://127.0.0.1:443`.  A slow endpoint therefore
+  does not head-of-line block other concurrent requests, duplicate or
+  late Pub/Sub deliveries are harmlessly ignored, and `SIGTERM` waits
+  for already-claimed requests to finish while leaving any unclaimed
+  ones in `req/` for the next daemon's startup scan.
+* The daemon only lists the bucket on startup, after `--response-ttl`
+  (default 300 s) to remove unclaimed responses, while saturated, after
+  recovering from a Pub/Sub error, or when invoked with `--once`.
+
+### Inspecting or removing the Pub/Sub resources
+
+To inspect the notification and subscriptions configured by
+`gce-xfstests setup`:
+
+        gcloud storage buckets notifications list gs://$GS_BUCKET
+        gcloud pubsub subscriptions list --project="$GCE_PROJECT"
+        gcloud pubsub subscriptions describe xfstests-ltm-gcs-relay --project="$GCE_PROJECT"
+
+To tear them down (for example when decommissioning a project):
+
+        gcloud pubsub subscriptions delete xfstests-ltm-gcs-relay xfstests-kcs-gcs-relay --project="$GCE_PROJECT"
+        gcloud storage buckets notifications delete projects/_/buckets/$GS_BUCKET/notificationConfigs/<ID>
+        gcloud pubsub topics delete gce-xfstests-gcs-relay --project="<topic-project>"
 
 ### Testing the relay locally
 

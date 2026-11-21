@@ -16,11 +16,14 @@ Standard Python 3 (stdlib only) plus: `bash`, `curl`, `jq`, and `openssl`.
 * `test_gcs_relay.py` — test runner exercising the real `run_gce_curl`,
   `gce-ltm-funcs`, `gce-kcs-funcs`, `gce-gcs-curl`, `gce-gcs-relay`, `curl`,
   and `jq`.
-* `fake_gcp.py` — in-memory HTTP stand-in for the GCE metadata server (with
-  per-project/per-instance attributes, ETags, `wait_for_change` long-polling,
-  and optional HTTP 412 fingerprint conflict simulation) and the GCS JSON API.
+* `fake_gcp.py` — in-memory HTTP stand-in for the GCE metadata server, the
+  GCS JSON API, and the Cloud Pub/Sub REST API (`:pull` and `:acknowledge`),
+  fed by simulated GCS `OBJECT_FINALIZE` notifications for objects under
+  `gcs-relay/` (with test hooks for delays, duplicates, dropped/malformed
+  notifications, missing subscriptions, and OAuth scope/IAM errors).
 * `fake_gcloud.py` — stand-in for the `gcloud` CLI subcommands used by
-  `gce-gcs-curl` (`storage cp/cat/rm/ls` and `compute instances add-metadata`).
+  `gce-gcs-curl` (`storage cp/cat/rm/ls`; explicitly rejects
+  `compute instances add-metadata`).
 * `fake_ltm.py` — local HTTPS stand-in for the LTM/KCS server using a CN-only
   self-signed certificate (`/login`, `/status`, `/gce-xfstests`, `/slow`, and
   `/delay/<secs>`).

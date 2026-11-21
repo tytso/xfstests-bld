@@ -75,6 +75,7 @@ def resolve_repo(repo_path):
     missing = [p for p in (
         RELAY, GCS_CURL,
         os.path.join(REPO, "run-fstests", "util", "get-config"),
+        os.path.join(REPO, "run-fstests", "util", "gce-do-setup"),
         os.path.join(REPO, "run-fstests", "util", "gce-ltm-funcs"),
         os.path.join(REPO, "run-fstests", "util", "gce-kcs-funcs"),
     ) if not os.path.isfile(p)]
@@ -233,11 +234,12 @@ function run_gcloud () { gcloud --project "$GCE_PROJECT" "$@"; }
         cmd = [sys.executable, RELAY,
                "--metadata-url", md_url,
                "--storage-url", self.gcp_url,
+               "--pubsub-url", self.gcp_url,
                "--server-url", "https://127.0.0.1:%d"
                % (server_port or self.ltm_port)]
         if fast:
-            cmd += ["--burst-secs", "5", "--active-secs", "12",
-                    "--active-interval", "3", "--response-ttl", "4"]
+            cmd += ["--rescan-interval", "0.5", "--response-ttl", "4",
+                    "--config-retry-secs", "0.5"]
         if instance:
             cmd += ["--instance", instance]
         if project:
@@ -375,11 +377,6 @@ function run_gcloud () { gcloud --project "$GCE_PROJECT" "$@"; }
                                 safe=""), alt="media")
         return json.loads(body.decode()) if st == 200 else None
 
-    def poke(self, value=None):
-        st, _ = self.gcp("POST", "/_test/metadata", data=b"", token=False,
-                         key="gcs_relay", value=value or str(time.time()))
-        check(st == 200, "poke failed")
-
     def cleanup(self, keep=False):
         for p in list(self.procs):
             self.stop(p, signal.SIGKILL)
@@ -507,13 +504,12 @@ def relay_ltm(env):
     # the bodyless POST has a content-length of zero
     check(env.ltm_requests()[1]["headers"].get("content-length") == "0",
           "bodyless POST: %r" % env.ltm_requests()[1]["headers"])
-    # gcloud is run the same way as run_gcloud does
+    # gcloud is run the same way as run_gcloud does, and never touches GCE
     calls = env.gcloud_calls()
     check(all(c[:2] == ["--project", "test-proj"] for c in calls),
           "gcloud calls: %r" % calls)
-    check(any(c[2:6] == ["compute", "-q", "instances", "add-metadata"] and
-              "xfstests-ltm" in c and "us-central1-c" in c for c in calls),
-          "no add-metadata call")
+    check(not any("compute" in c for c in calls),
+          "unexpected compute call: %r" % calls)
     # Nothing is left behind in the bucket
     wait_for(lambda: env.objects() == [], what="bucket to be empty")
     log = open(relay.logpath).read()
@@ -611,7 +607,9 @@ def no_relay(env):
     check("rc=28" in out, out + err)
     check(out.count("rc=28") == 1, out)
     check("timed out after 5 seconds" in err, err)
+    check("never picked up" in err, err)
     check("gce-gcs-relay service" in err, err)
+    check("gce-xfstests setup" in err, err)
     check(10 <= elapsed < 20, "took %.1f seconds" % elapsed)
     check(not os.path.exists(env.rundir + "/.ltm_cookie_test-proj"),
           "cookie jar was created")
@@ -630,7 +628,6 @@ def stale_request(env):
     env.put_request("20260101000000-2-new", req)
     env.gcp("POST", "/_test/age", data=b"", token=False,
             name=PREFIX + "req/20260101000000-1-old.json", seconds="60")
-    env.poke()
     relay = env.start_relay()
     wait_for(lambda: env.get_response("20260101000000-2-new"),
              what="response to the fresh request")
@@ -650,9 +647,10 @@ def stale_request(env):
 
 @test
 def at_most_once(env):
-    """Two relays racing for the same requests: each is executed once"""
-    env.gcp("POST", "/_test/set", data=b"", token=False, page_size="3")
-    relays = [env.start_relay(name="relay%d" % i) for i in range(3)]
+    """Three relays racing for the same requests: each is executed once"""
+    # (a) Pre-uploaded requests across multiple listing pages (startup scan)
+    env.gcp("POST", "/_test/set", data=b"", token=False, page_size="3",
+            pubsub_drop="1")
     n = 12
     req = {"version": 1, "method": "POST", "path": "/gce-xfstests",
            "headers": [["Cookie", "single-session=MTcZTOKENabcDEF=="]],
@@ -662,22 +660,35 @@ def at_most_once(env):
         r["body"] = base64.b64encode(
             json.dumps({"orig_cmdline": "req%02d" % i}).encode()).decode()
         env.put_request("20260101000000-%02d" % i, r)
-    env.poke()
+    relays = [env.start_relay(name="relay%d" % i) for i in range(3)]
     wait_for(lambda: all(env.get_response("20260101000000-%02d" % i)
                          for i in range(n)), timeout=30,
-             what="all of the responses")
-    time.sleep(2)
+             what="all of the startup-scan responses")
+    # (b) Live requests with duplicate Pub/Sub notifications
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_drop="0",
+            pubsub_dup="2")
+    n_live = 6
+    for i in range(n, n + n_live):
+        r = dict(req)
+        r["body"] = base64.b64encode(
+            json.dumps({"orig_cmdline": "req%02d" % i}).encode()).decode()
+        env.put_request("20260101000000-%02d" % i, r)
+    total = n + n_live
+    wait_for(lambda: all(env.get_response("20260101000000-%02d" % i)
+                         for i in range(total)), timeout=30,
+             what="all of the live responses")
+    time.sleep(1.5)
     seen = sorted(json.loads(r["body"])["orig_cmdline"]
                   for r in env.ltm_requests())
-    check(seen == ["req%02d" % i for i in range(n)],
+    check(seen == ["req%02d" % i for i in range(total)],
           "server saw: %r" % seen)
-    for i in range(n):
+    for i in range(total):
         rsp = env.get_response("20260101000000-%02d" % i)
         body = json.loads(base64.b64decode(rsp["body"]).decode())
         check(body["echo"] == "req%02d" % i, "mismatched response")
     counts = [open(r.logpath).read().count("HTTP status 200")
               for r in relays]
-    check(sum(counts) == n, "relay logs: %r" % counts)
+    check(sum(counts) == total, "relay logs: %r" % counts)
     print("    (the three relays handled %r requests)" % counts, end="")
     for r in relays:
         env.stop(r)
@@ -685,38 +696,41 @@ def at_most_once(env):
 
 @test
 def dormant(env):
-    """An unused relay does not touch GCS; it wakes up when signalled"""
+    """An idle relay does not touch GCS; an upload wakes it via Pub/Sub"""
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_hold="2.0")
     relay = env.start_relay("--debug")
-    time.sleep(4)
+    # Wait for the single startup scan, then verify idle behaviour.
+    wait_for(lambda: env.stats()["stats"].get("gcs:list", 0) >= 1,
+             timeout=5, what="startup scan")
+    env.gcp("POST", "/_test/reset-stats", data=b"", token=False)
+    time.sleep(5)
     st = env.stats()["stats"]
     check(not any(k.startswith("gcs:") for k in st),
-          "GCS was accessed while dormant: %r" % st)
-    check(st.get("md:instance/attributes/", 0) <= 2,
-          "metadata server polled too often: %r" % st)
+          "GCS was accessed while idle: %r" % st)
+    check(st.get("pubsub:pull", 0) <= 4,
+          "Pub/Sub polled too often while idle: %r" % st)
+    # Uploading a request object delivers a notification directly without
+    # any bucket listing.
     t0 = time.time()
-    env.poke()
-    wait_for(lambda: env.stats()["stats"].get("gcs:list"), timeout=5,
-             what="relay to wake up")
-    check(time.time() - t0 < 2, "took %.1f seconds to wake up"
+    req = {"version": 1, "method": "GET", "path": "/", "headers": [],
+           "timeout": 60}
+    env.put_request("20260101000000-wake", req)
+    rsp = wait_for(lambda: env.get_response("20260101000000-wake"), timeout=5,
+                   what="response via Pub/Sub notification")
+    check(time.time() - t0 < 2, "took %.1f seconds to respond"
           % (time.time() - t0))
-    # burst: about one listing a second for 5 seconds, then every 3
-    # seconds, until 12 seconds after the wakeup; then nothing
-    time.sleep(5.5)
-    burst = env.stats()["stats"]["gcs:list"]
-    check(4 <= burst <= 8, "listings during the burst: %d" % burst)
-    time.sleep(10)
-    active = env.stats()["stats"]["gcs:list"]
-    check(burst + 2 <= active <= burst + 5,
-          "listings: %d, then %d" % (burst, active))
-    check("going dormant" in open(relay.logpath).read(), "not dormant?")
-    time.sleep(4)
-    check(env.stats()["stats"]["gcs:list"] == active, "still listing")
-    # An unrelated metadata change does not wake it up
-    env.gcp("POST", "/_test/metadata", data=b"", token=False,
-            key="ltm_wait", value="12345")
-    time.sleep(2)
-    check(env.stats()["stats"]["gcs:list"] == active,
-          "woken up by ltm_wait")
+    check(base64.b64decode(rsp["body"]) == b"index page", "body: %r" % rsp)
+    check(env.stats()["stats"].get("gcs:list", 0) == 0,
+          "listed bucket on notification path: %r" % env.stats()["stats"])
+    # After response_ttl (4s) the daemon lists once to remove the unclaimed
+    # response, then returns to making no GCS calls.
+    wait_for(lambda: env.objects() == [], timeout=15,
+             what="unclaimed response cleanup")
+    after_cleanup = env.stats()["stats"].get("gcs:list", 0)
+    check(after_cleanup >= 1, "no cleanup listing?")
+    time.sleep(3)
+    check(env.stats()["stats"].get("gcs:list", 0) == after_cleanup,
+          "still listing after cleanup")
     env.stop(relay)
 
 
@@ -727,7 +741,6 @@ def stale_response(env):
     req = {"version": 1, "method": "GET", "path": "/", "headers": [],
            "timeout": 60}
     env.put_request("20260101000000-9-orphan", req)
-    env.poke()
     wait_for(lambda: env.get_response("20260101000000-9-orphan"),
              what="response")
     rsp = env.get_response("20260101000000-9-orphan")
@@ -739,11 +752,12 @@ def stale_response(env):
 
 @test
 def started_late(env):
-    """A relay which starts after gcs_relay was set looks right away"""
-    env.poke("something")
+    """A relay started after an un-notified upload finds it via startup scan"""
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_drop="1")
     req = {"version": 1, "method": "GET", "path": "/", "headers": [],
            "timeout": 60}
     env.put_request("20260101000000-7-early", req)
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_drop="0")
     relay = env.start_relay()
     wait_for(lambda: env.get_response("20260101000000-7-early"), timeout=5,
              what="response")
@@ -751,53 +765,40 @@ def started_late(env):
 
 
 @test
-def signal_fails(env):
-    """add-metadata fails (e.g., wrong zone): fail early, with the reason"""
-    relay = env.start_relay()
-    # (a) the relay is dormant: no response can come
-    t0 = time.time()
-    rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST],
-                                {"GCE_ZONE": "us-east1-b"})
-    elapsed = time.time() - t0
-    check(rc == 7, "rc=%d %s" % (rc, err))
-    check("could not signal the instance xfstests-ltm in zone us-east1-b"
-          in err and "was not found" in err, err)
-    check(30 < elapsed < 45, "took %.1f seconds" % elapsed)
-    n = sum(1 for c in env.gcloud_calls() if "add-metadata" in c)
-    check(n == 3, "%d add-metadata attempts" % n)
-    wait_for(lambda: env.objects() == [], what="request to be cleaned up")
-    check(env.ltm_requests() == [], "request was executed?")
-    # (b) the relay has been used recently, so it notices the request
-    # anyway
-    rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST])
-    check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
-    time.sleep(6)       # the burst is over; now it polls every 3 seconds
-    rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST],
-                                {"FAKE_GCLOUD_FAIL": "add-metadata"})
-    check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
-    env.stop(relay)
-
-
-@test
 def pipeline_not_held(env):
     """Background gcloud processes don't keep our stdout/stderr open"""
     relay = env.start_relay()
-    env.poke()
-    time.sleep(1)               # the relay is now awake
-    # Removing the response, and signalling the instance, will still be
-    # going on (in the background) long after the response has arrived.
-    e = {"FAKE_GCLOUD_DELAY_RM": "8", "FAKE_GCLOUD_DELAY_ADD_METADATA": "8"}
+    # Removing the response will still be going on in the background long
+    # after the response has arrived.
+    e = {"FAKE_GCLOUD_DELAY_RM": "8"}
     t0 = time.time()
     rc, out, err = env.bash(
-        "export GS_BUCKET GCE_PROJECT GCE_ZONE GCE_INSTANCE=xfstests-ltm\n"
+        "export GS_BUCKET GCE_PROJECT GCE_INSTANCE=xfstests-ltm\n"
         "%s -s https://%s/ 2>&1 | cat; echo \" rc=${PIPESTATUS[0]}\"\n"
         % (shlex.quote(GCS_CURL), HOST), e)
     elapsed = time.time() - t0
     check("index page rc=0" in out, out + err)
     check(elapsed < 6, "pipeline took %.1f seconds" % elapsed)
-    # ... and they do finish what they were doing
+    # ... and it does finish what it was doing
     wait_for(lambda: env.objects() == [], timeout=20,
              what="response to be removed")
+    env.stop(relay)
+
+
+@test
+def timeout_after_claim(env):
+    """Client timeout after the relay claimed the request says so"""
+    relay = env.start_relay()
+    # Client waits 3s; relay's server forward timeout floor is 5s, so the
+    # request is claimed and still running on /slow when the client times out.
+    rc, out, err = env.gcs_curl(
+        ["-s", "-X", "POST", "-b", "single-session=MTcZTOKENabcDEF==",
+         "-m", "3", "https://%s/slow" % HOST],
+        {"FAKE_GCLOUD_DELAY": "0.1"})
+    check(rc == 28, "rc=%d out=%r err=%s" % (rc, out, err))
+    check("was claimed by the relay" in err, err)
+    check("gce-xfstests ltm-info" in err, err)
+    check("never picked up" not in err, err)
     env.stop(relay)
 
 
@@ -851,18 +852,23 @@ def bad_requests(env):
         "h-body": dict(good, body="!!!not base64!!!"),
         "i-timeout": dict(good, timeout="soon"),
         "j-list": [1, 2, 3],
+        "k-oversized": b"x" * ((4 << 20) + 1),
     }
     for rid, req in cases.items():
         env.put_request("20260101000000-" + rid, req)
     env.put_request("not a valid name", good)
     env.put_request("20260101000000-z-good", good)
-    env.poke()
     wait_for(lambda: env.get_response("20260101000000-z-good"),
              what="response to the good request")
+    wait_for(lambda: all(env.get_response("20260101000000-" + rid)
+                         for rid in cases),
+             what="responses to all bad requests")
     for rid in cases:
         rsp = env.get_response("20260101000000-" + rid)
         check(rsp and rsp.get("kind") == "request" and rsp.get("error"),
               "%s: %r" % (rid, rsp))
+    check("too large" in env.get_response("20260101000000-k-oversized")
+          .get("error", ""), "oversized error text")
     check(len(env.ltm_requests()) == 1, "server saw %d requests"
           % len(env.ltm_requests()))
     # The client reports such an error as exit status 56
@@ -880,7 +886,6 @@ def hop_by_hop(env):
            "body": base64.b64encode(b'{"password":"sekrit-pw"}').decode(),
            "timeout": 60}
     env.put_request("20260101000000-hbh", req)
-    env.poke()
     rsp = wait_for(lambda: env.get_response("20260101000000-hbh"),
                    what="response")
     check(rsp.get("status") == 200, "response: %r" % rsp)
@@ -896,41 +901,36 @@ def hop_by_hop(env):
 
 @test
 def gcs_trouble(env):
-    """Expired tokens and transient GCS errors are survived"""
+    """Expired tokens and transient GCS and Pub/Sub errors are survived"""
     relay = env.start_relay()
+    wait_for(lambda: env.stats()["stats"].get("gcs:list", 0) >= 1,
+             timeout=5, what="startup scan")
     rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST])
     check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
     env.gcp("POST", "/_test/expire-token", data=b"", token=False)
-    for op in ("list", "get", "delete", "put"):
+    for op in ("list", "get", "delete", "put", "pubsub-pull", "pubsub-ack"):
         env.gcp("POST", "/_test/fail", data=b"", token=False, op=op,
                 count="2", status="503")
     rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST])
     check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
-    check(env.stats()["stats"].get("gcs:401", 0) >= 1, "no 401 was seen")
-    # The metadata server misbehaving does not make the relay spin
-    env.gcp("POST", "/_test/set", data=b"", token=False, no_etag="1")
-    time.sleep(13)           # let it go dormant
+    st = env.stats()["stats"]
+    check(st.get("gcs:401", 0) + st.get("pubsub:401", 0) >= 1,
+          "no 401 was seen: %r" % st)
+    # Pub/Sub returning empty responses immediately does not make the
+    # relay spin in a tight loop.
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_fast_empty="1")
+    time.sleep(1.5)
     env.gcp("POST", "/_test/reset-stats", data=b"", token=False)
     time.sleep(5)
-    n = env.stats()["stats"].get("md:instance/attributes/", 0)
-    check(n <= 7, "%d metadata requests in 5 seconds" % n)
-    env.gcp("POST", "/_test/set", data=b"", token=False, no_etag="0")
-    env.gcp("POST", "/_test/fail", data=b"", token=False, op="md",
-            count="2", status="503")
+    n = env.stats()["stats"].get("pubsub:pull", 0)
+    check(n <= 7, "%d Pub/Sub pulls in 5 seconds" % n)
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_fast_empty="0")
     rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST])
     check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
     check("Traceback" not in open(relay.logpath).read(),
           open(relay.logpath).read())
-    # A "not modified" answer from the metadata server is not an error
-    before = open(relay.logpath).read().count("will retry")
-    check(before >= 2, "the injected failures were not noticed?")
-    env.gcp("POST", "/_test/fail", data=b"", token=False, op="md",
-            count="3", status="304")
-    time.sleep(4)
-    check(open(relay.logpath).read().count("will retry") == before,
-          open(relay.logpath).read())
-    rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST])
-    check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
     env.stop(relay)
 
 
@@ -942,7 +942,6 @@ def sigterm_busy(env):
            "headers": [["Cookie", "single-session=MTcZTOKENabcDEF=="]],
            "timeout": 8}
     env.put_request("20260101000000-busy", req)
-    env.poke()
     wait_for(lambda: env.ltm_requests(), what="request to reach the server")
     relay.send_signal(signal.SIGTERM)
     time.sleep(1)
@@ -971,14 +970,15 @@ def vm_isolation(env):
         kcs_relay = env.start_relay("--debug", md_instance="xfstests-kcs",
                                     name="kcs_relay", server_port=kcs_port)
 
-        # Sending to LTM leaves the KCS relay completely dormant.
+        # Sending to LTM delivers no notifications to the KCS relay.
         rc, out, err = env.bash("GCE_CURL=gce-gcs-curl\n" + LTM_INFO)
         check(rc == 0 and '"sharders": []' in out and err == "", out + err)
-        check("woken up" in open(ltm_relay.logpath).read(),
+        check("received notification" in open(ltm_relay.logpath).read(),
               open(ltm_relay.logpath).read())
-        check("woken up" not in open(kcs_relay.logpath).read(),
-              "KCS relay was woken by an LTM request:\n" +
-              open(kcs_relay.logpath).read())
+        kcs_text = open(kcs_relay.logpath).read()
+        check("received notification" not in kcs_text and
+              "HTTP status" not in kcs_text,
+              "KCS relay saw LTM traffic:\n" + kcs_text)
         check(open(kcs_log).read() == "", "KCS server received LTM traffic!")
 
         # Fire LTM and KCS commands simultaneously against the same bucket.
@@ -1043,7 +1043,7 @@ def project_isolation(env):
         check(("gcs-relay/xfstests-ltm-%s/" % other_proj)
               in open(r_b.logpath).read(), open(r_b.logpath).read())
 
-        # Sending to test-proj leaves example.com:other-proj dormant.
+        # Sending to test-proj delivers no notifications to other-proj.
         rc, out, err = env.gcs_curl(
             ["-s", "-X", "POST", "-b", "single-session=MTcZTOKENabcDEF==",
              "-d", '{"orig_cmdline":"proj-a-only"}',
@@ -1051,9 +1051,10 @@ def project_isolation(env):
         check(rc == 0 and err == "" and
               json.loads(out.decode())["echo"] == "proj-a-only",
               "%d %r %s" % (rc, out, err))
-        check("woken up" not in open(r_b.logpath).read(),
-              "other-proj relay was woken by test-proj!\n" +
-              open(r_b.logpath).read())
+        rb_text = open(r_b.logpath).read()
+        check("received notification" not in rb_text and
+              "HTTP status" not in rb_text,
+              "other-proj relay saw test-proj traffic!\n" + rb_text)
         check(open(other_log).read() == "",
               "other-proj server saw test-proj traffic!")
 
@@ -1191,71 +1192,183 @@ def parallel_requests(env):
 
 
 @test
-def metadata_conflict(env):
-    """Concurrent add-metadata HTTP 412 fingerprint conflicts are handled"""
-    # (a) 6 parallel clients wake a dormant relay while GCE rejects
-    # overlapping setMetadata calls with HTTP 412 fingerprint conflicts.
-    env.gcp("POST", "/_test/set", data=b"", token=False,
-            md_conflict="1", md_delay="0.25")
+def duplicate_notifications(env):
+    """Duplicate Pub/Sub notifications execute each request at most once"""
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_dup="3")
     relay = env.start_relay()
-    e = dict(env.env)
-    e.update({"GS_BUCKET": "test-bucket", "GCE_PROJECT": "test-proj",
-              "GCE_ZONE": "us-central1-c", "GCE_INSTANCE": "xfstests-ltm",
-              "FAKE_GCLOUD_DELAY": "0.05"})
-    procs = [
-        subprocess.Popen(
-            [GCS_CURL, "-s", "-X", "POST",
-             "-b", "single-session=MTcZTOKENabcDEF==",
-             "-d", json.dumps({"orig_cmdline": "mc-%d" % i}),
+    for i in range(3):
+        rc, out, err = env.gcs_curl(
+            ["-s", "-X", "POST", "-b", "single-session=MTcZTOKENabcDEF==",
+             "-d", json.dumps({"orig_cmdline": "dup-%d" % i}),
              "https://%s/gce-xfstests" % HOST],
-            env=e, stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        for i in range(6)
+            {"FAKE_GCLOUD_DELAY": "0.1"})
+        check(rc == 0 and err == "" and
+              json.loads(out.decode())["echo"] == "dup-%d" % i,
+              "%d %r %s" % (rc, out, err))
+    time.sleep(1)
+    seen = [json.loads(r["body"])["orig_cmdline"] for r in env.ltm_requests()]
+    check(seen == ["dup-0", "dup-1", "dup-2"], "server saw: %r" % seen)
+    check(env.stats()["stats"].get("pubsub:publish", 0) >= 9,
+          "expected duplicate publishes: %r" % env.stats()["stats"])
+    wait_for(lambda: env.stats()["pubsub_pending"].get(
+        "test-proj/xfstests-ltm-gcs-relay", 1) == 0,
+        what="all duplicate notifications to be acked")
+    env.stop(relay)
+
+
+@test
+def delayed_notification(env):
+    """A notification delayed past the request timeout is dropped safely"""
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_delay="3.0")
+    relay = env.start_relay()
+    wait_for(lambda: env.stats()["stats"].get("gcs:list", 0) >= 1,
+             timeout=5, what="startup scan")
+    req = {"version": 1, "method": "POST", "path": "/gce-xfstests",
+           "headers": [["Cookie", "single-session=MTcZTOKENabcDEF=="]],
+           "body": base64.b64encode(b'{"orig_cmdline":"late"}').decode(),
+           "timeout": 1}
+    env.put_request("20260101000000-late", req)
+    wait_for(lambda: PREFIX + "req/20260101000000-late.json"
+             not in env.objects(), timeout=10,
+             what="delayed request to be discarded")
+    check(env.get_response("20260101000000-late") is None,
+          "delayed request got a response")
+    check(env.ltm_requests() == [], "server saw delayed request!")
+    check("ignored, since it is" in open(relay.logpath).read(),
+          open(relay.logpath).read())
+    env.stop(relay)
+
+
+@test
+def malformed_notifications(env):
+    """Foreign or malformed Pub/Sub messages are ignored without touching GCS"""
+    relay = env.start_relay("--debug")
+    wait_for(lambda: env.stats()["stats"].get("gcs:list", 0) >= 1,
+             timeout=5, what="startup scan")
+    env.gcp("POST", "/_test/reset-stats", data=b"", token=False)
+    bad_msgs = [
+        {"eventType": "OBJECT_DELETE", "bucketId": "test-bucket",
+         "objectId": PREFIX + "req/20260101000000-del.json",
+         "objectGeneration": "1001"},
+        {"eventType": "OBJECT_FINALIZE", "bucketId": "wrong-bucket",
+         "objectId": PREFIX + "req/20260101000000-wb.json",
+         "objectGeneration": "1002"},
+        {"eventType": "OBJECT_FINALIZE", "bucketId": "test-bucket",
+         "objectId": PREFIX + "rsp/20260101000000-rsp.json",
+         "objectGeneration": "1003"},
+        {"eventType": "OBJECT_FINALIZE", "bucketId": "test-bucket",
+         "objectId": "gcs-relay/xfstests-kcs-test-proj/req/20260101000000-k.json",
+         "objectGeneration": "1004"},
+        {"eventType": "OBJECT_FINALIZE", "bucketId": "test-bucket",
+         "objectId": PREFIX + "req/../secret.json",
+         "objectGeneration": "1005"},
+        {"eventType": "OBJECT_FINALIZE", "bucketId": "test-bucket",
+         "objectId": PREFIX + "req/20260101000000-badgen.json",
+         "objectGeneration": "not-a-number"},
+        {},
     ]
-    for i, p in enumerate(procs):
-        out, err = p.communicate(timeout=60)
-        check(p.returncode == 0 and err == b"",
-              "mc-%d: rc=%d err=%r" % (i, p.returncode, err))
-        check(json.loads(out.decode())["echo"] == "mc-%d" % i, repr(out))
-    conflicts = env.stats()["stats"].get("md:412", 0)
-    check(conflicts >= 3, "expected 412 conflicts, saw %d" % conflicts)
-    env.stop(relay)
-
-    # (b) A single client wakes a dormant relay even when its first
-    # add-metadata collides (412) with an unrelated ltm_wait update.
-    env.reset()
-    relay = env.start_relay()
-    # An unrelated ltm_wait update does not wake the relay, and the
-    # client's first two add-metadata attempts fail with HTTP 412; its
-    # jittered retry lands, wakes the relay, and delivers the request.
-    st, _ = env.gcp("POST", "/_test/metadata", data=b"", token=False,
-                    key="ltm_wait", value="999")
-    check(st == 200, "ltm_wait set failed: %d" % st)
-    env.gcp("POST", "/_test/fail", data=b"", token=False,
-            op="md-set", count="2", status="412")
+    for attrs in bad_msgs:
+        st, _ = env.gcp("POST", "/_test/pubsub-publish",
+                        data=json.dumps({"attributes": attrs}).encode(),
+                        token=False)
+        check(st == 200, "publish failed: %d" % st)
+    wait_for(lambda: env.stats()["pubsub_pending"].get(
+        "test-proj/xfstests-ltm-gcs-relay", 1) == 0,
+        timeout=10, what="malformed notifications to be acked")
+    time.sleep(0.5)
+    st = env.stats()["stats"]
+    check(not any(k.startswith("gcs:") for k in st),
+          "malformed notifications touched GCS: %r" % st)
+    check(env.ltm_requests() == [], "server was contacted!")
+    # A valid request still works afterwards.
     rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST],
-                                {"FAKE_GCLOUD_DELAY": "0.05"})
-    check(rc == 0 and out == b"index page" and err == "",
-          "%d %r %r" % (rc, out, err))
-    check(env.stats()["stats"].get("md:412", 0) == 2,
-          "expected 2 412s: %r" % env.stats()["stats"])
+                                {"FAKE_GCLOUD_DELAY": "0.1"})
+    check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
     env.stop(relay)
 
-    # (c) A request taking > SIGNAL_GRACE (30s) still succeeds when its
-    # own add-metadata fails every time, because a parallel request woke
-    # the relay and the relay already claimed (deleted) our req object.
-    env.reset()
+
+@test
+def pubsub_config_errors(env):
+    """Missing subscription, scope, API, or IAM logs once and recovers"""
+    # (a) Missing subscription (404): one log line, zero GCS calls, recovers
+    env.gcp("POST", "/_test/pubsub-sub", data=b"", token=False, deleted="1")
     relay = env.start_relay()
-    env.poke("sibling-wakeup")
-    rc, out, err = env.gcs_curl(
-        ["-s", "-X", "POST", "-b", "single-session=MTcZTOKENabcDEF==",
-         "-d", '{"orig_cmdline":"long-claimed"}',
-         "https://%s/delay/33" % HOST],
-        {"FAKE_GCLOUD_FAIL": "add-metadata", "FAKE_GCLOUD_DELAY": "0.1"})
-    check(rc == 0 and err == "" and
-          json.loads(out.decode())["echo"] == "long-claimed",
-          "rc=%d out=%r err=%s" % (rc, out, err))
-    wait_for(lambda: env.objects() == [], what="bucket cleanup")
+    time.sleep(1.8)
+    log = open(relay.logpath).read()
+    check(log.count("does not exist") == 1, "expected 1 missing-sub log:\n" + log)
+    check("gce-xfstests setup" in log, log)
+    check(not any(k.startswith("gcs:") for k in env.stats()["stats"]),
+          "touched GCS while subscription missing: %r" % env.stats()["stats"])
+    # Upload while subscription is gone; restoring triggers a recovery scan.
+    req = {"version": 1, "method": "GET", "path": "/", "headers": [],
+           "timeout": 60}
+    env.put_request("20260101000000-rec404", req)
+    env.gcp("POST", "/_test/pubsub-sub", data=b"", token=False, deleted="0")
+    rsp = wait_for(lambda: env.get_response("20260101000000-rec404"),
+                   timeout=10, what="recovery after restoring subscription")
+    check(base64.b64decode(rsp["body"]) == b"index page", repr(rsp))
+    check("resuming normal operation" in open(relay.logpath).read(),
+          open(relay.logpath).read())
+
+    # (b) Missing Pub/Sub OAuth scope (403 ACCESS_TOKEN_SCOPE_INSUFFICIENT)
+    env.gcp("POST", "/_test/reset-stats", data=b"", token=False)
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_scope_error="1", pubsub_drop="1")
+    wait_for(lambda: "Pub/Sub OAuth scope" in open(relay.logpath).read(),
+             timeout=10, what="scope error log")
+    time.sleep(1.5)
+    log = open(relay.logpath).read()
+    check(log.count("Pub/Sub OAuth scope") == 1,
+          "expected 1 scope error log:\n" + log)
+    check(env.stats()["stats"].get("gcs:list", 0) == 0,
+          "listed GCS while scope missing: %r" % env.stats()["stats"])
+    env.put_request("20260101000000-recscope", req)
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_scope_error="0", pubsub_drop="0")
+    rsp = wait_for(lambda: env.get_response("20260101000000-recscope"),
+                   timeout=10, what="recovery after scope fix")
+    check(base64.b64decode(rsp["body"]) == b"index page", repr(rsp))
+
+    # (c) Disabled API and permission denied each produce distinct diagnostics
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_api_disabled="1")
+    wait_for(lambda: "Cloud Pub/Sub API is disabled"
+             in open(relay.logpath).read(), timeout=10,
+             what="disabled API log")
+    env.gcp("POST", "/_test/set", data=b"", token=False,
+            pubsub_api_disabled="0", pubsub_perm_error="1")
+    wait_for(lambda: "permission denied accessing Pub/Sub"
+             in open(relay.logpath).read(), timeout=10,
+             what="permission denied log")
+    env.gcp("POST", "/_test/set", data=b"", token=False, pubsub_perm_error="0")
+    rc, out, err = env.gcs_curl(["-s", "https://%s/" % HOST],
+                                {"FAKE_GCLOUD_DELAY": "0.1"})
+    check(rc == 0 and out == b"index page", "%d %r %s" % (rc, out, err))
+    env.stop(relay)
+
+
+@test
+def saturation(env):
+    """More requests than max_in_flight trigger rescanning until drained"""
+    relay = env.start_relay("--max-workers", "1", "--rescan-interval", "0.2")
+    wait_for(lambda: env.stats()["stats"].get("gcs:list", 0) >= 1,
+             timeout=5, what="startup scan")
+    env.gcp("POST", "/_test/reset-stats", data=b"", token=False)
+    n = 70
+    for i in range(n):
+        env.put_request("20260101000000-sat%03d" % i, {
+            "version": 1, "method": "POST", "path": "/delay/0.02",
+            "headers": [["Cookie", "single-session=MTcZTOKENabcDEF=="]],
+            "body": base64.b64encode(
+                json.dumps({"orig_cmdline": "sat-%03d" % i}).encode()).decode(),
+            "timeout": 60})
+    wait_for(lambda: all(env.get_response("20260101000000-sat%03d" % i)
+                         for i in range(n)), timeout=30,
+             what="all %d saturated responses" % n)
+    check(len(env.ltm_requests()) == n,
+          "expected %d requests, saw %d" % (n, len(env.ltm_requests())))
+    check(env.stats()["stats"].get("gcs:list", 0) >= 1,
+          "expected rescan after saturation")
     env.stop(relay)
 
 
@@ -1270,7 +1383,6 @@ def sigterm_parallel(env):
             "body": base64.b64encode(
                 json.dumps({"orig_cmdline": "sp%d" % i}).encode()).decode(),
             "timeout": 30})
-    env.poke()
     wait_for(lambda: len(env.ltm_requests()) == 2,
              what="2 requests to reach the server")
     relay.send_signal(signal.SIGTERM)
@@ -1284,7 +1396,7 @@ def sigterm_parallel(env):
     check(remaining == [PREFIX + "req/20260101000000-sp2.json",
                         PREFIX + "req/20260101000000-sp3.json"],
           "remaining requests: %r" % remaining)
-    # A restarted relay picks up the remaining two cleanly.
+    # A restarted relay picks up the remaining two cleanly via startup scan.
     relay2 = env.start_relay()
     wait_for(lambda: (env.get_response("20260101000000-sp2") and
                       env.get_response("20260101000000-sp3")),
@@ -1296,7 +1408,7 @@ def sigterm_parallel(env):
 
 @test
 def once(env):
-    """--once handles what is there and exits"""
+    """--once handles what is there and exits without using Pub/Sub"""
     good = {"version": 1, "method": "GET", "path": "/", "headers": [],
             "timeout": 60}
     env.put_request("20260101000000-once", good)
@@ -1304,11 +1416,14 @@ def once(env):
         [sys.executable, RELAY, "--once",
          "--metadata-url", env.gcp_url + "/computeMetadata/v1",
          "--storage-url", env.gcp_url,
+         "--pubsub-url", env.gcp_url,
          "--server-url", "https://127.0.0.1:%d" % env.ltm_port],
         env=env.env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         timeout=30)
     check(p.returncode == 0, p.stdout.decode())
     check(env.get_response("20260101000000-once"), "no response")
+    check(env.stats()["stats"].get("pubsub:pull", 0) == 0,
+          "--once touched Pub/Sub: %r" % env.stats()["stats"])
 
 
 @test
@@ -1339,10 +1454,14 @@ def cli_options(env):
         rc, out, err = run(args)
         check(rc == code and text in err and out == b"",
               "%r: rc=%d err=%s" % (args, rc, err))
-    for var in ("GS_BUCKET", "GCE_PROJECT", "GCE_ZONE", "GCE_INSTANCE"):
+    for var in ("GS_BUCKET", "GCE_PROJECT", "GCE_INSTANCE"):
         rc, out, err = run([url], env={var: ""})
         check(rc == 2 and var + " is not set" in err, "%s: %s" % (var, err))
     check(env.gcloud_calls() == [], "gcloud was run for a usage error")
+    # GCE_ZONE is no longer required by gce-gcs-curl.
+    rc, out, err = run(["-s", url + "/"], env={"GCE_ZONE": ""})
+    check(rc == 0 and out == b"index page" and err == "",
+          "without GCE_ZONE: %d %r %s" % (rc, out, err))
     rc, out, err = run(["--help"])
     check(rc == 0 and b"Usage: gce-gcs-curl" in out, "help")
     rc, out, err = run(["-V"])
@@ -1452,6 +1571,394 @@ def cli_options(env):
     check("#HttpOnly_.gce-xfstests\tTRUE\t/\tTRUE\t0\tsess\tS1\n" in saved
           and "\told\t" not in saved and "\tnope\tN1\n" in saved, saved)
     env.stop(relay)
+
+
+@test
+def setup_gcs_relay(env):
+    """SetupGcsRelay handles same-project and cross-project/cross-org buckets"""
+    setup_bin = os.path.join(env.tmp, "setup-bin")
+    os.makedirs(setup_bin, exist_ok=True)
+    state_path = os.path.join(env.tmp, "setup-state.json")
+    mock_gcloud = os.path.join(setup_bin, "gcloud")
+    with open(mock_gcloud, "w") as f:
+        f.write("#!" + sys.executable + "\n" + '''\
+import json, os, sys
+
+STATE = os.environ["MOCK_SETUP_STATE"]
+st = json.load(open(STATE))
+argv = sys.argv[1:]
+st["calls"].append(argv)
+
+args = []
+flags = {}
+i = 0
+while i < len(argv):
+    a = argv[i]
+    if a in ("--project", "--account", "--format", "--topic", "--topic-project",
+             "--event-types", "--object-prefix", "--payload-format",
+             "--message-filter", "--ack-deadline",
+             "--message-retention-duration", "--expiration-period",
+             "--member", "--role", "--limit"):
+        flags[a[2:]] = argv[i + 1]
+        i += 2
+        continue
+    if a.startswith("--") and "=" in a:
+        k, v = a[2:].split("=", 1)
+        flags[k] = v
+    elif a in ("-q", "--quiet", "--raw"):
+        flags[a.lstrip("-")] = "true"
+    else:
+        args.append(a)
+    i += 1
+
+proj = flags.get("project", "")
+
+def save():
+    with open(STATE, "w") as fh:
+        json.dump(st, fh)
+
+if args[:2] == ["projects", "describe"]:
+    target = args[2]
+    if target in st.get("denied_projects_describe", []):
+        save()
+        sys.stderr.write("ERROR: (gcloud.projects.describe) PERMISSION_DENIED\\n")
+        sys.exit(1)
+    pinfo = None
+    for pid, num in st["projects"].items():
+        if target == pid or target == num:
+            pinfo = (pid, num)
+            break
+    save()
+    if not pinfo:
+        sys.stderr.write("ERROR: (gcloud.projects.describe) NOT_FOUND\\n")
+        sys.exit(1)
+    fmt = flags.get("format", "")
+    if fmt == "value(projectNumber)":
+        print(pinfo[1])
+    elif fmt == "value(projectId)":
+        print(pinfo[0])
+    else:
+        print(json.dumps({"projectId": pinfo[0], "projectNumber": pinfo[1]}))
+    sys.exit(0)
+
+if args[:3] == ["storage", "buckets", "describe"]:
+    bname = args[3].replace("gs://", "").rstrip("/")
+    bnum = st["buckets"].get(bname)
+    save()
+    if not bnum:
+        sys.exit(1)
+    if flags.get("format") == "value(projectNumber)" and flags.get("raw"):
+        print(bnum)
+    sys.exit(0)
+
+if args[:2] == ["services", "enable"]:
+    if proj in st.get("denied_services_enable", []):
+        save()
+        sys.stderr.write("ERROR: (gcloud.services.enable) PERMISSION_DENIED\\n")
+        sys.exit(1)
+    st["apis"].setdefault(proj, []).append(args[2])
+    save()
+    sys.exit(0)
+
+if args[:4] == ["storage", "buckets", "notifications", "list"]:
+    bucket = args[4]
+    out = [{"Bucket URL": bucket, "Notification Configuration": n}
+           for n in st["notifications"]]
+    print(json.dumps(out))
+    save()
+    sys.exit(0)
+
+if args[:4] == ["storage", "buckets", "notifications", "create"]:
+    bname = args[4].replace("gs://", "").rstrip("/")
+    bnum = st["buckets"].get(bname, "")
+    topic = flags["topic"]
+    topic_proj = topic.split("/")[1]
+    if (topic_proj in st.get("drs_projects", []) and
+            bnum != st["projects"].get(topic_proj)):
+        save()
+        sys.stderr.write(
+            "ERROR: (gcloud.storage.buckets.notifications.create) "
+            "FAILED_PRECONDITION: constraints/iam.allowedPolicyMemberDomains\\n")
+        sys.exit(1)
+    st["topics"].setdefault(topic, True)
+    st["next_id"] += 1
+    st["notifications"].append({
+        "id": str(st["next_id"]),
+        "topic": "//pubsub.googleapis.com/" + topic,
+        "object_name_prefix": flags.get("object-prefix", ""),
+        "event_types": flags.get("event-types", "").split(","),
+        "payload_format": flags.get("payload-format", "json").upper(),
+    })
+    save()
+    sys.exit(0)
+
+if args[:4] == ["storage", "buckets", "notifications", "delete"]:
+    nid = args[4].rsplit("/", 1)[-1]
+    st["notifications"] = [n for n in st["notifications"] if n["id"] != nid]
+    save()
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "topics", "list"]:
+    if proj in st.get("denied_topics_list", []):
+        save()
+        sys.stderr.write("ERROR: (gcloud.pubsub.topics.list) PERMISSION_DENIED\\n")
+        sys.exit(1)
+    save()
+    print("[]")
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "topics", "describe"]:
+    if proj in st.get("denied_topics_describe", []):
+        save()
+        sys.stderr.write(
+            "ERROR: (gcloud.pubsub.topics.describe) PERMISSION_DENIED\\n")
+        sys.exit(1)
+    topic = "projects/%s/topics/%s" % (proj, args[3])
+    save()
+    if topic not in st["topics"]:
+        sys.stderr.write(
+            "ERROR: (gcloud.pubsub.topics.describe) NOT_FOUND\\n")
+        sys.exit(1)
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "subscriptions", "describe"]:
+    sub = st["subs"].get(proj, {}).get(args[3])
+    save()
+    if not sub:
+        sys.exit(1)
+    print(json.dumps(sub))
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "subscriptions", "create"]:
+    name = args[3]
+    tproj = flags.get("topic-project") or proj
+    topic = "projects/%s/topics/%s" % (tproj, flags["topic"])
+    st["subs"].setdefault(proj, {})[name] = {
+        "name": "projects/%s/subscriptions/%s" % (proj, name),
+        "topic": topic,
+        "filter": flags.get("message-filter", ""),
+        "ackDeadlineSeconds": int(flags.get("ack-deadline", "10")),
+        "messageRetentionDuration": flags.get("message-retention-duration", ""),
+        "expirationPeriod": flags.get("expiration-period", ""),
+    }
+    save()
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "subscriptions", "delete"]:
+    st["subs"].get(proj, {}).pop(args[3], None)
+    save()
+    sys.exit(0)
+
+if args[:3] == ["pubsub", "subscriptions", "add-iam-policy-binding"]:
+    st["iam"].setdefault("%s/%s" % (proj, args[3]), []).append(
+        [flags["member"], flags["role"]])
+    save()
+    sys.exit(0)
+
+sys.stderr.write("unexpected mock gcloud call: %r\\n" % (argv,))
+sys.exit(2)
+''')
+    os.chmod(mock_gcloud, 0o755)
+
+    def run_setup(project="test-proj", bucket="test-bucket"):
+        script = (
+            'GCE_PROJECT=%(proj)s\n'
+            'GS_BUCKET=%(bucket)s\n'
+            'SERVICE_ACCOUNT_LTM="ltm-kcs@$GCE_PROJECT.iam.gserviceaccount.com"\n'
+            'function run_gcloud () { gcloud --project "$GCE_PROJECT" "$@"; }\n'
+            'function run_gcloud_prj () { gcloud "$@"; }\n'
+            'eval "$(sed -n \'/^GCS_RELAY_TOPIC=/,/^}/p\' %(setup)s)"\n'
+            'SetupGcsRelay\n'
+            % {"proj": shlex.quote(project),
+               "bucket": shlex.quote(bucket),
+               "setup": shlex.quote(os.path.join(REPO, "run-fstests", "util",
+                                                 "gce-do-setup"))})
+        e = {"PATH": setup_bin + ":" + env.env["PATH"],
+             "MOCK_SETUP_STATE": state_path}
+        return env.bash(script, env=e, prelude=False)
+
+    def init_state(projects=None, buckets=None, drs_projects=None, **extra):
+        data = {
+            "projects": projects or {
+                "test-proj": "680537309661",
+                "example.com:other-proj": "222222222222",
+            },
+            "buckets": buckets or {"test-bucket": "680537309661"},
+            "drs_projects": drs_projects or [],
+            "apis": {}, "topics": {}, "notifications": [],
+            "subs": {}, "iam": {}, "calls": [], "next_id": 0,
+        }
+        data.update(extra)
+        with open(state_path, "w") as f:
+            json.dump(data, f)
+
+    # 1. Same-project bucket: zero cross-project calls and no --topic-project
+    init_state(drs_projects=["test-proj"])
+    rc, out, err = run_setup("test-proj")
+    check(rc == 0, "fresh setup failed: rc=%d out=%s err=%s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(list(st["apis"].keys()) == ["test-proj"] and
+          "pubsub.googleapis.com" in st["apis"]["test-proj"], str(st["apis"]))
+    check(all("--topic-project" not in " ".join(c) for c in st["calls"]),
+          "unexpected --topic-project on same-project bucket: %r" % st["calls"])
+    check(all(c[:2] == ["--project", "test-proj"] for c in st["calls"]),
+          "unexpected cross-project call on same-project bucket: %r" % st["calls"])
+    check(len(st["notifications"]) == 1, str(st["notifications"]))
+    n = st["notifications"][0]
+    check(n["topic"] == "//pubsub.googleapis.com/projects/test-proj/topics/"
+          "gce-xfstests-gcs-relay" and
+          n["object_name_prefix"] == "gcs-relay/" and
+          n["event_types"] == ["OBJECT_FINALIZE"] and
+          n["payload_format"] == "NONE", str(n))
+    for inst in ("xfstests-ltm", "xfstests-kcs"):
+        sub = st["subs"]["test-proj"][inst + "-gcs-relay"]
+        check(sub["topic"] == "projects/test-proj/topics/gce-xfstests-gcs-relay",
+              str(sub))
+        check(sub["filter"] == 'hasPrefix(attributes.objectId, '
+              '"gcs-relay/%s-test-proj/req/")' % inst, str(sub))
+        check(sub["ackDeadlineSeconds"] == 10 and
+              sub["messageRetentionDuration"] == "10m" and
+              sub["expirationPeriod"] == "never", str(sub))
+        check(["serviceAccount:ltm-kcs@test-proj.iam.gserviceaccount.com",
+               "roles/pubsub.subscriber"] in
+              st["iam"]["test-proj/" + inst + "-gcs-relay"], str(st["iam"]))
+
+    # 2. Idempotent second run does not create or delete anything
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("test-proj")
+    check(rc == 0, "idempotent setup failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(len(st["notifications"]) == 1, str(st["notifications"]))
+    check(not any("create" in c or "delete" in c for c in st["calls"]),
+          "second run mutated resources: %r" % st["calls"])
+
+    # 3. Deleted topic + dangling notification + _deleted-topic_ subs repaired
+    st["topics"] = {}
+    for s in st["subs"]["test-proj"].values():
+        s["topic"] = "_deleted-topic_"
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("test-proj")
+    check(rc == 0, "repair deleted topic failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check("projects/test-proj/topics/gce-xfstests-gcs-relay" in st["topics"],
+          str(st["topics"]))
+    check(len(st["notifications"]) == 1 and st["notifications"][0]["id"] == "2",
+          str(st["notifications"]))
+    check(all(s["topic"] == "projects/test-proj/topics/gce-xfstests-gcs-relay"
+              for s in st["subs"]["test-proj"].values()), str(st["subs"]))
+
+    # 4. Stale subscription filter on KCS only repairs KCS
+    st["subs"]["test-proj"]["xfstests-kcs-gcs-relay"]["filter"] = "old-filter"
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("test-proj")
+    check(rc == 0, "repair filter failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    deletes = [c for c in st["calls"] if "delete" in c]
+    check(len(deletes) == 1 and "xfstests-kcs-gcs-relay" in deletes[0],
+          "expected only KCS delete: %r" % deletes)
+    check(st["subs"]["test-proj"]["xfstests-kcs-gcs-relay"]["filter"] ==
+          'hasPrefix(attributes.objectId, "gcs-relay/xfstests-kcs-test-proj/req/")',
+          str(st["subs"]))
+
+    # 5. Domain-scoped project ID (same-project bucket)
+    init_state(buckets={"test-bucket": "222222222222"})
+    rc, out, err = run_setup("example.com:other-proj")
+    check(rc == 0, "domain project setup failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(st["subs"]["example.com:other-proj"]["xfstests-ltm-gcs-relay"]["filter"] ==
+          'hasPrefix(attributes.objectId, '
+          '"gcs-relay/xfstests-ltm-example.com:other-proj/req/")',
+          str(st["subs"]))
+
+    # 6. Cross-project / cross-org bucket with DRS on GCE_PROJECT:
+    #    topic + notification placed in bucket's project, subscriptions in GCE_PROJECT
+    init_state(
+        projects={
+            "gce-xfstests": "680537309661",
+            "ext-bucket-proj": "718812719163",
+            "peer-proj": "680537309999",
+        },
+        buckets={"xfstests": "718812719163"},
+        drs_projects=["gce-xfstests", "peer-proj"],
+    )
+    rc, out, err = run_setup("gce-xfstests", bucket="xfstests")
+    check(rc == 0, "cross-org setup failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check("pubsub.googleapis.com" in st["apis"].get("gce-xfstests", []) and
+          "pubsub.googleapis.com" in st["apis"].get("ext-bucket-proj", []),
+          str(st["apis"]))
+    check("projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay" in st["topics"]
+          and "projects/gce-xfstests/topics/gce-xfstests-gcs-relay" not in st["topics"],
+          str(st["topics"]))
+    check(len(st["notifications"]) == 1 and
+          st["notifications"][0]["topic"] ==
+          "//pubsub.googleapis.com/projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay",
+          str(st["notifications"]))
+    for inst in ("xfstests-ltm", "xfstests-kcs"):
+        sub = st["subs"]["gce-xfstests"][inst + "-gcs-relay"]
+        check(sub["topic"] ==
+              "projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay",
+              str(sub))
+        check(sub["filter"] == 'hasPrefix(attributes.objectId, '
+              '"gcs-relay/%s-gce-xfstests/req/")' % inst, str(sub))
+
+    # 7. Cross-org idempotent second run (only 1 topics.describe, no mutations)
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("gce-xfstests", bucket="xfstests")
+    check(rc == 0, "cross-org idempotent setup failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(not any("create" in c or "delete" in c for c in st["calls"]),
+          "cross-org second run mutated resources: %r" % st["calls"])
+    tdesc = [c for c in st["calls"] if c[-4:-1] == ["pubsub", "topics", "describe"]
+             or "topics" in c and "describe" in c]
+    check(len(tdesc) == 1, "expected single topics describe: %r" % tdesc)
+
+    # 8. Cross-org deleted topic + dangling notification + _deleted-topic_ subs repaired
+    st["topics"] = {}
+    for s in st["subs"]["gce-xfstests"].values():
+        s["topic"] = "_deleted-topic_"
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("gce-xfstests", bucket="xfstests")
+    check(rc == 0, "cross-org repair failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check("projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay" in st["topics"],
+          str(st["topics"]))
+    check(len(st["notifications"]) == 1 and st["notifications"][0]["id"] == "2",
+          str(st["notifications"]))
+    check(all(s["topic"] ==
+              "projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay"
+              for s in st["subs"]["gce-xfstests"].values()), str(st["subs"]))
+
+    # 9. Second GCE project sharing the same cross-org bucket without project-level
+    #    admin on ext-bucket-proj reuses the existing bucket notification/topic
+    st["denied_projects_describe"] = ["718812719163", "ext-bucket-proj"]
+    st["denied_services_enable"] = ["ext-bucket-proj"]
+    st["denied_topics_describe"] = ["ext-bucket-proj"]
+    st["calls"] = []
+    json.dump(st, open(state_path, "w"))
+    rc, out, err = run_setup("peer-proj", bucket="xfstests")
+    check(rc == 0, "shared cross-org setup failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(len(st["notifications"]) == 1, str(st["notifications"]))
+    check(st["subs"]["peer-proj"]["xfstests-ltm-gcs-relay"]["topic"] ==
+          "projects/ext-bucket-proj/topics/gce-xfstests-gcs-relay",
+          str(st["subs"]["peer-proj"]))
+
+    # 10. Cross-project same-org bucket with bucket-only IAM falls back to GCE_PROJECT
+    init_state(
+        projects={"test-proj": "680537309661"},
+        buckets={"shared-bucket": "999999999999"},
+    )
+    rc, out, err = run_setup("test-proj", bucket="shared-bucket")
+    check(rc == 0, "bucket-only fallback failed: %d %s %s" % (rc, out, err))
+    st = json.load(open(state_path))
+    check(st["subs"]["test-proj"]["xfstests-ltm-gcs-relay"]["topic"] ==
+          "projects/test-proj/topics/gce-xfstests-gcs-relay", str(st["subs"]))
 
 
 def main():

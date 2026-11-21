@@ -20,8 +20,10 @@
 # test-appliance/files/usr/local/lib/gce-gcs-relay for a description of
 # the protocol.
 #
-# The gcloud command is used for all access to GCS and GCE, so that it
-# works with however the user has set up gcloud's credentials.
+# The gcloud command is used for all access to GCS, so that it works
+# with however the user has set up gcloud's credentials.  Only object
+# access on GS_BUCKET is required; the client does not touch Compute
+# Engine instance metadata.
 #
 # The following environment variables, which are set up by gce-xfstests
 # (see run_gce_curl in util/get-config), say where the request should
@@ -29,7 +31,6 @@
 #
 #     GS_BUCKET       the GCS bucket used by gce-xfstests
 #     GCE_PROJECT     the GCE project
-#     GCE_ZONE        the zone of the VM running the LTM or KCS server
 #     GCE_INSTANCE    the name of the VM running the LTM or KCS server
 #     GCE_ACCOUNT     (optional) the account which gcloud should use
 #
@@ -66,7 +67,6 @@ import email.utils
 import json
 import math
 import os
-import random
 import re
 import secrets
 import shlex
@@ -83,37 +83,13 @@ VERSION = '1.0'
 # These must match gce-gcs-relay
 PROTOCOL_VERSION = 1
 RELAY_PREFIX = 'gcs-relay'
-RELAY_ATTRIBUTE = 'gcs_relay'
 
 DEFAULT_TIMEOUT = 120.0
 MAX_TIMEOUT = 3600.0
 
-# How many times to try to signal the instance via its metadata, and
-# how long to keep waiting for a response once that has failed.  (The
-# relay daemon may be awake anyway if it has been used recently, or if
-# another parallel invocation signalled it.)  Metadata fingerprint
-# conflicts and rate limits get more attempts, with jittered backoff,
-# because GCE rejects concurrent setMetadata calls with HTTP 412.
-SIGNAL_ATTEMPTS = 3
-SIGNAL_CONFLICT_ATTEMPTS = 8
-SIGNAL_GRACE = 30.0
-RESIGNAL_UPLOAD_SECS = 20.0
-
 INSTANCE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$')
 PROJECT_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$')
 BUCKET_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{1,221}$')
-
-TRANSIENT_SIGNAL_ERRORS = (
-    'fingerprint',
-    'conditionnotmet',
-    'not ready',
-    'operationinprogress',
-    'rate limit',
-    'quota',
-    'backend error',
-    'service unavailable',
-    'internal error',
-)
 
 # Exit codes, as used by curl
 E_UNSUPPORTED_PROTOCOL = 1
@@ -157,7 +133,7 @@ are ignored: --cacert, --capath, --connect-timeout, --connect-to,
 --http1.1, -k/--insecure, -4/--ipv4, -6/--ipv6, --noproxy, --resolve,
 --tlsv1.2, --tlsv1.3
 
-The server is located using the GS_BUCKET, GCE_PROJECT, GCE_ZONE, and
+The server is located using the GS_BUCKET, GCE_PROJECT, and
 GCE_INSTANCE environment variables, which are set by gce-xfstests.
 """
 
@@ -649,7 +625,6 @@ class Relay:
         if not PROJECT_RE.match(self.project) or self.project in ('.', '..'):
             raise Fatal(E_FAILED_INIT,
                         'bad GCE_PROJECT value: %s' % self.project)
-        self.zone = getenv('GCE_ZONE')
         self.instance = getenv('GCE_INSTANCE')
         if not INSTANCE_RE.match(self.instance) or self.instance in (
                 '.', '..'):
@@ -661,14 +636,6 @@ class Relay:
         if account:
             self.gcloud += ['--account', account]
         self.gcloud += ['--project', self.project]
-        self.signal_attempts = 0
-        self.signal_value = None
-        self.signal_retry_at = None
-        self.signal_proc = None
-        self.signal_stderr = None
-        self.signal_error = None
-        self.signal_failed = False
-        self.claimed = False
 
     def url(self, kind, request_id):
         return 'gs://%s/%s/%s-%s/%s/%s.json' % (
@@ -721,71 +688,15 @@ class Relay:
             except Fatal:
                 pass
 
-    def signal(self, value):
-        """Tells the relay daemon to look for requests in the bucket
-
-        This is done by setting the gcs_relay metadata attribute of
-        the instance, which the relay daemon is watching.  Since this
-        takes a while, it is done in the background, while the request
-        is being uploaded.
-        """
-        self.signal_value = value
-        self.signal_attempts += 1
-        self.signal_stderr = tempfile.TemporaryFile()
-        self.signal_proc = self.spawn_gcloud(
-            ['compute', '-q', 'instances', 'add-metadata', self.instance,
-             '--zone', self.zone,
-             '--metadata', '%s=%s' % (RELAY_ATTRIBUTE, value)],
-            stderr=self.signal_stderr)
-
-    def check_signal(self, retry=True):
-        """Checks how signalling the instance went; retries if it failed"""
-        if self.signal_retry_at is not None:
-            if (retry and not self.claimed and
-                    time.monotonic() >= self.signal_retry_at):
-                self.signal_retry_at = None
-                self.signal(self.signal_value)
-            return
-        if self.signal_proc is None:
-            return
-        status = self.signal_proc.poll()
-        if status is None:
-            return
-        self.signal_proc = None
+    def request_claimed(self, req_url):
+        """Returns True if req_url is gone, False if still there, else None"""
+        status, _, err = self.run_gcloud(['storage', 'ls', req_url],
+                                         timeout=10)
         if status == 0:
-            debug('signalled %s' % self.instance)
-            self.signal_error = None
-        else:
-            self.signal_stderr.seek(0)
-            self.signal_error = self.signal_stderr.read().decode(
-                'utf-8', 'replace').strip()
-            debug('signalling %s failed: %s'
-                  % (self.instance, self.signal_error))
-        self.signal_stderr.close()
-        if status == 0 or not retry or self.claimed:
-            return
-        low = self.signal_error.lower()
-        transient = any(s in low for s in TRANSIENT_SIGNAL_ERRORS)
-        limit = SIGNAL_CONFLICT_ATTEMPTS if transient else SIGNAL_ATTEMPTS
-        if self.signal_attempts < limit:
-            if transient:
-                # Parallel clients updating metadata on the same VM can
-                # collide on GCE's metadata fingerprint (HTTP 412); back
-                # off with jitter so retries do not collide again.
-                base = min(0.5 * (2 ** (self.signal_attempts - 1)), 8.0)
-                self.signal_retry_at = (time.monotonic() +
-                                        base * random.uniform(0.5, 1.5))
-            else:
-                self.signal(self.signal_value)
-        else:
-            self.signal_failed = True
-
-    def request_claimed(self, req_url, deadline):
-        """Returns True if the relay daemon has already removed req_url"""
-        status, _, err = self.run_gcloud(
-            ['storage', 'ls', req_url],
-            timeout=max(deadline - time.monotonic(), 10))
-        return status != 0 and 'matched no objects' in err.lower()
+            return False
+        if status is not None and 'matched no objects' in err.lower():
+            return True
+        return None
 
     def transact(self, request):
         """Sends a request via the relay; returns the raw response"""
@@ -797,7 +708,6 @@ class Relay:
         start = time.monotonic()
         deadline = start + self.timeout
 
-        self.signal(request_id)
         status, _, err = self.run_gcloud(
             ['storage', 'cp', '-', req_url],
             data=json.dumps(request).encode('utf-8'),
@@ -808,15 +718,6 @@ class Relay:
                         % (req_url, err))
         uploaded = time.monotonic()
         debug('uploaded %s after %.1f seconds' % (req_url, uploaded - start))
-        if uploaded - start > RESIGNAL_UPLOAD_SECS:
-            # If the upload was slow, the earlier wakeup's burst window
-            # may already be ending; nudge the relay again now that the
-            # request object is actually in the bucket.
-            self.check_signal()
-            if (self.signal_proc is None and self.signal_retry_at is None and
-                    not self.signal_failed):
-                self.signal_attempts = 0
-                self.signal(request_id + '-u')
 
         try:
             delay = 1.0
@@ -825,7 +726,6 @@ class Relay:
                 if now >= deadline:
                     break
                 time.sleep(min(delay, deadline - now))
-                self.check_signal()
                 status, out, err = self.run_gcloud(
                     ['storage', 'cat', rsp_url],
                     timeout=max(deadline - time.monotonic(), 10))
@@ -835,39 +735,39 @@ class Relay:
                           % (rsp_url, now - start))
                     self.remove([rsp_url])
                     return out
-                if (self.signal_failed and not self.claimed and
-                        now - uploaded > SIGNAL_GRACE):
-                    # Another parallel invocation may already have woken
-                    # the relay, or it may already have been awake.  If
-                    # our request object is gone, the relay claimed it
-                    # and is working on it, so keep waiting for rsp_url.
-                    if self.request_claimed(req_url, deadline):
-                        debug('request was claimed by %s despite signal error'
-                              % self.instance)
-                        self.claimed = True
-                        self.signal_failed = False
-                    else:
-                        self.remove([req_url])
-                        raise Fatal(E_COULDNT_CONNECT,
-                                    'could not signal the instance %s in '
-                                    'zone %s:\n%s' % (self.instance, self.zone,
-                                                      self.signal_error))
                 delay = 0.5 if now - uploaded < 30 else 2.0
         except KeyboardInterrupt:
             self.remove([req_url, rsp_url])
             raise
 
-        self.remove([req_url, rsp_url])
-        self.check_signal(retry=False)
-        msg = ('timed out after %g seconds waiting for the response '
-               'from %s\n' % (self.timeout, self.instance) +
-               '%s: Is %s running, and was it created using a test '
-               'appliance image\n' % (PROG, self.instance) +
-               '%s: which includes the gce-gcs-relay service?'
-               % PROG)
-        if self.signal_error and not self.claimed:
-            msg += ('\n%s: Signalling the instance failed:\n%s'
-                    % (PROG, self.signal_error))
+        claimed = self.request_claimed(req_url)
+        if claimed is True:
+            self.remove([rsp_url])
+            msg = ('timed out after %g seconds waiting for the response '
+                   'from %s\n' % (self.timeout, self.instance) +
+                   '%s: The request was claimed by the relay on %s and may '
+                   'still be carried out;\n' % (PROG, self.instance) +
+                   '%s: use "gce-xfstests ltm-info" or check the server logs '
+                   'to verify its status.' % PROG)
+        elif claimed is False:
+            self.remove([req_url, rsp_url])
+            msg = ('timed out after %g seconds waiting for the response '
+                   'from %s\n' % (self.timeout, self.instance) +
+                   '%s: The request was never picked up by the gce-gcs-relay '
+                   'service on %s.\n' % (PROG, self.instance) +
+                   '%s: Check that %s is running an updated test appliance '
+                   'image with the Pub/Sub\n' % (PROG, self.instance) +
+                   '%s: access scope, that "gce-xfstests setup" has '
+                   'provisioned Pub/Sub notifications,\n' % PROG +
+                   '%s: and check "journalctl -u gce-gcs-relay" on %s.'
+                   % (PROG, self.instance))
+        else:
+            self.remove([req_url, rsp_url])
+            msg = ('timed out after %g seconds waiting for the response '
+                   'from %s\n' % (self.timeout, self.instance) +
+                   '%s: Check "journalctl -u gce-gcs-relay" on %s and use '
+                   '"gce-xfstests ltm-info"\n' % (PROG, self.instance) +
+                   '%s: to verify whether the request was acted upon.' % PROG)
         raise Fatal(E_OPERATION_TIMEDOUT, msg)
 
 

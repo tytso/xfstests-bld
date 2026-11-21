@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A fake GCE metadata server and GCS JSON API, for local testing.
+"""A fake GCE metadata server, GCS JSON API, and Cloud Pub/Sub API, for testing.
 
 One HTTP server (plain HTTP, loopback only) which provides:
 
@@ -7,9 +7,12 @@ One HTTP server (plain HTTP, loopback only) which provides:
     "hanging GETs" on the instance attributes with ETags;
   * the parts of the GCS JSON API used by gce-gcs-relay (list, download,
     upload, delete, with generation preconditions);
+  * the parts of the Cloud Pub/Sub REST API used by gce-gcs-relay
+    (:pull and :acknowledge), fed by simulated GCS OBJECT_FINALIZE
+    notifications for objects under gcs-relay/;
   * a few /_test/ endpoints which let the test driver (and the fake
     gcloud) poke at the state: set metadata, read statistics, age
-    objects, inject failures.
+    objects, inject failures and Pub/Sub anomalies.
 
 All state is kept in memory.
 """
@@ -17,6 +20,8 @@ All state is kept in memory.
 import argparse
 import http.server
 import json
+import select
+import socket
 import socketserver
 import sys
 import threading
@@ -44,7 +49,18 @@ class State:
         self.md_conflict = False
         self.etag_base = 0
         self.epoch = 0
+        self.pubsub_msg_n = 0
+        self.pubsub_ack_n = 0
+        self.pubsub_hold = 5.0
+        self.pubsub_delay = 0.0
+        self.pubsub_dup = 1
+        self.pubsub_drop = False
+        self.pubsub_fast_empty = False
+        self.pubsub_scope_error = False
+        self.pubsub_api_disabled = False
+        self.pubsub_perm_error = False
         self.reset_instances()
+        self.reset_pubsub()
 
     def reset_instances(self):
         self.etag_base += 100
@@ -60,6 +76,43 @@ class State:
         }
         self.inst_etag = {k: self.etag_base + 1 for k in self.inst_attrs}
 
+    def reset_pubsub(self):
+        self.pubsub_subs = {}
+        for proj, inst in self.inst_attrs:
+            sub_name = "%s-gcs-relay" % inst
+            self.pubsub_subs[(proj, sub_name)] = {
+                "prefix": "gcs-relay/%s-%s/req/" % (inst, proj),
+                "queue": [],
+                "ack_deadline": 10.0,
+                "deleted": False,
+            }
+
+    def enqueue_message(self, sub, attrs, now_wall, data=None, delay=None):
+        self.pubsub_msg_n += 1
+        if delay is None:
+            delay = self.pubsub_delay
+        msg = {
+            "msg_id": "msg-%d" % self.pubsub_msg_n,
+            "ack_id": None,
+            "attributes": attrs,
+            "publish_time": rfc3339(now_wall),
+            "deliver_at": time.monotonic() + delay,
+            "leased_until": 0.0,
+        }
+        if data is not None:
+            msg["data"] = data
+        sub["queue"].append(msg)
+        self.count("pubsub:publish")
+
+    def publish_matching(self, attrs, now_wall):
+        obj_id = attrs.get("objectId", "")
+        for sub in self.pubsub_subs.values():
+            if sub["deleted"]:
+                continue
+            if obj_id.startswith(sub["prefix"]):
+                for _ in range(self.pubsub_dup):
+                    self.enqueue_message(sub, dict(attrs), now_wall)
+
     def etag(self, key=None):
         return "%016x" % self.inst_etag[key or (self.project, self.instance)]
 
@@ -69,6 +122,7 @@ class State:
     def reset(self):
         self.epoch += 1
         self.reset_instances()
+        self.reset_pubsub()
         self.objects = {}
         self.stats = {}
         self.fail = {}
@@ -76,6 +130,14 @@ class State:
         self.no_etag = False
         self.md_delay = 0.0
         self.md_conflict = False
+        self.pubsub_hold = 5.0
+        self.pubsub_delay = 0.0
+        self.pubsub_dup = 1
+        self.pubsub_drop = False
+        self.pubsub_fast_empty = False
+        self.pubsub_scope_error = False
+        self.pubsub_api_disabled = False
+        self.pubsub_perm_error = False
         self.cond.notify_all()
 
     def should_fail(self, op):
@@ -149,6 +211,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path.startswith("/storage/v1/b/") or \
                path.startswith("/upload/storage/v1/b/"):
                 return self.storage(st, path, q)
+            if path.startswith("/v1/projects/"):
+                return self.pubsub(st, path, q)
             self.reply(404, "not found\n", "text/plain")
         except BrokenPipeError:
             pass
@@ -234,10 +298,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if q.get("ifGenerationMatch") == "0" and \
                    (bucket, name) in st.objects:
                     return self.reply(412, "{}")
+                now = time.time()
                 st.gen += 1
                 st.objects[(bucket, name)] = {
                     "data": data, "generation": st.gen,
-                    "timeCreated": time.time()}
+                    "timeCreated": now}
+                if not st.pubsub_drop and name.startswith("gcs-relay/"):
+                    attrs = {
+                        "bucketId": bucket,
+                        "eventTime": rfc3339(now),
+                        "eventType": "OBJECT_FINALIZE",
+                        "notificationConfig": (
+                            "projects/_/buckets/%s/notificationConfigs/1"
+                            % bucket),
+                        "objectGeneration": str(st.gen),
+                        "objectId": name,
+                        "payloadFormat": "NONE",
+                    }
+                    st.publish_matching(attrs, now)
                 st.cond.notify_all()
                 return self.reply(200, json.dumps({
                     "name": name, "generation": str(st.gen)}))
@@ -305,10 +383,187 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         self.reply(400, "{}")
 
+    # -- Cloud Pub/Sub REST API ---------------------------------------
+
+    def _pubsub_access_error(self, st):
+        if st.pubsub_scope_error:
+            return 403, json.dumps({
+                "error": {
+                    "code": 403,
+                    "message": "Request had insufficient authentication "
+                               "scopes.",
+                    "status": "PERMISSION_DENIED",
+                    "details": [{
+                        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                        "reason": "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                        "domain": "googleapis.com",
+                    }],
+                },
+            })
+        if st.pubsub_api_disabled:
+            return 403, json.dumps({
+                "error": {
+                    "code": 403,
+                    "message": "Cloud Pub/Sub API has not been used in "
+                               "project or it is disabled.",
+                    "status": "PERMISSION_DENIED",
+                    "details": [{
+                        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                        "reason": "SERVICE_DISABLED",
+                        "domain": "googleapis.com",
+                    }],
+                },
+            })
+        if st.pubsub_perm_error:
+            return 403, json.dumps({
+                "error": {
+                    "code": 403,
+                    "message": "User not authorized to perform this action.",
+                    "status": "PERMISSION_DENIED",
+                },
+            })
+        return None
+
+    def _client_closed(self):
+        try:
+            r, _, _ = select.select([self.connection], [], [], 0)
+            if r:
+                return self.connection.recv(1, socket.MSG_PEEK) == b""
+        except OSError:
+            return True
+        return False
+
+    def pubsub(self, st, path, q):
+        raw = self.body()
+        auth = self.headers.get("Authorization", "")
+        with st.cond:
+            good = "Bearer tok-%d" % st.token_n
+        if auth != good:
+            with st.cond:
+                st.count("pubsub:401")
+            return self.reply(401, json.dumps({
+                "error": {"code": 401, "status": "UNAUTHENTICATED"}}))
+
+        if self.command != "POST":
+            return self.reply(405, "{}")
+
+        # Expected: /v1/projects/<project>/subscriptions/<sub_id>:<action>
+        rest = path[len("/v1/projects/"):]
+        parts = rest.split("/")
+        if len(parts) != 3 or parts[1] != "subscriptions" or ":" not in parts[2]:
+            return self.reply(404, "{}")
+        proj = urllib.parse.unquote(parts[0])
+        sub_raw, _, action = parts[2].rpartition(":")
+        sub_name = urllib.parse.unquote(sub_raw)
+        if action not in ("pull", "acknowledge"):
+            return self.reply(404, "{}")
+
+        try:
+            req_doc = json.loads(raw.decode("utf-8")) if raw else {}
+            if not isinstance(req_doc, dict):
+                raise ValueError
+        except ValueError:
+            return self.reply(400, json.dumps({
+                "error": {"code": 400, "message": "malformed JSON"}}))
+
+        with st.cond:
+            err = self._pubsub_access_error(st)
+            if err:
+                return self.reply(err[0], err[1])
+            sub = st.pubsub_subs.get((proj, sub_name))
+            if sub is None or sub["deleted"]:
+                return self.reply(404, json.dumps({
+                    "error": {
+                        "code": 404,
+                        "message": "Resource not found (resource=%s)."
+                                   % sub_name,
+                        "status": "NOT_FOUND",
+                    }}))
+
+            if action == "acknowledge":
+                st.count("pubsub:ack")
+                status = st.should_fail("pubsub-ack")
+                if status:
+                    return self.reply(status, "{}")
+                ack_ids = set(req_doc.get("ackIds") or [])
+                if not ack_ids:
+                    return self.reply(400, json.dumps({
+                        "error": {"code": 400, "message": "empty ackIds"}}))
+                sub["queue"] = [m for m in sub["queue"]
+                                if m["ack_id"] not in ack_ids]
+                return self.reply(200, "{}")
+
+            # action == "pull"
+            st.count("pubsub:pull")
+            st.count("pubsub:pull:%s/%s" % (proj, sub_name))
+            status = st.should_fail("pubsub-pull")
+            if status:
+                return self.reply(status, "{}")
+            try:
+                max_msgs = int(req_doc.get("maxMessages", 10))
+                if max_msgs < 1:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return self.reply(400, json.dumps({
+                    "error": {"code": 400, "message": "bad maxMessages"}}))
+
+            start_epoch = st.epoch
+            hold = 0.0 if (st.pubsub_fast_empty or
+                           req_doc.get("returnImmediately")) else st.pubsub_hold
+            deadline = time.monotonic() + hold
+            while True:
+                if st.epoch != start_epoch or self._client_closed():
+                    return self.reply(200, "{}")
+                err = self._pubsub_access_error(st)
+                if err:
+                    return self.reply(err[0], err[1])
+                if sub["deleted"]:
+                    return self.reply(404, json.dumps({
+                        "error": {
+                            "code": 404,
+                            "message": "Resource not found (resource=%s)."
+                                       % sub_name,
+                            "status": "NOT_FOUND",
+                        }}))
+                now_mono = time.monotonic()
+                ready = [m for m in sub["queue"]
+                         if m["deliver_at"] <= now_mono and
+                         m["leased_until"] <= now_mono]
+                if ready:
+                    batch = ready[:max_msgs]
+                    received = []
+                    for m in batch:
+                        st.pubsub_ack_n += 1
+                        m["ack_id"] = "ack-%d" % st.pubsub_ack_n
+                        m["leased_until"] = now_mono + sub["ack_deadline"]
+                        pm = {
+                            "attributes": m["attributes"],
+                            "messageId": m["msg_id"],
+                            "publishTime": m["publish_time"],
+                        }
+                        if "data" in m:
+                            pm["data"] = m["data"]
+                        received.append({"ackId": m["ack_id"], "message": pm})
+                    return self.reply(200, json.dumps({
+                        "receivedMessages": received}))
+                left = deadline - now_mono
+                if left <= 0:
+                    return self.reply(200, "{}")
+                # Wake early when a delayed or leased message becomes ready.
+                next_ready = None
+                for m in sub["queue"]:
+                    t = max(m["deliver_at"], m["leased_until"])
+                    if t > now_mono and (next_ready is None or t < next_ready):
+                        next_ready = t
+                wait_for = left
+                if next_ready is not None:
+                    wait_for = min(wait_for, max(0.01, next_ready - now_mono))
+                st.cond.wait(wait_for)
+
     # -- test control -------------------------------------------------
 
     def test(self, st, what, q):
-        self.body()
+        raw = self.body()
         with st.cond:
             if what == "metadata":
                 proj = q.get("project") or st.project
@@ -324,7 +579,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.reply(200, json.dumps({
                     "stats": st.stats,
                     "attrs": st.inst_attrs[(st.project, st.instance)],
-                    "objects": sorted(n for (_, n) in st.objects)}))
+                    "objects": sorted(n for (_, n) in st.objects),
+                    "pubsub_pending": {
+                        "%s/%s" % k: len(v["queue"])
+                        for k, v in st.pubsub_subs.items()
+                    }}))
             elif what == "reset-stats":
                 st.stats = {}
                 return self.reply(200, "{}")
@@ -332,9 +591,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 st.reset()
                 return self.reply(200, json.dumps({"epoch": st.epoch}))
             elif what == "age":
+                secs = float(q["seconds"])
                 for (b, n), o in st.objects.items():
                     if n == q["name"]:
-                        o["timeCreated"] -= float(q["seconds"])
+                        o["timeCreated"] -= secs
+                        for sub in st.pubsub_subs.values():
+                            for m in sub["queue"]:
+                                if m["attributes"].get("objectId") == n:
+                                    m["attributes"]["eventTime"] = rfc3339(
+                                        o["timeCreated"])
                         return self.reply(200, "{}")
                 return self.reply(404, "{}")
             elif what == "fail":
@@ -343,6 +608,35 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.reply(200, "{}")
             elif what == "expire-token":
                 st.token_n += 1
+                return self.reply(200, "{}")
+            elif what == "pubsub-sub":
+                proj = q.get("project") or st.project
+                sub_name = q.get("subscription") or ("%s-gcs-relay"
+                                                     % st.instance)
+                sub = st.pubsub_subs.get((proj, sub_name))
+                if sub is None:
+                    return self.reply(404, "{}")
+                if "deleted" in q:
+                    sub["deleted"] = q["deleted"] == "1"
+                    if sub["deleted"]:
+                        sub["queue"] = []
+                if "ack_deadline" in q:
+                    sub["ack_deadline"] = float(q["ack_deadline"])
+                st.cond.notify_all()
+                return self.reply(200, "{}")
+            elif what == "pubsub-publish":
+                proj = q.get("project") or st.project
+                sub_name = q.get("subscription") or ("%s-gcs-relay"
+                                                     % st.instance)
+                sub = st.pubsub_subs.get((proj, sub_name))
+                if sub is None or sub["deleted"]:
+                    return self.reply(404, "{}")
+                doc = json.loads(raw.decode("utf-8")) if raw else {}
+                delay = float(q["delay"]) if "delay" in q else 0.0
+                st.enqueue_message(sub, doc.get("attributes") or {},
+                                   time.time(), data=doc.get("data"),
+                                   delay=delay)
+                st.cond.notify_all()
                 return self.reply(200, "{}")
             elif what == "set":
                 if "no_etag" in q:
@@ -353,6 +647,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     st.md_conflict = q["md_conflict"] == "1"
                 if "page_size" in q:
                     st.page_size = int(q["page_size"])
+                if "pubsub_hold" in q:
+                    st.pubsub_hold = float(q["pubsub_hold"])
+                if "pubsub_delay" in q:
+                    st.pubsub_delay = float(q["pubsub_delay"])
+                if "pubsub_dup" in q:
+                    st.pubsub_dup = int(q["pubsub_dup"])
+                if "pubsub_drop" in q:
+                    st.pubsub_drop = q["pubsub_drop"] == "1"
+                if "pubsub_fast_empty" in q:
+                    st.pubsub_fast_empty = q["pubsub_fast_empty"] == "1"
+                if "pubsub_scope_error" in q:
+                    st.pubsub_scope_error = q["pubsub_scope_error"] == "1"
+                if "pubsub_api_disabled" in q:
+                    st.pubsub_api_disabled = q["pubsub_api_disabled"] == "1"
+                if "pubsub_perm_error" in q:
+                    st.pubsub_perm_error = q["pubsub_perm_error"] == "1"
                 st.cond.notify_all()
                 return self.reply(200, "{}")
             else:

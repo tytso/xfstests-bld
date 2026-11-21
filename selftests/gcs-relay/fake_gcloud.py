@@ -8,17 +8,17 @@ functions around it) are implemented:
     gcloud ... storage cat gs://BUCKET/OBJECT
     gcloud ... storage rm gs://BUCKET/OBJECT
     gcloud ... storage ls gs://BUCKET/PREFIX
-    gcloud ... compute -q instances add-metadata INSTANCE --zone ZONE \
-                --metadata KEY=VALUE
     gcloud ... compute instances describe ...       (always "not found")
+
+"compute instances add-metadata" is explicitly rejected so any regression
+back to metadata signalling fails the selftest suite.
 
 Environment:
     FAKE_GCP_URL        base URL of fake_gcp.py (required)
     FAKE_GCLOUD_LOG     append one JSON line per invocation to this file
     FAKE_GCLOUD_DELAY   seconds to sleep at startup (default 0.3), to
                         mimic how slow starting the real gcloud is
-    FAKE_GCLOUD_DELAY_<OP>  override for one operation (CP, CAT, RM,
-                        ADD_METADATA)
+    FAKE_GCLOUD_DELAY_<OP>  override for one operation (CP, CAT, RM, LS)
     FAKE_GCLOUD_FAIL    comma-separated operations which should fail
     FAKE_GCLOUD_LOCK    path to a lockfile held shared while running
     FAKE_GCLOUD_EPOCH   test epoch header sent to fake_gcp.py
@@ -174,29 +174,9 @@ def main():
             print("gs://%s/%s" % (bucket, it["name"]))
         return 0
     if short == "add-metadata":
-        instance = args[3]
-        key, _, value = flags["metadata"].partition("=")
-        status, body = http("POST", "/_test/metadata",
-                            {"project": flags.get("project", ""),
-                             "instance": instance, "zone": flags["zone"],
-                             "key": key, "value": value}, b"", auth=False)
-        if status == 412:
-            sys.stderr.write(
-                "ERROR: (gcloud.compute.instances.add-metadata) Could not "
-                "fetch resource:\n - Supplied fingerprint does not match "
-                "current metadata fingerprint.\n")
-            return 1
-        if status != 200:
-            sys.stderr.write(
-                "ERROR: (gcloud.compute.instances.add-metadata) Could not "
-                "fetch resource:\n - The resource 'projects/%s/zones/%s/"
-                "instances/%s' was not found\n"
-                % (flags.get("project"), flags["zone"], instance))
-            return 1
-        sys.stderr.write("Updated [https://www.googleapis.com/compute/v1/"
-                         "projects/%s/zones/%s/instances/%s].\n"
-                         % (flags.get("project"), flags["zone"], instance))
-        return 0
+        sys.stderr.write("fake gcloud: compute instances add-metadata must "
+                         "not be called: %r\n" % (argv,))
+        return 2
     if short == "describe":
         sys.stderr.write("ERROR: (gcloud.compute.instances.describe) "
                          "not found\n")
