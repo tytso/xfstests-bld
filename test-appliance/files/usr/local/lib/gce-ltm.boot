@@ -44,6 +44,11 @@ then
     mkdir -p /var/log/go
     systemctl enable gce-ltm.service
     systemctl start gce-ltm.service
+
+    # Allow requests to be sent to the LTM server by way of the GCS
+    # bucket, for when gce-xfstests can't connect to this VM directly.
+    systemctl enable gce-gcs-relay.service
+    systemctl start gce-gcs-relay.service
 fi
 
 /usr/local/sbin/gce-xfstests cache-machtype-file

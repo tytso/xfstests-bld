@@ -41,6 +41,12 @@ GCE_MIN_SCR_SIZE=100
 #
 GCE_SERIAL_PORT_ACCESS=TRUE
 
+# The program used to send requests to the LTM and KCS servers.  This
+# can be set to gce-gcs-curl to relay the requests via the GCS bucket,
+# for when it is not possible to connect to the server VMs directly;
+# see Documentation/gce-xfstests.md for the details.
+# GCE_CURL=curl
+
 # GIT_REPOS can be used to define user-specific git repository aliases
 # in ~/.config/gce-xfstests.  It will override any default mappings defined
 # by DEF_GIT_REPOS

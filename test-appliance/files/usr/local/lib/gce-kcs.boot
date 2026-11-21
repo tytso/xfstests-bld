@@ -37,6 +37,12 @@ then
 
     systemctl enable gce-kcs.service
     systemctl start gce-kcs.service
+
+    # Allow requests to be sent to the KCS server by way of the GCS
+    # bucket, for when gce-xfstests can't connect to this VM directly.
+    systemctl enable gce-gcs-relay.service
+    systemctl start gce-gcs-relay.service
+
     systemctl enable gce-repo-cleanup.timer
     systemctl start gce-repo-cleanup.timer
 fi

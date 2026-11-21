@@ -42,3 +42,10 @@ Tests the Lightweight Test Manager (LTM) and Kernel Compilation Service (KCS) in
   - Launches LTM with a batch file and waits for results in GCS.
   - Verifies test results.
 
+### 4. gcs-relay/test_gcs_relay.py
+Offline loopback self-test suite for `GCE_CURL`, `run-fstests/util/gce-gcs-curl`,
+and `test-appliance/files/usr/local/lib/gce-gcs-relay`.
+- **Prerequisites**: Python 3 (stdlib only), `bash`, `curl`, `jq`, and `openssl`. No GCP credentials, bucket, VMs, or network access required.
+- **Usage**: Can be invoked from any working directory (auto-detects the repo root relative to itself, or accepts `--repo PATH`). Supports `--list`, `-k SUBSTRING`, `-v`, and `--keep`.
+- **Behavior**: Starts local fakes (`fake_gcp.py`, `fake_gcloud.py`, `fake_ltm.py`) with an ephemeral self-signed CN-only cert and tests default `curl`, `GCE_CURL` hooking, LTM/KCS routing isolation, multi-project bucket isolation, concurrent requests, HTTP 412 metadata fingerprint conflicts, cookie-jar interop, error/timeout handling, and `SIGTERM` draining.
+

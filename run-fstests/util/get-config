@@ -144,6 +144,39 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
         run_gcloud_always storage ls "$@" >& /dev/null
     }
 
+    # Run the curl-compatible program which is used to send requests
+    # to the LTM and KCS servers.  The first argument is the name of
+    # the instance where the server is running; the rest of the
+    # arguments are passed to the program.
+    #
+    # By default the program is curl, but GCE_CURL can be set to the
+    # pathname of a program which accepts curl's command-line options
+    # but which uses some other way of reaching the server.  If
+    # GCE_CURL does not contain a slash and names an executable in
+    # the util directory (for example, gce-gcs-curl), that program
+    # will be used.  So that the program can find the server, the
+    # instance name is passed in the GCE_INSTANCE environment
+    # variable, along with GCE_PROJECT, GCE_ZONE, GS_BUCKET, and
+    # GCE_ACCOUNT.
+    function run_gce_curl ()
+    {
+	local instance="$1"
+	local curl="${GCE_CURL:-curl}"
+	shift
+
+	case "$curl" in
+	    */*) ;;
+	    *)
+		if test -x "$DIR/util/$curl" ; then
+		    curl="$DIR/util/$curl"
+		fi
+		;;
+	esac
+	GCE_INSTANCE="$instance" GCE_PROJECT="$GCE_PROJECT" \
+	    GCE_ZONE="$GCE_ZONE" GS_BUCKET="$GS_BUCKET" \
+	    GCE_ACCOUNT="$GCE_ACCOUNT" "$curl" "$@"
+    }
+
     GCE_DASHBOARD_SERVICE_IAM=dashboard
     SERVICE_ACCOUNT_VM="test-vm@$GCE_PROJECT.iam.gserviceaccount.com"
     SERVICE_ACCOUNT_LTM="ltm-kcs@$GCE_PROJECT.iam.gserviceaccount.com"
