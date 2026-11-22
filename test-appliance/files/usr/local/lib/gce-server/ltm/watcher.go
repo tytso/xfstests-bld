@@ -310,19 +310,30 @@ func (watcher *GitWatcher) Clean() {
 // Info returns structured watcher information.
 func (watcher *GitWatcher) Info() server.WatcherInfo {
 	watcher.historyLock.Lock()
-	defer watcher.historyLock.Unlock()
 	tests := watcher.testHistory
 	if len(tests) > historyLength {
 		tests = tests[len(tests)-historyLength:]
 	}
+	testsCopy := make([]server.TestInfo, len(tests))
+	copy(testsCopy, tests)
+	packsCopy := make([]string, len(watcher.packHistory))
+	copy(packsCopy, watcher.packHistory)
+	watcher.historyLock.Unlock()
+
+	var repoURL, branch string
+	if watcher.testRequest.Options != nil {
+		repoURL = watcher.testRequest.Options.GitRepo
+		branch = watcher.testRequest.Options.BranchName
+	}
+
 	return server.WatcherInfo{
 		ID:      watcher.testID,
 		Command: watcher.origCmd,
-		Repo:    watcher.testRequest.Options.GitRepo,
-		Branch:  watcher.testRequest.Options.BranchName,
+		Repo:    repoURL,
+		Branch:  branch,
 		HEAD:    watcher.repo.Head(),
-		Tests:   tests,
-		Packs:   watcher.packHistory,
+		Tests:   testsCopy,
+		Packs:   packsCopy,
 	}
 }
 
@@ -363,9 +374,14 @@ func StopWatcher(c server.TaskRequest) error {
 // WatcherStatus returns the info for active git watchers.
 func WatcherStatus() []server.WatcherInfo {
 	watcherLock.Lock()
-	defer watcherLock.Unlock()
-	infoList := []server.WatcherInfo{}
+	watchers := make([]*GitWatcher, 0, len(watcherMap))
 	for _, v := range watcherMap {
+		watchers = append(watchers, v)
+	}
+	watcherLock.Unlock()
+
+	infoList := make([]server.WatcherInfo, 0, len(watchers))
+	for _, v := range watchers {
 		infoList = append(infoList, v.Info())
 	}
 	sort.Slice(infoList, func(i, j int) bool {
