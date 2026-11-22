@@ -45,8 +45,11 @@ type GitWatcher struct {
 	historyLock        sync.Mutex
 	buildID            int
 
-	repo *git.RemoteRepository
-	done chan bool
+	repo      *git.RemoteRepository
+	done      chan struct{}
+	stopOnce  sync.Once
+	cleanOnce sync.Once
+	stopping  bool
 
 	logDir     string
 	resultsDir string
@@ -102,7 +105,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 	origCmd, err := parser.DecodeCmd(c.CmdLine)
 	check.Panic(err, log, "Failed to decode cmdline")
 
-	done := make(chan bool)
+	done := make(chan struct{})
 	repo, err := git.NewRemoteRepository(c.Options.GitRepo, c.Options.BranchName)
 	check.Panic(err, log, "failed to initiate remote repo")
 
@@ -252,15 +255,25 @@ func (watcher *GitWatcher) tidyUp() {
 	watcher.log.Info("Tidy up the GCS results")
 }
 
+func (watcher *GitWatcher) stop() {
+	watcher.stopOnce.Do(func() {
+		close(watcher.done)
+	})
+}
+
 // Clean removes the watcher from watcherMap and performs other cleanup.
 func (watcher *GitWatcher) Clean() {
-	watcherLock.Lock()
-	defer watcherLock.Unlock()
-	watcher.log.Info("Cleaning up watcher resources")
-	delete(watcherMap, watcher.testID)
-	close(watcher.done)
-	os.RemoveAll(watcher.resultsDir)
-	logging.CloseLog(watcher.log)
+	watcher.cleanOnce.Do(func() {
+		watcherLock.Lock()
+		watcher.stopping = true
+		delete(watcherMap, watcher.testID)
+		watcherLock.Unlock()
+
+		watcher.stop()
+		watcher.log.Info("Cleaning up watcher resources")
+		os.RemoveAll(watcher.resultsDir)
+		logging.CloseLog(watcher.log)
+	})
 }
 
 // Info returns structured watcher information.
@@ -306,12 +319,14 @@ func StopWatcher(c server.TaskRequest) error {
 	}
 	watcherLock.Lock()
 	watcher, ok := watcherMap[c.Options.UnWatch]
-	watcherLock.Unlock()
-	if ok {
-		watcher.done <- true
-		return nil
+	if !ok || watcher.stopping {
+		watcherLock.Unlock()
+		return fmt.Errorf("no active watcher with specified ID")
 	}
-	return fmt.Errorf("no active watcher with specified ID")
+	watcher.stopping = true
+	watcher.stop()
+	watcherLock.Unlock()
+	return nil
 }
 
 // WatcherStatus returns the info for active git watchers.
