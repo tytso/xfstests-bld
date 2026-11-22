@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -462,14 +461,30 @@ func WatcherStatus() []server.WatcherInfo {
 	return infoList
 }
 
-// UpdateWatcherTest attempts to find update the test info for a watcher test.
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// UpdateWatcherTest attempts to update the test info for a watcher test.
 // It does nothing if testID is not related to any watcher.
 func UpdateWatcherTest(testID string, testResult server.ResultType) {
-	watcherLock.Lock()
-	defer watcherLock.Unlock()
+	baseID, suffix, ok := splitParentTestID(testID)
+	if !ok || !isAllDigits(suffix) {
+		return
+	}
 
-	baseID := strings.Split(testID, "-")[0]
-	if watcher, ok := watcherMap[baseID]; ok {
+	watcherLock.Lock()
+	watcher, exists := watcherMap[baseID]
+	watcherLock.Unlock()
+	if exists {
 		watcher.UpdateTest(testID, testResult)
 	}
 }

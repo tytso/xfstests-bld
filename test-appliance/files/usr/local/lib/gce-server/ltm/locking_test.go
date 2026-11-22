@@ -509,3 +509,117 @@ func TestOnerunObjectName(t *testing.T) {
 		}
 	}
 }
+
+func TestDashedTestIDSplittingForBisectAndWatcher(t *testing.T) {
+	resetWatcherGlobals(t)
+
+	for _, tc := range []struct {
+		in         string
+		wantParent string
+		wantSuffix string
+		wantOK     bool
+	}{
+		{"20261122025400-0001", "20261122025400", "0001", true},
+		{"ext4-dev-0001", "ext4-dev", "0001", true},
+		{"test-20261122-amd64-0012", "test-20261122-amd64", "0012", true},
+		{"test-20261122-amd64-c870e04e", "test-20261122-amd64", "c870e04e", true},
+		{"20261122025400", "", "", false},
+		{"-0001", "", "", false},
+		{"ext4-", "", "", false},
+	} {
+		p, s, ok := splitParentTestID(tc.in)
+		if ok != tc.wantOK || p != tc.wantParent || s != tc.wantSuffix {
+			t.Fatalf("splitParentTestID(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tc.in, p, s, ok, tc.wantParent, tc.wantSuffix, tc.wantOK)
+		}
+	}
+
+	// Verify overlapping watchers ("ext4" and "ext4-dev") and standalone
+	// hyphenated runs ("ext4-smoke") route accurately without cross-talk.
+	repoURL, _, _ := initLocalOriginRepo(t)
+	remote, err := git.NewRemoteRepository(repoURL, "main")
+	if err != nil {
+		t.Fatalf("NewRemoteRepository failed: %v", err)
+	}
+	wShort := newTestGitWatcher(t, "ext4", repoURL, remote)
+	defer wShort.Clean()
+	wDashed := newTestGitWatcher(t, "test-20261122-amd64", repoURL, remote)
+	defer wDashed.Clean()
+
+	watcherLock.Lock()
+	watcherMap[wShort.testID] = wShort
+	watcherMap[wDashed.testID] = wDashed
+	watcherLock.Unlock()
+
+	shortRun := wShort.recordNewBuild("1111111111111111")
+	dashedRun := wDashed.recordNewBuild("2222222222222222")
+	if dashedRun != "test-20261122-amd64-0001" {
+		t.Fatalf("unexpected dashed watcher child ID: %q", dashedRun)
+	}
+
+	// Standalone hyphenated test ("ext4-smoke") must not log a warning on wShort.
+	UpdateWatcherTest("ext4-smoke", server.Pass)
+	shortLog, err := os.ReadFile(wShort.logFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(shortLog), "not found in watcher history") {
+		t.Fatalf("standalone hyphenated testID collided with watcher 'ext4':\n%s", string(shortLog))
+	}
+
+	UpdateWatcherTest(dashedRun, server.Fail)
+	UpdateWatcherTest(shortRun, server.Pass)
+
+	if got := wDashed.Info().Tests[0].Status; got != "fail" {
+		t.Fatalf("expected dashed watcher status 'fail', got %q", got)
+	}
+	if got := wShort.Info().Tests[0].Status; got != "pass" {
+		t.Fatalf("expected short watcher status 'pass', got %q", got)
+	}
+
+	// Verify bisect step report preserves full dashed parent testID and does not
+	// mutate sharder.testRequest.ExtraOptions in place.
+	origExtra := &server.InternalOptions{
+		TestID:     "test-20261122-amd64-c870e04e",
+		Requester:  server.KCSBisectStep,
+		TestResult: server.Pass,
+	}
+	mockSharder, err := MockNewShardScheduler(server.TaskRequest{
+		Options:      &server.UserOptions{GitRepo: "https://github.com/tytso/ext4.git"},
+		ExtraOptions: origExtra,
+	}, "test-20261122-amd64-c870e04e")
+	if err != nil {
+		t.Fatalf("MockNewShardScheduler failed: %v", err)
+	}
+	mockSharder.setResult(server.Fail)
+
+	reportReq, err := mockSharder.bisectReportRequest()
+	if err != nil {
+		t.Fatalf("bisectReportRequest failed: %v", err)
+	}
+	if reportReq.ExtraOptions.TestID != "test-20261122-amd64" {
+		t.Fatalf("bisectReportRequest parent TestID = %q, want %q",
+			reportReq.ExtraOptions.TestID, "test-20261122-amd64")
+	}
+	if reportReq.ExtraOptions.TestResult != server.Fail || reportReq.ExtraOptions.Requester != server.LTMBisectStep {
+		t.Fatalf("unexpected bisectReportRequest ExtraOptions: %+v", reportReq.ExtraOptions)
+	}
+	if origExtra.TestID != "test-20261122-amd64-c870e04e" {
+		t.Fatalf("bisectReportRequest mutated original ExtraOptions.TestID to %q", origExtra.TestID)
+	}
+
+	var forwarded server.TaskRequest
+	var forwardedLogID string
+	forwardKCSFunc = func(req server.TaskRequest, id string) error {
+		forwarded = req
+		forwardedLogID = id
+		return nil
+	}
+	mockSharder.MockRun()
+	if forwarded.ExtraOptions == nil || forwarded.ExtraOptions.TestID != "test-20261122-amd64" {
+		t.Fatalf("MockRun forwarded TestID = %+v, want 'test-20261122-amd64'", forwarded.ExtraOptions)
+	}
+	if forwardedLogID != "test-20261122-amd64-c870e04e" {
+		t.Fatalf("MockRun forwarded log testID = %q, want child ID", forwardedLogID)
+	}
+}

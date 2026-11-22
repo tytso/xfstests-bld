@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/gcp"
@@ -184,9 +183,20 @@ func (sharder *ShardScheduler) MockRun() {
 		sharder.log.WithField("result", sharder.testRequest.ExtraOptions.TestResult).Warn("get test results")
 	}
 	if sharder.reportKCS {
-		sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
-		sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
-		if err := ForwardKCS(sharder.testRequest, sharder.testID); err != nil {
+		parentID, _, ok := splitParentTestID(sharder.testID)
+		if !ok {
+			sharder.log.WithField("testID", sharder.testID).Error("Cannot extract parent bisect testID in mock run")
+			return
+		}
+		req := sharder.testRequest
+		var extraCopy server.InternalOptions
+		if req.ExtraOptions != nil {
+			extraCopy = *req.ExtraOptions
+		}
+		extraCopy.TestID = parentID
+		extraCopy.Requester = server.LTMBisectStep
+		req.ExtraOptions = &extraCopy
+		if err := forwardKCSFunc(req, sharder.testID); err != nil {
 			sharder.log.WithError(err).Error("Failed to forward mock bisect result to KCS")
 		}
 	}

@@ -813,12 +813,36 @@ func (sharder *ShardScheduler) emailReport() {
 	}
 }
 
-func (sharder *ShardScheduler) sendKCSReport() {
-	sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
-	sharder.testRequest.ExtraOptions.TestResult = sharder.getResult()
-	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
+func splitParentTestID(testID string) (parent string, suffix string, ok bool) {
+	idx := strings.LastIndex(testID, "-")
+	if idx <= 0 || idx == len(testID)-1 {
+		return "", "", false
+	}
+	return testID[:idx], testID[idx+1:], true
+}
 
-	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
+func (sharder *ShardScheduler) bisectReportRequest() (server.TaskRequest, error) {
+	parentID, _, ok := splitParentTestID(sharder.testID)
+	if !ok {
+		return server.TaskRequest{}, fmt.Errorf("cannot extract parent bisect testID from %q", sharder.testID)
+	}
+	req := sharder.testRequest
+	var extraCopy server.InternalOptions
+	if req.ExtraOptions != nil {
+		extraCopy = *req.ExtraOptions
+	}
+	extraCopy.TestID = parentID
+	extraCopy.TestResult = sharder.getResult()
+	extraCopy.Requester = server.LTMBisectStep
+	req.ExtraOptions = &extraCopy
+	return req, nil
+}
+
+func (sharder *ShardScheduler) sendKCSReport() {
+	req, err := sharder.bisectReportRequest()
+	check.Panic(err, sharder.log, "Failed to build bisect step report")
+
+	server.SendInternalRequest(req, sharder.log, true)
 }
 
 func (sharder *ShardScheduler) sendWatcherResult() {
