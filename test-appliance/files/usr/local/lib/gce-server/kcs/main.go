@@ -120,8 +120,9 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry,
 			response.TestID = testID
 			response.Msg = "Running git bisect task"
 		default:
-			response.Status = false
-			response.Msg = "Unrecognized request"
+			log.WithField("requester", c.ExtraOptions.Requester).Error("Unrecognized internal request")
+			_ = server.SendErrorResponse(w, http.StatusBadRequest, "Unrecognized request")
+			return
 		}
 	}
 

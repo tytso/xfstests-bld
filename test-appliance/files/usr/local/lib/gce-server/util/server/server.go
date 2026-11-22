@@ -12,10 +12,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime/debug"
 	"strings"
@@ -45,7 +49,8 @@ const (
 	secretPath      = "/etc/lighttpd/server.pem"
 	sessionsKeyPath = "/usr/local/lib/gce-server/.sessions_secret_key"
 
-	shutdownTimeout = 30 * time.Second
+	shutdownTimeout     = 30 * time.Second
+	maxRequestBodyBytes = 4 << 20
 
 	loggerPath = "/usr/local/lib/gce-logger"
 )
@@ -192,36 +197,62 @@ type Instance struct {
 // server maintained secrets and mutex to avoid race conditions.
 // also, path to cert file, path must be genereated at runtime
 var (
-	key        []byte
-	password   string
-	launchLock sync.Mutex
-	certPath   string
+	key           []byte
+	password      string
+	launchLock    sync.Mutex
+	certPath      string
+	tlsServerName string
 )
+
+func loadOrCreateSessionKey(path string) ([]byte, error) {
+	if check.FileExists(path) {
+		buf, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if len(buf) == 0 {
+			return nil, fmt.Errorf("session key file is empty")
+		}
+		_ = os.Chmod(path, 0600)
+		return buf, nil
+	}
+	generated := securecookie.GenerateRandomKey(32)
+	if len(generated) == 0 {
+		return nil, fmt.Errorf("failed to generate session key")
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Write(generated); err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if err := f.Chmod(0600); err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if err := f.Close(); err != nil {
+		return nil, err
+	}
+	return generated, nil
+}
 
 func init() {
 	if testing.Testing() && !check.FileExists(sessionsKeyPath) &&
 		gcp.LTMConfig() == nil && gcp.KCSConfig() == nil {
 		key = securecookie.GenerateRandomKey(32)
 		password = "test-password"
+		tlsServerName = "a.test-project.gce-xfstests"
 		return
 	}
 
-	if check.FileExists(sessionsKeyPath) {
-		buf, err := ioutil.ReadFile(sessionsKeyPath)
-		if err != nil {
-			panic("Failed to read session key file")
-		}
-
-		key = buf
-	} else {
-		key = securecookie.GenerateRandomKey(32)
-		err := ioutil.WriteFile(sessionsKeyPath, key, 0644)
-		if err != nil {
-			panic("Failed to write session key file")
-		}
+	var err error
+	key, err = loadOrCreateSessionKey(sessionsKeyPath)
+	if err != nil {
+		panic("Failed to initialize session key file: " + err.Error())
 	}
 
-	var err error
 	if ltmCfg := gcp.LTMConfig(); ltmCfg != nil {
 		password, err = ltmCfg.Get("GCE_LTM_PWD")
 
@@ -240,6 +271,7 @@ func init() {
 	}
 
 	certPath = "/root/xfstests_bld/run-fstests/.gce_xfstests_cert_" + projID + ".pem"
+	tlsServerName = "a." + strings.ReplaceAll(projID, ":", "-") + ".gce-xfstests"
 }
 
 // New sets up a new https server.
@@ -248,6 +280,11 @@ func New(addr string, name string) (*Instance, error) {
 	log.Info("Initiating server")
 
 	router := mux.NewRouter()
+	store := sessions.NewCookieStore(key)
+	store.Options.HttpOnly = true
+	store.Options.Secure = true
+	store.Options.SameSite = http.SameSiteStrictMode
+
 	server := &Instance{
 		httpServer: &http.Server{
 			Addr:    addr,
@@ -256,7 +293,7 @@ func New(addr string, name string) (*Instance, error) {
 		name:   name,
 		addr:   addr,
 		router: router,
-		store:  sessions.NewCookieStore(key),
+		store:  store,
 		log:    log,
 	}
 
@@ -324,33 +361,46 @@ func (server *Instance) Index(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("index page"))
 }
 
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			_ = SendErrorResponse(w, http.StatusRequestEntityTooLarge, "Request body too large")
+			return err
+		}
+		_ = SendErrorResponse(w, http.StatusBadRequest, "Failed to parse json request")
+		return err
+	}
+	return nil
+}
+
 // Login handles the login reguest (not used for now).
 func (server *Instance) Login(w http.ResponseWriter, r *http.Request) {
 	log := server.log.WithField("endpoint", "/login")
 	log.Info("Request received")
 	var c LoginRequest
-	err := json.NewDecoder(r.Body).Decode(&c)
+	err := decodeJSONBody(w, r, &c)
 	if !check.NoError(err, log, "Failed to parse json request") {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	session, err := server.store.Get(r, "single-session")
 	if !check.NoError(err, log, "Failed to retrieve user session") {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve user session")
 		return
 	}
 
 	if !check.ValidPassword(c.Password, password) {
 		log.Error("Wrong password")
-		http.Error(w, "Wrong password", http.StatusBadRequest)
+		_ = SendErrorResponse(w, http.StatusForbidden, "Wrong password")
 		return
 	}
 
 	session.Values["pwd"] = c.Password
 	err = session.Save(r, w)
 	if !check.NoError(err, log, "Failed to save user session") {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		_ = SendErrorResponse(w, http.StatusInternalServerError, "Failed to save user session")
 		return
 	}
 
@@ -372,13 +422,13 @@ func (server *Instance) LoginHandler(next http.Handler) http.Handler {
 
 		session, err := server.store.Get(r, "single-session")
 		if !check.NoError(err, log, "Failed to retrieve user session") {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			_ = SendErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve user session")
 			return
 		}
 
 		if pwd, ok := session.Values["pwd"].(string); !ok || !check.ValidPassword(pwd, password) {
 			log.Error("password validation failed")
-			http.Error(w, "Login failed", http.StatusForbidden)
+			_ = SendErrorResponse(w, http.StatusForbidden, "Login failed")
 			return
 		}
 
@@ -406,14 +456,8 @@ func (server *Instance) FailureHandler(next http.Handler) http.Handler {
 					msg = s.Message
 				}
 
-				response := SimpleResponse{
-					Status: false,
-					Msg:    msg,
-				}
-				log.WithField("response", response).Info("Sending back error message")
-				js, _ := json.Marshal(response)
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(js)
+				log.WithField("msg", msg).Info("Sending back error message")
+				_ = SendErrorResponse(w, http.StatusInternalServerError, msg)
 			}
 		}()
 
@@ -427,9 +471,7 @@ func (server *Instance) FailureHandler(next http.Handler) http.Handler {
 // LoginHandler and ExtraOptions must be nil.
 func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (TaskRequest, error) {
 	var c TaskRequest
-	err := json.NewDecoder(r.Body).Decode(&c)
-	if err != nil {
-		http.Error(w, "Failed to parse json request", http.StatusInternalServerError)
+	if err := decodeJSONBody(w, r, &c); err != nil {
 		return c, err
 	}
 
@@ -439,7 +481,7 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 
 	if internal {
 		if c.ExtraOptions == nil || !check.ValidPassword(c.ExtraOptions.Password, password) {
-			http.Error(w, "Login failed", http.StatusForbidden)
+			_ = SendErrorResponse(w, http.StatusForbidden, "Login failed")
 			return c, fmt.Errorf("failed to validate internal password")
 		}
 		c.ExtraOptions.Password = ""
@@ -697,20 +739,64 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	}
 }
 
+func buildInternalTLSConfig(certFile string, serverName string) (*tls.Config, error) {
+	if serverName == "" {
+		return nil, fmt.Errorf("TLS server name must not be empty")
+	}
+	pemBytes, err := os.ReadFile(certFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read server certificate %s: %w", certFile, err)
+	}
+	block, _ := pem.Decode(pemBytes)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return nil, fmt.Errorf("no PEM certificate found in %s", certFile)
+	}
+	expectedCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse server certificate: %w", err)
+	}
+	now := time.Now()
+	if now.Before(expectedCert.NotBefore) {
+		return nil, fmt.Errorf("server certificate is not yet valid (notBefore=%s)", expectedCert.NotBefore.UTC().Format(time.RFC3339))
+	}
+	if now.After(expectedCert.NotAfter) {
+		return nil, fmt.Errorf("server certificate has expired (notAfter=%s)", expectedCert.NotAfter.UTC().Format(time.RFC3339))
+	}
+
+	pool := x509.NewCertPool()
+	pool.AddCert(expectedCert)
+	expectedRaw := append([]byte(nil), expectedCert.Raw...)
+
+	return &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    pool,
+		ServerName: serverName,
+		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			if len(rawCerts) == 0 || !bytes.Equal(rawCerts[0], expectedRaw) {
+				return fmt.Errorf("peer certificate does not match pinned project certificate")
+			}
+			peerCert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				return err
+			}
+			checkNow := time.Now()
+			if checkNow.Before(peerCert.NotBefore) || checkNow.After(peerCert.NotAfter) {
+				return fmt.Errorf("peer certificate outside validity window")
+			}
+			return nil
+		},
+	}, nil
+}
+
 func sendRequest(req *http.Request, timeout time.Duration) (*http.Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 
-	cert, err := tls.LoadX509KeyPair(certPath, secretPath)
+	tlsConfig, err := buildInternalTLSConfig(certPath, tlsServerName)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load key pair")
+		return nil, err
 	}
-
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
-	}
-	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	defer transport.CloseIdleConnections()
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   timeout,
