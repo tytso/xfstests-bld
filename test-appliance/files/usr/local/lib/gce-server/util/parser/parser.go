@@ -11,16 +11,19 @@ import (
 	"thunk.org/gce-server/util/check"
 )
 
-const (
-	primaryFS = "ext4"
-	xfsPath   = "/root"
-)
+const primaryFS = "ext4"
+
+var xfsPath = "/root"
 
 var invalidBools = []string{
 	"ltm",
 	"--no-region-shard",
 	"--no-email",
 	"--no-junit-email",
+	"--watch-skip-initial",
+	"--install-kconfig",
+	"--kbuild",
+	"--no-action",
 }
 var invalidOpts = []string{
 	"--instance-name",
@@ -39,12 +42,16 @@ var invalidOpts = []string{
 	"-r",
 	"--machtype",
 	"--kernel",
+	"--modules",
 	"--arch",
 	"--commit",
 	"--config",
 	"--kconfig-opts",
+	"--kbuild-opts",
+	"--install-kconfig-opts",
 	"--repo",
 	"--watch",
+	"--unwatch",
 	"--bisect-good",
 	"--bisect-bad",
 	"--monitor-timeout",
@@ -69,6 +76,29 @@ func Cmd(cmdLine string) ([]string, map[string][]string, error) {
 	return processConfigs(validArgs)
 }
 
+// ValidateCmdLine validates that a decoded command line contains well-formed
+// "-c" configuration arguments without requiring /root/fs to exist on disk.
+func ValidateCmdLine(cmdLine string) error {
+	if strings.ContainsAny(cmdLine, "\x00\r\n") {
+		return fmt.Errorf("cmdline must not contain NUL or newline characters")
+	}
+	args := strings.Fields(cmdLine)
+	validArgs, _ := sanitizeCmd(args)
+	validArgs = expandAliases(validArgs)
+	_, configArgs, err := extractConfigArgs(validArgs)
+	if err != nil {
+		return err
+	}
+	for _, configArg := range configArgs {
+		for _, c := range strings.Split(configArg, ",") {
+			if _, _, _, _, err := parseConfigSpec(c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // sanitizeCmd removes invalid args from input cmdline.
 func sanitizeCmd(args []string) ([]string, []string) {
 	boolDict := NewSet(invalidBools)
@@ -81,16 +111,29 @@ func sanitizeCmd(args []string) ([]string, []string) {
 		if skipIndex {
 			invalidArgs = append(invalidArgs, arg)
 			skipIndex = false
-		} else {
-			if boolDict.Contain(arg) {
+			continue
+		}
+		if boolDict.Contain(arg) {
+			invalidArgs = append(invalidArgs, arg)
+			continue
+		}
+		if optDict.Contain(arg) {
+			invalidArgs = append(invalidArgs, arg)
+			skipIndex = true
+			continue
+		}
+		if eqIdx := strings.IndexByte(arg, '='); eqIdx > 0 {
+			optName := arg[:eqIdx]
+			if optDict.Contain(optName) || boolDict.Contain(optName) {
 				invalidArgs = append(invalidArgs, arg)
-			} else if optDict.Contain(arg) {
-				invalidArgs = append(invalidArgs, arg)
-				skipIndex = true
-			} else {
-				validArgs = append(validArgs, arg)
+				continue
 			}
 		}
+		if len(arg) > 2 && arg[0] == '-' && arg[1] != '-' && optDict.Contain(arg[:2]) {
+			invalidArgs = append(invalidArgs, arg)
+			continue
+		}
+		validArgs = append(validArgs, arg)
 	}
 	return validArgs, invalidArgs
 }
@@ -116,33 +159,110 @@ func expandAliases(args []string) []string {
 	return expandedArgs
 }
 
+func extractConfigArgs(args []string) ([]string, []string, error) {
+	newArgs := make([]string, 0, len(args))
+	configArgs := []string{}
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "-c" {
+			if i+1 >= len(args) {
+				return nil, nil, fmt.Errorf("missing configuration argument after -c")
+			}
+			val := args[i+1]
+			if val == "" {
+				return nil, nil, fmt.Errorf("empty configuration argument after -c")
+			}
+			configArgs = append(configArgs, val)
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "-c=") {
+			val := strings.TrimPrefix(arg, "-c=")
+			if val == "" {
+				return nil, nil, fmt.Errorf("empty configuration argument in %q", arg)
+			}
+			configArgs = append(configArgs, val)
+			continue
+		}
+		if len(arg) > 2 && strings.HasPrefix(arg, "-c") {
+			configArgs = append(configArgs, arg[2:])
+			continue
+		}
+		newArgs = append(newArgs, arg)
+	}
+	return newArgs, configArgs, nil
+}
+
+func parseConfigSpec(configArg string) (localPrimaryFS string, fs string, cfg string, hasSlash bool, err error) {
+	if configArg == "" {
+		return "", "", "", false, fmt.Errorf("config name must not be empty")
+	}
+	parts := strings.Split(configArg, "/")
+	if len(parts) > 2 {
+		return "", "", "", false, fmt.Errorf("invalid config %q: too many '/' segments", configArg)
+	}
+	if len(parts) == 1 {
+		if strings.Contains(configArg, ":") {
+			return "", "", "", false, fmt.Errorf("invalid config %q: unexpected ':' without '/<cfg>'", configArg)
+		}
+		if err := check.ValidateTestID(configArg); err != nil {
+			return "", "", "", false, fmt.Errorf("invalid config %q: %w", configArg, err)
+		}
+		return "", "", configArg, false, nil
+	}
+
+	checkPrimary := strings.Split(parts[0], ":")
+	if len(checkPrimary) > 2 {
+		return "", "", "", false, fmt.Errorf("invalid config %q: too many ':' segments", configArg)
+	}
+	if len(checkPrimary) == 2 {
+		localPrimaryFS = checkPrimary[0]
+		fs = checkPrimary[1]
+		if err := check.ValidateTestID(localPrimaryFS); err != nil {
+			return "", "", "", false, fmt.Errorf("invalid primary fs %q: %w", localPrimaryFS, err)
+		}
+		if err := check.ValidateTestID(fs); err != nil {
+			return "", "", "", false, fmt.Errorf("invalid fs %q: %w", fs, err)
+		}
+	} else {
+		fs = parts[0]
+		if err := check.ValidateTestID(fs); err != nil {
+			return "", "", "", false, fmt.Errorf("invalid fs %q: %w", fs, err)
+		}
+	}
+	cfg = parts[1]
+	if strings.Contains(cfg, ":") {
+		return "", "", "", false, fmt.Errorf("invalid cfg %q: must not contain ':'", cfg)
+	}
+	if err := check.ValidateTestID(cfg); err != nil {
+		return "", "", "", false, fmt.Errorf("invalid cfg %q: %w", cfg, err)
+	}
+	return localPrimaryFS, fs, cfg, true, nil
+}
+
 // processConfigs finds the configuration args following "-c" and parses
 // them. If no "-c" option is specified (or aliases like "smoke"), it uses
 // primaryFS as the filesystem and "all" as the config.
 func processConfigs(args []string) ([]string, map[string][]string, error) {
-	newArgs := make([]string, len(args))
-	copy(newArgs, args)
-	configArg := ""
 	configs := make(map[string][]string)
-
-	for i, arg := range args {
-		if arg == "-c" {
-			configArg = args[i+1]
-			newArgs = append(args[:i], args[i+2:]...)
-			break
-		}
+	newArgs, configArgs, err := extractConfigArgs(args)
+	if err != nil {
+		return []string{}, configs, err
 	}
 
-	if configArg == "" {
+	if len(configArgs) == 0 {
 		err := defaultConfigs(configs)
 		if err != nil {
 			return newArgs, configs, err
 		}
 	} else {
-		for _, c := range strings.Split(configArg, ",") {
-			err := singleConfig(configs, c)
-			if err != nil {
-				return newArgs, configs, err
+		for _, configArg := range configArgs {
+			for _, c := range strings.Split(configArg, ",") {
+				err := singleConfig(configs, c)
+				if err != nil {
+					return newArgs, configs, err
+				}
 			}
 		}
 	}
@@ -178,27 +298,19 @@ Possible pattern of configs:
 	config with <primaryFS> set as primary file system
 */
 func singleConfig(configs map[string][]string, configArg string) error {
-	configLines := []string{}
-	var fs, cfg, localPrimaryFS string
+	localPrimaryFS, fs, cfg, hasSlash, err := parseConfigSpec(configArg)
+	if err != nil {
+		return err
+	}
 
-	arg := strings.Split(configArg, "/")
-	if len(arg) == 1 {
-		if check.FileExists(fmt.Sprintf("%s/fs/%s", xfsPath, configArg)) {
-			fs = configArg
+	configLines := []string{}
+	if !hasSlash {
+		if check.FileExists(fmt.Sprintf("%s/fs/%s", xfsPath, cfg)) {
+			fs = cfg
 			configLines = []string{"default"}
 		} else {
 			fs = primaryFS
-			cfg = configArg
 		}
-	} else {
-		checkPrimary := strings.Split(arg[0], ":")
-		if len(checkPrimary) > 1 {
-			localPrimaryFS = checkPrimary[0]
-			fs = checkPrimary[1]
-		} else {
-			fs = arg[0]
-		}
-		cfg = arg[1]
 	}
 
 	if len(configLines) == 0 {
@@ -225,10 +337,10 @@ func singleConfig(configs map[string][]string, configArg string) error {
 		fs = fmt.Sprintf("%s:%s", localPrimaryFS, fs)
 	}
 
-	if _, ok := configs[fs]; ok {
-		configs[fs] = append(configs[fs], configLines...)
-	} else {
-		configs[fs] = configLines
+	for _, line := range configLines {
+		if !check.ContainsStr(configs[fs], line) {
+			configs[fs] = append(configs[fs], line)
+		}
 	}
 	return nil
 }
@@ -239,5 +351,12 @@ func DecodeCmd(cmdLine string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	if strings.IndexByte(string(data), 0) >= 0 {
+		return "", fmt.Errorf("decoded cmdline must not contain NUL bytes")
+	}
+	trimmed := strings.TrimSpace(string(data))
+	if strings.ContainsAny(trimmed, "\r\n") {
+		return "", fmt.Errorf("decoded cmdline must not contain embedded newlines")
+	}
+	return trimmed, nil
 }

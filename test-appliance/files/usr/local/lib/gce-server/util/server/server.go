@@ -26,6 +26,7 @@ import (
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/gcp"
 	"thunk.org/gce-server/util/logging"
+	"thunk.org/gce-server/util/parser"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
@@ -508,6 +509,18 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 	if c.Options.KConfig != "" {
 		if err := check.ValidateGSURI(c.Options.KConfig); err != nil {
 			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid kconfig: %v", err))
+			return c, err
+		}
+	}
+
+	if c.CmdLine != "" {
+		origCmd, err := parser.DecodeCmd(c.CmdLine)
+		if err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid orig_cmdline: %v", err))
+			return c, err
+		}
+		if err := parser.ValidateCmdLine(origCmd); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid orig_cmdline: %v", err))
 			return c, err
 		}
 	}

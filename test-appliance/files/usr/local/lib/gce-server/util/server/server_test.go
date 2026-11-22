@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -159,6 +160,28 @@ func TestParseTaskRequestGCSFieldsValidation(t *testing.T) {
 		rec, _, err := postTaskRequestForTest(t, TaskRequest{Options: &optsCopy}, false)
 		if err == nil || rec.Code != http.StatusBadRequest {
 			t.Fatalf("expected 400 Bad Request for %+v, got code=%d err=%v", opts, rec.Code, err)
+		}
+	}
+}
+
+func TestParseTaskRequestCmdLineValidation(t *testing.T) {
+	validB64 := base64.StdEncoding.EncodeToString([]byte("gce-xfstests ltm -c ext4/4k smoke\n"))
+	rec, _, err := postTaskRequestForTest(t, TaskRequest{CmdLine: validB64}, false)
+	if err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("expected valid orig_cmdline to succeed, got code=%d err=%v", rec.Code, err)
+	}
+
+	badCmdLines := []string{
+		"%%%not-base64%%%",
+		base64.StdEncoding.EncodeToString([]byte("ltm -c ../../etc/passwd")),
+		base64.StdEncoding.EncodeToString([]byte("ltm -c")),
+		base64.StdEncoding.EncodeToString([]byte("ltm\x00smoke")),
+		base64.StdEncoding.EncodeToString([]byte("ltm smoke\n--evil")),
+	}
+	for _, b64 := range badCmdLines {
+		rec, _, err := postTaskRequestForTest(t, TaskRequest{CmdLine: b64}, false)
+		if err == nil || rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for cmdline %q, got code=%d err=%v", b64, rec.Code, err)
 		}
 	}
 }

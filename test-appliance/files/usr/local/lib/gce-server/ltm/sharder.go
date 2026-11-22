@@ -398,7 +398,7 @@ func (sharder *ShardScheduler) getKernelInfo() {
 func getConfigs(origCmd string) ([]string, []string, error) {
 	validArgs, configs, err := parser.Cmd(origCmd)
 	if err != nil {
-		return []string{}, []string{}, nil
+		return []string{}, []string{}, err
 	}
 	configStrings := []string{}
 	for fs := range configs {
