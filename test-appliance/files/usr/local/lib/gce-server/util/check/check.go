@@ -62,28 +62,26 @@ func Output(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writ
 }
 
 // LimitedRun works like Run but caps the number of running commands.
-// At most cmdLimit commands passed by LimitedRun can run at the same time.
+// At most cmdCap commands passed by LimitedRun can run at the same time.
 func LimitedRun(cmd *exec.Cmd, workDir string, env map[string]string, stdout io.Writer, stderr io.Writer) error {
 	capper <- struct{}{}
+	defer func() { <-capper }()
 	err := limiter.Wait(context.Background())
 	if err != nil {
 		return err
 	}
-	err = Run(cmd, workDir, env, stdout, stderr)
-	<-capper
-	return err
+	return Run(cmd, workDir, env, stdout, stderr)
 }
 
 // LimitedOutput works like Output but caps the number of running commands.
 func LimitedOutput(cmd *exec.Cmd, workDir string, env map[string]string, stderr io.Writer) (string, error) {
 	capper <- struct{}{}
+	defer func() { <-capper }()
 	err := limiter.Wait(context.Background())
 	if err != nil {
 		return "", err
 	}
-	output, err := Output(cmd, workDir, env, stderr)
-	<-capper
-	return output, err
+	return Output(cmd, workDir, env, stderr)
 }
 
 // CombinedOutput executes an external command, checks the return status, and
