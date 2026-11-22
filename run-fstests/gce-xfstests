@@ -388,6 +388,10 @@ case "$1" in
 	echo gs://"$GS_BUCKET"
 	exit 0
 	;;
+    get-project)
+	echo "$GCE_PROJECT"
+	exit 0
+	;;
     get-kernel-arch) shift
 	get_kernel_file_info "$1"
 	echo $KERNEL_ARCH
@@ -766,7 +770,8 @@ case "$1" in
 	;;
     ltm-batch)
 	shift
-	gcs_cp "$@" gs://$GS_BUCKET/ltm-batch/
+	validate_gce_project "$GCE_PROJECT" || exit 1
+	gcs_cp "$@" "gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/"
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
 		   --zone "$GCE_ZONE" > /dev/null
@@ -774,6 +779,7 @@ case "$1" in
 	;;
     ltm-batch-cmd)
 	shift
+	validate_gce_project "$GCE_PROJECT" || exit 1
 	if test -n "$NO_ACTION" ; then
 	    set -vx
 	fi
@@ -784,13 +790,14 @@ case "$1" in
 	       echo "Kernel not specified; defaulting to gs://$GS_BUCKET/kernel.deb"
 	       ;;
 	esac
-	echo "gce-xfstests ltm $batch_cmd" > /tmp/ltm-batch.$$
+	tmp_batch=$(mktemp "${TMPDIR:-/tmp}/ltm-batch.XXXXXX")
+	echo "gce-xfstests ltm $batch_cmd" > "$tmp_batch"
 	if test -n "$NO_ACTION" ; then
-	    cat /tmp/ltm-batch.$$
+	    cat "$tmp_batch"
 	    echo ""
 	fi
-	gcs_cp /tmp/ltm-batch.$$  gs://$GS_BUCKET/ltm-batch/ltm-batch-cmd
-	/bin/rm -f /tmp/ltm-batch.$$
+	gcs_cp "$tmp_batch" "gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/ltm-batch-cmd"
+	/bin/rm -f "$tmp_batch"
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
 		   --zone "$GCE_ZONE" > /dev/null
@@ -806,9 +813,11 @@ case "$1" in
 	exit $?
 	;;
     stop-ltm)
-	echo "poweroff -f" > /tmp/stop-ltm.$$
-	gcs_cp /tmp/stop-ltm.$$  gs://$GS_BUCKET/ltm-batch/stop-ltm
-	/bin/rm -f /tmp/stop-ltm.$$
+	validate_gce_project "$GCE_PROJECT" || exit 1
+	tmp_stop=$(mktemp "${TMPDIR:-/tmp}/stop-ltm.XXXXXX")
+	echo "poweroff -f" > "$tmp_stop"
+	gcs_cp "$tmp_stop" "gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/stop-ltm"
+	/bin/rm -f "$tmp_stop"
 	run_gcloud compute -q instances add-metadata xfstests-ltm \
 		   --metadata ltm_wait=$(date +%s) \
 		   --zone "$GCE_ZONE" > /dev/null

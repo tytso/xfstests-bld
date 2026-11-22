@@ -52,9 +52,20 @@ then
 fi
 
 /usr/local/sbin/gce-xfstests cache-machtype-file
+if ! validate_gce_project "$GCE_PROJECT"
+then
+    /usr/local/lib/gce-logger "invalid GCE_PROJECT '$GCE_PROJECT'; skipping ltm-rc and batch watcher"
+    exit 1
+fi
+for _legacy_dir in ltm-rc ltm-batch ; do
+    if gcs_list_direct_objects "$_legacy_dir" >/dev/null ; then
+	/usr/local/lib/gce-logger "warning: legacy scripts in gs://$GS_BUCKET/$_legacy_dir/ are ignored; move them to gs://$GS_BUCKET/$_legacy_dir/$GCE_PROJECT/"
+    fi
+done
+unset _legacy_dir
 if test -z "$(gce_attribute skip-rc)"
 then
-    /usr/local/lib/gce-run-batch --keep --gce-dir ltm-rc
+    /usr/local/lib/gce-run-batch --keep --gce-dir "ltm-rc/$GCE_PROJECT"
 fi
 systemctl enable gce-ltm-batch-watcher.service
 systemctl start gce-ltm-batch-watcher.service

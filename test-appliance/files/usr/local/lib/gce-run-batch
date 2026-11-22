@@ -4,11 +4,11 @@
 . /usr/local/lib/gce-funcs
 . /root/test-config
 
-KEEP=
-GCE_DIR=ltm-batch
+DO_KEEP=
+GCE_DIR=
 
 while [ "$1" != "" ]; do
-    case $1 in
+    case "$1" in
 	--keep)
 	    DO_KEEP=yes
 	    ;;
@@ -24,17 +24,36 @@ while [ "$1" != "" ]; do
     shift
 done
 
+if test -z "$GCE_DIR" ; then
+    validate_gce_project "$GCE_PROJECT" || exit 1
+    GCE_DIR="ltm-batch/$GCE_PROJECT"
+fi
+GCE_DIR="${GCE_DIR%/}"
+if test -z "$GCE_DIR" ; then
+    echo "Empty --gce-dir is not allowed" >&2
+    exit 1
+fi
 
-BATCH_DIR=/run/batch-cmds
+BATCH_DIR=$(mktemp -d /run/batch-cmds.XXXXXX)
+trap 'rm -rf "$BATCH_DIR"' EXIT
 
-mkdir -p $BATCH_DIR
-gcs_rsync gs://$GS_BUCKET/$GCE_DIR $BATCH_DIR
+rsync_err=$(mktemp /run/batch-rsync-err.XXXXXX)
+if ! gcs_rsync "gs://$GS_BUCKET/$GCE_DIR" "$BATCH_DIR" 2> "$rsync_err" ; then
+    if grep -Eiq "Did not find existing container|matched no objects" "$rsync_err" ; then
+	rm -f "$rsync_err"
+	exit 0
+    fi
+    cat "$rsync_err" >&2
+    rm -f "$rsync_err"
+    exit 1
+fi
+rm -f "$rsync_err"
 
-for i in $(find $BATCH_DIR -type f -print | sort) ; do
+while IFS= read -r -d '' i ; do
     echo "Running $i..."
     if test -z "$DO_KEEP" ; then
-	gcs_rm gs://$GS_BUCKET/$GCE_DIR/$(basename $i)
+	gcs_rm "gs://$GS_BUCKET/$GCE_DIR/$(basename "$i")"
     fi
-    script -a -c "/bin/bash -vx $i" /var/log/gce-run-batch.log
-    rm -f $i
-done
+    script -a -c "/bin/bash -vx $(printf '%q' "$i")" /var/log/gce-run-batch.log
+    rm -f "$i"
+done < <(find "$BATCH_DIR" -maxdepth 1 -type f -print0 | sort -z)

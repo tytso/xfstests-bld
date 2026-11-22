@@ -90,9 +90,10 @@ if test -n "$NO_ACTION" ; then
    echo ""
 fi
 
-GS_PREFIX="$(gce-xfstests get-bucket)"
+GS_PREFIX="$($GCE_XFSTESTS get-bucket)"
+GCE_PROJECT="$($GCE_XFSTESTS get-project)"
 
-$NO_ACTION gcs_cp $LTM_TEST_FILE $GS_PREFIX/ltm-batch/ltm-test
+$NO_ACTION gcs_cp "$LTM_TEST_FILE" "$GS_PREFIX/ltm-batch/$GCE_PROJECT/ltm-test"
 rm -f $LTM_TEST_FILE
 $NO_ACTION $GCE_XFSTESTS launch-ltm --skip-rc
 

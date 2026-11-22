@@ -221,3 +221,9 @@ function gcs_exists ()
 {
     gcloud storage ls "$@" >& /dev/null
 }
+
+function gcs_list_direct_objects ()
+{
+    local dir="${1%/}"
+    gcs_ls "gs://$GS_BUCKET/$dir/" 2>/dev/null | grep -Ev '(/|^$)$'
+}

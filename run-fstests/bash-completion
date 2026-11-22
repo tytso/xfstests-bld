@@ -8,7 +8,7 @@ _xfstests_bld_completions() {
 
     # Common commands for test scripts
     commands="smoke quick full syz launch shell maint pts phoronix ver"
-    gce_commands="ls-instances rm-instances abort-instances start-instance start-instances stop-instance stop-instances simulate-maintenance-event ls-disks ls-disk rm-disks rm-disk ls-images rm-images ls-results ls-gcs rm-results rm-gcs get-bucket get-kernel-arch get-kernel-version get-kernel-info get-results setup ssh scp console enable-serial disable-serial describe-vm describe-image describe-disk serial create-image export-image import-image copy-image install-kconfig kbuild upload-kernel launch-ltm launch-kcs refresh-machtype-file cache-machtype-file ltm kcs ltm-info ltm-batch ltm-batch-cmd launch-dashboard stop-kcs stop-ltm"
+    gce_commands="ls-instances rm-instances abort-instances start-instance start-instances stop-instance stop-instances simulate-maintenance-event ls-disks ls-disk rm-disks rm-disk ls-images rm-images ls-results ls-gcs rm-results rm-gcs get-bucket get-project get-kernel-arch get-kernel-version get-kernel-info get-results setup ssh scp console enable-serial disable-serial describe-vm describe-image describe-disk serial create-image export-image import-image copy-image install-kconfig kbuild upload-kernel launch-ltm launch-kcs refresh-machtype-file cache-machtype-file ltm kcs ltm-info ltm-batch ltm-batch-cmd launch-dashboard stop-kcs stop-ltm"
     kvm_commands="install-kconfig kbuild setup"
 
     # Options for test scripts

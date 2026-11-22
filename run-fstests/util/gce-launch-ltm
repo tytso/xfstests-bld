@@ -160,7 +160,19 @@ elif test ! -f "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" ; then
     mv -f "$tmp_cert" "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
 fi
 
-gcs_rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
+validate_gce_project "$GCE_PROJECT" || exit 1
+gcs_rm "gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/stop-ltm" >& /dev/null
+gcs_rm "gs://$GS_BUCKET/ltm-batch/stop-ltm" >& /dev/null
+
+if test -z "$NO_ACTION" -a -z "$SKIP_GS_CONFIG_UPDATE" ; then
+    for _legacy_dir in ltm-rc ltm-batch ; do
+	if gcs_list_direct_objects "$_legacy_dir" >/dev/null ; then
+	    echo "Note: files directly in gs://$GS_BUCKET/$_legacy_dir/ are ignored by new LTM images."
+	    echo "      Move them with: gcloud storage mv \"gs://$GS_BUCKET/$_legacy_dir/*\" \"gs://$GS_BUCKET/$_legacy_dir/$GCE_PROJECT/\""
+	fi
+    done
+    unset _legacy_dir
+fi
 
 echo "Launching LTM server..."
 TMP_LTM_INSTANCE=$(mktemp "$DIR/.ltm_instance_${GCE_PROJECT}.XXXXXX")

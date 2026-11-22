@@ -144,6 +144,23 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
         run_gcloud_always storage ls "$@" >& /dev/null
     }
 
+    function gcs_list_direct_objects ()
+    {
+        local dir="${1%/}"
+        gcs_ls_always "gs://$GS_BUCKET/$dir/" 2>/dev/null | grep -Ev '(/|^$)$'
+    }
+
+    function validate_gce_project ()
+    {
+        local proj="${1:-$GCE_PROJECT}"
+        if [[ -z "$proj" || "$proj" == "." || "$proj" == ".." || \
+              ! "$proj" =~ ^[A-Za-z0-9][A-Za-z0-9._:-]*$ ]] ; then
+            echo "Invalid or empty GCE_PROJECT: '$proj'" >&2
+            return 1
+        fi
+        return 0
+    }
+
     # Run the curl-compatible program which is used to send requests
     # to the LTM and KCS servers.  The first argument is the name of
     # the instance where the server is running; the rest of the
