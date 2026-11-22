@@ -364,10 +364,10 @@ func (bisector *GitBisector) getResults(testID string, gce *gcp.Service) (string
 		return "", err
 	}
 
-	if len(resultFiles) >= 1 {
-		bisector.log.WithField("resultURL", resultFiles[0]).Debug("Found result file url")
+	url := check.SelectResultTarball(bisector.gsBucket, resultFiles)
+	if url != "" {
+		bisector.log.WithField("resultURL", url).Debug("Found result file url")
 
-		url := fmt.Sprintf("gs://%s/%s", bisector.gsBucket, resultFiles[0])
 		cmd := exec.Command("gce-xfstests", "get-results",
 			"--unpack-dir", bisector.logDir, url)
 		cmdLog := bisector.log.WithField("cmd", cmd.String())
@@ -651,6 +651,16 @@ a report to the user and cleans up related resources.
 If the current HEAD in the request differs from the bisector, it does nothing.
 If the build fails, it bisect skip the current commit.
 */
+func bisectFailReceiver(opts *server.UserOptions) string {
+	if opts == nil {
+		return ""
+	}
+	if opts.ReportFailEmail != "" {
+		return opts.ReportFailEmail
+	}
+	return opts.ReportEmail
+}
+
 func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	log := serverLog.WithField("testID", testID)
 	if err := check.ValidateTestID(testID); err != nil {
@@ -661,7 +671,7 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 
 	logFile := logging.KCSLogDir + testID + "/run.log"
 	subject := "xfstests KCS bisect failure " + testID
-	defer email.ReportFailure(log, logFile, c.Options.ReportEmail, subject)
+	defer email.ReportFailure(log, logFile, bisectFailReceiver(c.Options), subject)
 
 	var bisector *GitBisector
 	var ok bool

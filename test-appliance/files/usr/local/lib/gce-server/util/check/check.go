@@ -421,6 +421,25 @@ func ValidateGSURI(uri string) error {
 	return nil
 }
 
+// SelectResultTarball returns the gs://<bucket>/<object> URI for the first
+// ".tar.xz" object in files that passes ValidateGSURI, or "" if none match.
+func SelectResultTarball(gsBucket string, files []string) string {
+	if gsBucket == "" {
+		return ""
+	}
+	for _, name := range files {
+		if !strings.HasSuffix(name, ".tar.xz") {
+			continue
+		}
+		uri := fmt.Sprintf("gs://%s/%s", gsBucket, name)
+		if err := ValidateGSURI(uri); err != nil {
+			continue
+		}
+		return uri
+	}
+	return ""
+}
+
 // ValidateEmailList validates a comma-separated list of plain email addresses
 // passed to send_mail.py. It rejects empty entries, leading '-' option-like
 // strings, display-name wrappers, whitespace/control characters, and malformed

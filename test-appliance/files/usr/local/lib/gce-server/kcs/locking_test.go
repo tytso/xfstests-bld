@@ -366,3 +366,26 @@ func TestGetRepoBuildLockPerRepoIsolation(t *testing.T) {
 		t.Fatal("expected distinct mutexes for distinct repositories")
 	}
 }
+
+func TestBisectFailReceiverPrefersReportFailEmail(t *testing.T) {
+	if got := bisectFailReceiver(nil); got != "" {
+		t.Fatalf("expected empty receiver for nil options, got %q", got)
+	}
+	if got := bisectFailReceiver(&server.UserOptions{
+		ReportEmail:     "",
+		ReportFailEmail: "fail-only@example.com",
+	}); got != "fail-only@example.com" {
+		t.Fatalf("expected ReportFailEmail when ReportEmail is empty, got %q", got)
+	}
+	if got := bisectFailReceiver(&server.UserOptions{
+		ReportEmail:     "normal@example.com",
+		ReportFailEmail: "alerts@example.com",
+	}); got != "alerts@example.com" {
+		t.Fatalf("expected ReportFailEmail to take precedence, got %q", got)
+	}
+	if got := bisectFailReceiver(&server.UserOptions{
+		ReportEmail: "normal@example.com",
+	}); got != "normal@example.com" {
+		t.Fatalf("expected fallback to ReportEmail, got %q", got)
+	}
+}

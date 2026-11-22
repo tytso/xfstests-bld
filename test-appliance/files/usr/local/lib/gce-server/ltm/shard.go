@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
@@ -458,15 +457,8 @@ func (shard *ShardWorker) getResults() string {
 	prefix := fmt.Sprintf("%s/results.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	for attempts := maxAttempts; attempts > 0; attempts-- {
 		resultFiles, err := shard.sharder.gce.GetFileNames(prefix)
-		var resultURL string
 		check.NoError(err, shard.log, "Failed to get GS filenames")
-		for _, value := range resultFiles {
-			if !strings.HasSuffix(value, ".tar.xz") {
-				continue
-			}
-			resultURL = fmt.Sprintf("gs://%s/%s", shard.sharder.gsBucket, value)
-			break
-		}
+		resultURL := check.SelectResultTarball(shard.sharder.gsBucket, resultFiles)
 		if err == nil && resultURL != "" {
 			shard.log.WithField("resultURL", resultURL).Info("Found result file url")
 			return resultURL

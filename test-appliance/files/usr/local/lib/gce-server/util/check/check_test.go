@@ -408,3 +408,24 @@ func TestValidateEmailArchTimeoutAndBuildOpts(t *testing.T) {
 	}
 }
 
+func TestSelectResultTarball(t *testing.T) {
+	got := SelectResultTarball("my-bucket", []string{
+		"results/results.ltm-test-123.6.12.0.log",
+		"results/results.ltm-test-123.6.12.0.xml",
+		"results/../evil.tar.xz",
+		"results/bad name.tar.xz",
+		"results/results.ltm-test-123.6.12.0.tar.xz",
+	})
+	want := "gs://my-bucket/results/results.ltm-test-123.6.12.0.tar.xz"
+	if got != want {
+		t.Fatalf("SelectResultTarball = %q, want %q", got, want)
+	}
+
+	if got := SelectResultTarball("my-bucket", []string{"results/results.ltm-test-123.6.12.0.xml"}); got != "" {
+		t.Fatalf("expected empty string when only .xml exists, got %q", got)
+	}
+	if got := SelectResultTarball("", []string{"results/results.tar.xz"}); got != "" {
+		t.Fatalf("expected empty string when bucket is empty, got %q", got)
+	}
+}
+
