@@ -155,7 +155,7 @@ if test -z "$NO_ACTION" -a -z "$SKIP_GS_CONFIG_UPDATE" ; then
     "$DIR/util/gce-setup-cert"
 elif test ! -f "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" ; then
     tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
-    gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmp_cert"
+    gcs_cp_always "$GS_BUCKET_PREFIX/gce-xfstests-cert.pem" "$tmp_cert"
     chmod 0644 "$tmp_cert"
     mv -f "$tmp_cert" "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
 fi

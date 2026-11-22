@@ -48,6 +48,8 @@ do
 done
 
 local_cert="$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
+resolve_gs_bucket_slot
+GS_CERT_PREFIX="$GS_BUCKET_PREFIX"
 
 # Never regenerate or upload certificates from inside an appliance/LTM/KCS VM.
 if test -n "$SKIP_GS_CONFIG_UPDATE"
@@ -56,7 +58,7 @@ then
     then
 	tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
 	trap 'rm -f "$tmp_cert"' EXIT
-	gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmp_cert"
+	gcs_cp_always "$GS_CERT_PREFIX/gce-xfstests-cert.pem" "$tmp_cert"
 	chmod 0644 "$tmp_cert"
 	mv -f "$tmp_cert" "$local_cert"
 	trap - EXIT
@@ -127,8 +129,8 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 if test -n "$FORCE_REGEN" ||
-	! gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmpdir/" 2>/dev/null ||
-	! gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-key.pem" "$tmpdir/" 2>/dev/null
+	! gcs_cp_always "$GS_CERT_PREFIX/gce-xfstests-cert.pem" "$tmpdir/" 2>/dev/null ||
+	! gcs_cp_always "$GS_CERT_PREFIX/gce-xfstests-key.pem" "$tmpdir/" 2>/dev/null
 then
     echo "Regenerating GCE certificate files"
     generate_new_cert
@@ -146,16 +148,31 @@ then
     UPDATE_COMBINED=yes
 fi
 
-if test -n "$UPDATE_COMBINED" ||
-	! gcs_exists "gs://$GS_BUCKET/gce-xfstests-server.pem"
-then
-    cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
-	> "$tmpdir/gce-xfstests-server.pem"
+cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
+    > "$tmpdir/gce-xfstests-server.pem"
 
+if test -n "$UPDATE_COMBINED" ||
+	! gcs_exists "$GS_CERT_PREFIX/gce-xfstests-server.pem"
+then
     gcs_cp "$tmpdir/gce-xfstests-cert.pem" \
 	   "$tmpdir/gce-xfstests-key.pem" \
 	   "$tmpdir/gce-xfstests-server.pem" \
-	   "gs://$GS_BUCKET/"
+	   "$GS_CERT_PREFIX/"
+fi
+
+if test -n "$GS_MIRROR_PREFIX"
+then
+    if test -n "$UPDATE_COMBINED" ||
+	    ! gcs_cat "$GS_MIRROR_PREFIX/gce-xfstests-cert.pem" > "$tmpdir/mirror-cert.pem" 2>/dev/null ||
+	    ! cmp -s "$tmpdir/gce-xfstests-cert.pem" "$tmpdir/mirror-cert.pem" ||
+	    ! gcs_exists "$GS_MIRROR_PREFIX/gce-xfstests-key.pem" ||
+	    ! gcs_exists "$GS_MIRROR_PREFIX/gce-xfstests-server.pem"
+    then
+	gcs_cp "$tmpdir/gce-xfstests-cert.pem" \
+	       "$tmpdir/gce-xfstests-key.pem" \
+	       "$tmpdir/gce-xfstests-server.pem" \
+	       "$GS_MIRROR_PREFIX/"
+    fi
 fi
 if test -n "$UPDATE_COMBINED" -o \
 	 ! -f "$local_cert" ||

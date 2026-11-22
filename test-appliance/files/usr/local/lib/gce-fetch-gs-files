@@ -6,7 +6,7 @@
 gce_resolve_and_fetch_config
 /usr/local/lib/gce-logger "fetching config completed, gce_resolve_and_fetch_config returned $?"
 
-gcs_cp "gs://$GS_BUCKET/gce-xfstests-server.pem" /etc/lighttpd/server.pem
+gcs_cp "$GS_BUCKET_PREFIX/gce-xfstests-server.pem" /etc/lighttpd/server.pem
 /usr/local/lib/gce-logger "fetching cert completed, gcs_cp returned $?"
 
 chmod 0400 /etc/lighttpd/server.pem
@@ -24,7 +24,7 @@ fi
 
 if gce_attribute gce_xfs_ltm
 then
-    gcs_cat "gs://$GS_BUCKET/gce-xfstests-cert.pem" \
+    gcs_cat "$GS_BUCKET_PREFIX/gce-xfstests-cert.pem" \
 	   > "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
     (
 	umask 077
@@ -37,7 +37,7 @@ then
     chmod 0600 "$DIR/.ltm_instance_$GCE_PROJECT"
 elif gce_attribute gce_xfs_kcs
 then
-    gcs_cat "gs://$GS_BUCKET/gce-xfstests-cert.pem" \
+    gcs_cat "$GS_BUCKET_PREFIX/gce-xfstests-cert.pem" \
 	   > "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
     (
 	umask 077

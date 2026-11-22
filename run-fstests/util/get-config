@@ -252,7 +252,7 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
 
         local gs_config="$GS_BUCKET_PREFIX/gce_xfstests.config"
         local local_config="${TMPDIR:-/tmp}/.gce_xfstests.config.${USER:-root}-$GCE_PROJECT"
-        local tmp_config tmp_remote
+        local tmp_config tmp_remote cert_f
         tmp_config=$(mktemp "${TMPDIR:-/tmp}/gce_xfstests.config.XXXXXXXX")
 
         (
@@ -321,6 +321,14 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
             fi
             rm -f "$tmp_remote"
 
+            if test -n "$GS_MIRROR_PREFIX" ; then
+                for cert_f in gce-xfstests-cert.pem gce-xfstests-key.pem gce-xfstests-server.pem ; do
+                    if gcs_exists "gs://$GS_BUCKET/$cert_f" && \
+                       ! gcs_exists "$GS_MIRROR_PREFIX/$cert_f" ; then
+                        gcs_cp_always "gs://$GS_BUCKET/$cert_f" "$GS_MIRROR_PREFIX/$cert_f" 2>/dev/null
+                    fi
+                done
+            fi
             mv -f "$tmp_config" "$local_config"
         else
             rm -f "$tmp_config"
