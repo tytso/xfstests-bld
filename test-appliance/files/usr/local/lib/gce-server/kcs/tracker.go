@@ -23,9 +23,16 @@ const (
 )
 
 var (
-	newBuild  chan bool
+	newBuild  = make(chan struct{}, 1)
 	buildLock sync.Mutex
 )
+
+func notifyNewBuild() {
+	select {
+	case newBuild <- struct{}{}:
+	default:
+	}
+}
 
 /*
 StartTracker initiates a tracker for KCS server.
@@ -35,13 +42,16 @@ tracker shuts down the server and delete the VM.
 It appends a metadata to VM so that LTM would attempt to launch a new
 KCS server only after the shutdown finishes.
 */
-func StartTracker(instance *server.Instance, finished chan bool) {
-	newBuild = make(chan bool)
+func StartTracker(instance *server.Instance, stop <-chan struct{}, finished chan<- struct{}) {
+	defer close(finished)
 	log := instance.Log()
 
 	for alive := true; alive; {
 		timer := time.NewTimer(buildTimeout)
 		select {
+		case <-stop:
+			timer.Stop()
+			alive = false
 		case <-newBuild:
 			timer.Stop()
 		case <-timer.C:
@@ -50,16 +60,14 @@ func StartTracker(instance *server.Instance, finished chan bool) {
 			log.Infof("There are %d active bisectors", len(bisectors))
 			if len(bisectors) > 0 {
 				log.Infof("%+v", bisectors)
-				timer.Stop()
+			} else if logging.DEBUG {
+				log.Info("DEBUG mode enabled, skipping KCS auto-shutdown")
 			} else {
-				if !logging.DEBUG {
-					shutdown(instance)
-				}
+				shutdown(instance)
 				alive = false
 			}
 		}
 	}
-	finished <- true
 }
 
 // RunBuild builds the kernel and upload the kernel image.
@@ -70,7 +78,7 @@ func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig str
 	}
 	buildLock.Lock()
 	defer buildLock.Unlock()
-	newBuild <- true
+	notifyNewBuild()
 
 	file, err := os.Create(buildLog)
 	if err != nil {

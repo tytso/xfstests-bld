@@ -149,8 +149,10 @@ func main() {
 			status(w, r, s.Log())
 		}))).Methods("POST")
 
-	finished := make(chan bool)
-	go StartTracker(s, finished)
+	stopTracker := make(chan struct{})
+	finished := make(chan struct{})
+	go StartTracker(s, stopTracker, finished)
 	s.Start()
+	close(stopTracker)
 	<-finished
 }
