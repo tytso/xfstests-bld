@@ -338,3 +338,73 @@ func TestValidateBucketSubdirAndGSURI(t *testing.T) {
 	}
 }
 
+func TestValidateEmailArchTimeoutAndBuildOpts(t *testing.T) {
+	for _, validEmail := range []string{
+		"tytso@mit.edu",
+		"tytso@mit.edu, user+xfstests@google.com",
+	} {
+		if err := ValidateEmailList(validEmail); err != nil {
+			t.Errorf("expected ValidateEmailList(%q) to succeed, got: %v", validEmail, err)
+		}
+	}
+	for _, badEmail := range []string{
+		"",
+		",",
+		"tytso@mit.edu,",
+		"-f /etc/shadow",
+		"-f/etc/shadow@example.com",
+		"--config=/etc/passwd",
+		"Name <tytso@mit.edu>",
+		"tytso@mit.edu\r\nBcc: evil@example.com",
+		"not-an-email",
+		"user @example.com",
+	} {
+		if err := ValidateEmailList(badEmail); err == nil {
+			t.Errorf("expected ValidateEmailList(%q) to fail, got nil", badEmail)
+		}
+	}
+
+	for _, validArch := range []string{"amd64", "x86_64", "x86-64", "X86_64", "arm64", "aarch64", "i386", "riscv64"} {
+		if err := ValidateArch(validArch); err != nil {
+			t.Errorf("expected ValidateArch(%q) to succeed, got: %v", validArch, err)
+		}
+	}
+	for _, badArch := range []string{"", "-x", "arm64;id", "mips", "../x86"} {
+		if err := ValidateArch(badArch); err == nil {
+			t.Errorf("expected ValidateArch(%q) to fail, got nil", badArch)
+		}
+	}
+
+	if d, err := ValidateMonitorTimeout("45m"); err != nil || d != 45*time.Minute {
+		t.Errorf("expected ValidateMonitorTimeout(45m) = 45m, got d=%v err=%v", d, err)
+	}
+	for _, badDur := range []string{"", "0s", "-5m", "not-a-duration"} {
+		if _, err := ValidateMonitorTimeout(badDur); err == nil {
+			t.Errorf("expected ValidateMonitorTimeout(%q) to fail, got nil", badDur)
+		}
+	}
+
+	for _, validOpt := range []string{"", "--kasan,--lockdep", "--oldconfig --no-dpkg -j 8", "LLVM=1"} {
+		if err := ValidateBuildOpts(validOpt); err != nil {
+			t.Errorf("expected ValidateBuildOpts(%q) to succeed, got: %v", validOpt, err)
+		}
+	}
+	for _, badOpt := range []string{
+		"--kasan;id",
+		"--kasan|cat",
+		"$(id)",
+		"`id`",
+		"*glob*",
+		"?glob",
+		"[a]",
+		"../secret",
+		"--flag\n--evil",
+		"--flag\t--evil",
+		"--flag\x00",
+	} {
+		if err := ValidateBuildOpts(badOpt); err == nil {
+			t.Errorf("expected ValidateBuildOpts(%q) to fail, got nil", badOpt)
+		}
+	}
+}
+

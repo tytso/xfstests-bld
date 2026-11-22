@@ -94,6 +94,28 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 				return nil, fmt.Errorf("invalid kconfig: %w", err)
 			}
 		}
+		if c.Options.Arch != "" {
+			if err := check.ValidateArch(c.Options.Arch); err != nil {
+				return nil, fmt.Errorf("invalid arch: %w", err)
+			}
+		}
+		if c.Options.KConfigOpts != "" {
+			if err := check.ValidateBuildOpts(c.Options.KConfigOpts); err != nil {
+				return nil, fmt.Errorf("invalid kconfig_opts: %w", err)
+			}
+		}
+		if c.Options.KbuildOpts != "" {
+			if err := check.ValidateBuildOpts(c.Options.KbuildOpts); err != nil {
+				return nil, fmt.Errorf("invalid kbuild_opts: %w", err)
+			}
+		}
+		for _, addr := range []string{c.Options.ReportEmail, c.Options.ReportFailEmail} {
+			if addr != "" {
+				if err := check.ValidateEmailList(addr); err != nil {
+					return nil, fmt.Errorf("invalid email option: %w", err)
+				}
+			}
+		}
 	}
 
 	if !reserveWatcherID(testID) {

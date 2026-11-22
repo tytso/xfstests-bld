@@ -116,6 +116,23 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 				return nil, fmt.Errorf("invalid gs_kernel: %w", err)
 			}
 		}
+		if c.Options.Arch != "" {
+			if err := check.ValidateArch(c.Options.Arch); err != nil {
+				return nil, fmt.Errorf("invalid arch: %w", err)
+			}
+		}
+		if c.Options.MonitorTimeout != "" {
+			if _, err := check.ValidateMonitorTimeout(c.Options.MonitorTimeout); err != nil {
+				return nil, fmt.Errorf("invalid monitor_timeout: %w", err)
+			}
+		}
+		for _, addr := range []string{c.Options.ReportEmail, c.Options.ReportFailEmail, c.Options.JunitEmail} {
+			if addr != "" {
+				if err := check.ValidateEmailList(addr); err != nil {
+					return nil, fmt.Errorf("invalid email option: %w", err)
+				}
+			}
+		}
 	}
 	if !reserveSharderID(testID) {
 		return nil, fmt.Errorf("testID %s is already running", testID)
@@ -216,7 +233,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 		sharder.reportFailReceiver = sharder.reportReceiver
 	}
 	if c.Options.MonitorTimeout != "" {
-		sharder.monitorTimeout, err = time.ParseDuration(c.Options.MonitorTimeout)
+		sharder.monitorTimeout, err = check.ValidateMonitorTimeout(c.Options.MonitorTimeout)
 		if err != nil {
 			sharder.monitorTimeout = defaultMonitorTimeout
 			sharder.log.WithField("MonitorTimeout", c.Options.MonitorTimeout).Error("Unable to parse --monitor-timeout option, using default value")
@@ -239,7 +256,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	// exclude zones that don't have arm64 machine types.  More
 	// generally, if the user has specified a specific machtype,
 	// region sharding doesn't handle that case as well either.
-	if c.Options.Arch == "arm64" {
+	if c.Options.Arch == "arm64" || c.Options.Arch == "aarch64" {
 		regionShard = false
 	}
 	if regionShard {

@@ -87,6 +87,32 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 			return
 		}
 	}
+	if c.Options != nil {
+		if c.Options.Arch != "" {
+			if err := check.ValidateArch(c.Options.Arch); err != nil {
+				log.WithError(err).Error("Invalid arch in StartBuild")
+				return
+			}
+		}
+		if c.Options.KConfigOpts != "" {
+			if err := check.ValidateBuildOpts(c.Options.KConfigOpts); err != nil {
+				log.WithError(err).Error("Invalid kconfig_opts in StartBuild")
+				return
+			}
+		}
+		if c.Options.KbuildOpts != "" {
+			if err := check.ValidateBuildOpts(c.Options.KbuildOpts); err != nil {
+				log.WithError(err).Error("Invalid kbuild_opts in StartBuild")
+				return
+			}
+		}
+		if c.Options.ReportFailEmail != "" {
+			if err := check.ValidateEmailList(c.Options.ReportFailEmail); err != nil {
+				log.WithError(err).Error("Invalid report_fail_email in StartBuild")
+				return
+			}
+		}
+	}
 	log.Info("Start building kernel")
 
 	buildLog := logging.KCSLogDir + testID + ".build"

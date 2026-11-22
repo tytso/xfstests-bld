@@ -185,3 +185,39 @@ func TestParseTaskRequestCmdLineValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTaskRequestEmailArchTimeoutAndBuildOptsValidation(t *testing.T) {
+	rec, _, err := postTaskRequestForTest(t, TaskRequest{
+		Options: &UserOptions{
+			ReportEmail:     "tytso@mit.edu",
+			ReportFailEmail: "tytso@mit.edu, alerts@google.com",
+			JunitEmail:      "junit@google.com",
+			Arch:            "arm64",
+			MonitorTimeout:  "30m",
+			KConfigOpts:     "--kasan,--lockdep",
+			KbuildOpts:      "--oldconfig -j 8",
+		},
+	}, false)
+	if err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("expected valid options to succeed, got code=%d err=%v", rec.Code, err)
+	}
+
+	badCases := []UserOptions{
+		{ReportEmail: "-f /etc/shadow"},
+		{ReportFailEmail: "--config=/etc/passwd"},
+		{JunitEmail: "not-an-email"},
+		{Arch: "mips64"},
+		{MonitorTimeout: "0s"},
+		{MonitorTimeout: "-10m"},
+		{MonitorTimeout: "bogus"},
+		{KConfigOpts: "--kasan;id"},
+		{KbuildOpts: "-j8 *"},
+	}
+	for _, opts := range badCases {
+		optsCopy := opts
+		rec, _, err := postTaskRequestForTest(t, TaskRequest{Options: &optsCopy}, false)
+		if err == nil || rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for %+v, got code=%d err=%v", opts, rec.Code, err)
+		}
+	}
+}

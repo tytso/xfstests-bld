@@ -16,14 +16,23 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var sendMailPath = "/usr/local/sbin/send_mail.py"
+
 // Send sends an email with subject and content to the receivers.
 func Send(subject string, content string, receivers string) error {
 	if receivers == "" {
 		return fmt.Errorf("No destination for report to be sent to")
 	}
+	if strings.ContainsAny(subject, "\r\n\x00") {
+		return fmt.Errorf("email subject must not contain CR, LF, or NUL")
+	}
+	if err := check.ValidateEmailList(receivers); err != nil {
+		return fmt.Errorf("invalid email receivers: %w", err)
+	}
 
-	cmd := exec.Command("/usr/local/sbin/send_mail.py",
+	cmd := exec.Command(sendMailPath,
 		"-s", subject,
+		"--",
 		receivers,
 	)
 	cmd.Stdin = strings.NewReader(content)

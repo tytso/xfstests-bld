@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/mail"
 	"net/url"
 	"os"
 	"os/exec"
@@ -415,6 +416,85 @@ func ValidateGSURI(uri string) error {
 	for _, seg := range strings.Split(object, "/") {
 		if seg == "" || seg == "." || seg == ".." || strings.Contains(seg, "..") {
 			return fmt.Errorf("GCS object path contains invalid segment %q", seg)
+		}
+	}
+	return nil
+}
+
+// ValidateEmailList validates a comma-separated list of plain email addresses
+// passed to send_mail.py. It rejects empty entries, leading '-' option-like
+// strings, display-name wrappers, whitespace/control characters, and malformed
+// addresses.
+func ValidateEmailList(list string) error {
+	if list == "" {
+		return fmt.Errorf("email list must not be empty")
+	}
+	for i := 0; i < len(list); i++ {
+		if list[i] < 0x20 || list[i] == 0x7f {
+			return fmt.Errorf("email list must not contain control characters")
+		}
+	}
+	parts := strings.Split(list, ",")
+	for _, raw := range parts {
+		addr := strings.TrimSpace(raw)
+		if addr == "" {
+			return fmt.Errorf("email list contains an empty address")
+		}
+		if strings.HasPrefix(addr, "-") {
+			return fmt.Errorf("email address %q must not start with '-'", addr)
+		}
+		for i := 0; i < len(addr); i++ {
+			if addr[i] <= 0x20 || addr[i] == 0x7f {
+				return fmt.Errorf("email address %q must not contain whitespace or control characters", addr)
+			}
+		}
+		parsed, err := mail.ParseAddress(addr)
+		if err != nil || parsed.Name != "" || parsed.Address != addr {
+			return fmt.Errorf("invalid email address %q", addr)
+		}
+	}
+	return nil
+}
+
+// ValidateArch validates CPU architecture names supported by gce-xfstests
+// (matching set_canonicalized_arch in run-fstests/util/arch-funcs).
+func ValidateArch(arch string) error {
+	switch arch {
+	case "amd64", "x86_64", "x86-64", "X86_64", "arm64", "aarch64", "i386", "riscv64":
+		return nil
+	default:
+		return fmt.Errorf("unsupported architecture %q", arch)
+	}
+}
+
+// ValidateMonitorTimeout parses and validates a positive duration string.
+func ValidateMonitorTimeout(raw string) (time.Duration, error) {
+	if raw == "" {
+		return 0, fmt.Errorf("monitor_timeout must not be empty")
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid monitor_timeout %q: %w", raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("monitor_timeout %q must be greater than zero", raw)
+	}
+	return d, nil
+}
+
+// ValidateBuildOpts validates kconfig_opts and kbuild_opts strings passed to
+// gce-build-upload-kernel, rejecting control characters, '..', quotes, globs,
+// backslashes, and shell metacharacters.
+func ValidateBuildOpts(opts string) error {
+	if strings.Contains(opts, "..") {
+		return fmt.Errorf("build options must not contain '..'")
+	}
+	if strings.ContainsAny(opts, ";|&`$<>()*?[]\\'\"\x00") {
+		return fmt.Errorf("build options contain disallowed shell or glob characters")
+	}
+	for i := 0; i < len(opts); i++ {
+		if opts[i] < 0x20 || opts[i] == 0x7f {
+			return fmt.Errorf("build options must not contain control characters")
 		}
 	}
 	return nil

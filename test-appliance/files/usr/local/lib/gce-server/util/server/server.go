@@ -513,6 +513,55 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 		}
 	}
 
+	if c.Options.ReportEmail != "" {
+		if err := check.ValidateEmailList(c.Options.ReportEmail); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid report_email: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.ReportFailEmail != "" {
+		if err := check.ValidateEmailList(c.Options.ReportFailEmail); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid report_fail_email: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.JunitEmail != "" {
+		if err := check.ValidateEmailList(c.Options.JunitEmail); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid junit_email: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.Arch != "" {
+		if err := check.ValidateArch(c.Options.Arch); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid arch: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.MonitorTimeout != "" {
+		if _, err := check.ValidateMonitorTimeout(c.Options.MonitorTimeout); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid monitor_timeout: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.KConfigOpts != "" {
+		if err := check.ValidateBuildOpts(c.Options.KConfigOpts); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid kconfig_opts: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.KbuildOpts != "" {
+		if err := check.ValidateBuildOpts(c.Options.KbuildOpts); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid kbuild_opts: %v", err))
+			return c, err
+		}
+	}
+
 	if c.CmdLine != "" {
 		origCmd, err := parser.DecodeCmd(c.CmdLine)
 		if err != nil {
