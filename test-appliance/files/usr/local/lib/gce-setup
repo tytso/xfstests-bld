@@ -14,7 +14,13 @@ do
 done
 
 if ! test -f "$GCE_CONFIG_FILE" ; then
-    gcs_cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
+    gce_resolve_and_fetch_config
+    if test -f "$GCE_CONFIG_FILE" ; then
+	. "$GCE_CONFIG_FILE"
+    fi
+    if test -f "$GCE_STATE_DIR/gce_project" ; then
+	GCE_PROJECT=$(cat "$GCE_STATE_DIR/gce_project")
+    fi
 fi
 
 if test -n "$RUN_ON_GCE" ; then

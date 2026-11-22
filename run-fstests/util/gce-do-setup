@@ -438,8 +438,11 @@ then
   REGEN_OPTS="--force-regen"
 fi
 
+resolve_gs_bucket_slot
 $DIR/util/gce-setup-cert $REGEN_OPTS
 gce_gen_ltm_pass
+rm -f "${TMPDIR:-/tmp}/.gce_xfstests.config.${USER:-root}-$GCE_PROJECT"
+sync_gs_config
 
 SetupRole TestVM
 SetupRole LTMKCS

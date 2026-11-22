@@ -161,6 +161,172 @@ if test "$XFSTESTS_FLAVOR" = "gce" ; then
         return 0
     }
 
+    function extract_config_gce_project ()
+    {
+        sed -n -E \
+            -e 's/^declare (--|-x|-xr|-rx) GCE_PROJECT="(.*)"$/\2/p' \
+            -e 's/^GCE_PROJECT="(.*)"$/\1/p' \
+            -e 's/^GCE_PROJECT=([^"].*)$/\1/p' \
+            "$1" | tail -n 1
+    }
+
+    # Resolve where this project's gce_xfstests.config and TLS certificate
+    # files live in $GS_BUCKET:
+    #   - If the root gce_xfstests.config names $GCE_PROJECT (or has no
+    #     GCE_PROJECT line), this project owns the legacy root slot:
+    #     primary is gs://$GS_BUCKET, mirror is gs://$GS_BUCKET/project/$P.
+    #   - If no root config exists, the slot is unclaimed; setup claims it.
+    #   - If the root config names another project, or reading it failed for
+    #     any other reason, primary is gs://$GS_BUCKET/project/$P and the
+    #     root is never written.
+    function resolve_gs_bucket_slot ()
+    {
+        if test "${GS_RESOLVED_FOR:-}" = "$GS_BUCKET:$GCE_PROJECT" -a \
+                -n "${GS_SLOT_STATE:-}" -a -n "${GS_BUCKET_PREFIX:-}"
+        then
+            return 0
+        fi
+
+        local tmp_root tmp_err owner_proj mirror_prefix=""
+        if validate_gce_project "$GCE_PROJECT" 2>/dev/null ; then
+            mirror_prefix="gs://$GS_BUCKET/project/$GCE_PROJECT"
+        fi
+        tmp_root=$(mktemp "${TMPDIR:-/tmp}/gce_root_cfg.XXXXXX")
+        tmp_err=$(mktemp "${TMPDIR:-/tmp}/gce_root_err.XXXXXX")
+
+        if gcs_cat "gs://$GS_BUCKET/gce_xfstests.config" > "$tmp_root" 2> "$tmp_err"
+        then
+            owner_proj=$(extract_config_gce_project "$tmp_root")
+            if test -z "$owner_proj" -o "$owner_proj" = "$GCE_PROJECT"
+            then
+                GS_SLOT_STATE="owner"
+                GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+                GS_MIRROR_PREFIX="$mirror_prefix"
+            else
+                validate_gce_project "$GCE_PROJECT" || {
+                    rm -f "$tmp_root" "$tmp_err"
+                    exit 1
+                }
+                GS_SLOT_STATE="project"
+                GS_BUCKET_PREFIX="gs://$GS_BUCKET/project/$GCE_PROJECT"
+                GS_MIRROR_PREFIX=""
+            fi
+        elif grep -Eiq "matched no objects|notfound|404|no such object" "$tmp_err"
+        then
+            GS_SLOT_STATE="unclaimed"
+            GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+            GS_MIRROR_PREFIX="$mirror_prefix"
+        else
+            validate_gce_project "$GCE_PROJECT" || {
+                rm -f "$tmp_root" "$tmp_err"
+                exit 1
+            }
+            GS_SLOT_STATE="error"
+            GS_BUCKET_PREFIX="gs://$GS_BUCKET/project/$GCE_PROJECT"
+            GS_MIRROR_PREFIX=""
+        fi
+
+        rm -f "$tmp_root" "$tmp_err"
+        GS_RESOLVED_FOR="$GS_BUCKET:$GCE_PROJECT"
+        export GS_RESOLVED_FOR GS_SLOT_STATE GS_BUCKET_PREFIX GS_MIRROR_PREFIX
+    }
+
+    function gs_config_exists ()
+    {
+        resolve_gs_bucket_slot
+        if test "$GS_SLOT_STATE" = "owner" ; then
+            return 0
+        fi
+        if test "$GS_SLOT_STATE" = "unclaimed" ; then
+            return 1
+        fi
+        gcs_exists "$GS_BUCKET_PREFIX/gce_xfstests.config"
+    }
+
+    function sync_gs_config ()
+    {
+        if test -n "$SKIP_GS_CONFIG_UPDATE" ; then
+            return 0
+        fi
+        resolve_gs_bucket_slot
+
+        local gs_config="$GS_BUCKET_PREFIX/gce_xfstests.config"
+        local local_config="${TMPDIR:-/tmp}/.gce_xfstests.config.${USER:-root}-$GCE_PROJECT"
+        local tmp_config tmp_remote
+        tmp_config=$(mktemp "${TMPDIR:-/tmp}/gce_xfstests.config.XXXXXXXX")
+
+        (
+            : "${GCE_IMAGE_PROJECT=}"
+            SENDGRID_API_KEY="$GCE_SG_API"
+            SMTP_SERVER="$GCE_SMTP_SERVER"
+            SMTP_PORT="$GCE_SMTP_PORT"
+            SMTP_USER="$GCE_SMTP_USER"
+            SMTP_PASSWORD="$GCE_SMTP_PASSWORD"
+            SMTP_CAFILE="$GCE_SMTP_CAFILE"
+            TLS_MODE="$GCE_TLS_MODE"
+            declare -p GCE_REPORT_SENDER
+            declare -p GCE_REPORT_EMAIL
+            declare -p GCE_REPORT_FAIL_EMAIL
+            declare -p GCE_JUNIT_EMAIL
+            declare -p SENDGRID_API_KEY
+            declare -p SMTP_SERVER
+            declare -p SMTP_PORT
+            declare -p SMTP_USER
+            declare -p SMTP_PASSWORD
+            declare -p SMTP_CAFILE
+            declare -p TLS_MODE
+            declare -p GCE_UPLOAD_SUMMARY
+            declare -p PRIMARY_FSTYPE
+            declare -p GCE_PROJECT
+            declare -p GCE_IMAGE_PROJECT
+            declare -p ARCH
+            declare -p GCE_ZONE
+            declare -p GCE_ZONE2
+            declare -p NR_CPU
+            declare -p MEM
+            declare -p GS_BUCKET
+            declare -p BUCKET_SUBDIR
+            declare -p GCE_MIN_SCR_SIZE
+            declare -p GCE_LTM_KEEP_DEAD_VM
+            declare -p GCE_NETWORK
+            declare -p GCE_SERIAL_PORT_ACCESS
+            declare -p TZ
+            declare -p GCE_LTM_MACHTYPE
+            declare -p GCE_KCS_MACHTYPE
+            declare -p GIT_REPOS
+        ) 2>/dev/null > "$tmp_config"
+
+        if ! cmp -s "$tmp_config" "$local_config"
+        then
+            tmp_remote=$(mktemp /tmp/gce_remote_cfg.XXXXXXXX)
+            if ! gcs_cat "$gs_config" > "$tmp_remote" 2>/dev/null || \
+               ! cmp -s "$tmp_config" "$tmp_remote"
+            then
+                echo "Updating config file at $gs_config"
+                gcs_cp_always "$tmp_config" "$gs_config"
+                if test "$GS_SLOT_STATE" = "unclaimed" ; then
+                    GS_SLOT_STATE="owner"
+                    export GS_SLOT_STATE
+                fi
+                if test -n "$GS_MIRROR_PREFIX" ; then
+                    gcs_cp_always "$tmp_config" "$GS_MIRROR_PREFIX/gce_xfstests.config" 2>/dev/null
+                fi
+            elif test -n "$GS_MIRROR_PREFIX"
+            then
+                if ! gcs_cat "$GS_MIRROR_PREFIX/gce_xfstests.config" > "$tmp_remote" 2>/dev/null || \
+                   ! cmp -s "$tmp_config" "$tmp_remote"
+                then
+                    gcs_cp_always "$tmp_config" "$GS_MIRROR_PREFIX/gce_xfstests.config" 2>/dev/null
+                fi
+            fi
+            rm -f "$tmp_remote"
+
+            mv -f "$tmp_config" "$local_config"
+        else
+            rm -f "$tmp_config"
+        fi
+    }
+
     # Run the curl-compatible program which is used to send requests
     # to the LTM and KCS servers.  The first argument is the name of
     # the instance where the server is running; the rest of the

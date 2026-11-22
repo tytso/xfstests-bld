@@ -145,6 +145,20 @@ function validate_gce_project() {
     return 0
 }
 
+if test -f "$GCE_STATE_DIR/gs_bucket_prefix"
+then
+    GS_BUCKET_PREFIX=$(cat "$GCE_STATE_DIR/gs_bucket_prefix")
+else
+    GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+fi
+
+if test -f "$GCE_STATE_DIR/gs_slot_state"
+then
+    GS_SLOT_STATE=$(cat "$GCE_STATE_DIR/gs_slot_state")
+else
+    GS_SLOT_STATE="owner"
+fi
+
 if test -f $GCE_STATE_DIR/bucket_subdir
 then
     BUCKET_SUBDIR=$(cat $GCE_STATE_DIR/bucket_subdir)
@@ -226,4 +240,119 @@ function gcs_list_direct_objects ()
 {
     local dir="${1%/}"
     gcs_ls "gs://$GS_BUCKET/$dir/" 2>/dev/null | grep -Ev '(/|^$)$'
+}
+
+function extract_config_gce_project ()
+{
+    sed -n -E \
+	-e 's/^declare (--|-x|-xr|-rx) GCE_PROJECT="(.*)"$/\2/p' \
+	-e 's/^GCE_PROJECT="(.*)"$/\1/p' \
+	-e 's/^GCE_PROJECT=([^"].*)$/\1/p' \
+	"$1" | tail -n 1
+}
+
+function gce_fetch_object_with_retries ()
+{
+    local src="$1"
+    local dst="$2"
+    local err_file="$3"
+    local attempt
+    for attempt in 1 2 3 ; do
+	if gcs_cp "$src" "$dst" 2> "$err_file" ; then
+	    return 0
+	fi
+	if grep -Eiq "matched no objects|notfound|404|no such object" "$err_file" ; then
+	    return 1
+	fi
+	if test "$attempt" -lt 3 ; then
+	    sleep "${GCE_FETCH_RETRY_DELAY:-1}"
+	fi
+    done
+    return 2
+}
+
+function gce_install_config_with_project ()
+{
+    local src="$1"
+    local proj="$2"
+    local dst="$3"
+    local tmp_out
+    tmp_out=$(mktemp "${dst}.XXXXXX")
+    grep -Ev '^(declare (--|-x|-xr|-rx) )?GCE_PROJECT=' "$src" > "$tmp_out" || true
+    printf 'declare -- GCE_PROJECT="%s"\n' "$proj" >> "$tmp_out"
+    chmod 0644 "$tmp_out"
+    mv -f "$tmp_out" "$dst"
+}
+
+function gce_resolve_and_fetch_config ()
+{
+    local mds_proj=""
+    if test -f "$GCE_STATE_DIR/gce_project" ; then
+	mds_proj=$(cat "$GCE_STATE_DIR/gce_project")
+    fi
+
+    local tmp_root tmp_proj tmp_err root_rc cfg_proj
+    tmp_root=$(mktemp "${TMPDIR:-/tmp}/gce_root_cfg.XXXXXX")
+    tmp_proj=$(mktemp "${TMPDIR:-/tmp}/gce_proj_cfg.XXXXXX")
+    tmp_err=$(mktemp "${TMPDIR:-/tmp}/gce_cfg_err.XXXXXX")
+
+    gce_fetch_object_with_retries "gs://$GS_BUCKET/gce_xfstests.config" "$tmp_root" "$tmp_err"
+    root_rc=$?
+
+    if test -z "$mds_proj" ; then
+	# Metadata lookup failed: keep project from root config as today.
+	if test "$root_rc" -eq 0 ; then
+	    chmod 0644 "$tmp_root"
+	    mv -f "$tmp_root" "$GCE_CONFIG_FILE"
+	fi
+	GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+	GS_SLOT_STATE="owner"
+    else
+	cfg_proj=""
+	if test "$root_rc" -eq 0 ; then
+	    cfg_proj=$(extract_config_gce_project "$tmp_root")
+	fi
+
+	if test "$root_rc" -eq 0 && \
+	   ( test -z "$cfg_proj" -o "$cfg_proj" = "$mds_proj" )
+	then
+	    if test -z "$cfg_proj" ; then
+		gce_install_config_with_project "$tmp_root" "$mds_proj" "$GCE_CONFIG_FILE"
+	    else
+		chmod 0644 "$tmp_root"
+		mv -f "$tmp_root" "$GCE_CONFIG_FILE"
+	    fi
+	    GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+	    GS_SLOT_STATE="owner"
+	elif validate_gce_project "$mds_proj" 2>/dev/null && \
+	     gce_fetch_object_with_retries \
+		 "gs://$GS_BUCKET/project/$mds_proj/gce_xfstests.config" \
+		 "$tmp_proj" "$tmp_err"
+	then
+	    if test "$(extract_config_gce_project "$tmp_proj")" = "$mds_proj" ; then
+		chmod 0644 "$tmp_proj"
+		mv -f "$tmp_proj" "$GCE_CONFIG_FILE"
+	    else
+		gce_install_config_with_project "$tmp_proj" "$mds_proj" "$GCE_CONFIG_FILE"
+	    fi
+	    GS_BUCKET_PREFIX="gs://$GS_BUCKET/project/$mds_proj"
+	    GS_SLOT_STATE="project"
+	else
+	    /usr/local/lib/gce-logger \
+		"warning: falling back to root gce_xfstests.config (root project='${cfg_proj:-none}', vm project='$mds_proj')"
+	    if test "$root_rc" -eq 0 ; then
+		gce_install_config_with_project "$tmp_root" "$mds_proj" "$GCE_CONFIG_FILE"
+	    fi
+	    GS_BUCKET_PREFIX="gs://$GS_BUCKET"
+	    GS_SLOT_STATE="fallback"
+	fi
+    fi
+
+    rm -f "$tmp_root" "$tmp_proj" "$tmp_err"
+    echo "$GS_BUCKET_PREFIX" > "$GCE_STATE_DIR/gs_bucket_prefix"
+    echo "$GS_SLOT_STATE" > "$GCE_STATE_DIR/gs_slot_state"
+    if test -f "$GCE_CONFIG_FILE" ; then
+	return 0
+    fi
+    return 1
 }

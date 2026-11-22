@@ -3,11 +3,11 @@
 # This script fetches the self-signed SSL cert from the user's configured
 # GS_BUCKET before lighttpd is allowed to start.
 . /usr/local/lib/gce-funcs
-gcs_cp gs://$GS_BUCKET/gce-xfstests-server.pem /etc/lighttpd/server.pem
-/usr/local/lib/gce-logger "fetching cert completed, gcs_cp returned $?"
+gce_resolve_and_fetch_config
+/usr/local/lib/gce-logger "fetching config completed, gce_resolve_and_fetch_config returned $?"
 
-gcs_cp gs://$GS_BUCKET/gce_xfstests.config "$GCE_CONFIG_FILE"
-/usr/local/lib/gce-logger "fetching config completed, gcs_cp returned $?"
+gcs_cp "gs://$GS_BUCKET/gce-xfstests-server.pem" /etc/lighttpd/server.pem
+/usr/local/lib/gce-logger "fetching cert completed, gcs_cp returned $?"
 
 chmod 0400 /etc/lighttpd/server.pem
 
@@ -15,7 +15,12 @@ chmod 0400 /etc/lighttpd/server.pem
 # installed in /root/xfstests_bld/run-fstesets
 DIR=/root/xfstests_bld/run-fstests
 
-. "$GCE_CONFIG_FILE"
+if test -f "$GCE_CONFIG_FILE" ; then
+    . "$GCE_CONFIG_FILE"
+fi
+if test -f "$GCE_STATE_DIR/gce_project" ; then
+    GCE_PROJECT=$(cat "$GCE_STATE_DIR/gce_project")
+fi
 
 if gce_attribute gce_xfs_ltm
 then
@@ -45,7 +50,13 @@ then
     chmod 0600 "$DIR/.kcs_instance_$GCE_PROJECT"
 fi
 touch "$DIR/config.common"
-cat "$GCE_CONFIG_FILE" >> "$DIR/config.gce"
+if test -f "$GCE_CONFIG_FILE" ; then
+    cat "$GCE_CONFIG_FILE" >> "$DIR/config.gce"
+fi
+printf 'GS_RESOLVED_FOR="%s"\n' "$GS_BUCKET:$GCE_PROJECT" >> "$DIR/config.gce"
+printf 'GS_BUCKET_PREFIX="%s"\n' "$GS_BUCKET_PREFIX" >> "$DIR/config.gce"
+printf 'GS_SLOT_STATE="%s"\n' "$GS_SLOT_STATE" >> "$DIR/config.gce"
+printf 'GS_MIRROR_PREFIX=""\n' >> "$DIR/config.gce"
 echo SKIP_GS_CONFIG_UPDATE=yes >> "$DIR/config.gce"
 
 # Create send_mail.ini in /run if SMTP or SendGrid configuration is present
