@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"testing"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/server"
@@ -43,6 +44,7 @@ type Repository struct {
 
 // RemoteRepository represents a remote repo for queries.
 type RemoteRepository struct {
+	mu     sync.RWMutex
 	url    string
 	branch string
 	head   string
@@ -50,7 +52,7 @@ type RemoteRepository struct {
 
 func init() {
 	err := check.CreateDir(RepoRootDir)
-	if err != nil {
+	if err != nil && !testing.Testing() {
 		panic(err)
 	}
 }
@@ -371,6 +373,8 @@ func (repo *RemoteRepository) Update() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 	if head != repo.head {
 		repo.head = head
 		return true, nil
@@ -381,6 +385,8 @@ func (repo *RemoteRepository) Update() (bool, error) {
 
 // Head returns the current head.
 func (repo *RemoteRepository) Head() string {
+	repo.mu.RLock()
+	defer repo.mu.RUnlock()
 	return repo.head
 }
 
