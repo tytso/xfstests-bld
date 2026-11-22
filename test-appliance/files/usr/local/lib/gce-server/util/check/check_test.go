@@ -256,3 +256,85 @@ func TestValidateGitRefAndBranch(t *testing.T) {
 	}
 }
 
+func TestValidateBucketSubdirAndGSURI(t *testing.T) {
+	validSubdirs := []string{
+		"results",
+		"results/ext4",
+		"ltm-results/2026_11/arm64",
+	}
+	for _, s := range validSubdirs {
+		if err := ValidateBucketSubdir(s); err != nil {
+			t.Errorf("expected ValidateBucketSubdir(%q) to succeed, got: %v", s, err)
+		}
+	}
+
+	invalidSubdirs := []string{
+		"",
+		"/",
+		"/results",
+		"results/",
+		"results//ext4",
+		"-results",
+		"results/-ext4",
+		".",
+		"..",
+		"results/../etc",
+		"results/./ext4",
+		"results/foo..bar",
+		"results/*",
+		"results/?",
+		"results/[a]",
+		"results\\ext4",
+		"results ext4",
+		"results\next4",
+		"results\x00ext4",
+	}
+	for _, s := range invalidSubdirs {
+		if err := ValidateBucketSubdir(s); err == nil {
+			t.Errorf("expected ValidateBucketSubdir(%q) to fail, got nil", s)
+		}
+	}
+
+	validURIs := []string{
+		"gs://my-bucket/bzImage",
+		"gs://my-bucket/kernel.deb",
+		"gs://gce_xfstests.bucket-1/kernels/bzImage-test-20261122-onerun.deb",
+		"gs://my-bucket/build_config",
+	}
+	for _, u := range validURIs {
+		if err := ValidateGSURI(u); err != nil {
+			t.Errorf("expected ValidateGSURI(%q) to succeed, got: %v", u, err)
+		}
+	}
+
+	invalidURIs := []string{
+		"",
+		"/etc/passwd",
+		"file:///etc/passwd",
+		"https://storage.googleapis.com/my-bucket/bzImage",
+		"-f",
+		"gs://",
+		"gs://my-bucket",
+		"gs://my-bucket/",
+		"gs://ab/bzImage",
+		"gs://-bad/bzImage",
+		"gs://BadUpper/bzImage",
+		"gs://my..bucket/bzImage",
+		"gs://my-bucket//bzImage",
+		"gs://my-bucket/kernels/",
+		"gs://my-bucket/../etc/passwd",
+		"gs://my-bucket/kernels/./bzImage",
+		"gs://my-bucket/kernels/foo..bar",
+		"gs://my-bucket/kernels/*",
+		"gs://my-bucket/kernels/bzImage\\bad",
+		"gs://my-bucket/kernels/bzImage with space",
+		"gs://my-bucket/kernels/bzImage\n",
+		"gs://my-bucket/kernels/bzImage\x00",
+	}
+	for _, u := range invalidURIs {
+		if err := ValidateGSURI(u); err == nil {
+			t.Errorf("expected ValidateGSURI(%q) to fail, got nil", u)
+		}
+	}
+}
+

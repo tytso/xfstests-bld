@@ -342,3 +342,80 @@ func ValidateGitBranch(branch string) error {
 	}
 	return nil
 }
+
+// ValidateBucketSubdir validates a relative GCS subdirectory prefix (such as
+// "results" or "results/ext4"). It rejects empty strings, leading/trailing or
+// duplicate '/', leading '-' segments, '.' or '..' traversal segments,
+// backslashes, wildcards, NUL bytes, and ASCII whitespace or control chars.
+func ValidateBucketSubdir(subdir string) error {
+	if subdir == "" {
+		return fmt.Errorf("bucket_subdir must not be empty")
+	}
+	if strings.HasPrefix(subdir, "/") || strings.HasSuffix(subdir, "/") {
+		return fmt.Errorf("bucket_subdir must be a relative path without leading or trailing '/'")
+	}
+	if strings.ContainsAny(subdir, "\\\x00*?[]") {
+		return fmt.Errorf("bucket_subdir contains invalid characters")
+	}
+	for i := 0; i < len(subdir); i++ {
+		if subdir[i] <= 0x20 || subdir[i] == 0x7f {
+			return fmt.Errorf("bucket_subdir must not contain whitespace or control characters")
+		}
+	}
+	for _, seg := range strings.Split(subdir, "/") {
+		if seg == "" {
+			return fmt.Errorf("bucket_subdir must not contain empty path segments")
+		}
+		if err := ValidateTestID(seg); err != nil {
+			return fmt.Errorf("invalid bucket_subdir segment %q: %w", seg, err)
+		}
+	}
+	return nil
+}
+
+// ValidateGSURI validates a gs://<bucket>/<object> Cloud Storage object URI.
+// It rejects non-gs:// paths, invalid bucket names, empty or trailing-slash
+// object names, '.'/'..' traversal, duplicate slashes, backslashes, wildcards,
+// NUL bytes, and ASCII whitespace or control characters.
+func ValidateGSURI(uri string) error {
+	if !strings.HasPrefix(uri, "gs://") {
+		return fmt.Errorf("GCS URI must start with gs://")
+	}
+	if strings.ContainsAny(uri, "\\\x00*?[]") {
+		return fmt.Errorf("GCS URI contains invalid characters")
+	}
+	for i := 0; i < len(uri); i++ {
+		if uri[i] <= 0x20 || uri[i] == 0x7f {
+			return fmt.Errorf("GCS URI must not contain whitespace or control characters")
+		}
+	}
+	rest := strings.TrimPrefix(uri, "gs://")
+	bucket, object, ok := strings.Cut(rest, "/")
+	if !ok || bucket == "" || object == "" {
+		return fmt.Errorf("GCS URI must have form gs://<bucket>/<object>")
+	}
+	if len(bucket) < 3 || len(bucket) > 222 || strings.Contains(bucket, "..") {
+		return fmt.Errorf("GCS URI contains invalid bucket name %q", bucket)
+	}
+	isAlnum := func(b byte) bool {
+		return (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
+	}
+	if !isAlnum(bucket[0]) || !isAlnum(bucket[len(bucket)-1]) {
+		return fmt.Errorf("GCS bucket name %q must start and end with a lowercase letter or digit", bucket)
+	}
+	for i := 0; i < len(bucket); i++ {
+		b := bucket[i]
+		if !isAlnum(b) && b != '-' && b != '_' && b != '.' {
+			return fmt.Errorf("GCS bucket name %q contains invalid character %q", bucket, b)
+		}
+	}
+	if strings.HasPrefix(object, "/") || strings.HasSuffix(object, "/") {
+		return fmt.Errorf("GCS object path must not start or end with '/'")
+	}
+	for _, seg := range strings.Split(object, "/") {
+		if seg == "" || seg == "." || seg == ".." || strings.Contains(seg, "..") {
+			return fmt.Errorf("GCS object path contains invalid segment %q", seg)
+		}
+	}
+	return nil
+}

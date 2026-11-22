@@ -482,3 +482,30 @@ func TestSharderPanicWritesReportBeforeCloseLog(t *testing.T) {
 		t.Fatalf("expected sharder.clean() to remove failed sharder from sharderMap, got %d", len(got))
 	}
 }
+
+func TestOnerunObjectName(t *testing.T) {
+	obj, ok := onerunObjectName("my-bucket", "gs://my-bucket/kernels/bzImage-test-20261122-onerun.deb")
+	if !ok || obj != "kernels/bzImage-test-20261122-onerun.deb" {
+		t.Fatalf("expected stripped object name, got ok=%v obj=%q", ok, obj)
+	}
+
+	obj, ok = onerunObjectName("my-bucket", "gs://my-bucket/20261122010203-onerun.bzImage")
+	if !ok || obj != "20261122010203-onerun.bzImage" {
+		t.Fatalf("expected stripped root object name, got ok=%v obj=%q", ok, obj)
+	}
+
+	for _, tc := range []struct {
+		bucket string
+		kernel string
+	}{
+		{"my-bucket", "gs://my-bucket/kernels/bzImage"},
+		{"my-bucket", "gs://other-bucket/kernels/bzImage-test-onerun.deb"},
+		{"my-bucket", "kernels/bzImage-test-onerun.deb"},
+		{"my-bucket", "gs://my-bucket/../bzImage-test-onerun.deb"},
+		{"", "gs://my-bucket/kernels/bzImage-test-onerun.deb"},
+	} {
+		if got, ok := onerunObjectName(tc.bucket, tc.kernel); ok {
+			t.Errorf("expected onerunObjectName(%q, %q) to return false, got %q", tc.bucket, tc.kernel, got)
+		}
+	}
+}

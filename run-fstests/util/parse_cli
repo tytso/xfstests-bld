@@ -285,6 +285,41 @@ validate_testrunid()
     esac
 }
 
+validate_bucket_subdir()
+{
+    local subdir="$1"
+    local opt="${2:---bucket-subdir}"
+    local LC_ALL=C
+
+    if test -z "$subdir" ; then
+	echo 1>&2 "Invalid $opt: bucket_subdir must not be empty"
+	exit_code=1
+	exit 1
+    fi
+    case "$subdir" in
+	/*|*/)
+	    echo 1>&2 "Invalid $opt '$subdir': bucket_subdir must not start or end with '/'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	-*|*/-*)
+	    echo 1>&2 "Invalid $opt '$subdir': bucket_subdir segments must not start with '-'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	.|./*|*/.|*/./*|..|*//*|*..*|*\\*|*\**|*\?*|*\[*|*\]*)
+	    echo 1>&2 "Invalid $opt '$subdir': bucket_subdir contains invalid path characters or '..'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*[[:space:][:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: bucket_subdir must not contain whitespace or control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+}
+
 function set_git_repo ()
 {
     if test -n "${GIT_REPOS[$1]}" ; then
@@ -796,6 +831,7 @@ while (( $# >= 1 )); do
 	    ;;
 	--bucket-subdir) shift
 	    supported_flavors gce
+	    validate_bucket_subdir "$1" "--bucket-subdir"
 	    BUCKET_SUBDIR="$1"
 	    ;;
 	--repo) shift

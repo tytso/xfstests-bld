@@ -89,6 +89,16 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 			return nil, fmt.Errorf("invalid goodCommit %q: %w", rev, err)
 		}
 	}
+	if c.Options.BucketSubdir != "" {
+		if err := check.ValidateBucketSubdir(c.Options.BucketSubdir); err != nil {
+			return nil, fmt.Errorf("invalid bucket_subdir: %w", err)
+		}
+	}
+	if c.Options.KConfig != "" {
+		if err := check.ValidateGSURI(c.Options.KConfig); err != nil {
+			return nil, fmt.Errorf("invalid kconfig: %w", err)
+		}
+	}
 
 	logDir := logging.KCSLogDir + testID + "/"
 	err := check.CreateDir(logDir)
@@ -117,6 +127,8 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 	if bucketSubdir == "" {
 		bucketSubdir = "results"
 	}
+	err = check.ValidateBucketSubdir(bucketSubdir)
+	check.Panic(err, log, "Invalid bucket_subdir")
 
 	gsBucket, err := gcp.GceConfig().Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")

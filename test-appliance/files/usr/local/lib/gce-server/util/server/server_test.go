@@ -131,3 +131,34 @@ func TestParseTaskRequestGitRefAndBranchValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTaskRequestGCSFieldsValidation(t *testing.T) {
+	rec, _, err := postTaskRequestForTest(t, TaskRequest{
+		Options: &UserOptions{
+			BucketSubdir: "results/ext4",
+			GsKernel:     "gs://my-bucket/kernels/bzImage-test-onerun.deb",
+			KConfig:      "gs://my-bucket/build_config",
+		},
+	}, false)
+	if err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("expected valid GCS fields to succeed, got code=%d err=%v", rec.Code, err)
+	}
+
+	badCases := []UserOptions{
+		{BucketSubdir: "../etc"},
+		{BucketSubdir: "/results"},
+		{BucketSubdir: "-results"},
+		{BucketSubdir: "results/*"},
+		{GsKernel: "/etc/passwd"},
+		{GsKernel: "gs://my-bucket/../secret"},
+		{KConfig: "/etc/shadow"},
+		{KConfig: "gs://my-bucket/"},
+	}
+	for _, opts := range badCases {
+		optsCopy := opts
+		rec, _, err := postTaskRequestForTest(t, TaskRequest{Options: &optsCopy}, false)
+		if err == nil || rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for %+v, got code=%d err=%v", opts, rec.Code, err)
+		}
+	}
+}

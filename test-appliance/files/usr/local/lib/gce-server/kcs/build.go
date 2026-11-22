@@ -81,6 +81,12 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 		log.WithError(err).Error("Invalid testID in StartBuild")
 		return
 	}
+	if c.Options != nil && c.Options.KConfig != "" {
+		if err := check.ValidateGSURI(c.Options.KConfig); err != nil {
+			log.WithError(err).Error("Invalid kconfig URI in StartBuild")
+			return
+		}
+	}
 	log.Info("Start building kernel")
 
 	buildLog := logging.KCSLogDir + testID + ".build"

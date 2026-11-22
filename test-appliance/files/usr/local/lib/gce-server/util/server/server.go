@@ -491,6 +491,27 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 		}
 	}
 
+	if c.Options.BucketSubdir != "" {
+		if err := check.ValidateBucketSubdir(c.Options.BucketSubdir); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid bucket_subdir: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.GsKernel != "" {
+		if err := check.ValidateGSURI(c.Options.GsKernel); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid gs_kernel: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.KConfig != "" {
+		if err := check.ValidateGSURI(c.Options.KConfig); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid kconfig: %v", err))
+			return c, err
+		}
+	}
+
 	if c.ExtraOptions != nil && c.ExtraOptions.Requester != Query {
 		if err := check.ValidateTestID(c.ExtraOptions.TestID); err != nil {
 			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid test_id: %v", err))

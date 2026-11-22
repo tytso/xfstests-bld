@@ -105,6 +105,18 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	if err := check.ValidateTestID(testID); err != nil {
 		return nil, fmt.Errorf("invalid testID: %w", err)
 	}
+	if c.Options != nil {
+		if c.Options.BucketSubdir != "" {
+			if err := check.ValidateBucketSubdir(c.Options.BucketSubdir); err != nil {
+				return nil, fmt.Errorf("invalid bucket_subdir: %w", err)
+			}
+		}
+		if c.Options.GsKernel != "" {
+			if err := check.ValidateGSURI(c.Options.GsKernel); err != nil {
+				return nil, fmt.Errorf("invalid gs_kernel: %w", err)
+			}
+		}
+	}
 	if !reserveSharderID(testID) {
 		return nil, fmt.Errorf("testID %s is already running", testID)
 	}
@@ -198,6 +210,8 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	if sharder.bucketSubdir == "" {
 		sharder.bucketSubdir = "results"
 	}
+	err = check.ValidateBucketSubdir(sharder.bucketSubdir)
+	check.Panic(err, log, "Invalid bucket_subdir")
 	if sharder.reportFailReceiver == "" {
 		sharder.reportFailReceiver = sharder.reportReceiver
 	}
@@ -342,8 +356,15 @@ func (sharder *ShardScheduler) initRegionSharding() {
 // Get information about the kernel so that each gce-xfstests invocation
 // doesn't have to replicate this work.
 func (sharder *ShardScheduler) getKernelInfo() {
-	cmd := exec.Command("gce-xfstests", "get-kernel-info", sharder.gsKernel)
 	sharder.kernelArch = ""
+	if sharder.gsKernel == "" {
+		return
+	}
+	if err := check.ValidateGSURI(sharder.gsKernel); err != nil {
+		sharder.log.WithError(err).Error("Refusing to query invalid gsKernel URI")
+		return
+	}
+	cmd := exec.Command("gce-xfstests", "get-kernel-info", sharder.gsKernel)
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 	cmd.Stdout = stdout
@@ -362,7 +383,12 @@ func (sharder *ShardScheduler) getKernelInfo() {
 		if arg[0] == "KERNEL_ARCH" {
 			sharder.kernelArch = strings.TrimSuffix(arg[1], "\n")
 		} else if arg[0] == "KERNEL_VERSION" {
-			sharder.kernelVersion = strings.TrimSuffix(arg[1], "\n")
+			ver := strings.TrimSuffix(arg[1], "\n")
+			if err := check.ValidateTestID(ver); err != nil {
+				sharder.log.WithField("kernelVersion", ver).WithError(err).Warn("Ignoring invalid kernel version from get-kernel-info")
+			} else {
+				sharder.setKernelVersion(ver)
+			}
 		}
 	}
 }
@@ -552,6 +578,10 @@ func (sharder *ShardScheduler) aggResults() {
 		if check.FileExists(kernelVersionFile) {
 			content, err := check.ReadLines(kernelVersionFile)
 			if !check.NoError(err, sharder.log, "Failed to read file") || len(content) == 0 {
+				continue
+			}
+			if err := check.ValidateTestID(content[0]); err != nil {
+				sharder.log.WithField("kernelVersion", content[0]).WithError(err).Warn("Ignoring invalid kernel_version from shard")
 				continue
 			}
 			sharder.setKernelVersion(content[0])
@@ -810,6 +840,10 @@ func (sharder *ShardScheduler) packResults() {
 
 	sharder.log.Info("Uploading repacked results tarball")
 	kernelVersion := sharder.getKernelVersion()
+	if err := check.ValidateTestID(kernelVersion); err != nil {
+		sharder.log.WithField("kernelVersion", kernelVersion).WithError(err).Warn("Invalid kernelVersion when packing results, using default")
+		kernelVersion = "unknown_kernel_version"
+	}
 
 	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
@@ -828,13 +862,32 @@ func (sharder *ShardScheduler) packResults() {
 	}
 }
 
+func onerunObjectName(gsBucket string, gsKernel string) (string, bool) {
+	if gsBucket == "" || !strings.Contains(gsKernel, "-onerun") {
+		return "", false
+	}
+	if err := check.ValidateGSURI(gsKernel); err != nil {
+		return "", false
+	}
+	prefix := "gs://" + gsBucket + "/"
+	if !strings.HasPrefix(gsKernel, prefix) {
+		return "", false
+	}
+	obj := strings.TrimPrefix(gsKernel, prefix)
+	if obj == "" {
+		return "", false
+	}
+	return obj, true
+}
+
 // clean removes local result and log files.
 func (sharder *ShardScheduler) clean() {
 	sharder.log.Info("Cleaning up sharder resources")
 
-	if strings.Contains(sharder.gsKernel, "-onerun") {
+	if objName, ok := onerunObjectName(sharder.gsBucket, sharder.gsKernel); ok && sharder.gce != nil {
 		sharder.log.WithField("gsKernel", sharder.gsKernel).Info("Delete onerun kernel image")
-		sharder.gce.DeleteFiles(sharder.gsKernel)
+		_, err := sharder.gce.DeleteFiles(objName)
+		check.NoError(err, sharder.log, "Failed to delete onerun kernel image")
 	}
 	sharderLock.Lock()
 	delete(sharderMap, sharder.testID)
