@@ -9,10 +9,13 @@ do
     sleep 1
 done
 
-cd /cache/repositories
+exec 9>/cache/repositories/.repo-cleanup.lock
+flock -x 9
+
+cd /cache/repositories || exit 1
 
 REPOS=$(find . -maxdepth 1 -type d -print | grep -v "^.$" | \
-	    grep -v "./linux.reference")
+	    grep -v "./linux.reference" | grep -v "./bisects")
 
 if test -d linux.reference ; then
     pushd linux.reference > /dev/null
@@ -26,8 +29,15 @@ if test -d linux.reference ; then
     popd > /dev/null
 fi
 
+ACTIVE_BISECTS=
+if test -d bisects &&
+   [ -n "$(find ./bisects -mindepth 1 -maxdepth 1 -type d -print -quit 2> /dev/null)" ] ; then
+    ACTIVE_BISECTS=yes
+fi
+
 for i in $REPOS ; do
-    if [[ $(find $i/last-used -mtime +30 -print 2> /dev/null) ]] ; then
+    if test -z "$ACTIVE_BISECTS" &&
+       [[ $(find $i/last-used -mtime +30 -print 2> /dev/null) ]] ; then
 	echo "Removing stale repository $i"
 	rm -rf $i
 	continue

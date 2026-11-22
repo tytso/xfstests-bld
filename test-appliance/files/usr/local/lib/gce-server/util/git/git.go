@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"thunk.org/gce-server/util/check"
@@ -29,6 +30,7 @@ const (
 	RepoRootDir       = "/cache/repositories/"
 	RefRepoDir        = RepoRootDir + "linux.reference"
 	RefRepoURL        = "https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
+	RepoLockFileName  = ".repo-cleanup.lock"
 	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
 	watchInterval     = 10
 )
@@ -98,7 +100,35 @@ func getOrCreateRepository(id, repoURL, base, dir string) *Repository {
 }
 
 func isReservedRepoID(id string) bool {
-	return id == "linux.reference" || id == "bisects" || strings.HasSuffix(id, ".tmp")
+	return id == "linux.reference" || id == "bisects" || id == RepoLockFileName || strings.HasSuffix(id, ".tmp")
+}
+
+// acquireSharedRepoLock acquires an open-file-description shared flock on
+// <repoRootDir>/.repo-cleanup.lock so concurrent KCS git/build operations
+// proceed in parallel while blocking gce-repo-cleanup's exclusive flock.
+func acquireSharedRepoLock() (func(), error) {
+	if err := check.CreateDir(repoRootDir); err != nil {
+		return nil, err
+	}
+	lockPath := filepath.Join(repoRootDir, RepoLockFileName)
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		err = syscall.Flock(int(f.Fd()), syscall.LOCK_SH)
+		if err != syscall.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	return func() {
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		_ = f.Close()
+	}, nil
 }
 
 func ensureRefRepo(writer io.Writer) error {
@@ -189,6 +219,12 @@ func NewBisectRepository(id string, repoURL string, writer io.Writer) (*Reposito
 }
 
 func newRepositoryAt(id string, repoURL string, targetDir string, writer io.Writer) (*Repository, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+
 	base, err := ParseURL(repoURL)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse repo url")
@@ -259,6 +295,12 @@ func newRepositoryAt(id string, repoURL string, targetDir string, writer io.Writ
 
 // GetCommit returns the commit hash for current repo HEAD.
 func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
+
 	repo.gitMu.RLock()
 	defer repo.gitMu.RUnlock()
 	if !check.DirExists(repo.dir) {
@@ -277,6 +319,12 @@ func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
 
 // Checkout fetches from upstream and checkout to a commit hash.
 func (repo *Repository) Checkout(commit string, writer io.Writer) error {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
 	if !check.DirExists(repo.dir) {
@@ -292,7 +340,7 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 		}
 	}
 	cmd := exec.Command("git", "fetch", "-qpf", "--all")
-	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
 	}
@@ -312,6 +360,12 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 
 // Valid checks the given revision and returns true if it's valid.
 func (repo *Repository) Valid(revision string, writer io.Writer) (bool, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return false, err
+	}
+	defer unlock()
+
 	repo.gitMu.RLock()
 	defer repo.gitMu.RUnlock()
 	if !check.DirExists(repo.dir) {
@@ -319,7 +373,7 @@ func (repo *Repository) Valid(revision string, writer io.Writer) (bool, error) {
 	}
 
 	cmd := exec.Command("git", "log", "--oneline", "-1", revision)
-	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return false, err
 	}
@@ -337,6 +391,12 @@ goodCommits is empty. It returns true if git bisect has ended.
 if <bad> is a branch, so we expand it explicitly.
 */
 func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writer io.Writer) (bool, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return false, err
+	}
+	defer unlock()
+
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
 	if len(goodCommits) == 0 {
@@ -351,7 +411,7 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writ
 	}
 
 	cmd := exec.Command("git", "bisect", "start")
-	err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return false, err
 	}
@@ -383,6 +443,12 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writ
 // and proceeds to the next step.
 // It returns true if git bisect has ended.
 func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Writer) (bool, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return false, err
+	}
+	defer unlock()
+
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
 	if !check.DirExists(repo.dir) {
@@ -419,6 +485,12 @@ func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Write
 
 // BisectLog returns bisect log output.
 func (repo *Repository) BisectLog(writer io.Writer) (string, error) {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
+
 	repo.gitMu.RLock()
 	defer repo.gitMu.RUnlock()
 	if !check.DirExists(repo.dir) {
@@ -437,6 +509,12 @@ func (repo *Repository) BisectLog(writer io.Writer) (string, error) {
 
 // BisectReset resets the current git bisect.
 func (repo *Repository) BisectReset(writer io.Writer) error {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
 	if !check.DirExists(repo.dir) {
@@ -450,6 +528,12 @@ func (repo *Repository) BisectReset(writer io.Writer) error {
 // BuildUpload builds the current kernel code and uploads image to GS.
 // Script output is written into a given writer.
 func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig string, arch string, kConfigOpts string, kbuildOpts string, writer io.Writer) error {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	repo.buildMu.Lock()
 	defer repo.buildMu.Unlock()
 	repo.gitMu.RLock()
@@ -469,18 +553,24 @@ func (repo *Repository) BuildUpload(gsBucket string, gsPath string, gsConfig str
 		"KBUILD_ARCH":  arch,
 	}
 
-	err := check.Run(cmd, repo.dir, env, writer, writer)
+	err = check.Run(cmd, repo.dir, env, writer, writer)
 
 	return err
 }
 
 // Delete removes repo from local storage.
 func (repo *Repository) Delete() error {
+	unlock, err := acquireSharedRepoLock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	repo.buildMu.Lock()
 	defer repo.buildMu.Unlock()
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
-	err := os.RemoveAll(repo.dir)
+	err = os.RemoveAll(repo.dir)
 	repoRegistryMu.Lock()
 	delete(repoRegistry, filepath.Clean(repo.dir))
 	repoRegistryMu.Unlock()

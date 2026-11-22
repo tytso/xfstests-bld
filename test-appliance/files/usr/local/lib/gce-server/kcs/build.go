@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"testing"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/email"
@@ -23,7 +24,7 @@ var (
 
 func init() {
 	err := check.CreateDir(logging.KCSLogDir)
-	if err != nil {
+	if err != nil && !testing.Testing() {
 		panic("Failed to create dir")
 	}
 }
@@ -57,7 +58,12 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	w := cmdLog.WithField("cmd", "newRepo").Writer()
 
 	repo, ok := repoMap[id]
-	if !ok {
+	if !ok || !check.DirExists(repo.Dir()) {
+		if ok {
+			cmdLog.Warn("Cached repo directory missing, re-cloning")
+			_ = repo.Delete()
+			delete(repoMap, id)
+		}
 		cmdLog.Debug("Cloning repo")
 		repo, err = git.NewRepository(id, c.Options.GitRepo, w)
 		check.Panic(err, cmdLog, "Failed to clone repo")
