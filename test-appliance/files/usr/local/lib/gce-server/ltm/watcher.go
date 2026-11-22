@@ -212,26 +212,38 @@ func (watcher *GitWatcher) watch() {
 	}
 }
 
-// InitTest initiates a kernel building and testing using the current repo head.
-func (watcher *GitWatcher) InitTest() {
+func (watcher *GitWatcher) recordNewBuild(commit string) string {
 	watcher.historyLock.Lock()
+	defer watcher.historyLock.Unlock()
+
 	watcher.buildID++
 	log := watcher.log.WithFields(logrus.Fields{
 		"buildID": watcher.buildID,
-		"commit":  watcher.repo.Head(),
+		"commit":  commit,
 	})
 	log.Info("initiating new build and test task")
 	testID := fmt.Sprintf("%s-%04d", watcher.testID, watcher.buildID)
 
+	shortCommit := commit
+	if len(shortCommit) > 12 {
+		shortCommit = shortCommit[:12]
+	}
+
 	watcher.testHistory = append(watcher.testHistory, server.TestInfo{
 		TestID:     testID,
-		Commit:     watcher.repo.Head()[:12],
+		Commit:     shortCommit,
 		UpdateTime: time.Now().Format(time.Stamp),
 		Status:     "running",
 	})
-	watcher.historyLock.Unlock()
+	return testID
+}
 
-	watcher.testRequest.Options.CommitID = watcher.repo.Head()
+// InitTest initiates a kernel building and testing using the current repo head.
+func (watcher *GitWatcher) InitTest() {
+	commit := watcher.repo.Head()
+	testID := watcher.recordNewBuild(commit)
+
+	watcher.testRequest.Options.CommitID = commit
 	watcher.testRequest.ExtraOptions.TestID = testID
 
 	go func(req server.TaskRequest, id string) {
