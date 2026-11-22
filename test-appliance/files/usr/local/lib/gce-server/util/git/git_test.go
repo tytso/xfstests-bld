@@ -388,6 +388,23 @@ func TestRepositoryConcurrentCloneBisectIsolationAndFlock(t *testing.T) {
 	if err := bisectRepo.Checkout(commits[1], io.Discard); err != nil {
 		t.Fatalf("Checkout failed: %v", err)
 	}
+	for _, badRef := range []string{"--detach", "-b", "HEAD..HEAD", "HEAD:file.txt"} {
+		if err := bisectRepo.Checkout(badRef, io.Discard); err == nil {
+			t.Fatalf("expected Checkout(%q) to fail", badRef)
+		}
+		if _, err := bisectRepo.Valid(badRef, io.Discard); err == nil {
+			t.Fatalf("expected Valid(%q) to fail", badRef)
+		}
+		if _, err := bisectRepo.BisectStart(badRef, []string{commits[0]}, io.Discard); err == nil {
+			t.Fatalf("expected BisectStart(bad=%q) to fail", badRef)
+		}
+		if _, err := bisectRepo.BisectStart(commits[1], []string{badRef}, io.Discard); err == nil {
+			t.Fatalf("expected BisectStart(good=%q) to fail", badRef)
+		}
+	}
+	if _, err := NewRemoteRepository(repoURL, "--upload-pack=evil"); err == nil {
+		t.Fatal("expected NewRemoteRepository with flag-like branch to fail")
+	}
 	close(stopReaders)
 	rwg.Wait()
 

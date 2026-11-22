@@ -98,3 +98,36 @@ func TestParseTaskRequestGitRepoValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTaskRequestGitRefAndBranchValidation(t *testing.T) {
+	rec, _, err := postTaskRequestForTest(t, TaskRequest{
+		Options: &UserOptions{
+			CommitID:   "HEAD~1",
+			BranchName: "ext4/for-next",
+			BadCommit:  "v6.12-rc1",
+			GoodCommit: "v6.10|v6.11",
+		},
+	}, false)
+	if err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("expected valid git refs to succeed, got code=%d err=%v", rec.Code, err)
+	}
+
+	badCases := []UserOptions{
+		{CommitID: "--detach"},
+		{CommitID: "HEAD..origin/main"},
+		{BranchName: "--upload-pack=/bin/sh"},
+		{BranchName: "HEAD~1"},
+		{BranchName: "ext4/*"},
+		{BadCommit: "--bad"},
+		{GoodCommit: "v5.6||v5.7"},
+		{GoodCommit: "v5.6|--good"},
+		{GoodCommit: "|v5.6"},
+	}
+	for _, opts := range badCases {
+		optsCopy := opts
+		rec, _, err := postTaskRequestForTest(t, TaskRequest{Options: &optsCopy}, false)
+		if err == nil || rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for %+v, got code=%d err=%v", opts, rec.Code, err)
+		}
+	}
+}

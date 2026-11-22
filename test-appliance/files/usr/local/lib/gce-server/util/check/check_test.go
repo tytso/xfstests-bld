@@ -178,3 +178,81 @@ func TestValidateGitRepoURL(t *testing.T) {
 	}
 }
 
+func TestValidateGitRefAndBranch(t *testing.T) {
+	validRefs := []string{
+		"HEAD",
+		"HEAD~2",
+		"v5.6",
+		"v6.12-rc1^1",
+		"7111951b8d4973bda27ff663f2cf18b663d15b48",
+		"origin/master",
+		"ext4/for-next",
+		"refs/tags/v6.12.1",
+		"bisect-test-ext4-035",
+	}
+	for _, r := range validRefs {
+		if err := ValidateGitRef(r); err != nil {
+			t.Errorf("expected ValidateGitRef(%q) to succeed, got: %v", r, err)
+		}
+	}
+
+	invalidRefs := []string{
+		"",
+		"-b",
+		"--upload-pack=/bin/sh",
+		"--format=%H",
+		"--detach",
+		"HEAD..origin/main",
+		"HEAD...origin/main",
+		"HEAD@{1}",
+		"HEAD:Makefile",
+		"/main",
+		"origin/",
+		"ext4//dev",
+		"ext4/.hidden",
+		"ext4/dev.lock",
+		"v5.6.",
+		"main*",
+		"main?1",
+		"main[0]",
+		"foo\\bar",
+		"foo bar",
+		"foo\nbar",
+		"foo\x00bar",
+	}
+	for _, r := range invalidRefs {
+		if err := ValidateGitRef(r); err == nil {
+			t.Errorf("expected ValidateGitRef(%q) to fail, got nil", r)
+		}
+	}
+
+	validBranches := []string{
+		"main",
+		"master",
+		"dev",
+		"ext4/for-next",
+		"refs/heads/main",
+		"bisect-test-generic-307",
+	}
+	for _, b := range validBranches {
+		if err := ValidateGitBranch(b); err != nil {
+			t.Errorf("expected ValidateGitBranch(%q) to succeed, got: %v", b, err)
+		}
+	}
+
+	invalidBranches := []string{
+		"",
+		"@",
+		"HEAD~1",
+		"main^",
+		"--upload-pack=evil",
+		"ext4/*",
+		"origin..main",
+	}
+	for _, b := range invalidBranches {
+		if err := ValidateGitBranch(b); err == nil {
+			t.Errorf("expected ValidateGitBranch(%q) to fail, got nil", b)
+		}
+	}
+}
+

@@ -340,6 +340,9 @@ func (repo *Repository) GetCommit(writer io.Writer) (string, error) {
 
 // Checkout fetches from upstream and checkout to a commit hash.
 func (repo *Repository) Checkout(commit string, writer io.Writer) error {
+	if err := check.ValidateGitRef(commit); err != nil {
+		return fmt.Errorf("invalid commit revision: %w", err)
+	}
 	unlock, err := acquireSharedRepoLock()
 	if err != nil {
 		return err
@@ -354,23 +357,23 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 
 	isHexCommit, _ := regexp.MatchString("^[0-9a-fA-F]+$", commit)
 	if isHexCommit && len(commit) > 6 {
-		cmd := exec.Command("git", "checkout", "-q", "-f", commit)
+		cmd := exec.Command("git", "checkout", "-q", "-f", commit, "--")
 		err := check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 		if err == nil {
 			return nil
 		}
 	}
 	cmd := exec.Command("git", "fetch", "-qpf", "--all")
-	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, repo.dir, gitRemoteEnv(), writer, writer)
 	if err != nil {
 		return err
 	}
-	cmd = exec.Command("git", "checkout", "-q", "-f", "origin/"+commit)
+	cmd = exec.Command("git", "checkout", "-q", "-f", "origin/"+commit, "--")
 	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err == nil {
 		return nil
 	}
-	cmd = exec.Command("git", "checkout", "-q", "-f", commit)
+	cmd = exec.Command("git", "checkout", "-q", "-f", commit, "--")
 	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return err
@@ -381,6 +384,9 @@ func (repo *Repository) Checkout(commit string, writer io.Writer) error {
 
 // Valid checks the given revision and returns true if it's valid.
 func (repo *Repository) Valid(revision string, writer io.Writer) (bool, error) {
+	if err := check.ValidateGitRef(revision); err != nil {
+		return false, fmt.Errorf("invalid revision: %w", err)
+	}
 	unlock, err := acquireSharedRepoLock()
 	if err != nil {
 		return false, err
@@ -393,7 +399,7 @@ func (repo *Repository) Valid(revision string, writer io.Writer) (bool, error) {
 		return false, fmt.Errorf("directory %s does not exist", repo.dir)
 	}
 
-	cmd := exec.Command("git", "log", "--oneline", "-1", revision)
+	cmd := exec.Command("git", "log", "--oneline", "-1", revision, "--")
 	err = check.Run(cmd, repo.dir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		return false, err
@@ -417,6 +423,21 @@ goodCommits is empty. It returns true if git bisect has ended.
 if <bad> is a branch, so we expand it explicitly.
 */
 func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writer io.Writer) (bool, error) {
+	if len(goodCommits) == 0 {
+		return false, fmt.Errorf("No good commits provided")
+	}
+	if badCommit == "" {
+		badCommit = "HEAD"
+	}
+	if err := check.ValidateGitRef(badCommit); err != nil {
+		return false, fmt.Errorf("invalid bad commit: %w", err)
+	}
+	for _, g := range goodCommits {
+		if err := check.ValidateGitRef(g); err != nil {
+			return false, fmt.Errorf("invalid good commit %q: %w", g, err)
+		}
+	}
+
 	unlock, err := acquireSharedRepoLock()
 	if err != nil {
 		return false, err
@@ -425,15 +446,8 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writ
 
 	repo.gitMu.Lock()
 	defer repo.gitMu.Unlock()
-	if len(goodCommits) == 0 {
-		return false, fmt.Errorf("No good commits provided")
-	}
 	if !check.DirExists(repo.dir) {
 		return false, fmt.Errorf("directory %s does not exist", repo.dir)
-	}
-
-	if badCommit == "" {
-		badCommit = "HEAD"
 	}
 
 	cmd := exec.Command("git", "bisect", "start")
@@ -613,6 +627,9 @@ func NewRemoteRepository(repoURL string, branch string) (*RemoteRepository, erro
 	if _, err := ParseURL(repoURL); err != nil {
 		return nil, fmt.Errorf("invalid repo url: %w", err)
 	}
+	if err := check.ValidateGitBranch(branch); err != nil {
+		return nil, err
+	}
 	repo := RemoteRepository{
 		url:    repoURL,
 		branch: branch,
@@ -654,6 +671,9 @@ func (repo *RemoteRepository) Head() string {
 func getHead(repoURL string, branch string) (string, error) {
 	if _, err := ParseURL(repoURL); err != nil {
 		return "", fmt.Errorf("invalid repo url: %w", err)
+	}
+	if err := check.ValidateGitBranch(branch); err != nil {
+		return "", err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), remoteQueryTimeout)
 	defer cancel()

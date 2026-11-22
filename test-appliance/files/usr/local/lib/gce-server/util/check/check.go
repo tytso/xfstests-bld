@@ -293,3 +293,52 @@ func ValidateGitRepoURL(rawURL string) error {
 	}
 	return nil
 }
+
+// ValidateGitRef validates a git revision or commit-ish (such as a SHA, tag,
+// branch, or relative ref like HEAD~1). It rejects empty strings, leading '-',
+// '..' range/traversal sequences, '@{' reflog expressions, backslashes, colons,
+// glob characters, leading/trailing/duplicate '/', '.'/'..' segments, trailing
+// '.lock', NUL bytes, and ASCII whitespace or control characters.
+func ValidateGitRef(ref string) error {
+	if ref == "" {
+		return fmt.Errorf("git revision must not be empty")
+	}
+	if strings.HasPrefix(ref, "-") {
+		return fmt.Errorf("git revision must not start with '-'")
+	}
+	if strings.Contains(ref, "..") || strings.Contains(ref, "@{") {
+		return fmt.Errorf("git revision must not contain '..' or '@{'")
+	}
+	if strings.ContainsAny(ref, "\\:\x00?*[]") {
+		return fmt.Errorf("git revision contains invalid characters")
+	}
+	if strings.HasPrefix(ref, "/") || strings.HasSuffix(ref, "/") || strings.HasSuffix(ref, ".") {
+		return fmt.Errorf("git revision must not start or end with '/' or end with '.'")
+	}
+	for i := 0; i < len(ref); i++ {
+		if ref[i] <= 0x20 || ref[i] == 0x7f {
+			return fmt.Errorf("git revision must not contain whitespace or control characters")
+		}
+	}
+	for _, seg := range strings.Split(ref, "/") {
+		if seg == "" || seg == "." || seg == ".." || strings.HasPrefix(seg, ".") || strings.HasSuffix(seg, ".lock") {
+			return fmt.Errorf("git revision contains invalid component %q", seg)
+		}
+	}
+	return nil
+}
+
+// ValidateGitBranch validates a git branch name passed to git ls-remote.
+// In addition to ValidateGitRef rules, it rejects '~', '^', and bare '@'.
+func ValidateGitBranch(branch string) error {
+	if branch == "@" {
+		return fmt.Errorf("git branch must not be '@'")
+	}
+	if err := ValidateGitRef(branch); err != nil {
+		return fmt.Errorf("invalid git branch: %w", err)
+	}
+	if strings.ContainsAny(branch, "~^") {
+		return fmt.Errorf("git branch must not contain '~' or '^'")
+	}
+	return nil
+}

@@ -72,6 +72,23 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 	if err := check.ValidateTestID(testID); err != nil {
 		return nil, fmt.Errorf("invalid testID: %w", err)
 	}
+	if c.Options == nil {
+		return nil, fmt.Errorf("missing options in bisect request")
+	}
+	if c.Options.BadCommit != "" {
+		if err := check.ValidateGitRef(c.Options.BadCommit); err != nil {
+			return nil, fmt.Errorf("invalid badCommit: %w", err)
+		}
+	}
+	if c.Options.GoodCommit == "" {
+		return nil, fmt.Errorf("missing goodCommit in bisect request")
+	}
+	goodCommits := strings.Split(c.Options.GoodCommit, "|")
+	for _, rev := range goodCommits {
+		if err := check.ValidateGitRef(rev); err != nil {
+			return nil, fmt.Errorf("invalid goodCommit %q: %w", rev, err)
+		}
+	}
 
 	logDir := logging.KCSLogDir + testID + "/"
 	err := check.CreateDir(logDir)
@@ -114,7 +131,6 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 	check.Panic(err, log, "Failed to clone repo")
 
 	badCommit := c.Options.BadCommit
-	goodCommits := strings.Split(c.Options.GoodCommit, "|")
 
 	bisector := GitBisector{
 		testID:  testID,

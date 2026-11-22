@@ -461,6 +461,36 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 		}
 	}
 
+	if c.Options.CommitID != "" {
+		if err := check.ValidateGitRef(c.Options.CommitID); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid commit_id: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.BranchName != "" {
+		if err := check.ValidateGitBranch(c.Options.BranchName); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid branch_name: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.BadCommit != "" {
+		if err := check.ValidateGitRef(c.Options.BadCommit); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid bad_commit: %v", err))
+			return c, err
+		}
+	}
+
+	if c.Options.GoodCommit != "" {
+		for _, rev := range strings.Split(c.Options.GoodCommit, "|") {
+			if err := check.ValidateGitRef(rev); err != nil {
+				_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid good_commit: %v", err))
+				return c, err
+			}
+		}
+	}
+
 	if c.ExtraOptions != nil && c.ExtraOptions.Requester != Query {
 		if err := check.ValidateTestID(c.ExtraOptions.TestID); err != nil {
 			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid test_id: %v", err))
