@@ -40,7 +40,8 @@ type GitBisector struct {
 	badCommit   string
 	goodCommits []string
 	lastActive  time.Time
-	done        chan bool
+	done        chan struct{}
+	cleanOnce   sync.Once
 
 	logDir     string
 	resultsDir string
@@ -119,7 +120,7 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 		badCommit:   badCommit,
 		goodCommits: goodCommits,
 		lastActive:  time.Now(),
-		done:        make(chan bool),
+		done:        make(chan struct{}),
 
 		logDir:     logDir,
 		resultsDir: resultsDir,
@@ -134,7 +135,9 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 			case <-bisector.done:
 				return
 			case <-ticker.C:
-				bisector.CheckActive()
+				if bisector.CheckActive() {
+					return
+				}
 			}
 		}
 	}()
@@ -390,18 +393,20 @@ func (bisector *GitBisector) StartTest() {
 // Clean removes the repo that binds to the bisector and closes log.
 // It also disables the expire monitor and removes itself from bisectorMap.
 func (bisector *GitBisector) Clean() {
-	bisectorLock.Lock()
-	defer bisectorLock.Unlock()
-	bisector.log.Debug("Git bisect clean up")
+	bisector.cleanOnce.Do(func() {
+		bisectorLock.Lock()
+		delete(bisectorMap, bisector.testID)
+		bisectorLock.Unlock()
 
-	err := bisector.repo.Delete()
-	check.NoError(err, bisector.log, "Failed to clean up repo")
+		close(bisector.done)
+		bisector.log.Debug("Git bisect clean up")
 
-	delete(bisectorMap, bisector.testID)
-	os.RemoveAll(bisector.resultsDir)
-	logging.CloseLog(bisector.log)
-	bisector.done <- true
-	close(bisector.done)
+		err := bisector.repo.Delete()
+		check.NoError(err, bisector.log, "Failed to clean up repo")
+
+		os.RemoveAll(bisector.resultsDir)
+		logging.CloseLog(bisector.log)
+	})
 }
 
 // Exit handles bisector panic and clean up.
@@ -434,13 +439,15 @@ func (bisector *GitBisector) Info() server.BisectorInfo {
 }
 
 // CheckActive checks whether a bisector is active and clean it up when expired.
-func (bisector *GitBisector) CheckActive() {
+func (bisector *GitBisector) CheckActive() bool {
 	if time.Since(bisector.lastActive) > bisectorTimeout {
 		bisector.log.WithField(
 			"lastActive", bisector.lastActive.Format(time.Stamp),
 		).Warn("Bisector timeout, cleaning resources")
 		bisector.Clean()
+		return true
 	}
+	return false
 }
 
 /*
