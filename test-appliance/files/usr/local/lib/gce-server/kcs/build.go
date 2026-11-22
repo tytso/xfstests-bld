@@ -34,6 +34,10 @@ func init() {
 // send it back to LTM to init a test.
 func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	log := serverLog.WithField("testID", testID)
+	if err := check.ValidateTestID(testID); err != nil {
+		log.WithError(err).Error("Invalid testID in StartBuild")
+		return
+	}
 	log.Info("Start building kernel")
 
 	buildLog := logging.KCSLogDir + testID + ".build"

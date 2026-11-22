@@ -89,11 +89,15 @@ var (
 // NewShardScheduler constructs a new sharder from a test request.
 // All dir strings have a trailing / for consistency purpose,
 // except for bucketSubdir.
-func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
+func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, error) {
+	if err := check.ValidateTestID(testID); err != nil {
+		return nil, fmt.Errorf("invalid testID: %w", err)
+	}
+
 	logDir := logging.LTMLogDir + testID + "/"
 	err := check.CreateDir(logDir)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logFile := logDir + "run.log"
@@ -205,7 +209,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
 	sharderMap[testID] = &sharder
 	sharderLock.Unlock()
 
-	return &sharder
+	return &sharder, nil
 }
 
 // initLocalSharding creates shards in the same zone the VM runs in.

@@ -394,7 +394,7 @@ func (server *Instance) FailureHandler(next http.Handler) http.Handler {
 }
 
 // ParseTaskRequest parses the request into a TaskRequest struct
-// Validates the password if the request is internal
+// Validates the password if the request is internal, as well as any testID fields.
 func ParseTaskRequest(w http.ResponseWriter, r *http.Request) (TaskRequest, error) {
 	var c TaskRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
@@ -403,9 +403,27 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request) (TaskRequest, erro
 		return c, err
 	}
 
+	if c.Options == nil {
+		c.Options = &UserOptions{}
+	}
+
 	if c.ExtraOptions != nil && c.ExtraOptions.Password != password {
 		http.Error(w, "Login failed", http.StatusForbidden)
 		return c, fmt.Errorf("Failed to validate password")
+	}
+
+	if c.Options.TestRunID != "" {
+		if err := check.ValidateTestID(c.Options.TestRunID); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid test_run_id: %v", err))
+			return c, err
+		}
+	}
+
+	if c.ExtraOptions != nil && c.ExtraOptions.Requester != Query {
+		if err := check.ValidateTestID(c.ExtraOptions.TestID); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid test_id: %v", err))
+			return c, err
+		}
 	}
 
 	return c, nil
@@ -426,6 +444,21 @@ func SendResponse(w http.ResponseWriter, r *http.Request, resp interface{}) erro
 	return nil
 }
 
+// SendErrorResponse sends a JSON SimpleResponse error with the given HTTP status code.
+func SendErrorResponse(w http.ResponseWriter, statusCode int, msg string) error {
+	js, err := json.Marshal(SimpleResponse{
+		Status: false,
+		Msg:    msg,
+	})
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_, err = w.Write(js)
+	return err
+}
+
 // SendInternalRequest sends a task request between LTM and KCS.
 // The request is from LTM to KCS if toKCS is true.
 // Append a password field for internal request validation.
@@ -435,6 +468,14 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		receiver = "LTM"
 	}
 	log.Info("Sending request to " + receiver)
+
+	if c.ExtraOptions == nil {
+		log.Panic("No internal option fields set in the request")
+	}
+	if c.ExtraOptions.Requester != Query {
+		err := check.ValidateTestID(c.ExtraOptions.TestID)
+		check.Panic(err, log, "Invalid testID in internal request")
+	}
 
 	var config *gcp.Config
 	if toKCS {
@@ -457,9 +498,6 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	url := fmt.Sprintf("https://%s/internal", ip)
 
-	if c.ExtraOptions == nil {
-		log.Panic("No internal option fields set in the request")
-	}
 	c.ExtraOptions.Password = password
 
 	log.WithFields(logrus.Fields{

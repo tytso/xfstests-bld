@@ -32,14 +32,14 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 	log := serverLog.WithField("endpoint", "/gce-xfstests")
 
 	c, err := server.ParseTaskRequest(w, r)
-	check.Panic(err, log, "Failed to parse request")
+	if !check.NoError(err, log, "Failed to parse request") {
+		return
+	}
 	log.WithFields(logrus.Fields{
 		"cmdLine":      c.CmdLine,
 		"options":      c.Options,
 		"extraOptions": c.ExtraOptions,
 	}).Info("Received build request")
-
-	testID := mymath.GetTimeStamp()
 
 	if c.Options.ReportFailEmail == "" {
 		c.Options.ReportFailEmail = c.Options.ReportEmail
@@ -47,20 +47,31 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 
 	response := server.SimpleResponse{
 		Status: true,
-		TestID: testID,
 	}
 
 	if c.ExtraOptions == nil {
+		testID := mymath.GetTimeStamp()
 		log.WithField("testID", testID).Info("User request, generating testID")
+		if err := check.ValidateTestID(testID); err != nil {
+			log.WithField("testID", testID).WithError(err).Error("Invalid generated testID")
+			_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
 
 		go StartBuild(c, testID, serverLog)
+		response.TestID = testID
 		response.Msg = "Building kernel for user"
 
 	} else {
 		switch c.ExtraOptions.Requester {
 		case server.LTMBuild:
-			testID = c.ExtraOptions.TestID
+			testID := c.ExtraOptions.TestID
 			log.WithField("testID", testID).Info("LTM build request, use existing testID")
+			if err := check.ValidateTestID(testID); err != nil {
+				log.WithField("testID", testID).WithError(err).Error("Invalid testID in LTM build request")
+				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 
 			go StartBuild(c, testID, serverLog)
 			response.TestID = testID
@@ -69,8 +80,13 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 		case server.LTMBisectStart:
 			fallthrough
 		case server.LTMBisectStep:
-			testID = c.ExtraOptions.TestID
+			testID := c.ExtraOptions.TestID
 			log.WithField("testID", testID).Info("LTM bisect request, use existing testID")
+			if err := check.ValidateTestID(testID); err != nil {
+				log.WithField("testID", testID).WithError(err).Error("Invalid testID in LTM bisect request")
+				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 
 			go RunBisect(c, testID, serverLog)
 			response.TestID = testID

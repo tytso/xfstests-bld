@@ -63,8 +63,8 @@ of the same repo (used in bisect). If id matches the default repo id, return tha
 It does not overwrite the directory if it already exists.
 */
 func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, error) {
-	if id == "" {
-		return nil, fmt.Errorf("repo id not specified")
+	if err := check.ValidateTestID(id); err != nil {
+		return nil, fmt.Errorf("invalid repo id: %w", err)
 	}
 	if !check.DirExists(RefRepoDir) {
 		cmd := exec.Command("git", "clone", "--mirror", RefRepoURL, RefRepoDir)
@@ -77,6 +77,9 @@ func NewRepository(id string, repoURL string, writer io.Writer) (*Repository, er
 	base, err := ParseURL(repoURL)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse repo url")
+	}
+	if err := check.ValidateTestID(base); err != nil {
+		return nil, fmt.Errorf("invalid parsed repo dir: %w", err)
 	}
 
 	baseRepoDir := RepoRootDir + base + "/"

@@ -62,11 +62,15 @@ var (
 // NewGitBisector constructs a new git bisect manager from a bisect request.
 // The repo is initialized with a git bisect session.
 // Creates a monitor goroutine that removes expired bisectors.
-func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
+func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
+	if err := check.ValidateTestID(testID); err != nil {
+		return nil, fmt.Errorf("invalid testID: %w", err)
+	}
+
 	logDir := logging.KCSLogDir + testID + "/"
 	err := check.CreateDir(logDir)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logFile := logDir + "run.log"
@@ -135,7 +139,7 @@ func NewGitBisector(c server.TaskRequest, testID string) *GitBisector {
 		}
 	}()
 
-	return &bisector
+	return &bisector, nil
 }
 
 // Start starts the bisect.
@@ -238,6 +242,9 @@ func (bisector *GitBisector) aggResults(gce *gcp.Service) {
 }
 
 func (bisector *GitBisector) getResults(testID string, gce *gcp.Service) (string, error) {
+	if err := check.ValidateTestID(testID); err != nil {
+		return "", fmt.Errorf("invalid testID: %w", err)
+	}
 	prefix := fmt.Sprintf("%s/results.%s-%s.", bisector.bucketSubdir, server.LTMUserName, testID)
 	resultFiles, err := gce.GetFileNames(prefix)
 	if !check.NoError(err, bisector.log, "Failed to get GS filenames") {
@@ -447,6 +454,10 @@ If the build fails, it bisect skip the current commit.
 */
 func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	log := serverLog.WithField("testID", testID)
+	if err := check.ValidateTestID(testID); err != nil {
+		log.WithError(err).Error("Invalid testID in RunBisect")
+		return
+	}
 	log.Info("Start git bisect task")
 
 	logFile := logging.KCSLogDir + testID + "/run.log"
@@ -456,11 +467,16 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	var bisector *GitBisector
 	var ok bool
 	if c.ExtraOptions.Requester == server.LTMBisectStart {
-		if _, ok = bisectorMap[testID]; ok {
+		bisectorLock.Lock()
+		_, ok = bisectorMap[testID]
+		bisectorLock.Unlock()
+		if ok {
 			log.Panic("Git bisector already exists")
 		}
 
-		bisector = NewGitBisector(c, testID)
+		var err error
+		bisector, err = NewGitBisector(c, testID)
+		check.Panic(err, log, "Failed to initiate git bisector")
 
 		bisectorLock.Lock()
 		bisectorMap[testID] = bisector

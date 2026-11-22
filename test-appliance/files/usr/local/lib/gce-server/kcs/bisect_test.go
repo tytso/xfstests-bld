@@ -23,7 +23,10 @@ func TestBisect(t *testing.T) {
 			GoodCommit: "v5.6",
 		},
 	}
-	bisector := NewGitBisector(c, "test")
+	bisector, err := NewGitBisector(c, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	bisector.Start()
 	if bisector.GetCommit() != "c870e04e71136d57817526add31b6abe2b451c63" {
 		t.Error("bisector commit mismatch")

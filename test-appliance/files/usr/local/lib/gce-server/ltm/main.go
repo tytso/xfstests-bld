@@ -38,21 +38,41 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	log = log.WithField("endpoint", "/gce-xfstests")
 
 	c, err := server.ParseTaskRequest(w, r)
-	check.Panic(err, log, "Failed to parse request")
+	if !check.NoError(err, log, "Failed to parse request") {
+		return
+	}
 	log.WithFields(logrus.Fields{
 		"cmdLine":      c.CmdLine,
 		"options":      c.Options,
 		"extraOptions": c.ExtraOptions,
 	}).Info("Received test request")
 
-	testID := mymath.GetTimeStamp()
-
 	if c.Options.ReportFailEmail == "" {
 		c.Options.ReportFailEmail = c.Options.ReportEmail
 	}
 
+	if c.ExtraOptions == nil && c.Options.UnWatch != "" {
+		log.Info("User requests a git unwatch, terminating git repo monitor")
+		if err := StopWatcher(c); err != nil {
+			log.WithField("unwatch", c.Options.UnWatch).WithError(err).Error("Failed to stop git watcher")
+			_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response := server.SimpleResponse{
+			Status: true,
+			Msg:    "Git repo monitor terminated",
+		}
+		log.WithField("response", response).Info("Sending response")
+		err = server.SendResponse(w, r, response)
+		check.Panic(err, log, "Failed to send the response")
+		return
+	}
+
+	var testID string
 	if c.ExtraOptions == nil {
 		if c.Options.TestRunID == "" {
+			testID = mymath.GetTimeStamp()
 			log.WithField("testID", testID).Info("User request, generating testID")
 		} else {
 			testID = c.Options.TestRunID
@@ -63,22 +83,26 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 		log.WithField("testID", testID).Info("KCS request, use existing testID")
 	}
 
+	if err := check.ValidateTestID(testID); err != nil {
+		log.WithField("testID", testID).WithError(err).Error("Invalid testID in request")
+		_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	response := server.SimpleResponse{
 		Status: true,
 		TestID: testID,
 	}
 
 	if c.ExtraOptions == nil {
-		if c.Options.UnWatch != "" {
-			log.Info("User requests a git unwatch, terminating git repo monitor")
-			StopWatcher(c)
-
-			response.Msg = "Git repo monitor terminated"
-			response.TestID = ""
-
-		} else if c.Options.BranchName != "" {
+		if c.Options.BranchName != "" {
 			log.Info("User requests a git watch, launching git repo monitor")
-			watcher := NewGitWatcher(c, testID)
+			watcher, err := NewGitWatcher(c, testID)
+			if err != nil {
+				log.WithField("testID", testID).WithError(err).Error("Failed to create git watcher")
+				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 			go watcher.Run()
 
 			response.Msg = "Git repo monitor initiating"
@@ -89,7 +113,11 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 				TestID:    testID,
 				Requester: server.LTMBisectStart,
 			}
-			go ForwardKCS(c, testID)
+			go func(req server.TaskRequest, id string) {
+				if err := ForwardKCS(req, id); err != nil {
+					log.WithError(err).Error("Failed to forward bisect request to KCS")
+				}
+			}(c, testID)
 
 			response.Msg = "Calling KCS to initiate git bisect"
 
@@ -99,7 +127,11 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 				TestID:    testID,
 				Requester: server.LTMBuild,
 			}
-			go ForwardKCS(c, testID)
+			go func(req server.TaskRequest, id string) {
+				if err := ForwardKCS(req, id); err != nil {
+					log.WithError(err).Error("Failed to forward build request to KCS")
+				}
+			}(c, testID)
 
 			response.Msg = "Calling KCS to build kernel"
 		}
@@ -109,14 +141,24 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 		var sharder *ShardScheduler
 
 		if logging.MOCK {
-			sharder = MockNewShardScheduler(c, testID)
+			sharder, err = MockNewShardScheduler(c, testID)
+			if err != nil {
+				log.WithField("testID", testID).WithError(err).Error("Failed to create mock sharder")
+				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 			// sharder.Dump("/root/mock_sharder.json")
 			// sharder := ReadSharder("/root/mock_sharder.json")
 			log.Info("Mock sharder created")
 			go sharder.MockRun()
 
 		} else {
-			sharder = NewShardScheduler(c, testID)
+			sharder, err = NewShardScheduler(c, testID)
+			if err != nil {
+				log.WithField("testID", testID).WithError(err).Error("Failed to create test sharder")
+				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 			log.Info("Test sharder created")
 			go sharder.Run()
 		}

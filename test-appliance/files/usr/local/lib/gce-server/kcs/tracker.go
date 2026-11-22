@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
@@ -64,6 +65,9 @@ func StartTracker(instance *server.Instance, finished chan bool) {
 // RunBuild builds the kernel and upload the kernel image.
 // It signals the server tracker to reset the timeout timer.
 func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig string, kConfigOpts string, kbuildOpts string, arch string, testID string, buildLog string) error {
+	if err := check.ValidateTestID(testID); err != nil {
+		return fmt.Errorf("invalid testID: %w", err)
+	}
 	buildLock.Lock()
 	defer buildLock.Unlock()
 	newBuild <- true

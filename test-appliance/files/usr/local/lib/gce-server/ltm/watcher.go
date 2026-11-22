@@ -62,18 +62,22 @@ var (
 )
 
 // NewGitWatcher constructs a new git watcher from a watch request.
-// It panics if there is already a watcher running on this branch.
-func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
+// It returns an error if testID is invalid or already linked with a watcher.
+func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
+	if err := check.ValidateTestID(testID); err != nil {
+		return nil, fmt.Errorf("invalid testID: %w", err)
+	}
+
 	watcherLock.Lock()
 	defer watcherLock.Unlock()
 	if _, ok := watcherMap[testID]; ok {
-		panic("Given testID is already linked with a watcher")
+		return nil, fmt.Errorf("given testID is already linked with a watcher")
 	}
 
 	logDir := logging.LTMLogDir + testID + "/"
 	err := check.CreateDir(logDir)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	logFile := logDir + "run.log"
@@ -130,7 +134,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) *GitWatcher {
 
 	watcherMap[testID] = watcher
 
-	return watcher
+	return watcher, nil
 }
 
 // Run starts watching on a remote repo. The watcher checks remote HEAD
@@ -149,7 +153,7 @@ func (watcher *GitWatcher) watch() {
 	var runonce bool
 	var skip, skipAmount int
 
-	subject := fmt.Sprintf("xfstests LTM watcher failure " + watcher.testID)
+	subject := "xfstests LTM watcher failure " + watcher.testID
 	defer email.ReportFailure(watcher.log, watcher.logFile, watcher.reportFailReceiver, subject)
 
 	checkTicker := time.NewTicker(checkInterval)
@@ -227,7 +231,11 @@ func (watcher *GitWatcher) InitTest() {
 	watcher.testRequest.Options.CommitID = watcher.repo.Head()
 	watcher.testRequest.ExtraOptions.TestID = testID
 
-	go ForwardKCS(watcher.testRequest, watcher.testID)
+	go func(req server.TaskRequest, id string) {
+		if err := ForwardKCS(req, id); err != nil {
+			watcher.log.WithError(err).Error("Failed to forward request to KCS")
+		}
+	}(watcher.testRequest, watcher.testID)
 }
 
 // tidyUp used to clean up the GCS bucket by fetching and aggregating
@@ -291,13 +299,19 @@ func (watcher *GitWatcher) UpdateTest(testID string, testResult server.ResultTyp
 }
 
 // StopWatcher finds the running watcher on a given branch and terminate it.
-// It panics if no matching watcher is found.
-func StopWatcher(c server.TaskRequest) {
-	if watcher, ok := watcherMap[c.Options.UnWatch]; ok {
-		watcher.done <- true
-		return
+// It returns an error if unwatch ID is invalid or no matching watcher is found.
+func StopWatcher(c server.TaskRequest) error {
+	if err := check.ValidateTestID(c.Options.UnWatch); err != nil {
+		return fmt.Errorf("invalid unwatch ID: %w", err)
 	}
-	panic("No active watcher with ID " + c.Options.UnWatch)
+	watcherLock.Lock()
+	watcher, ok := watcherMap[c.Options.UnWatch]
+	watcherLock.Unlock()
+	if ok {
+		watcher.done <- true
+		return nil
+	}
+	return fmt.Errorf("no active watcher with specified ID")
 }
 
 // WatcherStatus returns the info for active git watchers.

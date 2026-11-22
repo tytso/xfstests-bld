@@ -18,7 +18,7 @@ done_cleanup=false
 set_default_arch
 
 exit_code=0
-trap '_cleanup; exit $exit_code' 0
+trap 'rc=$?; _cleanup; exit $rc' 0
 trap '_cleanup; exit 1' 1 2 3 15
 
 _cleanup()
@@ -248,6 +248,41 @@ validate_branch_name()
 	echo -e "$1 is not a valid branch of $GIT_REPO"
 	exit 1
     fi
+}
+
+validate_testrunid()
+{
+    local id="$1"
+    local opt="${2:---testrunid}"
+    local LC_ALL=C
+
+    if test -z "$id" ; then
+	echo 1>&2 "Invalid $opt: testID must not be empty"
+	exit_code=1
+	exit 1
+    fi
+    case "$id" in
+	-*)
+	    echo 1>&2 "Invalid $opt '$id': testID must not start with '-'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	.|..|*..*)
+	    echo 1>&2 "Invalid $opt '$id': testID must not contain '..' or be '.'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*/*|*\\*)
+	    echo 1>&2 "Invalid $opt '$id': testID must not contain path separators"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*[[:space:][:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: testID must not contain whitespace or control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
 }
 
 function set_git_repo ()
@@ -783,6 +818,7 @@ while (( $# >= 1 )); do
 	--unwatch) shift
 	    supported_flavors gce
 	    OVERRIDE_KERNEL="none"
+	    validate_testrunid "$1" "--unwatch"
 	    WATCHER_ID="$1"
 	    ;;
 	--bisect-bad) shift
@@ -827,6 +863,7 @@ while (( $# >= 1 )); do
 	    ;;
 	--testrunid) shift
 	    supported_flavors gce kvm
+	    validate_testrunid "$1" "--testrunid"
 	    TESTRUNID="$1"
 	    ;;
 	--email) shift

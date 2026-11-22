@@ -8,6 +8,7 @@ package check
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -206,4 +207,29 @@ func ContainsStr(strings []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// ValidateTestID validates that testID is a non-empty single path component
+// safe for use in filenames and directory paths. It rejects empty strings,
+// leading '-' characters, "." and ".." traversal segments, path separators
+// ('/' and '\\'), NUL bytes, and ASCII whitespace or control characters.
+func ValidateTestID(testID string) error {
+	if testID == "" {
+		return fmt.Errorf("testID must not be empty")
+	}
+	if strings.HasPrefix(testID, "-") {
+		return fmt.Errorf("testID must not start with '-'")
+	}
+	if testID == "." || testID == ".." || strings.Contains(testID, "..") {
+		return fmt.Errorf("testID must not contain '..' or be '.'")
+	}
+	if strings.ContainsAny(testID, "/\\\x00") {
+		return fmt.Errorf("testID must not contain path separators or NUL bytes")
+	}
+	for i := 0; i < len(testID); i++ {
+		if testID[i] <= 0x20 || testID[i] == 0x7f {
+			return fmt.Errorf("testID must not contain whitespace or control characters")
+		}
+	}
+	return nil
 }

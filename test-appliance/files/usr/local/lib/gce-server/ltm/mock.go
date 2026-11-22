@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
+	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/gcp"
 	"thunk.org/gce-server/util/logging"
 	"thunk.org/gce-server/util/server"
@@ -157,7 +159,10 @@ func ReadSharder(filename string) *ShardScheduler {
 	return &sharder
 }
 
-func MockNewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler {
+func MockNewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, error) {
+	if err := check.ValidateTestID(testID); err != nil {
+		return nil, fmt.Errorf("invalid testID: %w", err)
+	}
 	sharder := ShardScheduler{
 		testID:      testID,
 		testRequest: c,
@@ -167,7 +172,7 @@ func MockNewShardScheduler(c server.TaskRequest, testID string) *ShardScheduler 
 		sharder.reportKCS = true
 	}
 
-	return &sharder
+	return &sharder, nil
 }
 
 func (sharder *ShardScheduler) MockRun() {
@@ -178,6 +183,8 @@ func (sharder *ShardScheduler) MockRun() {
 	if sharder.reportKCS {
 		sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
 		sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
-		ForwardKCS(sharder.testRequest, sharder.testID)
+		if err := ForwardKCS(sharder.testRequest, sharder.testID); err != nil {
+			sharder.log.WithError(err).Error("Failed to forward mock bisect result to KCS")
+		}
 	}
 }
