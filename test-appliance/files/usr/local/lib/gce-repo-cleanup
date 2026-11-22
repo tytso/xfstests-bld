@@ -14,9 +14,6 @@ flock -x 9
 
 cd /cache/repositories || exit 1
 
-REPOS=$(find . -maxdepth 1 -type d -print | grep -v "^.$" | \
-	    grep -v "./linux.reference" | grep -v "./bisects")
-
 if test -d linux.reference ; then
     pushd linux.reference > /dev/null
     if [ ! -f last-fetch ] ||
@@ -35,22 +32,24 @@ if test -d bisects &&
     ACTIVE_BISECTS=yes
 fi
 
-for i in $REPOS ; do
+while IFS= read -r -d '' i ; do
     if test -z "$ACTIVE_BISECTS" &&
-       [[ $(find $i/last-used -mtime +30 -print 2> /dev/null) ]] ; then
+       [[ $(find "$i/last-used" -mtime +30 -print 2> /dev/null) ]] ; then
 	echo "Removing stale repository $i"
-	rm -rf $i
+	rm -rf -- "$i"
 	continue
     fi
-    pushd $i > /dev/null
-    if [ ! -f last-touched ] ||
-	   [[ $(find last-touched -mtime +7 -print 2> /dev/null) ]] ; then
-	echo "Cleaning repository $i"
-	git clean -xf -e /last-\*
-	touch last-touched
+    if pushd -- "$i" > /dev/null ; then
+	if [ ! -f last-touched ] ||
+	       [[ $(find last-touched -mtime +7 -print 2> /dev/null) ]] ; then
+	    echo "Cleaning repository $i"
+	    git clean -xf -e /last-\*
+	    touch last-touched
+	fi
+	git gc --auto
+	popd > /dev/null
     fi
-    git gc --auto
-    popd > /dev/null
-done
+done < <(find . -mindepth 1 -maxdepth 1 -type d \
+	    ! -name 'linux.reference' ! -name 'bisects' ! -name '*.tmp' -print0)
 
 fstrim -v /cache
