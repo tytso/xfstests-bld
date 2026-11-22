@@ -122,6 +122,29 @@ else
     echo $GS_BUCKET > $GCE_STATE_DIR/gs_bucket
 fi
 
+if test -f "$GCE_STATE_DIR/gce_project"
+then
+    GCE_PROJECT=$(cat "$GCE_STATE_DIR/gce_project")
+else
+    _mds_project=$(get_metadata_value_with_retries project-id)
+    if test -n "$_mds_project"
+    then
+	GCE_PROJECT="$_mds_project"
+	echo "$GCE_PROJECT" > "$GCE_STATE_DIR/gce_project"
+    fi
+    unset _mds_project
+fi
+
+function validate_gce_project() {
+    local proj="${1:-$GCE_PROJECT}"
+    if [[ -z "$proj" || "$proj" == "." || "$proj" == ".." || \
+	  ! "$proj" =~ ^[A-Za-z0-9][A-Za-z0-9._:-]*$ ]] ; then
+	echo "Invalid or empty GCE_PROJECT: '$proj'" >&2
+	return 1
+    fi
+    return 0
+}
+
 if test -f $GCE_STATE_DIR/bucket_subdir
 then
     BUCKET_SUBDIR=$(cat $GCE_STATE_DIR/bucket_subdir)
