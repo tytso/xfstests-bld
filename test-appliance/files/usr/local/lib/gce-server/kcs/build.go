@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"sync"
 	"testing"
 
@@ -15,12 +16,53 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// repoMap indexes repos by repo url.
-// repoLock protects map access and ensures one build at a time
+// repoMap indexes repos by parsed repo id.
+// repoLock protects map access, while repoBuildLocks serializes checkout+build
+// per repository without blocking unrelated repos or LTM callback retries.
 var (
-	repoMap  = make(map[string]*git.Repository)
-	repoLock sync.Mutex
+	repoMap        = make(map[string]*git.Repository)
+	repoBuildLocks = make(map[string]*sync.Mutex)
+	repoLock       sync.Mutex
 )
+
+func getRepoBuildLock(id string) *sync.Mutex {
+	repoLock.Lock()
+	defer repoLock.Unlock()
+	mu, ok := repoBuildLocks[id]
+	if !ok {
+		mu = &sync.Mutex{}
+		repoBuildLocks[id] = mu
+	}
+	return mu
+}
+
+func getOrCloneBuildRepo(id string, repoURL string, cmdLog *logrus.Entry, w *io.PipeWriter) *git.Repository {
+	repoLock.Lock()
+	repo, ok := repoMap[id]
+	if ok && !check.DirExists(repo.Dir()) {
+		cmdLog.Warn("Cached repo directory missing, re-cloning")
+		delete(repoMap, id)
+		repoLock.Unlock()
+		_ = repo.Delete()
+		ok = false
+	} else {
+		repoLock.Unlock()
+	}
+
+	if !ok {
+		cmdLog.Debug("Cloning repo")
+		var err error
+		repo, err = git.NewRepository(id, repoURL, w)
+		check.Panic(err, cmdLog, "Failed to clone repo")
+
+		repoLock.Lock()
+		repoMap[id] = repo
+		repoLock.Unlock()
+	} else {
+		cmdLog.Debug("Existing repo found")
+	}
+	return repo
+}
 
 func init() {
 	err := check.CreateDir(logging.KCSLogDir)
@@ -52,28 +94,30 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	id, err := git.ParseURL(c.Options.GitRepo)
 	check.Panic(err, log, "Failed to parse repo url")
 
-	repoLock.Lock()
-	defer repoLock.Unlock()
+	result, isMock := checkoutAndBuild(c, id, gsBucket, gsPath, testID, buildLog, log)
+
+	if c.ExtraOptions != nil {
+		c.Options.GsKernel = gsPath
+		c.ExtraOptions.Requester = server.KCSTest
+		if isMock {
+			c.ExtraOptions.TestResult = result
+		}
+		server.SendInternalRequest(c, log, false)
+	}
+}
+
+func checkoutAndBuild(c server.TaskRequest, id string, gsBucket string, gsPath string, testID string, buildLog string, log *logrus.Entry) (server.ResultType, bool) {
+	perRepoMu := getRepoBuildLock(id)
+	perRepoMu.Lock()
+	defer perRepoMu.Unlock()
+
 	cmdLog := log.WithField("repoId", id)
 	w := cmdLog.WithField("cmd", "newRepo").Writer()
+	defer w.Close()
 
-	repo, ok := repoMap[id]
-	if !ok || !check.DirExists(repo.Dir()) {
-		if ok {
-			cmdLog.Warn("Cached repo directory missing, re-cloning")
-			_ = repo.Delete()
-			delete(repoMap, id)
-		}
-		cmdLog.Debug("Cloning repo")
-		repo, err = git.NewRepository(id, c.Options.GitRepo, w)
-		check.Panic(err, cmdLog, "Failed to clone repo")
+	repo := getOrCloneBuildRepo(id, c.Options.GitRepo, cmdLog, w)
 
-		repoMap[id] = repo
-	} else {
-		cmdLog.Debug("Existing repo found")
-	}
-
-	err = repo.Checkout(c.Options.CommitID, w)
+	err := repo.Checkout(c.Options.CommitID, w)
 	check.Panic(err, cmdLog, "Failed to checkout to commit")
 
 	gsConfig := c.Options.KConfig
@@ -83,21 +127,12 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 
 	if logging.MOCK {
 		result := MockRunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, testID, buildLog, log)
-		c.Options.GsKernel = gsPath
-		c.ExtraOptions.Requester = server.KCSTest
-		c.ExtraOptions.TestResult = result
-		server.SendInternalRequest(c, log, false)
-		return
+		return result, true
 	}
 	cmdLog.WithField("commit", c.Options.CommitID).Info("Building kernel")
 
 	err = RunBuild(repo, gsBucket, gsPath, gsConfig, kConfigOpts, kbuildOpts, arch, testID, buildLog)
 	check.Panic(err, log, "Failed to build and upload kernel")
 	log.WithField("gsPath", gsPath).Info("Kernel build and upload finished")
-
-	if c.ExtraOptions != nil {
-		c.Options.GsKernel = gsPath
-		c.ExtraOptions.Requester = server.KCSTest
-		server.SendInternalRequest(c, log, false)
-	}
+	return server.DefaultResult, false
 }
