@@ -83,9 +83,20 @@ type ShardScheduler struct {
 
 // sharderMap indexes sharders by testID.
 var (
-	sharderMap  = make(map[string]*ShardScheduler)
-	sharderLock sync.Mutex
+	sharderMap      = make(map[string]*ShardScheduler)
+	pendingSharders = make(map[string]bool)
+	sharderLock     sync.Mutex
 )
+
+func reserveSharderID(testID string) bool {
+	sharderLock.Lock()
+	defer sharderLock.Unlock()
+	if _, ok := sharderMap[testID]; ok || pendingSharders[testID] {
+		return false
+	}
+	pendingSharders[testID] = true
+	return true
+}
 
 // NewShardScheduler constructs a new sharder from a test request.
 // All dir strings have a trailing / for consistency purpose,
@@ -94,6 +105,26 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	if err := check.ValidateTestID(testID); err != nil {
 		return nil, fmt.Errorf("invalid testID: %w", err)
 	}
+	if !reserveSharderID(testID) {
+		return nil, fmt.Errorf("testID %s is already running", testID)
+	}
+
+	var log *logrus.Entry
+	var gceSvc *gcp.Service
+	registered := false
+	defer func() {
+		if !registered {
+			sharderLock.Lock()
+			delete(pendingSharders, testID)
+			sharderLock.Unlock()
+			if gceSvc != nil {
+				gceSvc.Close()
+			}
+			if log != nil {
+				logging.CloseLog(log)
+			}
+		}
+	}()
 
 	logDir := logging.LTMLogDir + testID + "/"
 	err := check.CreateDir(logDir)
@@ -102,7 +133,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	}
 
 	logFile := logDir + "run.log"
-	log := logging.InitLogger(logFile)
+	log = logging.InitLogger(logFile)
 
 	origCmd, err := parser.DecodeCmd(c.CmdLine)
 	check.Panic(err, log, "Failed to decode cmdline")
@@ -187,6 +218,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 
 	sharder.gce, err = gcp.NewService(sharder.gsBucket)
 	check.Panic(err, log, "Failed to connect to GCE service")
+	gceSvc = sharder.gce
 
 	regionShard := !c.Options.NoRegionShard
 	// This is a hack because RegionSharding doesn't know how to
@@ -207,7 +239,9 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 	}
 
 	sharderLock.Lock()
+	delete(pendingSharders, testID)
 	sharderMap[testID] = &sharder
+	registered = true
 	sharderLock.Unlock()
 
 	return &sharder, nil
