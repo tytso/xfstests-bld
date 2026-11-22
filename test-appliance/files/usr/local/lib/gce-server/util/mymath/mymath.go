@@ -5,31 +5,33 @@ package mymath
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
 var (
-	query     chan struct{}
-	timestamp chan time.Time
+	tsMu      sync.Mutex
+	lastUnix  int64
+	nowFunc   = time.Now
+	sleepFunc = time.Sleep
 )
 
-func init() {
-	query = make(chan struct{})
-	timestamp = make(chan time.Time)
-
-	go func() {
-		for {
-			<-query
-			timestamp <- time.Now()
-			time.Sleep(1100 * time.Millisecond)
-		}
-	}()
-}
-
-// GetTimeStamp returns a unique current timestamp.
+// GetTimeStamp returns a unique, strictly increasing UTC timestamp.
 func GetTimeStamp() string {
-	query <- struct{}{}
-	t := <-timestamp
+	tsMu.Lock()
+	defer tsMu.Unlock()
+
+	sec := nowFunc().UTC().Unix()
+	if sec == lastUnix {
+		sleepFunc(time.Second)
+		sec = nowFunc().UTC().Unix()
+	}
+	if sec <= lastUnix {
+		sec = lastUnix + 1
+	}
+	lastUnix = sec
+
+	t := time.Unix(sec, 0).UTC()
 	return fmt.Sprintf("%.4d%.2d%.2d%.2d%.2d%.2d",
 		t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 }
