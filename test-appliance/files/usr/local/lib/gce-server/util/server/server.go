@@ -454,6 +454,13 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (Ta
 		}
 	}
 
+	if c.Options.GitRepo != "" {
+		if err := check.ValidateGitRepoURL(c.Options.GitRepo); err != nil {
+			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid git_repo: %v", err))
+			return c, err
+		}
+	}
+
 	if c.ExtraOptions != nil && c.ExtraOptions.Requester != Query {
 		if err := check.ValidateTestID(c.ExtraOptions.TestID); err != nil {
 			_ = SendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid test_id: %v", err))

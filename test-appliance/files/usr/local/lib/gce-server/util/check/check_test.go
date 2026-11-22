@@ -130,3 +130,51 @@ func TestLimitedRunConcurrentDoesNotLeakSlots(t *testing.T) {
 	}
 }
 
+func TestValidateGitRepoURL(t *testing.T) {
+	validURLs := []string{
+		"https://github.com/tytso/ext4.git",
+		"https://github.com/XiaoyangShen/spinner_test.git",
+		"git://git.kernel.org/pub/scm/linux/kernel/git/elder/linux.git",
+		"https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git",
+		"https://kernel.googlesource.com/linux.git",
+		"http://git.example.com:8080/linux.git/",
+	}
+	for _, u := range validURLs {
+		if err := ValidateGitRepoURL(u); err != nil {
+			t.Errorf("expected ValidateGitRepoURL(%q) to succeed, got: %v", u, err)
+		}
+	}
+
+	invalidURLs := []string{
+		"",
+		"-u",
+		"--upload-pack=/bin/sh",
+		"file:///etc/passwd",
+		"file://localhost/tmp/repo.git",
+		"ssh://git@github.com/tytso/ext4.git",
+		"git@github.com:tytso/ext4.git",
+		"ext::sh -c %G/evil",
+		"https://github.com",
+		"https://github.com/",
+		"https:///tytso/ext4.git",
+		"https://-evil.example.com/linux.git",
+		"https://evil..example.com/linux.git",
+		"https://user:pass@github.com/tytso/ext4.git",
+		"https://github.com/tytso/ext4.git?foo=bar",
+		"https://github.com/tytso/ext4.git#main",
+		"https://github.com/tytso/../ext4.git",
+		"https://github.com/tytso/./ext4.git",
+		"https://github.com/tytso//ext4.git",
+		"https://github.com/tytso/ext4..bad.git",
+		"https://github.com/tytso/ext4\\bad.git",
+		"https://github.com/tytso/ext4.git\x00",
+		"https://github.com/tytso/ext4.git --upload-pack=evil",
+		"https://github.com/tytso/ext4.git\n--upload-pack=evil",
+	}
+	for _, u := range invalidURLs {
+		if err := ValidateGitRepoURL(u); err == nil {
+			t.Errorf("expected ValidateGitRepoURL(%q) to fail, got nil", u)
+		}
+	}
+}
+

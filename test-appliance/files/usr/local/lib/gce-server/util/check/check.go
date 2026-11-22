@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -238,4 +239,57 @@ func ValidateTestID(testID string) error {
 func ValidPassword(provided, expected string) bool {
 	return expected != "" &&
 		subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
+}
+
+// ValidateGitRepoURL validates a remote git repository URL accepted by LTM/KCS
+// HTTP endpoints. Only http, https, and git URL schemes with a valid hostname
+// and clean repository path are permitted.
+func ValidateGitRepoURL(rawURL string) error {
+	if rawURL == "" {
+		return fmt.Errorf("git repo URL must not be empty")
+	}
+	if strings.HasPrefix(rawURL, "-") {
+		return fmt.Errorf("git repo URL must not start with '-'")
+	}
+	if strings.ContainsAny(rawURL, "\\\x00") {
+		return fmt.Errorf("git repo URL must not contain backslashes or NUL bytes")
+	}
+	for i := 0; i < len(rawURL); i++ {
+		if rawURL[i] <= 0x20 || rawURL[i] == 0x7f {
+			return fmt.Errorf("git repo URL must not contain whitespace or control characters")
+		}
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid git repo URL: %w", err)
+	}
+	switch u.Scheme {
+	case "http", "https", "git":
+	default:
+		return fmt.Errorf("unsupported git repo URL scheme %q (must be http, https, or git)", u.Scheme)
+	}
+	if u.Opaque != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("git repo URL must not contain userinfo, query, or fragment")
+	}
+	host := u.Hostname()
+	if host == "" || strings.HasPrefix(host, "-") || strings.Contains(host, "..") {
+		return fmt.Errorf("git repo URL must contain a valid hostname")
+	}
+	if port := u.Port(); port != "" {
+		for i := 0; i < len(port); i++ {
+			if port[i] < '0' || port[i] > '9' {
+				return fmt.Errorf("git repo URL contains invalid port")
+			}
+		}
+	}
+	trimmedPath := strings.Trim(u.Path, "/")
+	if trimmedPath == "" {
+		return fmt.Errorf("git repo URL must include a repository path")
+	}
+	for _, seg := range strings.Split(trimmedPath, "/") {
+		if seg == "" || seg == "." || seg == ".." || strings.Contains(seg, "..") {
+			return fmt.Errorf("git repo URL contains invalid path segment %q", seg)
+		}
+	}
+	return nil
 }

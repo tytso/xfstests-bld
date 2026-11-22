@@ -109,14 +109,35 @@ func TestParseURL(t *testing.T) {
 			"github.com-XiaoyangShen-spinner_test.git-381e3d6d"},
 		{"git://git.kernel.org/pub/scm/linux/kernel/git/elder/linux.git",
 			"git.kernel.org-elder-linux.git-7353b8c3"},
+		{"https://kernel.googlesource.com/linux.git",
+			"kernel.googlesource.com-linux.git-3cff5938"},
 	}
 	for _, e := range tests {
 		dir, err := ParseURL(e.url)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("ParseURL(%q) returned unexpected error: %v", e.url, err)
 		}
 		if dir != e.dir {
 			t.Errorf("get wrong parsed url %s instead of %s", dir, e.dir)
+		}
+	}
+
+	invalid := []string{
+		"",
+		"https://example.com",
+		"https://example.com/",
+		"file:///etc/passwd",
+		"--upload-pack=/bin/sh",
+		"ext::sh -c evil",
+		"https://-evil.com/a/b.git",
+		"https://github.com/tytso/../ext4.git",
+		"https://github.com/tytso//ext4.git",
+		"https://github.com/tytso/ext4..bad.git",
+		"https://github.com/tytso/ext4.git\n",
+	}
+	for _, u := range invalid {
+		if dir, err := ParseURL(u); err == nil {
+			t.Errorf("expected ParseURL(%q) to fail, got %q", u, dir)
 		}
 	}
 }

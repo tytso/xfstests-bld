@@ -1,6 +1,10 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 )
@@ -45,5 +49,52 @@ func TestIsAlreadyExistsOutput(t *testing.T) {
 
 	if isAlreadyExistsOutput("ERROR: gcloud compute instances create failed\n", "The KCS instance already exists!") {
 		t.Fatal("expected unrelated failure output not to match already-exists check")
+	}
+}
+
+func postTaskRequestForTest(t *testing.T, reqBody TaskRequest, internal bool) (*httptest.ResponseRecorder, TaskRequest, error) {
+	t.Helper()
+	b, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/gce-xfstests", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	parsed, err := ParseTaskRequest(rec, req, internal)
+	return rec, parsed, err
+}
+
+func TestParseTaskRequestGitRepoValidation(t *testing.T) {
+	rec, _, err := postTaskRequestForTest(t, TaskRequest{
+		Options: &UserOptions{
+			GitRepo: "https://github.com/tytso/ext4.git",
+		},
+	}, false)
+	if err != nil {
+		t.Fatalf("expected valid git_repo to succeed, got err=%v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	for _, bad := range []string{
+		"file:///etc/passwd",
+		"file://localhost/tmp/repo.git",
+		"--upload-pack=/bin/sh",
+		"ext::sh -c evil",
+		"https://github.com",
+		"https://github.com/tytso/../ext4.git",
+	} {
+		rec, _, err := postTaskRequestForTest(t, TaskRequest{
+			Options: &UserOptions{
+				GitRepo: bad,
+			},
+		}, false)
+		if err == nil {
+			t.Fatalf("expected ParseTaskRequest to reject git_repo=%q", bad)
+		}
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for git_repo=%q, got %d", bad, rec.Code)
+		}
 	}
 }

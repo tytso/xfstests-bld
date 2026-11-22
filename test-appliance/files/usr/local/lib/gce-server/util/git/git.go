@@ -109,6 +109,17 @@ func gitWorkDir() string {
 	return ""
 }
 
+func gitRemoteEnv() map[string]string {
+	protocols := "http:https:git"
+	if testing.Testing() {
+		protocols = "file:http:https:git"
+	}
+	return map[string]string{
+		"GIT_TERMINAL_PROMPT": "0",
+		"GIT_ALLOW_PROTOCOL":  protocols,
+	}
+}
+
 func isReservedRepoID(id string) bool {
 	return id == "linux.reference" || id == "bisects" || id == RepoLockFileName || strings.HasSuffix(id, ".tmp")
 }
@@ -156,8 +167,8 @@ func ensureRefRepo(writer io.Writer) error {
 	}
 	tmpDir := refClean + ".tmp"
 	_ = os.RemoveAll(tmpDir)
-	cmd := exec.Command("git", "clone", "--mirror", refRepoURL, tmpDir)
-	if err := check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer); err != nil {
+	cmd := exec.Command("git", "clone", "--mirror", "--", refRepoURL, tmpDir)
+	if err := check.Run(cmd, gitWorkDir(), gitRemoteEnv(), writer, writer); err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return err
 	}
@@ -182,8 +193,8 @@ func ensureBaseRepo(base, repoURL string, writer io.Writer) (*Repository, error)
 	tmpDir := baseClean + ".tmp"
 	_ = os.RemoveAll(tmpDir)
 	refDir := repoRootDir + "linux.reference"
-	cmd := exec.Command("git", "clone", "--reference", refDir, repoURL, tmpDir)
-	if err := check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer); err != nil {
+	cmd := exec.Command("git", "clone", "--reference", refDir, "--", repoURL, tmpDir)
+	if err := check.Run(cmd, gitWorkDir(), gitRemoteEnv(), writer, writer); err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return nil, err
 	}
@@ -275,7 +286,7 @@ func newRepositoryAt(id string, repoURL string, targetDir string, writer io.Writ
 	_ = os.RemoveAll(tmpDir)
 
 	baseRepo.gitMu.RLock()
-	cmd := exec.Command("git", "clone", "--shared", baseRepo.dir, tmpDir)
+	cmd := exec.Command("git", "clone", "--shared", "--", baseRepo.dir, tmpDir)
 	err = check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer)
 	baseRepo.gitMu.RUnlock()
 	if err != nil {
@@ -283,14 +294,14 @@ func newRepositoryAt(id string, repoURL string, targetDir string, writer io.Writ
 		return nil, err
 	}
 
-	cmd = exec.Command("git", "remote", "set-url", "origin", repoURL)
+	cmd = exec.Command("git", "remote", "set-url", "--", "origin", repoURL)
 	err = check.Run(cmd, tmpDir, check.EmptyEnv, writer, writer)
 	if err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return nil, err
 	}
 	cmd = exec.Command("git", "fetch", "-qpf", "--all")
-	err = check.Run(cmd, tmpDir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, tmpDir, gitRemoteEnv(), writer, writer)
 	if err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return nil, err
@@ -599,6 +610,9 @@ func (repo *Repository) Dir() string {
 
 // NewRemoteRepository initiates a remote repo and get HEAD on given branch.
 func NewRemoteRepository(repoURL string, branch string) (*RemoteRepository, error) {
+	if _, err := ParseURL(repoURL); err != nil {
+		return nil, fmt.Errorf("invalid repo url: %w", err)
+	}
 	repo := RemoteRepository{
 		url:    repoURL,
 		branch: branch,
@@ -638,14 +652,14 @@ func (repo *RemoteRepository) Head() string {
 
 // getHead retrives the commit hash of the HEAD on a branch.
 func getHead(repoURL string, branch string) (string, error) {
+	if _, err := ParseURL(repoURL); err != nil {
+		return "", fmt.Errorf("invalid repo url: %w", err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), remoteQueryTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
-	env := map[string]string{
-		"GIT_TERMINAL_PROMPT": "0",
-	}
-	output, err := check.Output(cmd, gitWorkDir(), env, os.Stderr)
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--heads", "--quiet", "--exit-code", "--", repoURL, branch)
+	output, err := check.Output(cmd, gitWorkDir(), gitRemoteEnv(), os.Stderr)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return "", fmt.Errorf("git ls-remote timed out: %w", ctx.Err())
@@ -666,19 +680,54 @@ func getHead(repoURL string, branch string) (string, error) {
 }
 
 // ParseURL transforms a git url into a human readable directory string.
-// Format: hostname - last two parts of path - last 4 byte of md5 sum
+// Format: hostname - last (up to two) path segments - last 4 bytes of md5 sum.
 // Clone with ssh key is not supported.
 func ParseURL(repoURL string) (string, error) {
+	if repoURL == "" {
+		return "", fmt.Errorf("repo URL must not be empty")
+	}
+	if strings.HasPrefix(repoURL, "-") {
+		return "", fmt.Errorf("repo URL must not start with '-'")
+	}
+	for i := 0; i < len(repoURL); i++ {
+		if repoURL[i] <= 0x20 || repoURL[i] == 0x7f || repoURL[i] == '\\' {
+			return "", fmt.Errorf("repo URL contains invalid characters")
+		}
+	}
 	u, err := url.Parse(repoURL)
 	if err != nil {
 		return "", err
 	}
-	paths := strings.Split(u.Path, "/")
+	if u.Opaque != "" {
+		return "", fmt.Errorf("repo URL must not be opaque")
+	}
+	host := u.Hostname()
+	if host == "" || strings.HasPrefix(host, "-") {
+		return "", fmt.Errorf("repo URL must include a valid hostname")
+	}
+	trimmedPath := strings.Trim(u.Path, "/")
+	if trimmedPath == "" {
+		return "", fmt.Errorf("repo URL must include a repository path")
+	}
+	parts := strings.Split(trimmedPath, "/")
+	for _, p := range parts {
+		if p == "" || p == "." || p == ".." {
+			return "", fmt.Errorf("repo URL contains invalid path segment %q", p)
+		}
+	}
+	if len(parts) > 2 {
+		parts = parts[len(parts)-2:]
+	}
 	hash := md5.Sum([]byte(repoURL))
 
-	name := []string{u.Hostname()}
-	name = append(name, paths[len(paths)-2:]...)
+	name := make([]string, 0, 2+len(parts))
+	name = append(name, host)
+	name = append(name, parts...)
 	name = append(name, hex.EncodeToString(hash[len(hash)-4:]))
 
-	return strings.Join(name, "-"), nil
+	res := strings.Join(name, "-")
+	if err := check.ValidateTestID(res); err != nil {
+		return "", fmt.Errorf("invalid parsed repo dir: %w", err)
+	}
+	return res, nil
 }
