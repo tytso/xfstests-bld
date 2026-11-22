@@ -36,7 +36,11 @@ type GitBisector struct {
 	testHistory    []string
 
 	repo        *git.Repository
+	opMu        sync.Mutex
+	stateMu     sync.RWMutex
 	finished    bool
+	cleaned     bool
+	activeOps   int
 	badCommit   string
 	goodCommits []string
 	lastActive  time.Time
@@ -56,8 +60,9 @@ const (
 
 // bisectorMap indexes bisectors by testID which are guaranteed to be unique.
 var (
-	bisectorMap  = make(map[string]*GitBisector)
-	bisectorLock sync.Mutex
+	bisectorMap      = make(map[string]*GitBisector)
+	pendingBisectors = make(map[string]bool)
+	bisectorLock     sync.Mutex
 )
 
 // NewGitBisector constructs a new git bisect manager from a bisect request.
@@ -76,6 +81,12 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 
 	logFile := logDir + "run.log"
 	log := logging.InitLogger(logFile)
+	initOK := false
+	defer func() {
+		if !initOK {
+			logging.CloseLog(log)
+		}
+	}()
 	log.Info("Initiating git bisector")
 
 	resultsDir := logDir + "results/"
@@ -142,12 +153,37 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 		}
 	}()
 
+	initOK = true
 	return &bisector, nil
+}
+
+func (bisector *GitBisector) touch() {
+	bisector.stateMu.Lock()
+	bisector.lastActive = time.Now()
+	bisector.stateMu.Unlock()
+}
+
+func (bisector *GitBisector) beginOp() bool {
+	bisector.stateMu.Lock()
+	defer bisector.stateMu.Unlock()
+	if bisector.cleaned {
+		return false
+	}
+	bisector.activeOps++
+	bisector.lastActive = time.Now()
+	return true
+}
+
+func (bisector *GitBisector) endOp() {
+	bisector.stateMu.Lock()
+	bisector.activeOps--
+	bisector.lastActive = time.Now()
+	bisector.stateMu.Unlock()
 }
 
 // Start starts the bisect.
 func (bisector *GitBisector) Start() {
-	bisector.lastActive = time.Now()
+	bisector.touch()
 	bisector.log.Debug("Git bisect Start")
 
 	w := bisector.log.WithField("cmd", "bisectStart").Writer()
@@ -155,48 +191,67 @@ func (bisector *GitBisector) Start() {
 
 	bisector.log.Debug("Validate commits")
 
-	valid, err := bisector.repo.Valid(bisector.badCommit, w)
-	if !valid && !strings.HasPrefix(bisector.badCommit, "origin/") {
-		bisector.badCommit = "origin/" + bisector.badCommit
-		valid, err = bisector.repo.Valid(bisector.badCommit, w)
+	bisector.stateMu.RLock()
+	badCommit := bisector.badCommit
+	goodCommits := make([]string, len(bisector.goodCommits))
+	copy(goodCommits, bisector.goodCommits)
+	bisector.stateMu.RUnlock()
+
+	valid, err := bisector.repo.Valid(badCommit, w)
+	if !valid && !strings.HasPrefix(badCommit, "origin/") {
+		badCommit = "origin/" + badCommit
+		valid, err = bisector.repo.Valid(badCommit, w)
 	}
 	check.Panic(err, bisector.log, "Failed to validate badCommit")
 
-	for i, rev := range bisector.goodCommits {
+	for i, rev := range goodCommits {
 		valid, err = bisector.repo.Valid(rev, w)
 		if !valid && !strings.HasPrefix(rev, "origin/") {
-			bisector.goodCommits[i] = "origin/" + rev
-			valid, err = bisector.repo.Valid(bisector.goodCommits[i], w)
+			goodCommits[i] = "origin/" + rev
+			valid, err = bisector.repo.Valid(goodCommits[i], w)
 		}
 		check.Panic(err, bisector.log, "Failed to validate goodCommit")
 	}
 
-	finished, err := bisector.repo.BisectStart(bisector.badCommit, bisector.goodCommits, w)
+	finished, err := bisector.repo.BisectStart(badCommit, goodCommits, w)
 	check.Panic(err, bisector.log, "Failed to start bisect")
 
+	bisector.stateMu.Lock()
+	bisector.badCommit = badCommit
+	bisector.goodCommits = goodCommits
 	bisector.finished = finished
+	bisector.stateMu.Unlock()
 }
 
 // Step executes one step of git bisect. It stores the test result and related info.
 func (bisector *GitBisector) Step(testResult server.ResultType) {
-	bisector.lastActive = time.Now()
+	bisector.touch()
 	bisector.log.WithField("testResult", testResult).Debug("Git bisect step")
 
-	if !bisector.finished {
+	bisector.stateMu.RLock()
+	alreadyFinished := bisector.finished
+	bisector.stateMu.RUnlock()
+
+	if !alreadyFinished {
 		w := bisector.log.WithField("cmd", "bisectStep").Writer()
 		defer w.Close()
 
 		finished, err := bisector.repo.BisectStep(testResult, w)
 		check.Panic(err, bisector.log, "Failed to perform a bisect step")
 
+		bisector.stateMu.Lock()
 		bisector.finished = finished
+		bisector.stateMu.Unlock()
 	}
 }
 
 // Finish checks whether bisect finishes and perform result aggregation if true.
 // It fetches and aggregates test results and send bisect log as email.
 func (bisector *GitBisector) Finish() bool {
-	if !bisector.finished {
+	bisector.stateMu.RLock()
+	finished := bisector.finished
+	bisector.stateMu.RUnlock()
+	if !finished {
 		return false
 	}
 
@@ -226,7 +281,12 @@ func (bisector *GitBisector) aggResults(gce *gcp.Service) {
 
 	fmt.Fprint(file, bisector.Info().String())
 
-	for _, testID := range bisector.testHistory {
+	bisector.stateMu.RLock()
+	history := make([]string, len(bisector.testHistory))
+	copy(history, bisector.testHistory)
+	bisector.stateMu.RUnlock()
+
+	for _, testID := range history {
 		fmt.Fprintf(file, "\n============TEST %s============\n", testID)
 		reportFile, err := bisector.getResults(testID, gce)
 		if err == nil {
@@ -321,7 +381,11 @@ func (bisector *GitBisector) packResults(gce *gcp.Service) {
 	}
 
 	bisector.log.Info("Removing separate results tarball")
-	for _, testID := range bisector.testHistory {
+	bisector.stateMu.RLock()
+	history := make([]string, len(bisector.testHistory))
+	copy(history, bisector.testHistory)
+	bisector.stateMu.RUnlock()
+	for _, testID := range history {
 		prefix := fmt.Sprintf("%s/results.%s-%s", bisector.bucketSubdir, server.LTMUserName, testID)
 		_, err = gce.DeleteFiles(prefix)
 		check.NoError(err, bisector.log, "Failed to delete file")
@@ -355,10 +419,14 @@ func (bisector *GitBisector) GetCommit() string {
 // It returns a resultType other than DefaultResult to skip
 // running tests and perform next bisect step immediately
 func (bisector *GitBisector) Build() server.ResultType {
-	bisector.lastActive = time.Now()
+	bisector.touch()
 	commit := bisector.GetCommit()
 	bisector.log.WithField("commit", commit).Debug("Git bisect build")
-	newTestID := bisector.testID + "-" + commit[:8]
+	shortCommit := commit
+	if len(shortCommit) > 8 {
+		shortCommit = shortCommit[:8]
+	}
+	newTestID := bisector.testID + "-" + shortCommit
 
 	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun.deb", bisector.gsBucket, newTestID)
 
@@ -367,7 +435,9 @@ func (bisector *GitBisector) Build() server.ResultType {
 	bisector.testRequest.ExtraOptions.TestID = newTestID
 	bisector.testRequest.ExtraOptions.Requester = server.KCSBisectStep
 
+	bisector.stateMu.Lock()
 	bisector.testHistory = append(bisector.testHistory, newTestID)
+	bisector.stateMu.Unlock()
 
 	buildLog := bisector.logDir + newTestID + ".build"
 	gsConfig := bisector.testRequest.Options.KConfig
@@ -394,18 +464,32 @@ func (bisector *GitBisector) StartTest() {
 // It also disables the expire monitor and removes itself from bisectorMap.
 func (bisector *GitBisector) Clean() {
 	bisector.cleanOnce.Do(func() {
+		bisector.stateMu.Lock()
+		bisector.cleaned = true
+		bisector.stateMu.Unlock()
+
 		bisectorLock.Lock()
 		delete(bisectorMap, bisector.testID)
 		bisectorLock.Unlock()
 
 		close(bisector.done)
-		bisector.log.Debug("Git bisect clean up")
+		if bisector.log != nil {
+			bisector.log.Debug("Git bisect clean up")
+		}
 
-		err := bisector.repo.Delete()
-		check.NoError(err, bisector.log, "Failed to clean up repo")
+		if bisector.repo != nil {
+			err := bisector.repo.Delete()
+			if bisector.log != nil {
+				check.NoError(err, bisector.log, "Failed to clean up repo")
+			}
+		}
 
-		os.RemoveAll(bisector.resultsDir)
-		logging.CloseLog(bisector.log)
+		if bisector.resultsDir != "" {
+			os.RemoveAll(bisector.resultsDir)
+		}
+		if bisector.log != nil {
+			logging.CloseLog(bisector.log)
+		}
 	})
 }
 
@@ -422,32 +506,83 @@ func (bisector *GitBisector) Exit() {
 
 // Info returns structured bisector information.
 func (bisector *GitBisector) Info() server.BisectorInfo {
-	result, err := bisector.repo.BisectLog(os.Stdout)
-	if err != nil {
+	var result string
+	if bisector.repo != nil {
+		var err error
+		result, err = bisector.repo.BisectLog(os.Stdout)
+		if err != nil {
+			result = "Bisect log not available"
+		}
+	} else {
 		result = "Bisect log not available"
 	}
 	resultLines := strings.Split(result, "\n")
+
+	bisector.stateMu.RLock()
+	badCommit := bisector.badCommit
+	goodCommits := make([]string, len(bisector.goodCommits))
+	copy(goodCommits, bisector.goodCommits)
+	lastActive := bisector.lastActive
+	bisector.stateMu.RUnlock()
+
+	var repoURL string
+	if bisector.testRequest.Options != nil {
+		repoURL = bisector.testRequest.Options.GitRepo
+	}
+
 	return server.BisectorInfo{
 		ID:          bisector.testID,
 		Command:     bisector.origCmd,
-		Repo:        bisector.testRequest.Options.GitRepo,
-		BadCommit:   bisector.badCommit,
-		GoodCommits: bisector.goodCommits,
-		LastActive:  time.Since(bisector.lastActive).Round(time.Second).String(),
+		Repo:        repoURL,
+		BadCommit:   badCommit,
+		GoodCommits: goodCommits,
+		LastActive:  time.Since(lastActive).Round(time.Second).String(),
 		Log:         resultLines,
 	}
 }
 
 // CheckActive checks whether a bisector is active and clean it up when expired.
 func (bisector *GitBisector) CheckActive() bool {
-	if time.Since(bisector.lastActive) > bisectorTimeout {
-		bisector.log.WithField(
-			"lastActive", bisector.lastActive.Format(time.Stamp),
-		).Warn("Bisector timeout, cleaning resources")
-		bisector.Clean()
-		return true
+	bisector.stateMu.RLock()
+	cleaned := bisector.cleaned
+	active := bisector.activeOps > 0
+	lastActive := bisector.lastActive
+	bisector.stateMu.RUnlock()
+
+	if cleaned || active || time.Since(lastActive) <= bisectorTimeout {
+		return cleaned
 	}
-	return false
+
+	bisector.opMu.Lock()
+	defer bisector.opMu.Unlock()
+
+	bisector.stateMu.RLock()
+	cleaned = bisector.cleaned
+	active = bisector.activeOps > 0
+	lastActive = bisector.lastActive
+	bisector.stateMu.RUnlock()
+
+	if cleaned || active || time.Since(lastActive) <= bisectorTimeout {
+		return cleaned
+	}
+
+	if bisector.log != nil {
+		bisector.log.WithField(
+			"lastActive", lastActive.Format(time.Stamp),
+		).Warn("Bisector timeout, cleaning resources")
+	}
+	bisector.Clean()
+	return true
+}
+
+func reserveBisectorID(testID string) bool {
+	bisectorLock.Lock()
+	defer bisectorLock.Unlock()
+	if _, ok := bisectorMap[testID]; ok || pendingBisectors[testID] {
+		return false
+	}
+	pendingBisectors[testID] = true
+	return true
 }
 
 /*
@@ -474,19 +609,33 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	var bisector *GitBisector
 	var ok bool
 	if c.ExtraOptions.Requester == server.LTMBisectStart {
-		bisectorLock.Lock()
-		_, ok = bisectorMap[testID]
-		bisectorLock.Unlock()
-		if ok {
+		if !reserveBisectorID(testID) {
 			log.Panic("Git bisector already exists")
 		}
+		registered := false
+		defer func() {
+			if !registered {
+				bisectorLock.Lock()
+				delete(pendingBisectors, testID)
+				bisectorLock.Unlock()
+			}
+		}()
 
 		var err error
 		bisector, err = NewGitBisector(c, testID)
 		check.Panic(err, log, "Failed to initiate git bisector")
 
+		bisector.opMu.Lock()
+		defer bisector.opMu.Unlock()
+		if !bisector.beginOp() {
+			log.Panic("Git bisector has already been cleaned up")
+		}
+		defer bisector.endOp()
+
 		bisectorLock.Lock()
+		delete(pendingBisectors, testID)
 		bisectorMap[testID] = bisector
+		registered = true
 		bisectorLock.Unlock()
 	} else {
 		bisectorLock.Lock()
@@ -496,10 +645,18 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 			log.Panic("Git bisector doesn't exist")
 		}
 
-		if c.Options.CommitID != bisector.GetCommit() {
+		bisector.opMu.Lock()
+		defer bisector.opMu.Unlock()
+		if !bisector.beginOp() {
+			log.Panic("Git bisector doesn't exist")
+		}
+		defer bisector.endOp()
+
+		curCommit := bisector.GetCommit()
+		if c.Options.CommitID != curCommit {
 			log.WithFields(logrus.Fields{
 				"request":  c.Options.CommitID,
-				"bisector": bisector.GetCommit(),
+				"bisector": curCommit,
 			}).Panic("CommitID in request differs from bisector")
 		}
 	}
@@ -530,9 +687,14 @@ func RunBisect(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 // BisectorStatus returns the info for active git bisectors.
 func BisectorStatus() []server.BisectorInfo {
 	bisectorLock.Lock()
-	defer bisectorLock.Unlock()
-	infoList := []server.BisectorInfo{}
+	bisectors := make([]*GitBisector, 0, len(bisectorMap))
 	for _, v := range bisectorMap {
+		bisectors = append(bisectors, v)
+	}
+	bisectorLock.Unlock()
+
+	infoList := make([]server.BisectorInfo, 0, len(bisectors))
+	for _, v := range bisectors {
 		infoList = append(infoList, v.Info())
 	}
 	sort.Slice(infoList, func(i, j int) bool {
