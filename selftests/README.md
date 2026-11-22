@@ -1,13 +1,14 @@
 # Selftests for xfstests-bld
 
 This directory contains self-tests for xfstests-bld.  There are
-currently three self-test scripts, which generally should be run in
-this order:
+currently three main build/runtime self-test scripts (which generally
+should be run in order), plus two standalone offline curl-relay suites:
 
 * build-kernel
 * appliance
 * ltm-kcs
-* gcs-relay/test_gcs_relay.py
+* curl-relay/test_gcs_relay.py
+* curl-relay/test_ssh_curl.py
 
 These self-test scripts should be run out of the top-level directory
 of xfstests-bld or the alternatively, the self-tests directory.
@@ -40,11 +41,16 @@ gce-xfstests.
 
 This test script will run self-tests for the LTM and KCS server.
 
-## gcs-relay
+## curl-relay
 
-`gcs-relay/test_gcs_relay.py` runs local, offline end-to-end self-tests
+`curl-relay/test_gcs_relay.py` runs local, offline end-to-end self-tests
 for `GCE_CURL`, `run-fstests/util/gce-gcs-curl`, and
 `test-appliance/files/usr/local/lib/gce-gcs-relay` against loopback
-fakes of GCS, the GCE metadata server, `gcloud`, and LTM/KCS.  It does
-not require GCP access or built kernels.  See
-[gcs-relay/README.md](gcs-relay/README.md) for options and details.
+fakes of GCS, the GCE metadata server, `gcloud`, and LTM/KCS.
+
+`curl-relay/test_ssh_curl.py` runs local, offline end-to-end self-tests
+for `GCE_CURL` and `run-fstests/util/gce-ssh-curl` against loopback
+fakes of `ssh` and LTM/KCS (plus a local OpenSSH `sshd` when installed).
+
+Neither suite requires GCP access or built kernels.  See
+[curl-relay/README.md](curl-relay/README.md) for options and details.

@@ -273,10 +273,14 @@ Other optional parameters include:
   * The program which is used to send requests to the LTM and KCS
     servers.  The default is `curl`.  Setting this to `gce-gcs-curl`
     causes the requests to be relayed via the GCS bucket instead of
-    being sent directly to the server's VM; see [Using the GCS relay
+    being sent directly to the server's VM (see [Using the GCS relay
     to reach the LTM and KCS
     servers](#using-the-gcs-relay-to-reach-the-ltm-and-kcs-servers)
-    below.
+    below), while setting it to `gce-ssh-curl` forwards the requests
+    over an on-demand SSH tunnel (see [Using an SSH tunnel to reach
+    the LTM and KCS
+    servers](#using-an-ssh-tunnel-to-reach-the-ltm-and-kcs-servers)
+    below).
 * GIT_REPO
   * Optional git repo url. If specified, all kernel building requests
     will use this repo be default. It can be overridden by command
@@ -568,6 +572,82 @@ and the log of the relay service can be examined by running
 `journalctl -u gce-gcs-relay` on the server VM (missing subscriptions,
 missing IAM bindings, disabled APIs, or a missing Pub/Sub OAuth scope
 are logged there directly).
+
+## Using an SSH tunnel to reach the LTM and KCS servers
+
+As an alternative to `gce-gcs-curl`, if external connections to HTTPS
+port 443 on the LTM and KCS VMs are blocked by firewall or security
+policies, but SSH to the VMs does work, requests can be forwarded over
+an on-demand SSH tunnel instead.  To enable this, add the following line
+to `~/.config/gce-xfstests`:
+
+        GCE_CURL=gce-ssh-curl
+
+By default `gce-ssh-curl` establishes its SSH connection in the same way
+as `gce-xfstests ssh`:
+
+        gcloud [--account $GCE_ACCOUNT] --project $GCE_PROJECT \
+            compute ssh -q root@$GCE_INSTANCE --zone $GCE_ZONE -- <options>
+
+Because `ssh` runs in the background without a controlling terminal, it
+cannot prompt interactively for a password, passphrase, or host key
+confirmation.  If `gce-xfstests ssh xfstests-ltm` works without asking
+any questions, `gce-ssh-curl` should work as well; if tunnel setup
+fails, run `gce-xfstests ssh xfstests-ltm` (or `xfstests-kcs`) by hand
+to see what `gcloud` or `ssh` is asking about.
+
+Since opening a new SSH session takes several seconds, `gce-ssh-curl`
+starts a per-VM background daemon on first use that keeps the SSH local
+port-forwarding tunnel open for subsequent invocations and exits
+automatically once idle (10 minutes by default) or if the SSH connection
+drops.  Compared to `gce-gcs-curl`:
+
+* No extra daemon or Cloud Pub/Sub setup is needed on the LTM or KCS
+  VMs (only `sshd` with local TCP forwarding enabled, which is enabled
+  by default on the test appliance), and once a tunnel is open, follow-up
+  requests complete in a fraction of a second.
+* The client needs SSH login access to `xfstests-ltm` and `xfstests-kcs`
+  (whereas `gce-gcs-curl` only needs GCS bucket object access).
+* `curl` still speaks HTTPS end-to-end through the Unix-domain socket
+  tunnel to `127.0.0.1:443` on the VM, including verifying the server's
+  certificate against the hostname in the URL.
+
+The following environment variables can be used to customize
+`gce-ssh-curl` (use `export` when setting them in
+`~/.config/gce-xfstests`):
+
+* `SSH_CURL_IDLE` — Seconds the background tunnel daemon stays running
+  after its last use (default: `600`).  If set to `0`, the daemon exits
+  as soon as it is no longer in use so each invocation sets up its own
+  SSH connection.
+* `SSH_CURL_SSH` — Custom SSH command to connect to the VM instead of
+  `gcloud compute ssh`.  It is split using shell quoting rules, and the
+  placeholders `{instance}` (`$GCE_INSTANCE`), `{zone}` (`$GCE_ZONE`),
+  `{project}` (`$GCE_PROJECT`), `{project_dns}` (`$GCE_PROJECT` formatted
+  for DNS names, e.g. `example.com:foo` becomes `foo.example.com`),
+  `{account}` (`$GCE_ACCOUNT`), and `{user}` (`$SSH_CURL_USER`) are
+  expanded in each word.  Tunnel options (`-T -N -o BatchMode=yes ...
+  -L <socket>:$SSH_CURL_REMOTE`) are appended at the end, so the
+  template should end with the SSH destination.
+* `SSH_CURL_USER` — Remote user to log in as on the VM (default: `root`).
+* `SSH_CURL_REMOTE` — Target `host:port` from the VM's point of view
+  (default: `127.0.0.1:443`).
+* `SSH_CURL_TIMEOUT` — Seconds to wait for the SSH tunnel to become
+  ready (default: `60`).
+* `SSH_CURL_DIR` — Mode-`0700` directory for sockets and daemon log
+  files (default: `$XDG_RUNTIME_DIR/ssh-curl`, or `/tmp/ssh-curl-<uid>`
+  if `XDG_RUNTIME_DIR` is unset).
+* `SSH_CURL_CURL` — `curl` executable to invoke (default: `curl`).
+* `SSH_CURL_VERBOSE` — If set and non-empty, prints tunnel status
+  messages to stderr.
+
+Active SSH tunnels can be inspected or shut down manually with:
+
+        run-fstests/util/gce-ssh-curl --tunnel-status
+        run-fstests/util/gce-ssh-curl --tunnel-stop
+
+`--tunnel-status` also shows the path to each daemon's log file, which
+records `ssh` diagnostics.
 
 `GCE_CURL` can also be set to the pathname of some other program which
 accepts curl's command-line options, for sites which have some other

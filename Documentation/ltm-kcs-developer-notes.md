@@ -150,11 +150,80 @@ To tear them down (for example when decommissioning a project):
         gcloud storage buckets notifications delete projects/_/buckets/$GS_BUCKET/notificationConfigs/<ID>
         gcloud pubsub topics delete gce-xfstests-gcs-relay --project="<topic-project>"
 
-### Testing the relay locally
+## The SSH tunnel wrapper (`gce-ssh-curl`)
 
-An offline loopback self-test suite is located in
-[selftests/gcs-relay/](../selftests/gcs-relay/README.md) and exercises
-`gce-gcs-curl`, `gce-gcs-relay`, and the `run_gce_curl` shell hooks
-without touching real GCP or GCS resources:
+As an alternative to the GCS relay when SSH access to the server VMs is
+available, configuring `GCE_CURL=gce-ssh-curl` (see [Using an SSH tunnel
+to reach the LTM and KCS
+servers](gce-xfstests.md#using-an-ssh-tunnel-to-reach-the-ltm-and-kcs-servers))
+causes `run_gce_curl` to invoke
+[gce-ssh-curl](../run-fstests/util/gce-ssh-curl).  Unlike `gce-gcs-curl`,
+nothing special runs on the appliance VM beyond `sshd`:
 
-        ./selftests/gcs-relay/test_gcs_relay.py
+        curl  <-->  gce-ssh-curl --tunnel-daemon  <-->  ssh -L ...  <==>  sshd on VM
+              unix                                unix                    --> 127.0.0.1:443
+              socket                              socket
+
+From the LTM or KCS server's point of view, connections arrive at
+`127.0.0.1:443` just as with the GCS relay, while `curl` still speaks
+HTTPS end-to-end over `--unix-socket` and validates the server's
+certificate against `a.$GCE_PROJECT.gce-xfstests`.
+
+### Tunnel daemon lifecycle, leases, and concurrency
+
+* **Per-VM isolation and socket security**: Each `(VERSION, ssh_command,
+  remote)` tuple hashes to its own `<instance>.<hash>.{sock,lock,log}`
+  prefix inside a mode-`0700` directory (`$SSH_CURL_DIR`,
+  `$XDG_RUNTIME_DIR/ssh-curl`, or `/tmp/ssh-curl-<uid>`).  Sockets are
+  created with mode `0700` and the daemon checks `SO_PEERCRED` on every
+  accepted connection so only the owning UID can talk to it.
+* **Multiplexing control and TLS traffic on one socket**: Connections
+  from the `gce-ssh-curl` wrapper begin with `CONTROL_MAGIC`
+  (`\0ssh_curl `), whereas connections from `curl --unix-socket` begin
+  with a TLS `ClientHello` record (whose first byte is never `0x00`),
+  allowing a single Unix-domain socket to serve both control commands
+  (`lease`, `status`, `stop`) and raw TLS stream forwarding to `ssh`'s
+  `<base>.<pid>.fwd` local-forwarding socket.
+* **Cold-start serialization and active leases**: Concurrent
+  invocations when no daemon is running synchronize via `flock` on
+  `<base>.lock` so only one background `--tunnel-daemon` and `ssh`
+  process is started.  Before `exec`ing `curl`, the wrapper acquires a
+  `lease` control connection whose file descriptor is marked inheritable;
+  the lease stays open until `curl` exits.  The daemon considers itself
+  busy whenever any control or forwarded connection is open (so
+  `SSH_CURL_IDLE` never cuts off an in-flight request) and re-acquires
+  `<base>.lock` non-blockingly before exiting on idle to avoid racing
+  with a new caller.
+* **Process-group and file-descriptor cleanup**: `ssh` (by default
+  `gcloud compute ssh`, which spawns `ssh` as a child process rather than
+  `exec`ing it) is started with `start_new_session=True` and
+  `PR_SET_PDEATHSIG(SIGTERM)`.  Killing the daemon—even with
+  `SIGKILL`—tears down `ssh`, and normal shutdown (`SIGTERM`, idle
+  timeout, socket removal, or `--tunnel-stop`) signals the entire
+  process group via `os.killpg`.  Once the forwarding socket is ready,
+  the daemon redirects stdout and stderr to `<base>.log` so caller
+  pipelines (`ltm_post_json` / `kcs_post_json`) never block on held pipes.
+
+### Inspecting and debugging SSH tunnels
+
+To list active tunnel daemons (including their PIDs, `ssh` PIDs, idle
+timers, socket paths, and log file paths) or stop them cleanly:
+
+        ./run-fstests/util/gce-ssh-curl --tunnel-status
+        ./run-fstests/util/gce-ssh-curl --tunnel-stop
+
+Each daemon's `<base>.log` records the exact `ssh`/`gcloud` command line
+and any `ssh` diagnostic output (never request payloads or session
+cookies).  Setting `SSH_CURL_VERBOSE=1` also prints client-side tunnel
+status messages on stderr.
+
+## Testing the curl relays locally
+
+Offline loopback self-test suites are located in
+[selftests/curl-relay/](../selftests/curl-relay/README.md) and exercise
+the `run_gce_curl` shell hooks, `gce-gcs-curl` + `gce-gcs-relay`, and
+`gce-ssh-curl` (including against a local unprivileged `sshd` when
+OpenSSH is installed) without touching real GCP or GCS resources:
+
+        ./selftests/curl-relay/test_gcs_relay.py
+        ./selftests/curl-relay/test_ssh_curl.py

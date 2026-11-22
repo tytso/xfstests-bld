@@ -1,0 +1,977 @@
+#!/usr/bin/env python3
+#
+# gce-ssh-curl --- run curl through an ssh tunnel which is set up on demand
+#
+# What this is for
+# ----------------
+#
+# gce-xfstests talks to its LTM and KCS servers by using curl to
+# connect to the https port (443) of the VM (xfstests-ltm or
+# xfstests-kcs).  If there are security policies which require that
+# the connections to this port must be blocked from external internet
+# addresses, but ssh to the VM does work, this program, which takes
+# the same arguments as curl, allows the connection to be forwarded
+# over ssh:
+#
+#     curl  <-->  tunnel daemon  <-->  ssh -L ...  <==>  sshd on the VM
+#           unix                 unix                    --> 127.0.0.1:443
+#           socket               socket
+#
+# Since setting up an ssh connection takes several seconds, it is not
+# done for each request.  Instead, the first time it is needed, this
+# program starts a daemon in the background which starts ssh, and which
+# keeps the connection open so that later invocations can use it.  The
+# daemon exits, taking ssh with it, once it has been idle for a while
+# (10 minutes by default), or if ssh exits (for example, because the
+# connection broke, or because the VM went away).  The next invocation
+# will then simply start a new daemon.
+#
+# How to use it
+# -------------
+#
+# Put this in ~/.config/gce-xfstests:
+#
+#     GCE_CURL=gce-ssh-curl
+#
+# By default the ssh connection is made in the same way as "gce-xfstests
+# ssh" does it, that is, by running
+#
+#     gcloud [--account $GCE_ACCOUNT] --project $GCE_PROJECT \
+#         compute ssh -q root@$GCE_INSTANCE --zone $GCE_ZONE -- <options>
+#
+# So if "gce-xfstests ssh xfstests-ltm" works, without asking any
+# questions, this should work too.  Note that ssh is run in the
+# background, without a terminal, and so it can not ask for a password
+# or a passphrase, or ask whether a host key is OK.  If it needs to,
+# setting up the tunnel will fail; run "gce-xfstests ssh xfstests-ltm"
+# by hand to see what it is asking about.
+#
+# The following environment variables can be used to change how this
+# program behaves.  (Use "export" if setting them in the gce-xfstests
+# config file.)
+#
+#   SSH_CURL_IDLE     How many seconds the daemon should stay around
+#                     after it was last used.  The default is 600.  If
+#                     this is 0, the daemon exits as soon as it is no
+#                     longer being used, so that every invocation sets
+#                     up its own ssh connection.
+#
+#   SSH_CURL_SSH The command to use to connect to the VM, instead of
+#                     the gcloud command above.  It is split into
+#                     words in the same way as the shell does it, and
+#                     the following are then replaced in each word:
+#                     {instance} $GCE_INSTANCE {zone} $GCE_ZONE
+#                     {project} $GCE_PROJECT {project_dns} the
+#                     project, as it appears in DNS names:
+#                     "google.com:foo" turns into "foo.google.com"
+#                     {account} $GCE_ACCOUNT {user} $SSH_CURL_USER The
+#                     ssh options for the tunnel (see below) are added
+#                     to the end, so the command should end with the
+#                     destination.  For example, to use ssh to the
+#                     VM's internal IP addresses if it is made
+#                     available via a something like this might work:
+#
+#       export SSH_CURL_SSH='ssh -o StrictHostKeyChecking=accept-new {user}@nic0.{instance}.{zone}.c.{project_dns}.internal.gcpnode.com'
+#
+#   SSH_CURL_USER     The user to log in as on the VM (default: root)
+#
+#   SSH_CURL_REMOTE   Where, from the point of view of the VM, the
+#                     connections should go (default: 127.0.0.1:443)
+#
+#   SSH_CURL_TIMEOUT  How many seconds to wait for the ssh connection to
+#                     be established (default: 60)
+#
+#   SSH_CURL_DIR      The directory for the sockets and log files.  The
+#                     default is $XDG_RUNTIME_DIR/ssh-curl, or
+#                     /tmp/ssh-curl-<uid> if XDG_RUNTIME_DIR is not set.
+#
+#   SSH_CURL_CURL     The curl program to run (default: curl)
+#
+#   SSH_CURL_VERBOSE  If set (and not empty), say what is going on
+#
+# The options which get added to the ssh command are:
+#
+#     -T -N -o BatchMode=yes -o ExitOnForwardFailure=yes
+#     -o ServerAliveInterval=15 -o ServerAliveCountMax=3
+#     -o ControlPath=none -L <unix socket>:$SSH_CURL_REMOTE
+#
+# (ssh uses the first value it gets for an option, so any of the -o
+# options can be overridden by giving it in SSH_CURL_SSH.)  With the
+# ServerAlive settings ssh notices within about 45 seconds if the
+# connection is dead.
+#
+# For looking at, and getting rid of, the tunnels:
+#
+#     gce-ssh-curl --tunnel-status       list the tunnels
+#     gce-ssh-curl --tunnel-stop         shut down all of the tunnels
+#
+# The daemon's log file, which includes whatever ssh had to say, is in
+# the same directory as the sockets; --tunnel-status says where.
+#
+# How it works
+# ------------
+#
+# The daemon listens on a Unix-domain socket.  The socket has mode
+# 0700, it is in a directory which has mode 0700, and the daemon checks
+# the uid of whoever connects to it, so only its owner can use it.
+# There is one daemon (and so one socket) for each VM.
+#
+# Each time it is run, this program connects to the daemon's socket and
+# asks it for a "lease".  If there is no socket, or if the connection
+# is refused or the daemon does not answer, a new daemon is started,
+# and this program waits for the daemon to say that ssh is ready (or
+# that ssh failed, in which case this program exits with status 7,
+# which is what curl uses for "could not connect").  It then runs
+#
+#     curl --unix-socket <the daemon's socket> <arguments>
+#
+# so curl does TLS to the server through the tunnel just as it would
+# have directly, including checking the server's certificate against
+# the host name in the URL if that is what was asked for.  The
+# connection which was used to get the lease is left open, and is
+# inherited by curl.  As long as there are connections to it, of
+# either kind, the daemon considers itself to be in use; the idle timer
+# starts when the last one is closed.
+#
+# The exit status is curl's, except when the tunnel can not be set up
+# (7), or for errors in how this program is being used (2).
+
+import argparse
+import ctypes
+import errno
+import fcntl
+import hashlib
+import json
+import os
+import select
+import shlex
+import signal
+import socket
+import stat
+import struct
+import subprocess
+import sys
+import threading
+import time
+
+PROG = 'gce-ssh-curl'
+
+# Bumped whenever the wrapper and the daemon stop being compatible; it
+# is part of the socket's name, so that a new version of this program
+# never talks to a daemon which was started by an old version.
+VERSION = 1
+
+# What a connection to the daemon starts with if it is from this
+# program (as opposed to being from curl, in which case it starts with
+# a TLS handshake, which can never begin with a NUL byte).
+CONTROL_MAGIC = b'\0ssh_curl '
+
+DEFAULT_IDLE = 600.0
+DEFAULT_TIMEOUT = 60.0
+DEFAULT_REMOTE = '127.0.0.1:443'
+
+TUNNEL_OPTIONS = [
+    '-T', '-N',
+    '-o', 'BatchMode=yes',
+    '-o', 'ExitOnForwardFailure=yes',
+    '-o', 'ServerAliveInterval=15',
+    '-o', 'ServerAliveCountMax=3',
+    '-o', 'ControlPath=none',
+]
+
+E_USAGE = 2
+E_COULDNT_CONNECT = 7
+
+
+def say(msg):
+    sys.stderr.write('%s: %s\n' % (PROG, msg))
+    sys.stderr.flush()
+
+
+def die(code, msg):
+    say(msg)
+    sys.exit(code)
+
+
+#
+# The part which runs in place of curl
+#
+
+class Config:
+    def __init__(self):
+        env = os.environ
+        self.instance = env.get('GCE_INSTANCE', '').strip()
+        self.zone = env.get('GCE_ZONE', '').strip()
+        self.project = env.get('GCE_PROJECT', '').strip()
+        self.account = env.get('GCE_ACCOUNT', '').strip()
+        self.user = env.get('SSH_CURL_USER', '').strip() or 'root'
+        self.remote = env.get('SSH_CURL_REMOTE', '').strip() or DEFAULT_REMOTE
+        self.idle = self.number('SSH_CURL_IDLE', DEFAULT_IDLE)
+        self.timeout = self.number('SSH_CURL_TIMEOUT', DEFAULT_TIMEOUT)
+        self.verbose = bool(env.get('SSH_CURL_VERBOSE'))
+        self.ssh = self.ssh_command(env.get('SSH_CURL_SSH', '').strip())
+        self.desc = self.instance or self.ssh[-1]
+        if self.zone and self.project:
+            self.desc += ' (%s, %s)' % (self.zone, self.project)
+
+        # Each destination gets its own daemon.
+        ident = json.dumps([VERSION, self.ssh, self.remote])
+        name = '%s.%s' % ((self.instance or 'tunnel')[:32],
+                          hashlib.sha256(ident.encode()).hexdigest()[:12])
+        self.base = os.path.join(state_dir(), name)
+        self.sock = self.base + '.sock'
+        self.log = self.base + '.log'
+        self.lock = self.base + '.lock'
+        # (sun_path is 108 bytes; the daemon adds ".<pid>.fwd" for ssh)
+        if len(os.fsencode(self.base)) > 90:
+            die(E_USAGE, 'the socket name %s is too long; please set '
+                'SSH_CURL_DIR to a shorter directory name' % self.sock)
+
+    @staticmethod
+    def number(name, default):
+        value = os.environ.get(name, '').strip()
+        if not value:
+            return default
+        try:
+            number = float(value)
+            if not 0 <= number < float('inf'):
+                raise ValueError
+        except ValueError:
+            die(E_USAGE, 'bad value for %s: %s' % (name, value))
+        return number
+
+    def ssh_command(self, template):
+        """Returns the command which connects to the VM, as a list"""
+        values = {
+            'instance': self.instance,
+            'zone': self.zone,
+            'project': self.project,
+            'project_dns': '.'.join(reversed(self.project.split(':'))),
+            'account': self.account,
+            'user': self.user,
+        }
+        if not template:
+            for name in ('instance', 'zone', 'project'):
+                if not values[name]:
+                    die(E_USAGE, 'GCE_%s is not set.  This program is '
+                        'meant to be run by gce-xfstests\n%s: (by setting '
+                        'GCE_CURL in ~/.config/gce-xfstests); see the '
+                        'comments at\n%s: the beginning of %s'
+                        % (name.upper(), PROG, PROG,
+                           os.path.realpath(__file__)))
+            cmd = ['gcloud']
+            if self.account:
+                cmd += ['--account', self.account]
+            return cmd + ['--project', self.project, 'compute', 'ssh', '-q',
+                          '%s@%s' % (self.user, self.instance),
+                          '--zone', self.zone, '--']
+        try:
+            words = shlex.split(template)
+            cmd = [word.format(**values) for word in words]
+        except (ValueError, KeyError, IndexError) as e:
+            die(E_USAGE, 'bad value for SSH_CURL_SSH (%s): %s'
+                % (e.__class__.__name__ + ': ' + str(e), template))
+        if not cmd:
+            die(E_USAGE, 'SSH_CURL_SSH is empty')
+        for word, expanded in zip(words, cmd):
+            for name, value in values.items():
+                if '{%s}' % name in word and not value:
+                    die(E_USAGE, 'SSH_CURL_SSH uses {%s}, but %s is not set'
+                        % (name, 'GCE_PROJECT' if name == 'project_dns'
+                           else 'GCE_' + name.upper()))
+        return cmd
+
+
+def state_dir():
+    """Returns the directory for the sockets, creating it if necessary
+
+    Only the user must be able to get at the sockets, so the directory
+    has to belong to the user, and it must not be accessible to anyone
+    else.
+    """
+    path = os.environ.get('SSH_CURL_DIR', '').strip()
+    if not path:
+        runtime = os.environ.get('XDG_RUNTIME_DIR', '').strip()
+        try:
+            if runtime and os.stat(runtime).st_uid == os.geteuid():
+                path = os.path.join(runtime, 'ssh-curl')
+        except OSError:
+            pass
+    if not path:
+        path = '/tmp/ssh-curl-%d' % os.geteuid()
+    try:
+        os.mkdir(path, 0o700)
+        os.chmod(path, 0o700)           # in case of an odd umask
+    except FileExistsError:
+        pass
+    except OSError as e:
+        die(E_USAGE, 'cannot create the directory %s: %s'
+            % (path, e.strerror))
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.geteuid():
+        die(E_USAGE, '%s is not a directory which belongs to you' % path)
+    if st.st_mode & 0o077:
+        die(E_USAGE, '%s is accessible to other users (mode %o); it must '
+            'have mode 0700' % (path, st.st_mode & 0o777))
+    return path
+
+
+def peer_uid(sock):
+    """Returns the uid of the process at the other end of a socket"""
+    creds = sock.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED,
+                            struct.calcsize('3i'))
+    return struct.unpack('3i', creds)[1]
+
+
+def control(path, command, timeout=10):
+    """Sends a command to the daemon listening on a socket
+
+    Returns (the connection, the daemon's reply), or (None, None) if
+    there is no daemon there which is in working order.
+    """
+    conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    conn.settimeout(timeout)
+    try:
+        conn.connect(path)
+        if peer_uid(conn) != os.geteuid():
+            raise OSError(errno.EPERM, 'the socket belongs to someone else')
+        conn.sendall(CONTROL_MAGIC + command.encode() + b'\n')
+        data = b''
+        while not data.endswith(b'\n'):
+            chunk = conn.recv(4096)
+            if not chunk:
+                raise OSError(errno.ECONNRESET, 'no reply')
+            data += chunk
+        reply = json.loads(data.decode())
+        if not isinstance(reply, dict) or not reply.get('ok'):
+            raise ValueError
+    except (OSError, ValueError):
+        conn.close()
+        return None, None
+    conn.settimeout(None)
+    return conn, reply
+
+
+def get_lease(cfg):
+    """Returns a connection to the daemon which keeps the tunnel open"""
+    return control(cfg.sock, 'lease idle=%g' % cfg.idle)[0]
+
+
+def start_daemon(cfg):
+    """Starts a daemon, and waits until its tunnel is ready for use"""
+    rfd, wfd = os.pipe()
+    cmd = [sys.executable or 'python3', os.path.realpath(__file__),
+           '--tunnel-daemon', '--base', cfg.base, '--desc', cfg.desc,
+           '--idle', '%g' % cfg.idle, '--timeout', '%g' % cfg.timeout,
+           '--remote', cfg.remote, '--status-fd', str(wfd)]
+    if cfg.verbose:
+        cmd.append('--verbose')
+    cmd += ['--ssh', json.dumps(cfg.ssh)]
+    # The daemon gets our stderr, so that it can report what ssh says
+    # while the tunnel is being set up; it lets go of it after that.
+    # It must not get our stdout, since whoever is reading that would
+    # then have to wait for the daemon to exit.
+    try:
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, pass_fds=[wfd],
+                                start_new_session=True, cwd='/')
+    except OSError as e:
+        die(E_COULDNT_CONNECT, 'cannot start the tunnel daemon: %s'
+            % e.strerror)
+    os.close(wfd)
+    status = b''
+    deadline = time.monotonic() + cfg.timeout + 15
+    try:
+        while b'\n' not in status:
+            left = deadline - time.monotonic()
+            if left <= 0 or not select.select([rfd], [], [], left)[0]:
+                break
+            chunk = os.read(rfd, 4096)
+            if not chunk:
+                break
+            status += chunk
+    except KeyboardInterrupt:
+        proc.terminate()
+        raise
+    finally:
+        os.close(rfd)
+    status = status.decode('utf-8', 'replace').strip()
+    if status == 'OK':
+        return
+    if proc.poll() is None:
+        proc.terminate()
+    if status.startswith('ERR '):
+        reason = status[4:]
+    elif status:
+        reason = status
+    else:
+        reason = 'the tunnel daemon gave up; see %s' % cfg.log
+    die(E_COULDNT_CONNECT, 'could not set up an ssh tunnel to %s: %s'
+        % (cfg.desc, reason))
+
+
+def find_curl():
+    curl = os.environ.get('SSH_CURL_CURL', '').strip()
+    if curl:
+        return curl
+    me = os.path.realpath(__file__)
+    for directory in os.get_exec_path():
+        path = os.path.join(directory or '.', 'curl')
+        if os.access(path, os.X_OK) and os.path.realpath(path) != me:
+            return path
+    die(E_USAGE, 'cannot find curl')
+
+
+def run_curl(argv):
+    curl = find_curl()
+    try:
+        os.execv(curl, [curl] + argv)
+    except OSError as e:
+        die(E_USAGE, 'cannot run %s: %s' % (curl, e.strerror))
+
+
+def wrapper_main(argv):
+    if not any('://' in arg for arg in argv):
+        # There is no URL (e.g., "curl --version"), so no tunnel
+        run_curl(argv)
+    cfg = Config()
+    lease = get_lease(cfg)
+    if lease is None:
+        # Only one of us at a time gets to start a daemon; whoever else
+        # is waiting for the lock will find that there is one.
+        with open(os.open(cfg.lock, os.O_RDWR | os.O_CREAT, 0o600)) as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            lease = get_lease(cfg)
+            if lease is None:
+                say('setting up an ssh tunnel to %s' % cfg.desc)
+                start_daemon(cfg)
+                lease = get_lease(cfg)
+        if lease is None:
+            die(E_COULDNT_CONNECT, 'the tunnel daemon for %s is not '
+                'answering; see %s' % (cfg.desc, cfg.log))
+    elif cfg.verbose:
+        say('using the existing ssh tunnel to %s' % cfg.desc)
+    # curl inherits the lease, which therefore lasts for as long as
+    # curl is running.
+    os.set_inheritable(lease.fileno(), True)
+    run_curl(['--unix-socket', cfg.sock] + argv)
+
+
+def list_tunnels():
+    """Yields (socket name, connection, status) for the running daemons"""
+    directory = state_dir()
+    for name in sorted(os.listdir(directory)):
+        if name.endswith('.sock'):
+            path = os.path.join(directory, name)
+            conn, reply = control(path, 'status')
+            if conn is not None:
+                yield path, conn, reply
+
+
+def tunnel_status():
+    count = 0
+    for path, conn, st in list_tunnels():
+        conn.close()
+        count += 1
+        print('%s:' % st.get('desc'))
+        print('    daemon pid %s, ssh pid %s, running for %d seconds'
+              % (st.get('pid'), st.get('ssh_pid'), st.get('uptime', 0)))
+        if st.get('active'):
+            print('    in use (%d connections)' % st['active'])
+        else:
+            print('    idle for %d seconds; will exit after %g seconds'
+                  % (st.get('idle_for', 0), st.get('idle', 0)))
+        print('    socket: %s' % path)
+        print('    log:    %s' % st.get('log'))
+    if not count:
+        print('There are no ssh tunnels in %s' % state_dir())
+    return 0
+
+
+def tunnel_stop():
+    for path, conn, st in list_tunnels():
+        conn.close()
+        conn, _ = control(path, 'stop')
+        if conn is None:
+            continue
+        # The daemon closes the connection once it has cleaned up
+        try:
+            conn.settimeout(15)
+            while conn.recv(4096):
+                pass
+        except OSError:
+            pass
+        conn.close()
+        print('stopped the ssh tunnel to %s' % st.get('desc'))
+    return 0
+
+
+#
+# The daemon
+#
+
+def set_pdeathsig():
+    """Arrange for this process to get a SIGTERM if its parent dies
+
+    This is run in the child process which is about to become ssh, so
+    that ssh doesn't get left behind if the daemon is killed.
+    """
+    try:
+        PR_SET_PDEATHSIG = 1
+        libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+    except Exception:
+        pass
+
+
+libc = None
+
+
+class Daemon:
+    def __init__(self, args):
+        self.args = args
+        self.sock_path = args.base + '.sock'
+        self.fwd_path = '%s.%d.fwd' % (args.base, os.getpid())
+        self.log_path = args.base + '.log'
+        self.lock_path = args.base + '.lock'
+        self.idle = args.idle
+        self.started = time.monotonic()
+        self.last_activity = self.started
+        self.lock = threading.Lock()
+        self.conns = set()              # connections made to us
+        self.upstreams = set()          # our connections to ssh
+        self.starting = True
+        self.stop_reason = None
+        self.stopper = None
+        self.proc = None
+        self.listener = None
+        self.sock_id = None
+
+        os.umask(0o077)
+        self.logfile = open(self.log_path, 'w')
+
+    def note(self, msg, show=False):
+        """Writes to the log (and to the user, while starting up)"""
+        with self.lock:
+            self.logfile.write('%s %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'),
+                                            msg))
+            self.logfile.flush()
+            if self.starting and (show or self.args.verbose):
+                try:
+                    sys.stderr.write('%s: %s\n' % (PROG, msg))
+                    sys.stderr.flush()
+                except OSError:
+                    pass
+
+    def fail(self, msg):
+        """Gives up before the tunnel was ever ready"""
+        self.note(msg)
+        self.report('ERR ' + msg)
+        self.cleanup()
+        sys.exit(1)
+
+    def report(self, status):
+        """Tells the program which started us how it went"""
+        try:
+            os.write(self.args.status_fd, status.encode() + b'\n')
+            os.close(self.args.status_fd)
+        except OSError:
+            pass
+
+    def relay_ssh_output(self):
+        """Copies what ssh has to say to the log"""
+        for line in self.proc.stdout:
+            line = line.decode('utf-8', 'replace').rstrip()
+            if line:
+                self.note('ssh: ' + line, show=True)
+
+    def start_ssh(self):
+        global libc
+
+        # Get rid of what crashed daemons may have left behind.  (The
+        # program which started us holds the lock, so no other daemon
+        # is using these.)
+        directory, prefix = os.path.split(self.args.base)
+        for name in os.listdir(directory):
+            if name.startswith(prefix + '.') and name.endswith('.fwd'):
+                self.unlink(os.path.join(directory, name))
+        self.unlink(self.sock_path)
+
+        cmd = (self.args.ssh + TUNNEL_OPTIONS +
+               ['-L', '%s:%s' % (self.fwd_path, self.args.remote)])
+        self.note('running: ' + ' '.join(shlex.quote(c) for c in cmd))
+        try:
+            libc = ctypes.CDLL(None)
+        except OSError:
+            libc = None
+        try:
+            # ssh gets its own session, so that it can't get at the
+            # terminal, and so that it (and whatever else the command
+            # starts) can be killed as a group.
+            self.proc = subprocess.Popen(
+                cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, start_new_session=True,
+                preexec_fn=set_pdeathsig)
+        except OSError as e:
+            self.fail('cannot run %s: %s' % (cmd[0], e.strerror))
+        threading.Thread(target=self.relay_ssh_output, daemon=True).start()
+
+        # ssh creates the socket for the forwarding once it has logged
+        # in, so that is how we know that the tunnel is ready.
+        deadline = time.monotonic() + self.args.timeout
+        while True:
+            if self.stop_reason:
+                self.fail(self.stop_reason)
+            status = self.proc.poll()
+            if status is not None:
+                time.sleep(0.2)         # let its last words get logged
+                self.fail('"%s" failed (exit status %d); see above, or %s'
+                          % (' '.join(self.args.ssh), status, self.log_path))
+            try:
+                if stat.S_ISSOCK(os.stat(self.fwd_path).st_mode):
+                    break
+            except OSError:
+                pass
+            if time.monotonic() > deadline:
+                self.fail('timed out after %g seconds waiting for "%s" to '
+                          'connect' % (self.args.timeout,
+                                       ' '.join(self.args.ssh)))
+            time.sleep(0.05)
+
+    def listen(self):
+        self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            # (The umask is 077, so the socket is created with mode 0700)
+            self.listener.bind(self.sock_path)
+            os.chmod(self.sock_path, 0o700)
+            self.listener.listen(64)
+            st = os.stat(self.sock_path)
+            self.sock_id = (st.st_dev, st.st_ino)
+        except OSError as e:
+            self.fail('cannot create the socket %s: %s'
+                      % (self.sock_path, e.strerror))
+        self.listener.settimeout(0.5)
+
+    @staticmethod
+    def unlink(path):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    def touch(self):
+        self.last_activity = time.monotonic()
+
+    def ssh_alive(self):
+        return self.proc.poll() is None
+
+    def status(self):
+        now = time.monotonic()
+        with self.lock:
+            active = len(self.conns)
+        return {
+            'ok': True,
+            'pid': os.getpid(),
+            'ssh_pid': self.proc.pid,
+            'desc': self.args.desc,
+            'uptime': int(now - self.started),
+            'idle': self.idle,
+            'idle_for': int(now - self.last_activity),
+            # (not counting the connection which is asking)
+            'active': active - 1,
+            'log': self.log_path,
+        }
+
+    def handle(self, conn):
+        """Deals with one connection (this is run in its own thread)"""
+        try:
+            if peer_uid(conn) != os.geteuid():
+                return
+            # Whoever connects to us has something to say right away
+            conn.settimeout(30)
+            data = conn.recv(65536)
+            if not data:
+                return
+            conn.settimeout(None)
+            if data.startswith(b'\0'):
+                self.control(conn, data)
+            else:
+                self.forward(conn, data)
+        except OSError:
+            pass
+        finally:
+            with self.lock:
+                self.conns.discard(conn)
+            # self.touch()
+            if conn is not self.stopper:
+                conn.close()
+
+    def control(self, conn, data):
+        """Handles a connection from (another copy of) this program"""
+        while b'\n' not in data and len(data) < 1024:
+            chunk = conn.recv(1024)
+            if not chunk:
+                return
+            data += chunk
+        line = data.split(b'\n')[0]
+        if not line.startswith(CONTROL_MAGIC):
+            return
+        words = line[len(CONTROL_MAGIC):].decode('ascii', 'replace').split()
+        command = words[0] if words else ''
+        # Not answering is how we say that the tunnel is not usable
+        if self.stop_reason or not self.ssh_alive():
+            return
+        reply = json.dumps(self.status()).encode() + b'\n'
+        if command == 'lease':
+            for word in words[1:]:
+                if word.startswith('idle='):
+                    try:
+                        self.idle = max(0.0, float(word[5:]))
+                    except ValueError:
+                        pass
+            conn.sendall(reply)
+            # The lease lasts until the other end goes away
+            while conn.recv(1024):
+                pass
+        elif command == 'status':
+            conn.sendall(reply)
+        elif command == 'stop':
+            conn.sendall(reply)
+            # This connection gets closed once everything is cleaned up
+            self.stopper = conn
+            self.stop_reason = 'stopped by request'
+
+    def forward(self, client, data):
+        """Passes a connection from curl along to ssh"""
+        self.touch()
+        upstream = None
+        for _ in range(20):
+            upstream = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                upstream.connect(self.fwd_path)
+                break
+            except OSError:
+                upstream.close()
+                upstream = None
+                if not self.ssh_alive():
+                    break
+                time.sleep(0.05)
+        if upstream is None:
+            self.note('cannot connect to ssh via %s' % self.fwd_path)
+            return
+        with self.lock:
+            self.upstreams.add(upstream)
+
+        def copy(src, dst):
+            try:
+                while True:
+                    chunk = src.recv(65536)
+                    if not chunk:
+                        break
+                    dst.sendall(chunk)
+                    self.touch()
+            except OSError:
+                pass
+            try:
+                dst.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+
+        try:
+            upstream.sendall(data)
+            back = threading.Thread(target=copy, args=(upstream, client),
+                                    daemon=True)
+            back.start()
+            copy(client, upstream)
+            # The client is done; the server should be done soon, too
+            back.join(30)
+        finally:
+            for sock in (client, upstream):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            with self.lock:
+                self.upstreams.discard(upstream)
+            upstream.close()
+
+    def try_lock(self):
+        """Returns a file descriptor holding the lock, or None"""
+        try:
+            fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        except OSError:
+            return None
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            os.close(fd)
+            return None
+        return fd
+
+    def is_idle(self):
+        if self.idle <= 0:
+            # Give whoever started us a chance to make use of us
+            if time.monotonic() - self.started < 10:
+                return False
+        with self.lock:
+            if self.conns:
+                return False
+        return time.monotonic() - self.last_activity >= self.idle
+
+    def serve(self):
+        """Returns (why we are done, the lock or None)"""
+        while True:
+            try:
+                conn, _ = self.listener.accept()
+            except socket.timeout:
+                conn = None
+            except OSError as e:
+                return 'accept failed: %s' % e.strerror, None
+            if conn is not None:
+                with self.lock:
+                    self.conns.add(conn)
+                # self.touch()
+                threading.Thread(target=self.handle, args=(conn,),
+                                 daemon=True).start()
+                continue
+            if self.stop_reason:
+                return self.stop_reason, None
+            status = self.proc.poll()
+            if status is not None:
+                return 'ssh exited (status %d)' % status, None
+            try:
+                st = os.stat(self.sock_path)
+                if (st.st_dev, st.st_ino) != self.sock_id:
+                    raise OSError
+            except OSError:
+                return 'the socket %s is gone' % self.sock_path, None
+            if self.is_idle():
+                # Nobody can be starting to use us while we hold the
+                # lock without having noticed that we are going away:
+                # either their connection is already waiting for us (in
+                # which case we stay), or they will not get an answer.
+                fd = self.try_lock()
+                if fd is not None:
+                    if (not select.select([self.listener], [], [], 0)[0] and
+                            self.is_idle()):
+                        return ('idle for %d seconds'
+                                % (time.monotonic() - self.last_activity), fd)
+                    os.close(fd)
+
+    def cleanup(self, lock_fd=None):
+        # First, stop being found.  The socket is only removed if it is
+        # still ours (which is why this is done before closing it), and
+        # only with the lock held, so that this can't get in the way of
+        # a daemon which is being started to replace us.
+        if self.listener is not None:
+            if lock_fd is None:
+                lock_fd = self.try_lock()
+            if lock_fd is not None:
+                try:
+                    st = os.stat(self.sock_path)
+                    if (st.st_dev, st.st_ino) == self.sock_id:
+                        os.unlink(self.sock_path)
+                except OSError:
+                    pass
+            self.listener.close()
+        if lock_fd is not None:
+            os.close(lock_fd)
+        with self.lock:
+            conns = list(self.conns) + list(self.upstreams)
+        for conn in conns:
+            if conn is not self.stopper:
+                try:
+                    conn.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+        if self.proc is not None:
+            for sig, wait in ((signal.SIGTERM, 3), (signal.SIGKILL, 3)):
+                try:
+                    os.killpg(self.proc.pid, sig)
+                except OSError:
+                    pass
+                try:
+                    self.proc.wait(wait)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+        self.unlink(self.fwd_path)
+
+    def on_signal(self, signum, frame):
+        if not self.stop_reason:
+            self.stop_reason = 'received signal %d' % signum
+
+    def run(self):
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            signal.signal(sig, self.on_signal)
+        self.note('tunnel daemon for %s starting (pid %d)'
+                  % (self.args.desc, os.getpid()))
+        try:
+            self.start_ssh()
+            self.listen()
+        except SystemExit:
+            raise
+        except BaseException as e:
+            self.note('failed: %r' % (e,))
+            self.report('ERR internal error: %r' % (e,))
+            self.cleanup()
+            raise
+
+        # From here on what we (and ssh) have to say only goes to the
+        # log.  It is important to let go of the stderr which we were
+        # started with: it may be a pipe which someone is reading.
+        with self.lock:
+            self.starting = False
+        os.dup2(self.logfile.fileno(), 1)
+        os.dup2(self.logfile.fileno(), 2)
+        self.note('the tunnel is ready (after %.1f seconds)'
+                  % (time.monotonic() - self.started))
+        self.touch()
+        self.report('OK')
+
+        reason, lock_fd = 'internal error', None
+        try:
+            reason, lock_fd = self.serve()
+        finally:
+            self.note('exiting: ' + reason)
+            self.cleanup(lock_fd)
+            self.note('done')
+        if self.stopper is not None:
+            self.stopper.close()
+
+
+def daemon_main(argv):
+    parser = argparse.ArgumentParser(prog=PROG + ' --tunnel-daemon')
+    parser.add_argument('--base', required=True)
+    parser.add_argument('--desc', required=True)
+    parser.add_argument('--idle', type=float, default=DEFAULT_IDLE)
+    parser.add_argument('--timeout', type=float, default=DEFAULT_TIMEOUT)
+    parser.add_argument('--remote', default=DEFAULT_REMOTE)
+    parser.add_argument('--status-fd', type=int, required=True)
+    parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--ssh', required=True, type=json.loads,
+                        help='the ssh command, as a JSON list')
+    args = parser.parse_args(argv)
+    Daemon(args).run()
+    # Don't wait for threads which are stuck in a system call
+    sys.stdout.flush()
+    os._exit(0)
+
+
+def main(argv):
+    if argv[:1] == ['--tunnel-daemon']:
+        return daemon_main(argv[1:])
+    if argv == ['--tunnel-status']:
+        return tunnel_status()
+    if argv == ['--tunnel-stop']:
+        return tunnel_stop()
+    if argv[:1] and argv[0].startswith('--tunnel-'):
+        die(E_USAGE, 'usage: %s [--tunnel-status | --tunnel-stop | '
+            '<curl arguments>]' % os.path.basename(sys.argv[0]))
+    return wrapper_main(argv)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        sys.exit(130)
