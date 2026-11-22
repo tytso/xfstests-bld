@@ -320,6 +320,226 @@ validate_bucket_subdir()
     esac
 }
 
+validate_git_ref()
+{
+    local ref="$1"
+    local opt="${2:---commit}"
+    local rest seg
+    local LC_ALL=C
+
+    if test -z "$ref" ; then
+	echo 1>&2 "Invalid $opt: git revision must not be empty"
+	exit_code=1
+	exit 1
+    fi
+    case "$ref" in
+	-*)
+	    echo 1>&2 "Invalid $opt '$ref': git revision must not start with '-'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*..*|*@{*)
+	    echo 1>&2 "Invalid $opt '$ref': git revision must not contain '..' or '@{'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*\\*|*:*|*\**|*\?*|*\[*|*\]*)
+	    echo 1>&2 "Invalid $opt '$ref': git revision contains invalid characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+	/*|*/|*.)
+	    echo 1>&2 "Invalid $opt '$ref': git revision must not start or end with '/' or end with '.'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*[[:space:][:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: git revision must not contain whitespace or control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+    rest="${ref}/"
+    while test -n "$rest" ; do
+	seg="${rest%%/*}"
+	rest="${rest#*/}"
+	case "$seg" in
+	    ""|.*|*.lock)
+		echo 1>&2 "Invalid $opt '$ref': git revision contains invalid component '$seg'"
+		exit_code=1
+		exit 1
+		;;
+	esac
+    done
+}
+
+validate_bisect_good()
+{
+    local raw="$1"
+    local opt="${2:---bisect-good}"
+    local rest rev
+
+    if test -z "$raw" ; then
+	validate_git_ref "" "$opt"
+    fi
+    rest="${raw}|"
+    while test -n "$rest" ; do
+	rev="${rest%%|*}"
+	rest="${rest#*|}"
+	validate_git_ref "$rev" "$opt"
+    done
+}
+
+validate_git_branch()
+{
+    local branch="$1"
+    local opt="${2:---watch}"
+    local LC_ALL=C
+
+    if test "$branch" = "@" ; then
+	echo 1>&2 "Invalid $opt '$branch': git branch must not be '@'"
+	exit_code=1
+	exit 1
+    fi
+    validate_git_ref "$branch" "$opt"
+    case "$branch" in
+	*~*|*\^*)
+	    echo 1>&2 "Invalid $opt '$branch': git branch must not contain '~' or '^'"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+}
+
+validate_email_list()
+{
+    local list="$1"
+    local opt="${2:---email}"
+    local rest raw addr local_part domain_part
+    local LC_ALL=C
+
+    if test -z "$list" ; then
+	return 0
+    fi
+    case "$list" in
+	*[[:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: email list must not contain control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+    rest="${list},"
+    while test -n "$rest" ; do
+	raw="${rest%%,*}"
+	rest="${rest#*,}"
+	addr="${raw#"${raw%%[![:space:]]*}"}"
+	addr="${addr%"${addr##*[![:space:]]}"}"
+	if test -z "$addr" ; then
+	    echo 1>&2 "Invalid $opt '$list': email list contains an empty address"
+	    exit_code=1
+	    exit 1
+	fi
+	case "$addr" in
+	    -*)
+		echo 1>&2 "Invalid $opt '$addr': email address must not start with '-'"
+		exit_code=1
+		exit 1
+		;;
+	    *[[:space:][:cntrl:]]*|*\<*|*\>*|*\"*|*\'*|*\\*|*\;*|*\(*|*\)*|*\[*|*\]*|*:*|*@*@*)
+		echo 1>&2 "Invalid $opt '$addr': invalid email address"
+		exit_code=1
+		exit 1
+		;;
+	    ?*@?*)
+		local_part="${addr%@*}"
+		domain_part="${addr#*@}"
+		case "$local_part" in
+		    .*|*.|*..*)
+			echo 1>&2 "Invalid $opt '$addr': invalid email local part"
+			exit_code=1
+			exit 1
+			;;
+		esac
+		case "$domain_part" in
+		    .*|*.|*..*|-*|*-|*.-*|*-.*)
+			echo 1>&2 "Invalid $opt '$addr': invalid email domain"
+			exit_code=1
+			exit 1
+			;;
+		esac
+		;;
+	    *)
+		echo 1>&2 "Invalid $opt '$addr': email address must be of form user@domain"
+		exit_code=1
+		exit 1
+		;;
+	esac
+    done
+}
+
+validate_monitor_timeout()
+{
+    local raw="$1"
+    local opt="${2:---monitor-timeout}"
+    local normalized="$raw"
+    local re
+    normalized="${normalized//µs/us}"
+    normalized="${normalized//μs/us}"
+    local LC_ALL=C
+
+    if test -z "$raw" ; then
+	echo 1>&2 "Invalid $opt: monitor_timeout must not be empty"
+	exit_code=1
+	exit 1
+    fi
+    case "$normalized" in
+	-*)
+	    echo 1>&2 "Invalid $opt '$raw': monitor_timeout must be greater than zero"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*[[:space:][:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: monitor_timeout must not contain whitespace or control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+    re='^\+?(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|ms|s|m|h))+$'
+    if [[ ! "$normalized" =~ $re ]] || [[ "$normalized" != *[1-9]* ]] ; then
+	echo 1>&2 "Invalid $opt '$raw': expected positive duration (e.g. 30m, 2h)"
+	exit_code=1
+	exit 1
+    fi
+}
+
+validate_build_opts()
+{
+    local opts="$1"
+    local opt="${2:---kbuild-opts}"
+    local LC_ALL=C
+
+    if test -z "$opts" ; then
+	return 0
+    fi
+    case "$opts" in
+	*..*)
+	    echo 1>&2 "Invalid $opt '$opts': build options must not contain '..'"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*[[:cntrl:]]*)
+	    echo 1>&2 "Invalid $opt: build options must not contain control characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+	*\;*|*\|*|*\&*|*\`*|*\$*|*\<*|*\>*|*\(*|*\)*|*\**|*\?*|*\[*|*\]*|*\\*|*\'*|*\"*)
+	    echo 1>&2 "Invalid $opt '$opts': build options contain disallowed shell or glob characters"
+	    exit_code=1
+	    exit 1
+	    ;;
+    esac
+}
+
 function set_git_repo ()
 {
     if test -n "${GIT_REPOS[$1]}" ; then
@@ -840,11 +1060,13 @@ while (( $# >= 1 )); do
 	    ;;
 	--commit) shift
 	    supported_flavors gce
+	    validate_git_ref "$1" "--commit"
 	    OVERRIDE_KERNEL="none"
 	    COMMIT="$1"
 	    ;;
 	--watch) shift
 	    supported_flavors gce
+	    validate_git_branch "$1" "--watch"
 	    OVERRIDE_KERNEL="none"
 	    BRANCH="$1"
 	    ;;
@@ -859,11 +1081,13 @@ while (( $# >= 1 )); do
 	    ;;
 	--bisect-bad) shift
 	    supported_flavors gce
+	    validate_git_ref "$1" "--bisect-bad"
 	    BISECT_BAD="$1"
 	    OVERRIDE_KERNEL="none"
 	    ;;
 	--bisect-good) shift
 	    supported_flavors gce
+	    validate_bisect_good "$1" "--bisect-good"
 	    if test -z "$BISECT_GOOD"; then
 		BISECT_GOOD="$1"
 	    else
@@ -891,9 +1115,11 @@ while (( $# >= 1 )); do
 	    ;;
 	--kconfig-opts) shift
 	    supported_flavors gce
+	    validate_build_opts "$1" "--kconfig-opts"
 	    KCONFIG_OPTS="$1"
 	    ;;
 	--kbuild-opts) shift
+	    validate_build_opts "$1" "--kbuild-opts"
 	    DO_KBUILD=true
 	    KBUILD_OPTS="$1"
 	    ;;
@@ -904,10 +1130,12 @@ while (( $# >= 1 )); do
 	    ;;
 	--email) shift
 	    supported_flavors gce
+	    validate_email_list "$1" "--email"
 	    GCE_REPORT_EMAIL="$1"
 	    ;;
 	--fail-email) shift
 	    supported_flavors gce
+	    validate_email_list "$1" "--fail-email"
 	    GCE_REPORT_FAIL_EMAIL="$1"
 	    ;;
 	--no-email)
@@ -917,6 +1145,7 @@ while (( $# >= 1 )); do
 	    ;;
 	--junit-email) shift
 	    supported_flavors gce
+	    validate_email_list "$1" "--junit-email"
 	    GCE_JUNIT_EMAIL="$1"
 	    ;;
 	--no-junit-email)
@@ -1020,6 +1249,7 @@ while (( $# >= 1 )); do
 	    SOAK_DURATION="$1"
 	    ;;
 	--monitor-timeout) shift
+	    validate_monitor_timeout "$1" "--monitor-timeout"
 	    MONITOR_TIMEOUT="$1"
 	    ;;
 	--)
