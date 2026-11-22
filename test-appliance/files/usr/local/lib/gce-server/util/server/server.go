@@ -20,6 +20,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"thunk.org/gce-server/util/check"
@@ -197,6 +198,13 @@ var (
 )
 
 func init() {
+	if testing.Testing() && !check.FileExists(sessionsKeyPath) &&
+		gcp.LTMConfig() == nil && gcp.KCSConfig() == nil {
+		key = securecookie.GenerateRandomKey(32)
+		password = "test-password"
+		return
+	}
+
 	if check.FileExists(sessionsKeyPath) {
 		buf, err := ioutil.ReadFile(sessionsKeyPath)
 		if err != nil {
@@ -238,10 +246,15 @@ func New(addr string, name string) (*Instance, error) {
 	log := logging.InitLogger(logging.ServerLogPath)
 	log.Info("Initiating server")
 
+	router := mux.NewRouter()
 	server := &Instance{
+		httpServer: &http.Server{
+			Addr:    addr,
+			Handler: router,
+		},
 		name:   name,
 		addr:   addr,
-		router: mux.NewRouter(),
+		router: router,
 		store:  sessions.NewCookieStore(key),
 		log:    log,
 	}
@@ -279,10 +292,6 @@ func (server *Instance) Start() {
 		server.log.WithError(err).Error("Failed log startup message")
 	}
 
-	server.httpServer = &http.Server{
-		Addr:    server.addr,
-		Handler: server.router,
-	}
 	err = server.httpServer.ListenAndServeTLS(certPath, secretPath)
 
 	if err != http.ErrServerClosed {
@@ -295,6 +304,9 @@ func (server *Instance) Start() {
 
 // Shutdown closes the web service gracefully
 func (server *Instance) Shutdown() {
+	if server.httpServer == nil {
+		return
+	}
 	server.log.Info("Shut down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
