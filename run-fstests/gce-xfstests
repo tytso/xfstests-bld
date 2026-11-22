@@ -1337,15 +1337,6 @@ elif test -n "$RUN_ON_KCS"; then
     exit 0
 fi
 
-cert_file="$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
-expire_seconds=$((60 * 60 * 24 * 7))
-if test -f "$cert_file"
-   ! openssl x509 -enddate -noout -in "$cert_file" \
-     -checkend $expire_seconds >& /dev/null
-then
-    "$DIR/util/gce-setup-cert"
-fi
-
 function launch_vm () {
     echo "Launching $INSTANCE using $GCE_MACHTYPE..."
 

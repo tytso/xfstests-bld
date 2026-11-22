@@ -18,31 +18,6 @@ fi
 
 . "$DIR/util/get-config"
 
-function gce_gen_cert() {
-    # Making an SSL cert for a project, storing it in GCS bucket.
-
-    if [ -z "$REGEN_CERT" ] && \
-      gcs_exists gs://$GS_BUCKET/gce-xfstests-cert.pem && \
-      gcs_exists gs://$GS_BUCKET/gce-xfstests-server.pem && \
-      gcs_exists gs://$GS_BUCKET/gce-xfstests-key.pem
-    then
-        return 0
-    fi
-
-    # generate self-signed cert.
-
-    tmpdir=$(mktemp -d)
-    openssl req -x509 -newkey rsa:4096 -keyout "$tmpdir/gce-xfstests-key.pem" \
-	    -nodes -out "$tmpdir/gce-xfstests-cert.pem" -days 365 \
-	    -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
-
-    cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
-	> "$tmpdir/gce-xfstests-server.pem"
-
-    gcs_cp "$tmpdir/*" gs://$GS_BUCKET/
-    rm -rf "$tmpdir"
-}
-
 function gce_gen_ltm_pass() {
     if gcs_exists gs://$GS_BUCKET/ltm-pass
     then

@@ -17,7 +17,7 @@ FORCE_REGEN=
 FORCE_RENEW=
 UPDATE_COMBINED=
 EXPIRE_DAYS=365
-CHECKENDSECS=$((60 * 60 * 24 * 120))
+MAX_CHECKEND_SECS=$((90 * 24 * 60 * 60))
 
 . "$DIR/util/get-config"
 
@@ -31,6 +31,12 @@ do
 	    FORCE_RENEW=yes
 	    ;;
 	--expire-days) shift
+	    case "$1" in
+		''|*[!0-9]*|0)
+		    echo "invalid --expire-days value: $1" >&2
+		    exit 1
+		    ;;
+	    esac
 	    EXPIRE_DAYS="$1"
 	    ;;
 	*)
@@ -41,47 +47,122 @@ do
     shift
 done
 
+local_cert="$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
+
+# Never regenerate or upload certificates from inside an appliance/LTM/KCS VM.
+if test -n "$SKIP_GS_CONFIG_UPDATE"
+then
+    if test ! -f "$local_cert"
+    then
+	tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
+	trap 'rm -f "$tmp_cert"' EXIT
+	gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmp_cert"
+	chmod 0644 "$tmp_cert"
+	mv -f "$tmp_cert" "$local_cert"
+	trap - EXIT
+    fi
+    exit 0
+fi
+
+SAN_DNS="*.${GCE_PROJECT//:/-}.gce-xfstests"
+
+asn1_to_epoch() {
+    local ts="$1"
+    if date -d "$ts" +%s 2>/dev/null ; then
+	return 0
+    fi
+    if date -j -f "%b %e %T %Y %Z" "$ts" +%s 2>/dev/null ; then
+	return 0
+    fi
+    python3 -c 'import email.utils, sys; print(int(email.utils.parsedate_to_datetime(sys.argv[1]).timestamp()))' "$ts"
+}
+
+cert_needs_regen() {
+    local cert="$1"
+    local san_out start_raw end_raw start_epoch end_epoch lifetime threshold
+
+    san_out=$(openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null || true)
+    if ! printf '%s\n' "$san_out" | tr ',' '\n' | \
+	    sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
+	    grep -Fxq "DNS:${SAN_DNS}"
+    then
+	echo "Certificate is missing subjectAltName DNS:${SAN_DNS}, regenerating"
+	return 0
+    fi
+
+    start_raw=$(openssl x509 -startdate -noout -in "$cert" 2>/dev/null | cut -d= -f2-)
+    end_raw=$(openssl x509 -enddate -noout -in "$cert" 2>/dev/null | cut -d= -f2-)
+    start_epoch=$(asn1_to_epoch "$start_raw" 2>/dev/null || echo "")
+    end_epoch=$(asn1_to_epoch "$end_raw" 2>/dev/null || echo "")
+    if test -z "$start_epoch" -o -z "$end_epoch" || (( end_epoch <= start_epoch ))
+    then
+	echo "Certificate validity window could not be verified, regenerating"
+	return 0
+    fi
+
+    lifetime=$(( end_epoch - start_epoch ))
+    threshold=$(( lifetime / 2 ))
+    if (( threshold > MAX_CHECKEND_SECS ))
+    then
+	threshold=$MAX_CHECKEND_SECS
+    fi
+
+    if ! openssl x509 -enddate -noout -in "$cert" -checkend "$threshold" >/dev/null 2>&1
+    then
+	echo "Certificate will expire soon, regenerating"
+	return 0
+    fi
+
+    return 1
+}
+
+generate_new_cert() {
+    openssl req -x509 -newkey rsa:4096 -keyout "$tmpdir/gce-xfstests-key.pem" \
+	    -noenc -out "$tmpdir/gce-xfstests-cert.pem" -days "$EXPIRE_DAYS" \
+	    -subj "/CN=${SAN_DNS}" -addext "subjectAltName=DNS:${SAN_DNS}"
+}
+
+umask 077
 tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
 if test -n "$FORCE_REGEN" ||
-	! gcs_cp_always gs://$GS_BUCKET/gce-xfstests-cert.pem $tmpdir/ 2>/dev/null ||
-	! gcs_cp_always gs://$GS_BUCKET/gce-xfstests-key.pem $tmpdir/ 2>/dev/null
+	! gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmpdir/" 2>/dev/null ||
+	! gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-key.pem" "$tmpdir/" 2>/dev/null
 then
     echo "Regenerating GCE certificate files"
-
-    openssl req -x509 -newkey rsa:4096 -keyout "$tmpdir/gce-xfstests-key.pem" \
-	    -noenc -out "$tmpdir/gce-xfstests-cert.pem" -days $EXPIRE_DAYS \
-	    -subj "/CN=*.$GCE_PROJECT.gce-xfstests"
-
+    generate_new_cert
     UPDATE_COMBINED=yes
-else
-    if test -n "$FORCE_REGEN" ||
-	    ! openssl x509 -enddate -noout -in $tmpdir/gce-xfstests-cert.pem \
-	      -checkend $CHECKENDSECS >& /dev/null
-    then
-	echo "Certificates will expire soon, renewing"
-	openssl x509 -days 365 -in $tmpdir/gce-xfstests-cert.pem \
-		-signkey $tmpdir/gce-xfstests-key.pem \
-		-out $tmpdir/gce-xfstests-cert.pem.new
-	mv $tmpdir/gce-xfstests-cert.pem.new $tmpdir/gce-xfstests-cert.pem
-	UPDATE_COMBINED=yes
-    fi
+elif test -n "$FORCE_RENEW"
+then
+    echo "Renewing GCE certificate files"
+    openssl req -new -x509 -key "$tmpdir/gce-xfstests-key.pem" \
+	    -out "$tmpdir/gce-xfstests-cert.pem" -days "$EXPIRE_DAYS" \
+	    -subj "/CN=${SAN_DNS}" -addext "subjectAltName=DNS:${SAN_DNS}"
+    UPDATE_COMBINED=yes
+elif cert_needs_regen "$tmpdir/gce-xfstests-cert.pem"
+then
+    generate_new_cert
+    UPDATE_COMBINED=yes
 fi
-    
+
 if test -n "$UPDATE_COMBINED" ||
-	! gcs_exists gs://$GS_BUCKET/gce-xfstests-server.pem
+	! gcs_exists "gs://$GS_BUCKET/gce-xfstests-server.pem"
 then
     cat "$tmpdir/gce-xfstests-key.pem" "$tmpdir/gce-xfstests-cert.pem" \
 	> "$tmpdir/gce-xfstests-server.pem"
 
-    gcs_cp "$tmpdir/*" gs://$GS_BUCKET/
+    gcs_cp "$tmpdir/gce-xfstests-cert.pem" \
+	   "$tmpdir/gce-xfstests-key.pem" \
+	   "$tmpdir/gce-xfstests-server.pem" \
+	   "gs://$GS_BUCKET/"
 fi
 if test -n "$UPDATE_COMBINED" -o \
-	 ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+	 ! -f "$local_cert" ||
+	 ! cmp -s "$tmpdir/gce-xfstests-cert.pem" "$local_cert"
 then
     tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
     cp "$tmpdir/gce-xfstests-cert.pem" "$tmp_cert"
     chmod 0644 "$tmp_cert"
-    mv -f "$tmp_cert" "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
+    mv -f "$tmp_cert" "$local_cert"
 fi
-rm -rf "$tmpdir"
-

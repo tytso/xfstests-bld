@@ -151,13 +151,20 @@ then
     exit 1
 fi
 
-"$DIR/util/gce-setup-cert"
+if test -z "$NO_ACTION" -a -z "$SKIP_GS_CONFIG_UPDATE" ; then
+    "$DIR/util/gce-setup-cert"
+elif test ! -f "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" ; then
+    tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
+    gcs_cp_always "gs://$GS_BUCKET/gce-xfstests-cert.pem" "$tmp_cert"
+    chmod 0644 "$tmp_cert"
+    mv -f "$tmp_cert" "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
+fi
 
 gcs_rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
 
 echo "Launching LTM server..."
 TMP_LTM_INSTANCE=$(mktemp "$DIR/.ltm_instance_${GCE_PROJECT}.XXXXXX")
-chmod 0644 "$TMP_LTM_INSTANCE"
+chmod 0600 "$TMP_LTM_INSTANCE"
 trap 'rm -f "$TMP_LTM_INSTANCE"' EXIT
 
 run_gcloud compute instances create "$INSTANCE" --zone "$GCE_ZONE" \
