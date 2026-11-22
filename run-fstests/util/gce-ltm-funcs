@@ -1,19 +1,36 @@
-. $DIR/.ltm_instance_$GCE_PROJECT
+. "$DIR/.ltm_instance_$GCE_PROJECT"
 
-# The hostname has to match the common name field of the certificate, as set
-# in util/gce-do-setup when running openssl to create a self-signed cert.
-# curl will fail otherwise, stating that the common names do not match.
-LTM_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+# The hostname has to match the certificate SAN/CN generated in
+# util/gce-setup-cert for the project's self-signed certificate.
+LTM_HOSTNAME="a.${GCE_PROJECT//:/-}.gce-xfstests"
 function ltm_post_json() {
-    if test -n "$GCE_LTM_INT_IP"; then
-    run_gce_curl "${GCE_LTM_NAME:-xfstests-ltm}" -s \
-	--cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_INT_IP" -X POST "$@" -k | jq '.'
-    else
-    run_gce_curl "${GCE_LTM_NAME:-xfstests-ltm}" -s \
-	--cacert $GCE_LTM_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$LTM_HOSTNAME:443:$GCE_LTM_EXT_IP" -X POST "$@" -k | jq '.'
+    local target_ip="${GCE_LTM_EXT_IP:-}"
+    local resp rc
+
+    if test -n "${GCE_LTM_INT_IP:-}"; then
+	target_ip="$GCE_LTM_INT_IP"
     fi
+    resp=$(run_gce_curl "${GCE_LTM_NAME:-xfstests-ltm}" -s -S \
+	--cacert "$GCE_LTM_SERVER_CERT" -H "Content-Type: application/json" \
+	--resolve "$LTM_HOSTNAME:443:$target_ip" -X POST "$@")
+    rc=$?
+    if test "$rc" -ne 0 -o -z "$resp"; then
+	if test -n "$resp"; then
+	    printf '%s\n' "$resp" >&2
+	fi
+	return 1
+    fi
+    if ! printf '%s\n' "$resp" | jq '.' ; then
+	printf '%s\n' "$resp" >&2
+	return 1
+    fi
+    if printf '%s\n' "$resp" | jq -e 'type == "object" and has("status") and (.status == false)' >/dev/null 2>&1 ; then
+	if printf '%s\n' "$resp" | jq -e '.msg == "Login failed" or .msg == "Failed to retrieve user session"' >/dev/null 2>&1 ; then
+	    rm -f "$DIR/.ltm_cookie_$GCE_PROJECT"
+	fi
+	return 2
+    fi
+    return 0
 }
 
 function ltm_post_failed() {
@@ -31,111 +48,101 @@ function ltm_post_failed() {
 }
 
 function send_to_ltm() {
-    local cmd_to_send=$1
+    local cmd_to_send="$1"
+    local cookie_file="$DIR/.ltm_cookie_$GCE_PROJECT"
+    local login_payload payload rc
     shift
 
-        # Failed login will create an empty cookie file, so ensure
-        # the file exists and contains a cookie - sometimes ltm_post_json
-        # will succeed even when login fails, so we cannot simply remove
-        # the cookie file upon ltm_post_json failure
-    if test ! -f "$DIR/.ltm_cookie_$GCE_PROJECT" || \
-            ! grep "a.$GCE_PROJECT.gce-xfstests" "$DIR/.ltm_cookie_$GCE_PROJECT" &> /dev/null
+    if test ! -f "$cookie_file" || ! grep -Fq "$LTM_HOSTNAME" "$cookie_file" 2>/dev/null
     then
-        echo "login attempt " >> /tmp/ltm-auto-resume.debug
-        # just create a new login session and store it in the cookie
-        ltm_post_json -c $DIR/.ltm_cookie_$GCE_PROJECT -d "{\"password\":\"$GCE_LTM_PWD\"}" \
-            "https://$LTM_HOSTNAME/login"
-
-        if [ ! $? = 0 ]; then
-        echo "Login failed."
-        ltm_post_failed
-        return 1
-        fi
-        echo
+	login_payload=$(jq -cn --arg password "${GCE_LTM_PWD:-}" '{password: $password}')
+	ltm_post_json -c "$cookie_file" -d "$login_payload" \
+	    "https://$LTM_HOSTNAME/login"
+	rc=$?
+	if test "$rc" -ne 0; then
+	    rm -f "$cookie_file"
+	    echo "Login failed."
+	    if test "$rc" -eq 1; then
+		ltm_post_failed
+	    fi
+	    return 1
+	fi
+	echo
     fi
 
-    if test -n "$LTM_INFO"; then
-        ltm_post_json -b $DIR/.ltm_cookie_$GCE_PROJECT "https://$LTM_HOSTNAME/status"
-        if [ $? != 0 ]; then
-        echo "Request failed."
-        ltm_post_failed
-        return 1
-        fi
-        echo
+    if test -n "${LTM_INFO:-}"; then
+	ltm_post_json -b "$cookie_file" "https://$LTM_HOSTNAME/status"
+	rc=$?
+	if test "$rc" -ne 0; then
+	    echo "Request failed."
+	    if test "$rc" -eq 1; then
+		ltm_post_failed
+	    fi
+	    return 1
+	fi
+	echo
     else
-    LTM_OPTS=""
-    if [ -n "$NO_REGION_SHARD" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"no_region_shard\":true"
-    fi
-    if [ -n "$BUCKET_SUBDIR" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bucket_subdir\":\"$BUCKET_SUBDIR\""
-    fi
-    if [ -n "$GS_KERNEL" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"gs_kernel\":\"$GS_KERNEL\""
-    fi
-    if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
-    fi
-    if [ -n "${GCE_REPORT_FAIL_EMAIL+x}" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"report_fail_email\":\"$GCE_REPORT_FAIL_EMAIL\""
-    fi
-    if [ -n "${GCE_JUNIT_EMAIL+x}" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"junit_email\":\"$GCE_JUNIT_EMAIL\""
-    fi
-    if [ -n "$COMMIT" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"commit_id\":\"$COMMIT\""
-    fi
-    if [ -n "$GIT_REPO" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"git_repo\":\"$GIT_REPO\""
-    fi
-    if [ -n "$BRANCH" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"branch_name\":\"$BRANCH\""
-    fi
-    if [ -n "$WATCH_SKIP_INITIAL" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"watch_skip_initial\":true"
-    fi
-    if [ -n "$WATCHER_ID" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"unwatch\":\"$WATCHER_ID\""
-    fi
-    if [ -n "$BISECT_BAD" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"bad_commit\":\"$BISECT_BAD\""
-    fi
-    if [ -n "$BISECT_GOOD" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"good_commit\":\"$BISECT_GOOD\""
-    fi
-    if [ -n "$KCONFIG" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kconfig\":\"$KCONFIG\""
-    fi
-    if [ -n "$KCONFIG_OPTS" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kconfig_opts\":\"$KCONFIG_OPTS\""
-    fi
-    if [ -n "$KBUILD_OPTS" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"kbuild_opts\":\"$KBUILD_OPTS\""
-    fi
-    if [ -n "$ARCH" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"arch\":\"$ARCH\""
-    fi
-    if [ -n "$MONITOR_TIMEOUT" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"monitor_timeout\":\"$MONITOR_TIMEOUT\""
-    fi
-    if [ -n "$TESTRUNID" ]; then
-	LTM_OPTS="${LTM_OPTS:+$LTM_OPTS, }\"test_run_id\":\"$TESTRUNID\""
-    fi
-    if [ -n "$LTM_OPTS" ]; then
-	LTM_OPTS="\"options\": {$LTM_OPTS}"
-    fi
-    # Create OPTS.
+	payload=$(jq -cn \
+	    --arg orig_cmdline "$cmd_to_send" \
+	    --arg no_region_shard "${NO_REGION_SHARD:-}" \
+	    --arg bucket_subdir "${BUCKET_SUBDIR:-}" \
+	    --arg gs_kernel "${GS_KERNEL:-}" \
+	    --arg has_report_email "${GCE_REPORT_EMAIL+x}" \
+	    --arg report_email "${GCE_REPORT_EMAIL:-}" \
+	    --arg has_report_fail_email "${GCE_REPORT_FAIL_EMAIL+x}" \
+	    --arg report_fail_email "${GCE_REPORT_FAIL_EMAIL:-}" \
+	    --arg has_junit_email "${GCE_JUNIT_EMAIL+x}" \
+	    --arg junit_email "${GCE_JUNIT_EMAIL:-}" \
+	    --arg commit_id "${COMMIT:-}" \
+	    --arg git_repo "${GIT_REPO:-}" \
+	    --arg branch_name "${BRANCH:-}" \
+	    --arg watch_skip_initial "${WATCH_SKIP_INITIAL:-}" \
+	    --arg unwatch "${WATCHER_ID:-}" \
+	    --arg bad_commit "${BISECT_BAD:-}" \
+	    --arg good_commit "${BISECT_GOOD:-}" \
+	    --arg kconfig "${KCONFIG:-}" \
+	    --arg kconfig_opts "${KCONFIG_OPTS:-}" \
+	    --arg kbuild_opts "${KBUILD_OPTS:-}" \
+	    --arg arch "${ARCH:-}" \
+	    --arg monitor_timeout "${MONITOR_TIMEOUT:-}" \
+	    --arg test_run_id "${TESTRUNID:-}" \
+	    '({}
+	      + (if $no_region_shard != "" then {no_region_shard: true} else {} end)
+	      + (if $bucket_subdir != "" then {bucket_subdir: $bucket_subdir} else {} end)
+	      + (if $gs_kernel != "" then {gs_kernel: $gs_kernel} else {} end)
+	      + (if $has_report_email != "" then {report_email: $report_email} else {} end)
+	      + (if $has_report_fail_email != "" then {report_fail_email: $report_fail_email} else {} end)
+	      + (if $has_junit_email != "" then {junit_email: $junit_email} else {} end)
+	      + (if $commit_id != "" then {commit_id: $commit_id} else {} end)
+	      + (if $git_repo != "" then {git_repo: $git_repo} else {} end)
+	      + (if $branch_name != "" then {branch_name: $branch_name} else {} end)
+	      + (if $watch_skip_initial != "" then {watch_skip_initial: true} else {} end)
+	      + (if $unwatch != "" then {unwatch: $unwatch} else {} end)
+	      + (if $bad_commit != "" then {bad_commit: $bad_commit} else {} end)
+	      + (if $good_commit != "" then {good_commit: $good_commit} else {} end)
+	      + (if $kconfig != "" then {kconfig: $kconfig} else {} end)
+	      + (if $kconfig_opts != "" then {kconfig_opts: $kconfig_opts} else {} end)
+	      + (if $kbuild_opts != "" then {kbuild_opts: $kbuild_opts} else {} end)
+	      + (if $arch != "" then {arch: $arch} else {} end)
+	      + (if $monitor_timeout != "" then {monitor_timeout: $monitor_timeout} else {} end)
+	      + (if $test_run_id != "" then {test_run_id: $test_run_id} else {} end)
+	     ) as $opts
+	     | if ($opts | length) > 0 then
+		 {orig_cmdline: $orig_cmdline, options: $opts}
+	       else
+		 {orig_cmdline: $orig_cmdline}
+	       end')
 
-    ltm_post_json -b $DIR/.ltm_cookie_$GCE_PROJECT -d \
-	"{\"orig_cmdline\": \"$cmd_to_send\"${LTM_OPTS:+, $LTM_OPTS}}" \
-	"https://$LTM_HOSTNAME/gce-xfstests"
-
-    if [ $? != 0 ]; then
-	echo "Request failed."
-	ltm_post_failed
-	return 1
-    fi
-    echo
-
+	ltm_post_json -b "$cookie_file" -d "$payload" \
+	    "https://$LTM_HOSTNAME/gce-xfstests"
+	rc=$?
+	if test "$rc" -ne 0; then
+	    echo "Request failed."
+	    if test "$rc" -eq 1; then
+		ltm_post_failed
+	    fi
+	    return 1
+	fi
+	echo
     fi
 }

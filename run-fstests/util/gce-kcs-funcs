@@ -1,19 +1,36 @@
-. $DIR/.kcs_instance_$GCE_PROJECT
+. "$DIR/.kcs_instance_$GCE_PROJECT"
 
-# The hostname has to match the common name field of the certificate, as set
-# in util/gce-do-setup when running openssl to create a self-signed cert.
-# curl will fail otherwise, stating that the common names do not match.
-KCS_HOSTNAME="a.$GCE_PROJECT.gce-xfstests"
+# The hostname has to match the certificate SAN/CN generated in
+# util/gce-setup-cert for the project's self-signed certificate.
+KCS_HOSTNAME="a.${GCE_PROJECT//:/-}.gce-xfstests"
 function kcs_post_json() {
-    if test -n "$GCE_KCS_INT_IP"; then
-    run_gce_curl "${GCE_KCS_NAME:-xfstests-kcs}" -s \
-	--cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_INT_IP" -X POST "$@" | jq '.'
-    else
-    run_gce_curl "${GCE_KCS_NAME:-xfstests-kcs}" -s \
-	--cacert $GCE_KCS_SERVER_CERT -H "Content-Type: application/json" \
-	--resolve "$KCS_HOSTNAME:443:$GCE_KCS_EXT_IP" -X POST "$@" | jq '.'
+    local target_ip="${GCE_KCS_EXT_IP:-}"
+    local resp rc
+
+    if test -n "${GCE_KCS_INT_IP:-}"; then
+	target_ip="$GCE_KCS_INT_IP"
     fi
+    resp=$(run_gce_curl "${GCE_KCS_NAME:-xfstests-kcs}" -s -S \
+	--cacert "$GCE_KCS_SERVER_CERT" -H "Content-Type: application/json" \
+	--resolve "$KCS_HOSTNAME:443:$target_ip" -X POST "$@")
+    rc=$?
+    if test "$rc" -ne 0 -o -z "$resp"; then
+	if test -n "$resp"; then
+	    printf '%s\n' "$resp" >&2
+	fi
+	return 1
+    fi
+    if ! printf '%s\n' "$resp" | jq '.' ; then
+	printf '%s\n' "$resp" >&2
+	return 1
+    fi
+    if printf '%s\n' "$resp" | jq -e 'type == "object" and has("status") and (.status == false)' >/dev/null 2>&1 ; then
+	if printf '%s\n' "$resp" | jq -e '.msg == "Login failed" or .msg == "Failed to retrieve user session"' >/dev/null 2>&1 ; then
+	    rm -f "$DIR/.kcs_cookie_$GCE_PROJECT"
+	fi
+	return 2
+    fi
+    return 0
 }
 
 function kcs_post_failed() {
@@ -31,47 +48,63 @@ function kcs_post_failed() {
 }
 
 function send_to_kcs() {
-    local cmd_to_send=$1
+    local cmd_to_send="$1"
+    local cookie_file="$DIR/.kcs_cookie_$GCE_PROJECT"
+    local login_payload payload rc
     shift
 
-    if test ! -f "$DIR/.kcs_cookie_$GCE_PROJECT"; then
-        # just create a new login session and store it in the cookie
-        kcs_post_json -c $DIR/.kcs_cookie_$GCE_PROJECT -d "{\"password\":\"$GCE_KCS_PWD\"}" \
-            "https://$KCS_HOSTNAME/login"
-
-        if [ ! $? = 0 ]; then
-        echo "Login failed."
-        kcs_post_failed
-        return 1
-        fi
-        echo
+    if test ! -f "$cookie_file" || ! grep -Fq "$KCS_HOSTNAME" "$cookie_file" 2>/dev/null; then
+	login_payload=$(jq -cn --arg password "${GCE_KCS_PWD:-}" '{password: $password}')
+	kcs_post_json -c "$cookie_file" -d "$login_payload" \
+	    "https://$KCS_HOSTNAME/login"
+	rc=$?
+	if test "$rc" -ne 0; then
+	    rm -f "$cookie_file"
+	    echo "Login failed."
+	    if test "$rc" -eq 1; then
+		kcs_post_failed
+	    fi
+	    return 1
+	fi
+	echo
     fi
 
-    KCS_OPTS=""
-    if [ -n "${GCE_REPORT_EMAIL+x}" ]; then
-	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"report_email\":\"$GCE_REPORT_EMAIL\""
-    fi
-    if [ -n "${GCE_REPORT_FAIL_EMAIL+x}" ]; then
-	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"report_fail_email\":\"$GCE_REPORT_FAIL_EMAIL\""
-    fi
-    if [ -n "$COMMIT" ]; then
-	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"commit_id\":\"$COMMIT\""
-    fi
-    if [ -n "$GIT_REPO" ]; then
-	KCS_OPTS="${KCS_OPTS:+$KCS_OPTS, }\"git_repo\":\"$GIT_REPO\""
-    fi
-    if [ -n "$KCS_OPTS" ]; then
-	KCS_OPTS="\"options\": {$KCS_OPTS}"
-    fi
-    # Create OPTS.
+    payload=$(jq -cn \
+	--arg orig_cmdline "$cmd_to_send" \
+	--arg has_report_email "${GCE_REPORT_EMAIL+x}" \
+	--arg report_email "${GCE_REPORT_EMAIL:-}" \
+	--arg has_report_fail_email "${GCE_REPORT_FAIL_EMAIL+x}" \
+	--arg report_fail_email "${GCE_REPORT_FAIL_EMAIL:-}" \
+	--arg commit_id "${COMMIT:-}" \
+	--arg git_repo "${GIT_REPO:-}" \
+	--arg kconfig "${KCONFIG:-}" \
+	--arg kconfig_opts "${KCONFIG_OPTS:-}" \
+	--arg kbuild_opts "${KBUILD_OPTS:-}" \
+	--arg arch "${ARCH:-}" \
+	'({}
+	  + (if $has_report_email != "" then {report_email: $report_email} else {} end)
+	  + (if $has_report_fail_email != "" then {report_fail_email: $report_fail_email} else {} end)
+	  + (if $commit_id != "" then {commit_id: $commit_id} else {} end)
+	  + (if $git_repo != "" then {git_repo: $git_repo} else {} end)
+	  + (if $kconfig != "" then {kconfig: $kconfig} else {} end)
+	  + (if $kconfig_opts != "" then {kconfig_opts: $kconfig_opts} else {} end)
+	  + (if $kbuild_opts != "" then {kbuild_opts: $kbuild_opts} else {} end)
+	  + (if $arch != "" then {arch: $arch} else {} end)
+	 ) as $opts
+	 | if ($opts | length) > 0 then
+	     {orig_cmdline: $orig_cmdline, options: $opts}
+	   else
+	     {orig_cmdline: $orig_cmdline}
+	   end')
 
-    kcs_post_json -b $DIR/.kcs_cookie_$GCE_PROJECT -d \
-	"{\"orig_cmdline\": \"$cmd_to_send\"${KCS_OPTS:+, $KCS_OPTS}}" \
+    kcs_post_json -b "$cookie_file" -d "$payload" \
 	"https://$KCS_HOSTNAME/gce-xfstests"
-
-    if [ $? != 0 ]; then
+    rc=$?
+    if test "$rc" -ne 0; then
 	echo "Request failed."
-	kcs_post_failed
+	if test "$rc" -eq 1; then
+	    kcs_post_failed
+	fi
 	return 1
     fi
     echo
