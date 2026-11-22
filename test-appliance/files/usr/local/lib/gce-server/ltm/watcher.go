@@ -88,7 +88,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 	err = check.CreateDir(resultsDir)
 	check.Panic(err, log, "Failed to create dir")
 
-	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
+	bucketSubdir, _ := gcp.GceConfig().Get("BUCKET_SUBDIR")
 	if c.Options.BucketSubdir != "" {
 		bucketSubdir = c.Options.BucketSubdir
 	}
@@ -96,7 +96,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 		bucketSubdir = "results"
 	}
 
-	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	gsBucket, err := gcp.GceConfig().Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 
 	origCmd, err := parser.DecodeCmd(c.CmdLine)

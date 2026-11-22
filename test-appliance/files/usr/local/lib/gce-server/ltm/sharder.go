@@ -108,20 +108,20 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 
 	// assume a zone looks like us-central1-f and a region looks like us-central1
 	// syntax might change in the future so should add support to query for it
-	zone, err := gcp.GceConfig.Get("GCE_ZONE")
+	zone, err := gcp.GceConfig().Get("GCE_ZONE")
 	check.Panic(err, log, "Failed to get zone config")
 	region := zone[:len(zone)-2]
 
-	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	projID, err := gcp.GceConfig().Get("GCE_PROJECT")
 	check.Panic(err, log, "Failed to get project config")
 
-	imgProjID, err := gcp.GceConfig.Get("GCE_IMAGE_PROJECT")
+	imgProjID, err := gcp.GceConfig().Get("GCE_IMAGE_PROJECT")
 	check.Panic(err, log, "Failed to get image project")
 
-	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	gsBucket, err := gcp.GceConfig().Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 
-	bucketSubdir, _ := gcp.GceConfig.Get("BUCKET_SUBDIR")
+	bucketSubdir, _ := gcp.GceConfig().Get("BUCKET_SUBDIR")
 
 	log.Info("Initiating test sharder")
 	sharder := ShardScheduler{
@@ -157,7 +157,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 		aggFile: fmt.Sprintf("%sresults.%s-%s", logDir, server.LTMUserName, testID),
 	}
 
-	if _, err := gcp.GceConfig.Get("GCE_LTM_KEEP_DEAD_VM"); err == nil {
+	if _, err := gcp.GceConfig().Get("GCE_LTM_KEEP_DEAD_VM"); err == nil {
 		sharder.keepDeadVM = true
 	}
 	if c.Options.BucketSubdir != "" {
@@ -753,7 +753,7 @@ func (sharder *ShardScheduler) packResults() {
 
 	os.Remove(sharder.aggFile + ".tar.xz")
 
-	if _, err := gcp.GceConfig.Get("GCE_UPLOAD_SUMMARY"); err == nil {
+	if _, err := gcp.GceConfig().Get("GCE_UPLOAD_SUMMARY"); err == nil {
 		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
 		err = sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
 		check.Panic(err, sharder.log, "Failed to upload results summary")

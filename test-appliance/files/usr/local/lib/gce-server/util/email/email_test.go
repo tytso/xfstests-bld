@@ -16,7 +16,7 @@ func TestEmail(t *testing.T) {
 		t.Skip("test only runs on LTM or KCS server")
 	}
 
-	receiver, err := gcp.GceConfig.Get("GCE_REPORT_EMAIL")
+	receiver, err := gcp.GceConfig().Get("GCE_REPORT_EMAIL")
 	if err != nil {
 		t.Error(err)
 	}

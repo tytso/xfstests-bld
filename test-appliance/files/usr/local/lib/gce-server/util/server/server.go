@@ -213,11 +213,11 @@ func init() {
 	}
 
 	var err error
-	if gcp.LTMConfig != nil {
-		password, err = gcp.LTMConfig.Get("GCE_LTM_PWD")
+	if ltmCfg := gcp.LTMConfig(); ltmCfg != nil {
+		password, err = ltmCfg.Get("GCE_LTM_PWD")
 
-	} else if gcp.KCSConfig != nil {
-		password, err = gcp.KCSConfig.Get("GCE_KCS_PWD")
+	} else if kcsCfg := gcp.KCSConfig(); kcsCfg != nil {
+		password, err = kcsCfg.Get("GCE_KCS_PWD")
 	} else {
 		panic("Failed to find config file")
 	}
@@ -225,7 +225,7 @@ func init() {
 		panic("Failed to load non-empty server password")
 	}
 
-	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	projID, err := gcp.GceConfig().Get("GCE_PROJECT")
 	if err != nil || projID == "" {
 		panic("Failed to get project config in init()")
 	}
@@ -497,15 +497,17 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	var config *gcp.Config
 	if toKCS {
 		accessKCS(log, true)
-		gcp.Update()
-		config = gcp.KCSConfig
+		err := gcp.Update()
+		check.Panic(err, log, "Failed to update config")
+		config = gcp.KCSConfig()
 
 	} else {
-		if gcp.LTMConfig == nil {
+		if gcp.LTMConfig() == nil {
 			fetchLTMConfig(log)
-			gcp.Update()
+			err := gcp.Update()
+			check.Panic(err, log, "Failed to update config")
 		}
-		config = gcp.LTMConfig
+		config = gcp.LTMConfig()
 	}
 	if config == nil {
 		log.Panicf("Failed to get %s config", receiver)
@@ -608,9 +610,9 @@ It checks KCS's metadata to ensure it's not in the process of shutting down.
 func accessKCS(log *logrus.Entry, launch bool) bool {
 	log.Info("Launching KCS server")
 
-	zone, err := gcp.GceConfig.Get("GCE_ZONE")
+	zone, err := gcp.GceConfig().Get("GCE_ZONE")
 	check.Panic(err, log, "Failed to get zone config")
-	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	projID, err := gcp.GceConfig().Get("GCE_PROJECT")
 	check.Panic(err, log, "Failed to get project config")
 
 	gce, err := gcp.NewService("")
@@ -645,7 +647,7 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 		}
 		if active {
 			log.Info("KCS is running")
-			if gcp.KCSConfig == nil {
+			if gcp.KCSConfig() == nil {
 				runLaunchKCS(log)
 			}
 			return true

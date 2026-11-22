@@ -4,24 +4,25 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"testing"
 
 	"thunk.org/gce-server/util/check"
 )
 
 // config file locations on multiple machines
-const gce = "/usr/local/lib/gce_xfstests.config"
+var gce = "/usr/local/lib/gce_xfstests.config"
 
 // Config stores the parsed config key value pairs.
 type Config struct {
 	kv map[string]string
 }
 
-// Global config structs initialized at boot time.
-// GceConfig should always be not nil.
+// Global config structs initialized at boot time and refreshed via Update().
+// Access them through GceConfig(), LTMConfig(), and KCSConfig().
 var (
-	GceConfig  *Config
-	LTMConfig  *Config
-	KCSConfig  *Config
+	gceConfig  *Config
+	ltmConfig  *Config
+	kcsConfig  *Config
 	configLock sync.RWMutex
 	ltm        string
 	kcs        string
@@ -31,15 +32,18 @@ func init() {
 	configLock.Lock()
 	defer configLock.Unlock()
 
+	if testing.Testing() && !check.FileExists(gce) {
+		gceConfig = &Config{kv: make(map[string]string)}
+		return
+	}
+
 	var err error
-	GceConfig, err = Get(gce)
+	gceConfig, err = Get(gce)
 	if err != nil {
 		panic("failed to parse gce config file")
 	}
 
-	// get GCE_PROJECT directly, do not go through Get function
-	// as init is already holding the configLock
-	var projID = GceConfig.kv["GCE_PROJECT"]
+	var projID = gceConfig.kv["GCE_PROJECT"]
 	if projID == "" {
 		panic("failed to get GCE_PROJECT from gce config")
 	}
@@ -48,46 +52,72 @@ func init() {
 	kcs = "/root/xfstests_bld/run-fstests/.kcs_instance_" + projID
 
 	if check.FileExists(ltm) {
-		LTMConfig, err = Get(ltm)
+		ltmConfig, err = Get(ltm)
 		if err != nil {
 			panic("failed to parse LTM config file")
 		}
 	}
 
 	if check.FileExists(kcs) {
-		KCSConfig, err = Get(kcs)
+		kcsConfig, err = Get(kcs)
 		if err != nil {
 			panic("failed to parse KCS config file")
 		}
 	}
 }
 
+// GceConfig returns the current GCE configuration snapshot.
+func GceConfig() *Config {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return gceConfig
+}
+
+// LTMConfig returns the current LTM instance configuration snapshot.
+func LTMConfig() *Config {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return ltmConfig
+}
+
+// KCSConfig returns the current KCS instance configuration snapshot.
+func KCSConfig() *Config {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return kcsConfig
+}
+
 // Update reads three config files to generate new config kv pairs.
 // It should be called after executing launch-ltm/launch-kcs.
+// Existing configurations are preserved if reading any file fails.
 func Update() error {
 	configLock.Lock()
 	defer configLock.Unlock()
 
-	var err error
-	GceConfig, err = Get(gce)
+	newGce, err := Get(gce)
 	if err != nil {
-		return fmt.Errorf("failed to parse gce config file")
+		return fmt.Errorf("failed to parse gce config file: %w", err)
 	}
 
-	if check.FileExists(ltm) {
-		LTMConfig, err = Get(ltm)
+	var newLTM *Config
+	if ltm != "" && check.FileExists(ltm) {
+		newLTM, err = Get(ltm)
 		if err != nil {
-			return fmt.Errorf("failed to parse LTM config file")
+			return fmt.Errorf("failed to parse LTM config file: %w", err)
 		}
 	}
 
-	if check.FileExists(kcs) {
-		KCSConfig, err = Get(kcs)
+	var newKCS *Config
+	if kcs != "" && check.FileExists(kcs) {
+		newKCS, err = Get(kcs)
 		if err != nil {
-			return fmt.Errorf("failed to parse KCS config file")
+			return fmt.Errorf("failed to parse KCS config file: %w", err)
 		}
 	}
 
+	gceConfig = newGce
+	ltmConfig = newLTM
+	kcsConfig = newKCS
 	return nil
 }
 
@@ -99,7 +129,7 @@ func Get(configFile string) (*Config, error) {
 
 	lines, err := check.ReadLines(configFile)
 	if err != nil {
-		return &c, err
+		return nil, err
 	}
 
 	for _, line := range lines {
@@ -126,10 +156,8 @@ func Get(configFile string) (*Config, error) {
 }
 
 // Get a certain config value according to key.
-// Return empty value of error if key is not present in config.
+// Return empty value or error if key is not present in config.
 func (c *Config) Get(key string) (string, error) {
-	configLock.RLock()
-	defer configLock.RUnlock()
 	if c == nil {
 		return "", fmt.Errorf("config is nil")
 	}

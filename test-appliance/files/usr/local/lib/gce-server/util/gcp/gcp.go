@@ -157,7 +157,7 @@ func (gce *Service) GetRegionQuota(projID string, region string) (*Quota, error)
 			ssdNum = int(quota.Limit - quota.Usage)
 		}
 	}
-	size, err := GceConfig.Get("GCE_MIN_SCR_SIZE")
+	size, err := GceConfig().Get("GCE_MIN_SCR_SIZE")
 	if err != nil {
 		return nil, err
 	}

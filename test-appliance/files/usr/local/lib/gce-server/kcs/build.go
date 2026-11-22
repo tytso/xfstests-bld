@@ -44,7 +44,7 @@ func StartBuild(c server.TaskRequest, testID string, serverLog *logrus.Entry) {
 	subject := "xfstests KCS build failure " + testID
 	defer email.ReportFailure(log, buildLog, c.Options.ReportFailEmail, subject)
 
-	gsBucket, err := gcp.GceConfig.Get("GS_BUCKET")
+	gsBucket, err := gcp.GceConfig().Get("GS_BUCKET")
 	check.Panic(err, log, "Failed to get gs bucket config")
 	gsPath := fmt.Sprintf("gs://%s/kernels/bzImage-%s-onerun.deb", gsBucket, testID)
 

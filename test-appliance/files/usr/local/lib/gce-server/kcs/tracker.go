@@ -86,9 +86,9 @@ func shutdown(instance *server.Instance) {
 	log := instance.Log()
 	log.Info("Set metadata before shutdown")
 
-	zone, err := gcp.GceConfig.Get("GCE_ZONE")
+	zone, err := gcp.GceConfig().Get("GCE_ZONE")
 	check.Panic(err, log, "Failed to get zone config")
-	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
+	projID, err := gcp.GceConfig().Get("GCE_PROJECT")
 	check.Panic(err, log, "Failed to get project config")
 
 	gce, err := gcp.NewService("")
