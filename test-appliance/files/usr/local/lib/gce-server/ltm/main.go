@@ -17,6 +17,8 @@ package main
 
 import (
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/logging"
@@ -25,6 +27,16 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+
+func isValidTestID(testID string) bool {
+	if testID == "" {
+		return false
+	}
+	if strings.Contains(testID, "/") || strings.Contains(testID, "\\") || strings.Contains(testID, "..") {
+		return false
+	}
+	return filepath.Base(testID) == testID
+}
 
 /*
 runTests is the endpoint for a gce-xfstests test request from user.
@@ -61,6 +73,11 @@ func runTests(w http.ResponseWriter, r *http.Request, log *logrus.Entry) {
 	} else {
 		testID = c.ExtraOptions.TestID
 		log.WithField("testID", testID).Info("KCS request, use existing testID")
+	}
+
+	if !isValidTestID(testID) {
+		http.Error(w, "Invalid testID", http.StatusBadRequest)
+		return
 	}
 
 	response := server.SimpleResponse{
