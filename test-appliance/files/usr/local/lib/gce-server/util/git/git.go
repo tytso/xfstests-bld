@@ -102,6 +102,13 @@ func getOrCreateRepository(id, repoURL, base, dir string) *Repository {
 	return repo
 }
 
+func gitWorkDir() string {
+	if check.DirExists(check.RootDir) {
+		return check.RootDir
+	}
+	return ""
+}
+
 func isReservedRepoID(id string) bool {
 	return id == "linux.reference" || id == "bisects" || id == RepoLockFileName || strings.HasSuffix(id, ".tmp")
 }
@@ -150,7 +157,7 @@ func ensureRefRepo(writer io.Writer) error {
 	tmpDir := refClean + ".tmp"
 	_ = os.RemoveAll(tmpDir)
 	cmd := exec.Command("git", "clone", "--mirror", refRepoURL, tmpDir)
-	if err := check.Run(cmd, check.RootDir, check.EmptyEnv, writer, writer); err != nil {
+	if err := check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer); err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return err
 	}
@@ -176,7 +183,7 @@ func ensureBaseRepo(base, repoURL string, writer io.Writer) (*Repository, error)
 	_ = os.RemoveAll(tmpDir)
 	refDir := repoRootDir + "linux.reference"
 	cmd := exec.Command("git", "clone", "--reference", refDir, repoURL, tmpDir)
-	if err := check.Run(cmd, check.RootDir, check.EmptyEnv, writer, writer); err != nil {
+	if err := check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer); err != nil {
 		_ = os.RemoveAll(tmpDir)
 		return nil, err
 	}
@@ -269,7 +276,7 @@ func newRepositoryAt(id string, repoURL string, targetDir string, writer io.Writ
 
 	baseRepo.gitMu.RLock()
 	cmd := exec.Command("git", "clone", "--shared", baseRepo.dir, tmpDir)
-	err = check.Run(cmd, check.RootDir, check.EmptyEnv, writer, writer)
+	err = check.Run(cmd, gitWorkDir(), check.EmptyEnv, writer, writer)
 	baseRepo.gitMu.RUnlock()
 	if err != nil {
 		_ = os.RemoveAll(tmpDir)
@@ -383,6 +390,11 @@ func (repo *Repository) Valid(revision string, writer io.Writer) (bool, error) {
 	return true, nil
 }
 
+func isBisectFinished(output string) bool {
+	return strings.Contains(output, "is the first bad commit") ||
+		strings.Contains(output, "is the first 'bad' commit")
+}
+
 /*
 BisectStart starts a git bisect on a repository.
 
@@ -435,7 +447,7 @@ func (repo *Repository) BisectStart(badCommit string, goodCommits []string, writ
 		return false, err
 	}
 
-	if strings.Contains(output, "is the first bad commit") {
+	if isBisectFinished(output) {
 		return true, nil
 	}
 
@@ -479,7 +491,7 @@ func (repo *Repository) BisectStep(testResult server.ResultType, writer io.Write
 		writer.Write([]byte(output))
 		return false, err
 	}
-	if strings.Contains(output, "is the first bad commit") {
+	if isBisectFinished(output) {
 		return true, nil
 	}
 
@@ -633,7 +645,7 @@ func getHead(repoURL string, branch string) (string, error) {
 	env := map[string]string{
 		"GIT_TERMINAL_PROMPT": "0",
 	}
-	output, err := check.Output(cmd, check.RootDir, env, os.Stderr)
+	output, err := check.Output(cmd, gitWorkDir(), env, os.Stderr)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return "", fmt.Errorf("git ls-remote timed out: %w", ctx.Err())

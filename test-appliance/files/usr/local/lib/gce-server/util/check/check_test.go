@@ -1,7 +1,13 @@
 package check
 
 import (
+	"io"
+	"os/exec"
+	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/time/rate"
 )
 
 func TestValidateTestID(t *testing.T) {
@@ -74,6 +80,53 @@ func TestValidPassword(t *testing.T) {
 	}
 	if ValidPassword("s3cr3t", "") {
 		t.Error("expected non-empty provided with empty expected password to fail")
+	}
+}
+
+func TestLimitedRunAndOutputReleaseCapperOnLimiterError(t *testing.T) {
+	origLimiter := limiter
+	t.Cleanup(func() {
+		limiter = origLimiter
+	})
+
+	// A burst of 0 causes limiter.Wait() to return an error immediately.
+	limiter = rate.NewLimiter(rate.Every(time.Second), 0)
+
+	for i := 0; i < cmdCap*2; i++ {
+		if err := LimitedRun(exec.Command("true"), "", EmptyEnv, io.Discard, io.Discard); err == nil {
+			t.Fatal("expected LimitedRun to fail when limiter burst is 0")
+		}
+		if _, err := LimitedOutput(exec.Command("true"), "", EmptyEnv, io.Discard); err == nil {
+			t.Fatal("expected LimitedOutput to fail when limiter burst is 0")
+		}
+	}
+
+	if got := len(capper); got != 0 {
+		t.Fatalf("expected 0 leaked capper slots, got %d", got)
+	}
+}
+
+func TestLimitedRunConcurrentDoesNotLeakSlots(t *testing.T) {
+	origLimiter := limiter
+	t.Cleanup(func() {
+		limiter = origLimiter
+	})
+	limiter = rate.NewLimiter(rate.Inf, cmdCap)
+
+	var wg sync.WaitGroup
+	for i := 0; i < cmdCap*2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := LimitedRun(exec.Command("true"), "", EmptyEnv, io.Discard, io.Discard); err != nil {
+				t.Errorf("LimitedRun failed: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := len(capper); got != 0 {
+		t.Fatalf("expected 0 leaked capper slots after concurrent runs, got %d", got)
 	}
 }
 

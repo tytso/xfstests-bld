@@ -44,3 +44,50 @@ func TestUnblockedTimeStamps(t *testing.T) {
 		time.Sleep(2 * time.Second)
 	}
 }
+
+func TestGetTimeStampMonotonicAcrossClockRollbackAndUTC(t *testing.T) {
+	tsMu.Lock()
+	origNow := nowFunc
+	origSleep := sleepFunc
+	origLast := lastUnix
+	tsMu.Unlock()
+
+	t.Cleanup(func() {
+		tsMu.Lock()
+		nowFunc = origNow
+		sleepFunc = origSleep
+		lastUnix = origLast
+		tsMu.Unlock()
+	})
+
+	// Pick a timestamp inside a US Eastern autumn DST fallback window and
+	// roll the clock backwards mid-stream to verify UTC + monotonicity.
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		ny = time.FixedZone("EDT", -4*3600)
+	}
+	var mu sync.Mutex
+	cur := time.Date(2026, 11, 1, 1, 59, 59, 0, ny)
+
+	tsMu.Lock()
+	lastUnix = 0
+	nowFunc = func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return cur
+	}
+	sleepFunc = func(d time.Duration) {}
+	tsMu.Unlock()
+
+	t1 := GetTimeStamp()
+	// Simulate wall clock stepping backwards by an hour.
+	mu.Lock()
+	cur = cur.Add(-1 * time.Hour)
+	mu.Unlock()
+	t2 := GetTimeStamp()
+	t3 := GetTimeStamp()
+
+	if !(t1 < t2 && t2 < t3) {
+		t.Fatalf("expected strictly increasing UTC timestamps across rollback, got %q, %q, %q", t1, t2, t3)
+	}
+}
