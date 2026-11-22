@@ -60,8 +60,9 @@ type GitWatcher struct {
 // watcherMap indexes watchers by testID.
 // Used for checking duplication and terminating a watcher.
 var (
-	watcherMap  = make(map[string]*GitWatcher)
-	watcherLock sync.Mutex
+	watcherMap     = make(map[string]*GitWatcher)
+	watcherLock    sync.Mutex
+	forwardKCSFunc = ForwardKCS
 )
 
 // NewGitWatcher constructs a new git watcher from a watch request.
@@ -238,19 +239,37 @@ func (watcher *GitWatcher) recordNewBuild(commit string) string {
 	return testID
 }
 
+func (watcher *GitWatcher) cloneTaskRequest(commit string, testID string) server.TaskRequest {
+	var optsCopy server.UserOptions
+	if watcher.testRequest.Options != nil {
+		optsCopy = *watcher.testRequest.Options
+	}
+	optsCopy.CommitID = commit
+
+	var extraCopy server.InternalOptions
+	if watcher.testRequest.ExtraOptions != nil {
+		extraCopy = *watcher.testRequest.ExtraOptions
+	}
+	extraCopy.TestID = testID
+
+	return server.TaskRequest{
+		CmdLine:      watcher.testRequest.CmdLine,
+		Options:      &optsCopy,
+		ExtraOptions: &extraCopy,
+	}
+}
+
 // InitTest initiates a kernel building and testing using the current repo head.
 func (watcher *GitWatcher) InitTest() {
 	commit := watcher.repo.Head()
 	testID := watcher.recordNewBuild(commit)
-
-	watcher.testRequest.Options.CommitID = commit
-	watcher.testRequest.ExtraOptions.TestID = testID
+	req := watcher.cloneTaskRequest(commit, testID)
 
 	go func(req server.TaskRequest, id string) {
-		if err := ForwardKCS(req, id); err != nil {
+		if err := forwardKCSFunc(req, id); err != nil {
 			watcher.log.WithError(err).Error("Failed to forward request to KCS")
 		}
-	}(watcher.testRequest, watcher.testID)
+	}(req, watcher.testID)
 }
 
 // tidyUp used to clean up the GCS bucket by fetching and aggregating
