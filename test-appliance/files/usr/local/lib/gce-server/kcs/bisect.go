@@ -585,6 +585,13 @@ func reserveBisectorID(testID string) bool {
 	return true
 }
 
+// HasActiveOrPendingBisectors reports whether any bisector is active or initializing.
+func HasActiveOrPendingBisectors() bool {
+	bisectorLock.Lock()
+	defer bisectorLock.Unlock()
+	return len(bisectorMap) > 0 || len(pendingBisectors) > 0
+}
+
 /*
 RunBisect performs a git bisect task.
 

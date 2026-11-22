@@ -61,8 +61,16 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry,
 			_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		if !TryBeginTask() {
+			log.Warn("Rejecting build request while KCS is shutting down")
+			_ = server.SendErrorResponse(w, http.StatusServiceUnavailable, "KCS server is shutting down")
+			return
+		}
 
-		go StartBuild(c, testID, serverLog)
+		go func() {
+			defer EndTask()
+			StartBuild(c, testID, serverLog)
+		}()
 		response.TestID = testID
 		response.Msg = "Building kernel for user"
 
@@ -76,8 +84,16 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry,
 				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
+			if !TryBeginTask() {
+				log.Warn("Rejecting LTM build request while KCS is shutting down")
+				_ = server.SendErrorResponse(w, http.StatusServiceUnavailable, "KCS server is shutting down")
+				return
+			}
 
-			go StartBuild(c, testID, serverLog)
+			go func() {
+				defer EndTask()
+				StartBuild(c, testID, serverLog)
+			}()
 			response.TestID = testID
 			response.Msg = "Building kernel for LTM"
 
@@ -91,8 +107,16 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry,
 				_ = server.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
+			if !TryBeginTask() {
+				log.Warn("Rejecting LTM bisect request while KCS is shutting down")
+				_ = server.SendErrorResponse(w, http.StatusServiceUnavailable, "KCS server is shutting down")
+				return
+			}
 
-			go RunBisect(c, testID, serverLog)
+			go func() {
+				defer EndTask()
+				RunBisect(c, testID, serverLog)
+			}()
 			response.TestID = testID
 			response.Msg = "Running git bisect task"
 		default:

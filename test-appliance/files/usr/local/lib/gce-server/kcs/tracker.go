@@ -18,13 +18,17 @@ import (
 	"google.golang.org/api/compute/v1"
 )
 
-const (
-	buildTimeout = 1 * time.Hour
-)
-
 var (
+	buildTimeout = 1 * time.Hour
+
 	newBuild  = make(chan struct{}, 1)
 	buildLock sync.Mutex
+
+	trackerMu    sync.Mutex
+	activeTasks  int
+	shuttingDown bool
+	lastActivity = time.Now()
+	shutdownFunc = shutdown
 )
 
 func notifyNewBuild() {
@@ -32,6 +36,52 @@ func notifyNewBuild() {
 	case newBuild <- struct{}{}:
 	default:
 	}
+}
+
+// TryBeginTask registers an in-flight build or bisect task unless KCS is
+// already shutting down.
+func TryBeginTask() bool {
+	trackerMu.Lock()
+	defer trackerMu.Unlock()
+	if shuttingDown {
+		return false
+	}
+	activeTasks++
+	lastActivity = time.Now()
+	notifyNewBuild()
+	return true
+}
+
+// EndTask marks an in-flight build or bisect task finished and refreshes
+// the idle timer baseline.
+func EndTask() {
+	trackerMu.Lock()
+	if activeTasks > 0 {
+		activeTasks--
+	}
+	lastActivity = time.Now()
+	trackerMu.Unlock()
+	notifyNewBuild()
+}
+
+func touchBuildActivity() {
+	trackerMu.Lock()
+	lastActivity = time.Now()
+	trackerMu.Unlock()
+	notifyNewBuild()
+}
+
+func nextTrackerWait() time.Duration {
+	trackerMu.Lock()
+	defer trackerMu.Unlock()
+	if activeTasks > 0 {
+		return buildTimeout
+	}
+	rem := buildTimeout - time.Since(lastActivity)
+	if rem <= 0 {
+		return buildTimeout
+	}
+	return rem
 }
 
 /*
@@ -46,8 +96,10 @@ func StartTracker(instance *server.Instance, stop <-chan struct{}, finished chan
 	defer close(finished)
 	log := instance.Log()
 
+	touchBuildActivity()
+
 	for alive := true; alive; {
-		timer := time.NewTimer(buildTimeout)
+		timer := time.NewTimer(nextTrackerWait())
 		select {
 		case <-stop:
 			timer.Stop()
@@ -55,15 +107,32 @@ func StartTracker(instance *server.Instance, stop <-chan struct{}, finished chan
 		case <-newBuild:
 			timer.Stop()
 		case <-timer.C:
+			trackerMu.Lock()
+			busy := activeTasks > 0 || time.Since(lastActivity) < buildTimeout
+			trackerMu.Unlock()
+			if busy {
+				continue
+			}
+
 			log.Warnf("KCS server has been idle for %s", buildTimeout.Round(time.Minute))
 			bisectors := BisectorStatus()
 			log.Infof("There are %d active bisectors", len(bisectors))
-			if len(bisectors) > 0 {
+			if len(bisectors) > 0 || HasActiveOrPendingBisectors() {
 				log.Infof("%+v", bisectors)
+				touchBuildActivity()
 			} else if logging.DEBUG {
 				log.Info("DEBUG mode enabled, skipping KCS auto-shutdown")
+				touchBuildActivity()
 			} else {
-				shutdown(instance)
+				trackerMu.Lock()
+				if activeTasks > 0 || time.Since(lastActivity) < buildTimeout || HasActiveOrPendingBisectors() {
+					trackerMu.Unlock()
+					continue
+				}
+				shuttingDown = true
+				trackerMu.Unlock()
+
+				shutdownFunc(instance)
 				alive = false
 			}
 		}
@@ -78,7 +147,8 @@ func RunBuild(repo *git.Repository, gsBucket string, gsPath string, gsConfig str
 	}
 	buildLock.Lock()
 	defer buildLock.Unlock()
-	notifyNewBuild()
+	touchBuildActivity()
+	defer touchBuildActivity()
 
 	file, err := os.Create(buildLog)
 	if err != nil {
