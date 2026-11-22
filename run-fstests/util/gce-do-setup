@@ -130,12 +130,15 @@ function SetupServiceAccount () {
 	fi
     fi
 
-    if ! run_gcloud storage buckets add-iam-policy-binding "gs://$GS_BUCKET" \
-	 --member="serviceAccount:${srv_acct}" \
-	 --role="roles/storage.legacyBucketWriter" \
-	 --condition=None --quiet > /dev/null ; then
-	echo "Error setting up gs://$GS_BUCKET write permissions for ${srv_acct}"
-    fi
+    local bucket_role
+    for bucket_role in roles/storage.legacyBucketWriter roles/storage.objectUser ; do
+	if ! run_gcloud storage buckets add-iam-policy-binding "gs://$GS_BUCKET" \
+	     --member="serviceAccount:${srv_acct}" \
+	     --role="$bucket_role" \
+	     --condition=None --quiet > /dev/null ; then
+	    echo "Error setting up gs://$GS_BUCKET $bucket_role permissions for ${srv_acct}"
+	fi
+    done
 }
 
 function SetupServiceAccountCloudBuild () {
