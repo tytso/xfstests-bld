@@ -49,6 +49,7 @@ type GitWatcher struct {
 	done      chan struct{}
 	stopOnce  sync.Once
 	cleanOnce sync.Once
+	forwardWG sync.WaitGroup
 	stopping  bool
 
 	logDir     string
@@ -291,11 +292,13 @@ func (watcher *GitWatcher) InitTest() {
 	testID := watcher.recordNewBuild(commit)
 	req := watcher.cloneTaskRequest(commit, testID)
 
+	watcher.forwardWG.Add(1)
 	go func(req server.TaskRequest, id string) {
+		defer watcher.forwardWG.Done()
 		if err := forwardKCSFunc(req, id); err != nil {
 			watcher.log.WithError(err).Error("Failed to forward request to KCS")
 		}
-	}(req, watcher.testID)
+	}(req, testID)
 }
 
 // tidyUp used to clean up the GCS bucket by fetching and aggregating
@@ -327,9 +330,16 @@ func (watcher *GitWatcher) Clean() {
 		watcherLock.Unlock()
 
 		watcher.stop()
-		watcher.log.Info("Cleaning up watcher resources")
-		os.RemoveAll(watcher.resultsDir)
-		logging.CloseLog(watcher.log)
+		watcher.forwardWG.Wait()
+		if watcher.log != nil {
+			watcher.log.Info("Cleaning up watcher resources")
+		}
+		if watcher.resultsDir != "" {
+			os.RemoveAll(watcher.resultsDir)
+		}
+		if watcher.log != nil {
+			logging.CloseLog(watcher.log)
+		}
 	})
 }
 

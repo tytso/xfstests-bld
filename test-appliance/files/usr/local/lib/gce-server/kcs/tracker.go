@@ -26,6 +26,7 @@ var (
 
 	trackerMu    sync.Mutex
 	activeTasks  int
+	taskWG       sync.WaitGroup
 	shuttingDown bool
 	lastActivity = time.Now()
 	shutdownFunc = shutdown
@@ -47,6 +48,7 @@ func TryBeginTask() bool {
 		return false
 	}
 	activeTasks++
+	taskWG.Add(1)
 	lastActivity = time.Now()
 	notifyNewBuild()
 	return true
@@ -58,10 +60,16 @@ func EndTask() {
 	trackerMu.Lock()
 	if activeTasks > 0 {
 		activeTasks--
+		taskWG.Done()
 	}
 	lastActivity = time.Now()
 	trackerMu.Unlock()
 	notifyNewBuild()
+}
+
+// WaitTasks waits for all registered build and bisect tasks to finish.
+func WaitTasks() {
+	taskWG.Wait()
 }
 
 func touchBuildActivity() {

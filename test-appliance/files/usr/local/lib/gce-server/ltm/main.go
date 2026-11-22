@@ -205,6 +205,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer s.Close()
 
 	s.Handler().Handle("/gce-xfstests", s.LoginHandler(s.FailureHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

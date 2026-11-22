@@ -262,11 +262,17 @@ func (server *Instance) Log() *logrus.Entry {
 	return server.log
 }
 
+// Close closes the server's log file handle.
+func (server *Instance) Close() {
+	if server.log != nil {
+		logging.CloseLog(server.log)
+	}
+}
+
 // Start launches the server. Custom endpoints shuold be registered already.
 func (server *Instance) Start() {
 	launchMsg := fmt.Sprintf("Started %s server", server.name)
 	server.log.Info(launchMsg)
-	defer logging.CloseLog(server.log)
 
 	err := exec.Command(loggerPath, "--force", launchMsg).Run()
 	if err != nil {

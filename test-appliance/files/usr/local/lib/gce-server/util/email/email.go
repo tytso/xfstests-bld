@@ -58,7 +58,7 @@ func ReportFailure(log *logrus.Entry, logFile string, email string, subject stri
 		}
 
 		file := logging.GetFile(log)
-		if file.Name() != "" && file.Name() == logFile {
+		if file != nil && file.Name() != "" && file.Name() == logFile {
 			file.Sync()
 		}
 

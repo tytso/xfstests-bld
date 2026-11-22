@@ -407,6 +407,8 @@ func (sharder *ShardScheduler) Run() {
 	sharder.log.Debug("Starting sharder")
 	var wg sync.WaitGroup
 
+	defer logging.CloseLog(sharder.log)
+
 	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.getKernelVersion())
 	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportFailReceiver, subject)
 
@@ -840,8 +842,9 @@ func (sharder *ShardScheduler) clean() {
 
 	sharder.log.Info("Remove local aggregate results")
 	os.RemoveAll(sharder.aggDir)
-	sharder.gce.Close()
-	logging.CloseLog(sharder.log)
+	if sharder.gce != nil {
+		sharder.gce.Close()
+	}
 }
 
 // SharderStatus returns the info for running sharders.
