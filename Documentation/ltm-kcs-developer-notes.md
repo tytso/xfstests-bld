@@ -217,6 +217,35 @@ and any `ssh` diagnostic output (never request payloads or session
 cookies).  Setting `SSH_CURL_VERBOSE=1` also prints client-side tunnel
 status messages on stderr.
 
+## Shared GCS bucket layout across multiple GCE projects
+
+Multiple GCE projects belonging to the same trust boundary can share a
+single `GS_BUCKET`:
+
+* **Authoritative project discovery on VMs**: `gce-funcs` queries
+  `project/project-id` from the GCE metadata server and caches it in
+  `/var/lib/gce-xfstests/gce_project` so appliance scripts always know
+  their own project ID regardless of what is in the bucket's root
+  `gce_xfstests.config`.
+* **Batch and startup directories**: `gce-ltm.boot` runs persistent boot
+  scripts from `gs://$GS_BUCKET/ltm-rc/$GCE_PROJECT/`, and
+  `gce-ltm-batch-watcher` polls one-shot scripts from
+  `gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/` (logging output to
+  `gs://$GS_BUCKET/ltm-batch-$GCE_PROJECT.log`).
+* **Config and TLS certificates (legacy-slot ownership)**: To keep
+  single-project upgrades silent across client/appliance skew, the
+  project named in the bucket-root `gs://$GS_BUCKET/gce_xfstests.config`
+  (or the first project to run `setup` on an empty bucket) owns the root
+  `gce_xfstests.config` and `gce-xfstests-{cert,key,server}.pem` files
+  as its primary location and mirrors them under
+  `gs://$GS_BUCKET/project/$GCE_PROJECT/`.  Every additional project
+  sharing the bucket uses `gs://$GS_BUCKET/project/$GCE_PROJECT/`
+  exclusively and never writes to the root slot.  On boot,
+  `gce-fetch-gs-files` (and `gce-setup`) uses the root slot when its
+  `GCE_PROJECT` matches the metadata server, else
+  `project/$GCE_PROJECT/` if present, else falls back to the root config
+  with `GCE_PROJECT` forced to the metadata-server value.
+
 ## Testing the curl relays locally
 
 Offline loopback self-test suites are located in

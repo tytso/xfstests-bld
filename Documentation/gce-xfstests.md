@@ -51,6 +51,26 @@ for this purpose.  Detailed instructions for creating a new bucket can
 be found in the [GCS
 Quickstart](https://cloud.google.com/storage/docs/quickstart-console).
 
+Multiple `gce-xfstests` configurations using different `GCE_PROJECT`
+values can share the same `GS_BUCKET` (with or without GCS Hierarchical
+Namespace enabled), provided that:
+
+* Every project sharing the bucket uses an up-to-date `xfstests-bld`
+  checkout and test appliance image, and `gce-xfstests setup` has been
+  run for each project (so each project's VM service accounts are
+  granted `roles/storage.objectUser` on the bucket and its per-project
+  configuration and TLS certificates are populated under
+  `gs://$GS_BUCKET/project/$GCE_PROJECT/`).
+* All projects sharing the bucket belong to the same trust boundary:
+  any principal with read/write access to `gs://$GS_BUCKET` can read
+  the shared `ltm-pass` password and each project's configuration and
+  TLS keys.
+* Default upload filenames at the bucket root (such as `kernel.deb`,
+  `bzImage`, `modules.tar.xz`, `build_config`, and `create-image/`)
+  remain shared; pass an explicit `--kernel gs://...` path (and
+  `BUCKET_SUBDIR` if separating results) when running concurrent
+  uploads with different local kernels across projects.
+
 ### Setting up e-mail reports
 
 Since virtual machines in GCE aren't allowed to send connect to the
@@ -455,6 +475,48 @@ Then the LTM server will launch these tests in parallel and monitor the status o
 When LTM server is running, the following command queries for LTM running status, and prints a json response with active sharders, watchers and bisectors info.
 
       	gce-xfstests ltm-info
+
+> **_UPGRADE NOTE:_** Before launching LTM or KCS with the latest
+> pre-built test appliance image, LTM users must update to the latest
+> version of `xfstests-bld`, stop any running LTM and KCS servers
+> (`gce-xfstests stop-ltm` and `gce-xfstests stop-kcs`), and run
+> `gce-xfstests setup` so the project's TLS certificate includes a
+> `subjectAltName` extension and bucket IAM permissions are up to date.
+> Users with existing startup scripts in `gs://$GS_BUCKET/ltm-rc/`
+> should move them to the per-project directory:
+>
+>         gcloud storage mv "gs://$GS_BUCKET/ltm-rc/*" "gs://$GS_BUCKET/ltm-rc/$GCE_PROJECT/"
+
+### Batch commands and startup scripts (`ltm-batch` and `ltm-rc`)
+
+In addition to sending HTTPS requests directly to the LTM server, shell
+script fragments can be queued through the GCS bucket for execution on
+the `xfstests-ltm` VM:
+
+* **One-shot batch scripts (`gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/`)**:
+  The `gce-ltm-batch-watcher` service on the LTM VM watches this
+  per-project directory, downloads and deletes each script file before
+  running it, and uploads the execution transcript to
+  `gs://$GS_BUCKET/ltm-batch-$GCE_PROJECT.log`.
+  * `gce-xfstests ltm-batch <script> [...]` uploads one or more shell
+    script files to `gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/` and
+    nudges `xfstests-ltm` to run them immediately.
+  * `gce-xfstests ltm-batch-cmd <args...>` wraps `gce-xfstests ltm
+    <args...>` into a one-shot batch script (defaulting to `--kernel
+    gs://$GS_BUCKET/kernel.deb` when no `--kernel`, `--commit`,
+    `--watch`, or `--bisect-bad` option is given) and queues it in
+    `gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/ltm-batch-cmd`.
+  * `gce-xfstests stop-ltm` queues a `stop-ltm` shutdown script in
+    `gs://$GS_BUCKET/ltm-batch/$GCE_PROJECT/stop-ltm` and aborts the
+    `xfstests-ltm` instance.
+* **Persistent LTM startup scripts (`gs://$GS_BUCKET/ltm-rc/$GCE_PROJECT/`)**:
+  Shell script fragments uploaded (for example via `gcloud storage cp`)
+  to `gs://$GS_BUCKET/ltm-rc/$GCE_PROJECT/` are executed in sorted order
+  every time `xfstests-ltm` boots and are **not** deleted after running.
+  This is useful for automatically re-registering git branch watchers
+  whenever the LTM server is restarted.  Pass `--skip-rc` to
+  `gce-xfstests launch-ltm` to skip running `ltm-rc/$GCE_PROJECT/`
+  scripts for a given launch.
 
 ## Building kernels remotely with KCS server
 
