@@ -78,7 +78,10 @@ fi
 if test -n "$UPDATE_COMBINED" -o \
 	 ! -f $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
 then
-    cp "$tmpdir/gce-xfstests-cert.pem" $DIR/.gce_xfstests_cert_$GCE_PROJECT.pem
+    tmp_cert=$(mktemp "$DIR/.gce_xfstests_cert_${GCE_PROJECT}.pem.XXXXXX")
+    cp "$tmpdir/gce-xfstests-cert.pem" "$tmp_cert"
+    chmod 0644 "$tmp_cert"
+    mv -f "$tmp_cert" "$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem"
 fi
 rm -rf "$tmpdir"
 

@@ -149,8 +149,7 @@ func InternalQuery(log *logrus.Entry) StatusResponse {
 		log.Info("KCS is not running, skipping query")
 		return StatusResponse{}
 	}
-	err := gcp.Update()
-	check.Panic(err, log, "Failed to update config")
+	UpdateConfig(log)
 
 	config := gcp.KCSConfig()
 	if config == nil {

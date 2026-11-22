@@ -155,9 +155,9 @@ fi
 "$DIR/util/gce-setup-cert"
 
 echo "Launching build server..."
-touch $DIR/.kcs_instance_$GCE_PROJECT
-LAUNCH_KCS_EXIT_STATUS=1
-trap 'if [ $LAUNCH_KCS_EXIT_STATUS != 0 ]; then rm $DIR/.kcs_instance_$GCE_PROJECT; fi' EXIT
+TMP_KCS_INSTANCE=$(mktemp "$DIR/.kcs_instance_${GCE_PROJECT}.XXXXXX")
+chmod 0644 "$TMP_KCS_INSTANCE"
+trap 'rm -f "$TMP_KCS_INSTANCE"' EXIT
 
 run_gcloud compute \
     instances create "$INSTANCE" --zone "$GCE_ZONE" \
@@ -177,9 +177,9 @@ then
     exit 1
 fi
 
-echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.kcs_instance_$GCE_PROJECT
-echo "GCE_KCS_NAME=$INSTANCE" >> $DIR/.kcs_instance_$GCE_PROJECT
-echo -n "GCE_KCS_EXT_IP=" >> $DIR/.kcs_instance_$GCE_PROJECT
+echo "GCE_KCS_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > "$TMP_KCS_INSTANCE"
+echo "GCE_KCS_NAME=$INSTANCE" >> "$TMP_KCS_INSTANCE"
+echo -n "GCE_KCS_EXT_IP=" >> "$TMP_KCS_INSTANCE"
 echo -n "Waiting for VM to boot to grab external IP..."
 
 function wait_for_command() {
@@ -201,19 +201,19 @@ echo " Done!"
 
 NO_ACTION=
 run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.kcs_instance_$GCE_PROJECT
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> "$TMP_KCS_INSTANCE"
 
 # use internal ip if this machine is in the same GCE project
 if test -n "$RUN_INTERNAL"; then
     echo "Runs on same GCE project so grab internal IP"
-    echo -n "GCE_KCS_INT_IP=" >> $DIR/.kcs_instance_$GCE_PROJECT
+    echo -n "GCE_KCS_INT_IP=" >> "$TMP_KCS_INSTANCE"
 
     run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.kcs_instance_$GCE_PROJECT
+        --format="get(networkInterfaces[0].networkIP)" >> "$TMP_KCS_INSTANCE"
 fi
 
 echo -n "Fetching password..."
-echo -n "GCE_KCS_PWD=" >> $DIR/.kcs_instance_$GCE_PROJECT
-gcs_cat gs://$GS_BUCKET/ltm-pass >> $DIR/.kcs_instance_$GCE_PROJECT
-LAUNCH_KCS_EXIT_STATUS=0
+echo -n "GCE_KCS_PWD=" >> "$TMP_KCS_INSTANCE"
+gcs_cat gs://$GS_BUCKET/ltm-pass >> "$TMP_KCS_INSTANCE"
+mv -f "$TMP_KCS_INSTANCE" "$DIR/.kcs_instance_$GCE_PROJECT"
 echo "Done!"

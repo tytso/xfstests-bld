@@ -497,15 +497,12 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 	var config *gcp.Config
 	if toKCS {
 		accessKCS(log, true)
-		err := gcp.Update()
-		check.Panic(err, log, "Failed to update config")
+		UpdateConfig(log)
 		config = gcp.KCSConfig()
 
 	} else {
 		if gcp.LTMConfig() == nil {
 			fetchLTMConfig(log)
-			err := gcp.Update()
-			check.Panic(err, log, "Failed to update config")
 		}
 		config = gcp.LTMConfig()
 	}
@@ -661,6 +658,19 @@ func accessKCS(log *logrus.Entry, launch bool) bool {
 	return false
 }
 
+// UpdateConfig reloads GCP/LTM/KCS config files while serialized with
+// launch-kcs and launch-ltm operations.
+func UpdateConfig(log *logrus.Entry) {
+	launchLock.Lock()
+	defer launchLock.Unlock()
+	err := gcp.Update()
+	check.Panic(err, log, "Failed to update config")
+}
+
+func isAlreadyExistsOutput(output string, expected string) bool {
+	return strings.Contains(output, expected)
+}
+
 func runLaunchKCS(log *logrus.Entry) {
 	launchLock.Lock()
 	defer launchLock.Unlock()
@@ -670,10 +680,12 @@ func runLaunchKCS(log *logrus.Entry) {
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil && !strings.HasPrefix(output, "The KCS instance already exists!") {
+	if err != nil && !isAlreadyExistsOutput(output, "The KCS instance already exists!") {
 		cmdLog.WithField("output", output).WithError(err).Panic(
-			"Failed to fetch LTM config file")
+			"Failed to launch KCS")
 	}
+	err = gcp.Update()
+	check.Panic(err, log, "Failed to update config")
 }
 
 // fetchLTMConfig attempts to generate .ltm_instance config file
@@ -681,6 +693,9 @@ func runLaunchKCS(log *logrus.Entry) {
 func fetchLTMConfig(log *logrus.Entry) {
 	launchLock.Lock()
 	defer launchLock.Unlock()
+	if gcp.LTMConfig() != nil {
+		return
+	}
 	log.Info("Fetching LTM config file")
 
 	cmd := exec.Command("gce-xfstests", "launch-ltm")
@@ -688,8 +703,10 @@ func fetchLTMConfig(log *logrus.Entry) {
 	w := cmdLog.Writer()
 	defer w.Close()
 	output, err := check.LimitedOutput(cmd, check.RootDir, check.EmptyEnv, w)
-	if err != nil && !strings.HasPrefix(output, "The LTM instance already exists!") {
+	if err != nil && !isAlreadyExistsOutput(output, "The LTM instance already exists!") {
 		cmdLog.WithField("output", output).WithError(err).Panic(
 			"Failed to fetch LTM config file")
 	}
+	err = gcp.Update()
+	check.Panic(err, log, "Failed to update config")
 }

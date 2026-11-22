@@ -156,9 +156,9 @@ fi
 gcs_rm gs://$GS_BUCKET/ltm-batch/stop-ltm >& /dev/null
 
 echo "Launching LTM server..."
-touch $DIR/.ltm_instance_$GCE_PROJECT
-LAUNCH_LTM_EXIT_STATUS=1
-trap 'if [ $LAUNCH_LTM_EXIT_STATUS != 0 ]; then rm $DIR/.ltm_instance_$GCE_PROJECT; fi' EXIT
+TMP_LTM_INSTANCE=$(mktemp "$DIR/.ltm_instance_${GCE_PROJECT}.XXXXXX")
+chmod 0644 "$TMP_LTM_INSTANCE"
+trap 'rm -f "$TMP_LTM_INSTANCE"' EXIT
 
 run_gcloud compute instances create "$INSTANCE" --zone "$GCE_ZONE" \
     --machine-type "$GCE_LTM_MACHTYPE" --network "$GCE_NETWORK" \
@@ -177,9 +177,9 @@ then
     exit 1
 fi
 
-echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > $DIR/.ltm_instance_$GCE_PROJECT
-echo "GCE_LTM_NAME=$INSTANCE" >> $DIR/.ltm_instance_$GCE_PROJECT
-echo -n "GCE_LTM_EXT_IP=" >> $DIR/.ltm_instance_$GCE_PROJECT
+echo "GCE_LTM_SERVER_CERT=$DIR/.gce_xfstests_cert_$GCE_PROJECT.pem" > "$TMP_LTM_INSTANCE"
+echo "GCE_LTM_NAME=$INSTANCE" >> "$TMP_LTM_INSTANCE"
+echo -n "GCE_LTM_EXT_IP=" >> "$TMP_LTM_INSTANCE"
 echo -n "Waiting for VM to boot to grab external IP..."
 
 function wait_for_command() {
@@ -201,19 +201,19 @@ echo " Done!"
 
 NO_ACTION=
 run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> $DIR/.ltm_instance_$GCE_PROJECT
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)" >> "$TMP_LTM_INSTANCE"
 
 # use internal ip if this machine is in the same GCE project
 if test -n "$RUN_INTERNAL"; then
     echo "Runs on same GCE project so grab internal IP"
-    echo -n "GCE_LTM_INT_IP=" >> $DIR/.ltm_instance_$GCE_PROJECT
+    echo -n "GCE_LTM_INT_IP=" >> "$TMP_LTM_INSTANCE"
 
     run_gcloud compute instances describe "$INSTANCE" --zone "$GCE_ZONE" \
-        --format="get(networkInterfaces[0].networkIP)" >> $DIR/.ltm_instance_$GCE_PROJECT
+        --format="get(networkInterfaces[0].networkIP)" >> "$TMP_LTM_INSTANCE"
 fi
 
 echo -n "Fetching password..."
-echo -n "GCE_LTM_PWD=" >> $DIR/.ltm_instance_$GCE_PROJECT
-gcs_cat gs://$GS_BUCKET/ltm-pass >> $DIR/.ltm_instance_$GCE_PROJECT
-LAUNCH_LTM_EXIT_STATUS=0
+echo -n "GCE_LTM_PWD=" >> "$TMP_LTM_INSTANCE"
+gcs_cat gs://$GS_BUCKET/ltm-pass >> "$TMP_LTM_INSTANCE"
+mv -f "$TMP_LTM_INSTANCE" "$DIR/.ltm_instance_$GCE_PROJECT"
 echo "Done!"
