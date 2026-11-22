@@ -8,6 +8,7 @@ package check
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -232,4 +233,11 @@ func ValidateTestID(testID string) error {
 		}
 	}
 	return nil
+}
+
+// ValidPassword compares provided against expected in constant time,
+// rejecting empty expected passwords.
+func ValidPassword(provided, expected string) bool {
+	return expected != "" &&
+		subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }

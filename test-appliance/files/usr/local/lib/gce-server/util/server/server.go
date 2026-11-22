@@ -69,14 +69,19 @@ const (
 )
 
 func (r RequestType) String() string {
-	return [...]string{
+	names := [...]string{
 		"default",
 		"LTM-build",
 		"LTM-bisectStart",
 		"LTM-bisectStep",
 		"KCS-test",
 		"KCS-bisectStep",
-	}[r]
+		"query",
+	}
+	if r < 0 || int(r) >= len(names) {
+		return fmt.Sprintf("RequestType(%d)", r)
+	}
+	return names[r]
 }
 
 // ResultType defines the result state of a test.
@@ -98,14 +103,18 @@ const (
 )
 
 func (r ResultType) String() string {
-	return [...]string{
+	names := [...]string{
 		"default",
 		"pass",
 		"fail",
 		"hang",
 		"crash",
 		"error",
-	}[r]
+	}
+	if r < 0 || int(r) >= len(names) {
+		return fmt.Sprintf("ResultType(%d)", r)
+	}
+	return names[r]
 }
 
 const (
@@ -212,8 +221,8 @@ func init() {
 	} else {
 		panic("Failed to find config file")
 	}
-	if err != nil {
-		panic(err)
+	if err != nil || password == "" {
+		panic("Failed to load non-empty server password")
 	}
 
 	projID, err := gcp.GceConfig.Get("GCE_PROJECT")
@@ -313,7 +322,7 @@ func (server *Instance) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.Password != password {
+	if !check.ValidPassword(c.Password, password) {
 		log.Error("Wrong password")
 		http.Error(w, "Wrong password", http.StatusBadRequest)
 		return
@@ -348,7 +357,7 @@ func (server *Instance) LoginHandler(next http.Handler) http.Handler {
 			return
 		}
 
-		if pwd, ok := session.Values["pwd"].(string); !ok || pwd != password {
+		if pwd, ok := session.Values["pwd"].(string); !ok || !check.ValidPassword(pwd, password) {
 			log.Error("password validation failed")
 			http.Error(w, "Login failed", http.StatusForbidden)
 			return
@@ -393,9 +402,11 @@ func (server *Instance) FailureHandler(next http.Handler) http.Handler {
 	})
 }
 
-// ParseTaskRequest parses the request into a TaskRequest struct
-// Validates the password if the request is internal, as well as any testID fields.
-func ParseTaskRequest(w http.ResponseWriter, r *http.Request) (TaskRequest, error) {
+// ParseTaskRequest parses the request into a TaskRequest struct.
+// When internal is true, ExtraOptions must be present with a valid server
+// password. When internal is false, the caller is authenticated via
+// LoginHandler and ExtraOptions must be nil.
+func ParseTaskRequest(w http.ResponseWriter, r *http.Request, internal bool) (TaskRequest, error) {
 	var c TaskRequest
 	err := json.NewDecoder(r.Body).Decode(&c)
 	if err != nil {
@@ -407,9 +418,15 @@ func ParseTaskRequest(w http.ResponseWriter, r *http.Request) (TaskRequest, erro
 		c.Options = &UserOptions{}
 	}
 
-	if c.ExtraOptions != nil && c.ExtraOptions.Password != password {
-		http.Error(w, "Login failed", http.StatusForbidden)
-		return c, fmt.Errorf("Failed to validate password")
+	if internal {
+		if c.ExtraOptions == nil || !check.ValidPassword(c.ExtraOptions.Password, password) {
+			http.Error(w, "Login failed", http.StatusForbidden)
+			return c, fmt.Errorf("failed to validate internal password")
+		}
+		c.ExtraOptions.Password = ""
+	} else if c.ExtraOptions != nil {
+		_ = SendErrorResponse(w, http.StatusBadRequest, "extra_options not allowed on external endpoint")
+		return c, fmt.Errorf("unexpected extra_options on external endpoint")
 	}
 
 	if c.Options.TestRunID != "" {
@@ -498,7 +515,9 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 
 	url := fmt.Sprintf("https://%s/internal", ip)
 
-	c.ExtraOptions.Password = password
+	extraCopy := *c.ExtraOptions
+	extraCopy.Password = ""
+	c.ExtraOptions = &extraCopy
 
 	log.WithFields(logrus.Fields{
 		"cmdLine":      c.CmdLine,
@@ -506,10 +525,12 @@ func SendInternalRequest(c TaskRequest, log *logrus.Entry, toKCS bool) {
 		"extraOptions": c.ExtraOptions,
 	}).Info("Sending request")
 
+	extraCopy.Password = password
+
 	js, err := json.Marshal(c)
 	check.Panic(err, log, "Failed to encode json request body")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
-	check.Panic(err, log.WithField("js", js), "Failed to format request")
+	check.Panic(err, log, "Failed to format request")
 
 	timeout := ltmTimeout
 	if toKCS {
@@ -560,6 +581,13 @@ func sendRequest(req *http.Request, timeout time.Duration) (*http.Response, erro
 
 	var resp *http.Response
 	for attempts := maxAttempts; attempts > 0; attempts-- {
+		if req.GetBody != nil {
+			body, err := req.GetBody()
+			if err != nil {
+				return nil, err
+			}
+			req.Body = body
+		}
 		resp, err = client.Do(req)
 		if err == nil {
 			return resp, nil

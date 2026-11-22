@@ -170,7 +170,7 @@ func InternalQuery(log *logrus.Entry) StatusResponse {
 	js, err := json.Marshal(c)
 	check.Panic(err, log, "Failed to encode json request body")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(js))
-	check.Panic(err, log.WithField("js", js), "Failed to format request")
+	check.Panic(err, log, "Failed to format request")
 
 	resp, err := sendRequest(req, kcsTimeout)
 	check.Panic(err, log, "Failed to send request")

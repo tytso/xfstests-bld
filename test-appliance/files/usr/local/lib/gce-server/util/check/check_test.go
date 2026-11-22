@@ -58,3 +58,22 @@ func TestValidateTestID(t *testing.T) {
 		}
 	}
 }
+
+func TestValidPassword(t *testing.T) {
+	if !ValidPassword("s3cr3tP4ssw0rd!", "s3cr3tP4ssw0rd!") {
+		t.Error("expected matching non-empty password to succeed")
+	}
+	if ValidPassword("wrong", "s3cr3tP4ssw0rd!") {
+		t.Error("expected mismatched password to fail")
+	}
+	if ValidPassword("", "s3cr3tP4ssw0rd!") {
+		t.Error("expected empty provided password to fail")
+	}
+	if ValidPassword("", "") {
+		t.Error("expected empty expected password to fail")
+	}
+	if ValidPassword("s3cr3t", "") {
+		t.Error("expected non-empty provided with empty expected password to fail")
+	}
+}
+

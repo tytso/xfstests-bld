@@ -28,10 +28,14 @@ import (
 
 // runCompile is the endpoint for a build request.
 // Sends a simple status response back to requester.
-func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
-	log := serverLog.WithField("endpoint", "/gce-xfstests")
+func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry, internal bool) {
+	endpoint := "/gce-xfstests"
+	if internal {
+		endpoint = "/internal"
+	}
+	log := serverLog.WithField("endpoint", endpoint)
 
-	c, err := server.ParseTaskRequest(w, r)
+	c, err := server.ParseTaskRequest(w, r, internal)
 	if !check.NoError(err, log, "Failed to parse request") {
 		return
 	}
@@ -106,6 +110,15 @@ func runCompile(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry)
 // It only get exposed to LTM server.
 func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
 	log := serverLog.WithField("endpoint", "/internal-status")
+	c, err := server.ParseTaskRequest(w, r, true)
+	if !check.NoError(err, log, "Failed to parse status request") {
+		return
+	}
+	if c.ExtraOptions.Requester != server.Query {
+		log.WithField("requester", c.ExtraOptions.Requester).Error("Unrecognized internal status request")
+		_ = server.SendErrorResponse(w, http.StatusBadRequest, "Unrecognized request")
+		return
+	}
 	log.Info("generating running status info")
 
 	response := server.StatusResponse{
@@ -113,7 +126,7 @@ func status(w http.ResponseWriter, r *http.Request, serverLog *logrus.Entry) {
 	}
 	log.WithField("response", response).Info("Sending response")
 
-	err := server.SendResponse(w, r, response)
+	err = server.SendResponse(w, r, response)
 	check.Panic(err, log, "Failed to send the response")
 }
 
@@ -125,11 +138,11 @@ func main() {
 
 	s.Handler().Handle("/gce-xfstests", s.LoginHandler(s.FailureHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			runCompile(w, r, s.Log())
+			runCompile(w, r, s.Log(), false)
 		})))).Methods("POST")
 	s.Handler().Handle("/internal", s.FailureHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			runCompile(w, r, s.Log())
+			runCompile(w, r, s.Log(), true)
 		}))).Methods("POST")
 	s.Handler().Handle("/internal-status", s.FailureHandler(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
