@@ -7,6 +7,7 @@ RemoteRepository - remote repos for git repo watcher.
 package git
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"thunk.org/gce-server/util/check"
 	"thunk.org/gce-server/util/server"
@@ -27,12 +29,13 @@ import (
 
 // configurable constants for git utility functions
 const (
-	RepoRootDir       = "/cache/repositories/"
-	RefRepoDir        = RepoRootDir + "linux.reference"
-	RefRepoURL        = "https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
-	RepoLockFileName  = ".repo-cleanup.lock"
-	BuildUploadScript = "/usr/local/lib/gce-build-upload-kernel"
-	watchInterval     = 10
+	RepoRootDir        = "/cache/repositories/"
+	RefRepoDir         = RepoRootDir + "linux.reference"
+	RefRepoURL         = "https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
+	RepoLockFileName   = ".repo-cleanup.lock"
+	BuildUploadScript  = "/usr/local/lib/gce-build-upload-kernel"
+	watchInterval      = 10
+	remoteQueryTimeout = 2 * time.Minute
 )
 
 var (
@@ -623,9 +626,18 @@ func (repo *RemoteRepository) Head() string {
 
 // getHead retrives the commit hash of the HEAD on a branch.
 func getHead(repoURL string, branch string) (string, error) {
-	cmd := exec.Command("git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
-	output, err := check.Output(cmd, check.RootDir, check.EmptyEnv, os.Stderr)
+	ctx, cancel := context.WithTimeout(context.Background(), remoteQueryTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--heads", "--quiet", "--exit-code", repoURL, branch)
+	env := map[string]string{
+		"GIT_TERMINAL_PROMPT": "0",
+	}
+	output, err := check.Output(cmd, check.RootDir, env, os.Stderr)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("git ls-remote timed out: %w", ctx.Err())
+		}
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitErr.ExitCode() == 2 {
 				return "", fmt.Errorf("branch is not found")
@@ -634,8 +646,11 @@ func getHead(repoURL string, branch string) (string, error) {
 		return "", err
 	}
 
-	commit := strings.Fields(output)[0]
-	return commit, nil
+	fields := strings.Fields(output)
+	if len(fields) == 0 {
+		return "", fmt.Errorf("empty ls-remote output")
+	}
+	return fields[0], nil
 }
 
 // ParseURL transforms a git url into a human readable directory string.

@@ -60,10 +60,21 @@ type GitWatcher struct {
 // watcherMap indexes watchers by testID.
 // Used for checking duplication and terminating a watcher.
 var (
-	watcherMap     = make(map[string]*GitWatcher)
-	watcherLock    sync.Mutex
-	forwardKCSFunc = ForwardKCS
+	watcherMap      = make(map[string]*GitWatcher)
+	pendingWatchers = make(map[string]bool)
+	watcherLock     sync.Mutex
+	forwardKCSFunc  = ForwardKCS
 )
+
+func reserveWatcherID(testID string) bool {
+	watcherLock.Lock()
+	defer watcherLock.Unlock()
+	if _, ok := watcherMap[testID]; ok || pendingWatchers[testID] {
+		return false
+	}
+	pendingWatchers[testID] = true
+	return true
+}
 
 // NewGitWatcher constructs a new git watcher from a watch request.
 // It returns an error if testID is invalid or already linked with a watcher.
@@ -72,11 +83,22 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 		return nil, fmt.Errorf("invalid testID: %w", err)
 	}
 
-	watcherLock.Lock()
-	defer watcherLock.Unlock()
-	if _, ok := watcherMap[testID]; ok {
+	if !reserveWatcherID(testID) {
 		return nil, fmt.Errorf("given testID is already linked with a watcher")
 	}
+
+	var log *logrus.Entry
+	registered := false
+	defer func() {
+		if !registered {
+			watcherLock.Lock()
+			delete(pendingWatchers, testID)
+			watcherLock.Unlock()
+			if log != nil {
+				logging.CloseLog(log)
+			}
+		}
+	}()
 
 	logDir := logging.LTMLogDir + testID + "/"
 	err := check.CreateDir(logDir)
@@ -85,7 +107,7 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 	}
 
 	logFile := logDir + "run.log"
-	log := logging.InitLogger(logFile)
+	log = logging.InitLogger(logFile)
 	log.Info("Initiating git watcher")
 
 	resultsDir := logDir + "results/"
@@ -136,7 +158,11 @@ func NewGitWatcher(c server.TaskRequest, testID string) (*GitWatcher, error) {
 		log:        log,
 	}
 
+	watcherLock.Lock()
+	delete(pendingWatchers, testID)
 	watcherMap[testID] = watcher
+	registered = true
+	watcherLock.Unlock()
 
 	return watcher, nil
 }
