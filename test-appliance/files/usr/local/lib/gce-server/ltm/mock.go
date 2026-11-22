@@ -67,7 +67,7 @@ func (sharder *ShardScheduler) Dump(filename string) {
 		GsBucket:       sharder.gsBucket,
 		BucketSubdir:   sharder.bucketSubdir,
 		GsKernel:       sharder.gsKernel,
-		KernelVersion:  sharder.kernelVersion,
+		KernelVersion:  sharder.getKernelVersion(),
 		ReportReceiver: sharder.reportReceiver,
 		MaxShards:      sharder.maxShards,
 		KeepDeadVM:     sharder.keepDeadVM,
@@ -89,6 +89,9 @@ func (sharder *ShardScheduler) Dump(filename string) {
 }
 
 func (shard *ShardWorker) Dump() JsonShard {
+	shard.mu.RLock()
+	vmTimeout := shard.vmTimeout
+	shard.mu.RUnlock()
 	return JsonShard{
 		ShardID:            shard.shardID,
 		Name:               shard.name,
@@ -100,7 +103,7 @@ func (shard *ShardWorker) Dump() JsonShard {
 		SerialOutputPath:   shard.serialOutputPath,
 		ResultsName:        shard.resultsName,
 		UnpackedResultsDir: shard.unpackedResultsDir,
-		VMTimeout:          shard.vmTimeout,
+		VMTimeout:          vmTimeout,
 	}
 }
 

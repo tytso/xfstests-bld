@@ -29,6 +29,7 @@ import (
 
 // ShardWorker manages a single test VM.
 type ShardWorker struct {
+	mu        sync.RWMutex
 	sharder   *ShardScheduler
 	shardID   string
 	name      string
@@ -130,13 +131,50 @@ func NewShardWorker(sharder *ShardScheduler, shardID string, config string, zone
 	return &shard
 }
 
+func (shard *ShardWorker) setStatus(status string) {
+	shard.mu.Lock()
+	shard.vmStatus = status
+	shard.mu.Unlock()
+}
+
+func (shard *ShardWorker) getStatus() string {
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
+	return shard.vmStatus
+}
+
+func (shard *ShardWorker) setStart(t time.Time) {
+	shard.mu.Lock()
+	shard.vmtestStart = t
+	shard.mu.Unlock()
+}
+
+func (shard *ShardWorker) getStart() time.Time {
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
+	return shard.vmtestStart
+}
+
+func (shard *ShardWorker) getResult() server.ResultType {
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
+	return shard.testResult
+}
+
+func (shard *ShardWorker) setStatusAndResult(status string, res server.ResultType) {
+	shard.mu.Lock()
+	shard.vmStatus = status
+	shard.testResult = res
+	shard.mu.Unlock()
+}
+
 // Run issues the gce-xfstests command to launch a test VM and monitor its running status.
 func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer shard.exit()
 
 	shard.log.WithField("shardInfo", shard.Info()).Debug("Starting shard")
-	shard.vmStatus = "launching"
+	shard.setStatus("launching")
 
 	file, err := os.Create(shard.cmdLogPath)
 	check.Panic(err, shard.log, "Failed to create file")
@@ -148,7 +186,7 @@ func (shard *ShardWorker) Run(wg *sync.WaitGroup) {
 
 	if err != nil {
 		shard.log.WithError(err).WithField("cmd", cmd.String()).Error("Failed to start test VM")
-		shard.vmStatus = "failed to launch"
+		shard.setStatus("failed to launch")
 	} else {
 		shard.monitor()
 		shard.finish()
@@ -171,7 +209,7 @@ func (shard *ShardWorker) monitor() {
 	ticker := time.NewTicker(monitorInterval)
 	defer ticker.Stop()
 	monitorStart := time.Now()
-	shard.vmtestStart = monitorStart
+	shard.setStart(monitorStart)
 
 	for range ticker.C {
 		log := shard.log.WithField("time", time.Since(monitorStart).Round(time.Second))
@@ -179,14 +217,14 @@ func (shard *ShardWorker) monitor() {
 
 		if err != nil {
 			if gcp.NotFound(err) {
-				if shard.vmtestStart == monitorStart {
-					shard.vmStatus = "failed to launch"
+				if shard.getStart() == monitorStart {
+					shard.setStatus("failed to launch")
 					log.Error("Test VM failed to launch")
 				} else {
 					log.Info("Test VM no longer exists")
 				}
 			} else {
-				shard.vmStatus = "unexpected error"
+				shard.setStatus("unexpected error")
 				log.WithError(err).Panic("Failed to get shard instance info")
 			}
 			return
@@ -198,7 +236,7 @@ func (shard *ShardWorker) monitor() {
 
 		if instanceInfo.Status == "TERMINATED" {
 			if !shard.vmTerminated {
-				shard.vmStatus = "terminated"
+				shard.setStatus("terminated")
 				shard.vmTerminated = true
 				shard.vmTermTime = time.Now()
 				shard.vmTermInterval = restartIntervalMin
@@ -232,22 +270,24 @@ func (shard *ShardWorker) monitor() {
 		}
 
 		for _, metaData := range instanceInfo.Metadata.Items {
-			if metaData.Key == "status" {
+			if metaData.Key == "status" && metaData.Value != nil {
+				shard.mu.Lock()
 				if *metaData.Value != shard.vmStatus {
 					shard.vmStatus = *metaData.Value
 					shard.vmtestStart = time.Now()
 					shard.vmReset = false
+					shard.mu.Unlock()
 					break
 				}
+				shard.mu.Unlock()
 			}
 		}
-		if shard.vmStatus == "launching" {
+		if shard.getStatus() == "launching" {
 			if time.Since(monitorStart) > noStatusTimeout {
 				if !shard.sharder.keepDeadVM {
 					shard.shutdownOnTimeout(instanceInfo.Metadata)
 				}
-				shard.vmStatus = "timeout without launching tests"
-				shard.testResult = server.Error
+				shard.setStatusAndResult("timeout without launching tests", server.Error)
 
 				log.Errorf("Tests might fail to start, cannot find test status for %s", noStatusTimeout.Round(time.Second))
 				return
@@ -255,7 +295,7 @@ func (shard *ShardWorker) monitor() {
 			log.Debug("waiting to get test status metadata")
 		}
 
-		if shard.vmReset && time.Since(shard.vmtestStart) > resetTimeout {
+		if shard.vmReset && time.Since(shard.getStart()) > resetTimeout {
 			log.Errorf("VM did not come back online after reset, exiting")
 			return
 		}
@@ -264,23 +304,26 @@ func (shard *ShardWorker) monitor() {
 		// Skip check if we are already performing a reset
 		// Selftests may limit monitorTimeout to shorter than noStatusTimeout
 		//    so skip check if we are still launching
-		if time.Since(shard.vmtestStart) > shard.sharder.monitorTimeout &&
-			!shard.vmReset && shard.vmStatus != "launching" {
+		if time.Since(shard.getStart()) > shard.sharder.monitorTimeout &&
+			!shard.vmReset && shard.getStatus() != "launching" {
 			log.Debug("Resetting VM")
 			err := shard.sharder.gce.ResetVM(shard.sharder.projID, shard.zone, shard.name)
 			if err != nil {
 				log.Errorf("Failed to reset %s", shard.name)
-				shard.vmStatus = "failed to reset after timeout"
-				shard.testResult = server.Error
+				shard.setStatusAndResult("failed to reset after timeout", server.Error)
 				return
 			}
 			shard.vmReset = true
-			shard.vmtestStart = time.Now()
+			shard.setStart(time.Now())
 		}
 
+		shard.mu.RLock()
+		curStatus := shard.vmStatus
+		curStart := shard.vmtestStart
+		shard.mu.RUnlock()
 		log.WithFields(logrus.Fields{
-			"status": shard.vmStatus,
-			"start":  shard.vmtestStart.Format(time.Stamp),
+			"status": curStatus,
+			"start":  curStart.Format(time.Stamp),
 		}).Debug("Keep waiting")
 	}
 }
@@ -320,7 +363,9 @@ func (shard *ShardWorker) updateSerialData(offset int64) int64 {
 
 func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {
 	shard.log.Info("Shutting down")
+	shard.mu.Lock()
 	shard.vmTimeout = true
+	shard.mu.Unlock()
 
 	for _, item := range metadata.Items {
 		if item.Key == "shutdown_reason" {
@@ -358,6 +403,7 @@ func (shard *ShardWorker) finish() {
 
 	url := shard.getResults()
 	if url == "" {
+		shard.mu.Lock()
 		if shard.testResult == server.DefaultResult {
 			if shard.vmStatus == "launching" {
 				shard.testResult = server.Error
@@ -366,6 +412,7 @@ func (shard *ShardWorker) finish() {
 				shard.testResult = server.Crash
 			}
 		}
+		shard.mu.Unlock()
 		shard.log.Error("Failed to find result file")
 		return
 	}
@@ -385,7 +432,10 @@ func (shard *ShardWorker) finish() {
 	cmd = exec.Command(resultsNoRebootsPath, shard.unpackedResultsDir)
 	err = cmd.Run()
 	check.NoError(err, shard.log, "Failed to check for VM reboots")
-	if err == nil && !shard.vmTimeout &&
+	shard.mu.RLock()
+	timedOut := shard.vmTimeout
+	shard.mu.RUnlock()
+	if err == nil && !timedOut &&
 		check.FileExists(shard.serialOutputPath) {
 		err = os.Remove(shard.serialOutputPath)
 		check.NoError(err, shard.log, "Failed to remove dir")
@@ -398,7 +448,7 @@ func (shard *ShardWorker) finish() {
 	prefix = fmt.Sprintf("%s/summary.%s", shard.sharder.bucketSubdir, shard.resultsName)
 	_, err = shard.sharder.gce.DeleteFiles(prefix)
 	check.NoError(err, shard.log, "Failed to delete file")
-	shard.vmStatus = "finished"
+	shard.setStatus("finished")
 }
 
 // getResults fetches the test result files.
@@ -435,13 +485,19 @@ func (shard *ShardWorker) getResults() string {
 
 // Info returns structured shard information.
 func (shard *ShardWorker) Info() server.ShardInfo {
+	shard.mu.RLock()
+	status := shard.vmStatus
+	start := shard.vmtestStart
+	result := shard.testResult
+	shard.mu.RUnlock()
+
 	return server.ShardInfo{
 		ID:     shard.shardID,
 		Config: shard.config,
 		Zone:   shard.zone,
-		Status: shard.vmStatus,
-		Time:   time.Since(shard.vmtestStart).Round(time.Second).String(),
-		Result: shard.testResult.String(),
+		Status: status,
+		Time:   time.Since(start).Round(time.Second).String(),
+		Result: result.String(),
 	}
 }
 
@@ -455,8 +511,10 @@ func (shard *ShardWorker) exit() {
 		} else {
 			shard.log.Warn("Serial port output is not found")
 		}
+		shard.mu.Lock()
 		if shard.testResult == server.DefaultResult {
 			shard.testResult = server.Error
 		}
+		shard.mu.Unlock()
 	}
 }

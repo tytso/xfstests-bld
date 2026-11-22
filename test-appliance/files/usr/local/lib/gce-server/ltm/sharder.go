@@ -43,6 +43,7 @@ const defaultMonitorTimeout = 1 * time.Hour
 
 // ShardScheduler schedules tests and aggregates reports.
 type ShardScheduler struct {
+	mu        sync.RWMutex
 	testID    string
 	projID    string
 	imgProjID string
@@ -372,7 +373,7 @@ func (sharder *ShardScheduler) Run() {
 	sharder.log.Debug("Starting sharder")
 	var wg sync.WaitGroup
 
-	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
+	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.getKernelVersion())
 	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportFailReceiver, subject)
 
 	defer sharder.clean()
@@ -393,15 +394,44 @@ func (sharder *ShardScheduler) Run() {
 	sharder.finish()
 }
 
+func (sharder *ShardScheduler) getKernelVersion() string {
+	sharder.mu.RLock()
+	defer sharder.mu.RUnlock()
+	return sharder.kernelVersion
+}
+
+func (sharder *ShardScheduler) setKernelVersion(v string) {
+	sharder.mu.Lock()
+	sharder.kernelVersion = v
+	sharder.mu.Unlock()
+}
+
+func (sharder *ShardScheduler) getResult() server.ResultType {
+	sharder.mu.RLock()
+	defer sharder.mu.RUnlock()
+	return sharder.testResult
+}
+
+func (sharder *ShardScheduler) setResult(r server.ResultType) {
+	sharder.mu.Lock()
+	sharder.testResult = r
+	sharder.mu.Unlock()
+}
+
 // Info returns structured sharder information.
 func (sharder *ShardScheduler) Info() server.SharderInfo {
+	sharder.mu.RLock()
+	kernelVersion := sharder.kernelVersion
+	result := sharder.testResult
+	sharder.mu.RUnlock()
+
 	info := server.SharderInfo{
 		ID:            sharder.testID,
 		Command:       sharder.origCmd,
-		KernelVersion: sharder.kernelVersion,
+		KernelVersion: kernelVersion,
 		KernelArch:    sharder.kernelArch,
 		NumShards:     len(sharder.shards),
-		Result:        sharder.testResult.String(),
+		Result:        result.String(),
 	}
 
 	for _, shard := range sharder.shards {
@@ -479,16 +509,16 @@ func (sharder *ShardScheduler) aggResults() {
 	}
 
 	for _, shard := range sharder.shards {
-		if sharder.kernelVersion != "" {
+		if sharder.getKernelVersion() != "" {
 			break
 		}
 		kernelVersionFile := fmt.Sprintf("%s%s/kernel_version", sharder.aggDir, shard.shardID)
 		if check.FileExists(kernelVersionFile) {
 			content, err := check.ReadLines(kernelVersionFile)
-			if !check.NoError(err, sharder.log, "Failed to read file") {
+			if !check.NoError(err, sharder.log, "Failed to read file") || len(content) == 0 {
 				continue
 			}
-			sharder.kernelVersion = content[0]
+			sharder.setKernelVersion(content[0])
 		}
 	}
 }
@@ -609,7 +639,7 @@ func (sharder *ShardScheduler) genResultsSummary() {
 	var testFailure, testError, reportInfo bool
 
 	for _, shard := range sharder.shards {
-		switch shard.testResult {
+		switch shard.getResult() {
 		case server.DefaultResult:
 			// do nothing, won't fallthrough like in C
 		case server.Error:
@@ -635,11 +665,11 @@ func (sharder *ShardScheduler) genResultsSummary() {
 	}
 
 	if testFailure {
-		sharder.testResult = server.Fail
+		sharder.setResult(server.Fail)
 	} else if testError {
-		sharder.testResult = server.Error
+		sharder.setResult(server.Error)
 	} else {
-		sharder.testResult = server.Pass
+		sharder.setResult(server.Pass)
 	}
 
 	if reportInfo {
@@ -655,10 +685,11 @@ func (sharder *ShardScheduler) genResultsSummary() {
 
 // emailReport sends the email.
 func (sharder *ShardScheduler) emailReport() {
+	kernelVersion := sharder.getKernelVersion()
 	if sharder.reportReceiver == "" && sharder.reportFailReceiver == "" {
 		sharder.log.Info("Skipping e-mail report")
 	} else {
-		subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
+		subject := fmt.Sprintf("xfstests results %s-%s %s", server.LTMUserName, sharder.testID, kernelVersion)
 
 		b, err := ioutil.ReadFile(sharder.aggDir + "report")
 		content := string(b)
@@ -686,7 +717,7 @@ func (sharder *ShardScheduler) emailReport() {
 		sharder.log.Info("Skipping junit file e-mail")
 	} else {
 		sharder.log.Info("Sending junit file e-mail")
-		subject := fmt.Sprintf("xfstests junit results %s-%s %s", server.LTMUserName, sharder.testID, sharder.kernelVersion)
+		subject := fmt.Sprintf("xfstests junit results %s-%s %s", server.LTMUserName, sharder.testID, kernelVersion)
 
 		b, err := ioutil.ReadFile(sharder.aggDir + "results.xml")
 		content := string(b)
@@ -701,14 +732,14 @@ func (sharder *ShardScheduler) emailReport() {
 
 func (sharder *ShardScheduler) sendKCSReport() {
 	sharder.testRequest.ExtraOptions.TestID = strings.Split(sharder.testID, "-")[0]
-	sharder.testRequest.ExtraOptions.TestResult = sharder.testResult
+	sharder.testRequest.ExtraOptions.TestResult = sharder.getResult()
 	sharder.testRequest.ExtraOptions.Requester = server.LTMBisectStep
 
 	server.SendInternalRequest(sharder.testRequest, sharder.log, true)
 }
 
 func (sharder *ShardScheduler) sendWatcherResult() {
-	UpdateWatcherTest(sharder.testID, sharder.testResult)
+	UpdateWatcherTest(sharder.testID, sharder.getResult())
 }
 
 // packResults packs the aggregared files after copying the sharder's log file into it.
@@ -742,19 +773,20 @@ func (sharder *ShardScheduler) packResults() {
 	}
 
 	sharder.log.Info("Uploading repacked results tarball")
+	kernelVersion := sharder.getKernelVersion()
 
-	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
+	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggFile+".tar.xz", gsPath)
 	check.Panic(err, sharder.log, "Failed to upload results tarball")
 
-	gsPath = fmt.Sprintf("%s/results.%s-%s.%s.xml", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
+	gsPath = fmt.Sprintf("%s/results.%s-%s.%s.xml", sharder.bucketSubdir, server.LTMUserName, sharder.testID, kernelVersion)
 	err = sharder.gce.UploadFile(sharder.aggDir+"results.xml", gsPath)
 	check.Panic(err, sharder.log, "Failed to upload junit file")
 
 	os.Remove(sharder.aggFile + ".tar.xz")
 
 	if _, err := gcp.GceConfig().Get("GCE_UPLOAD_SUMMARY"); err == nil {
-		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, server.LTMUserName, sharder.testID, sharder.kernelVersion)
+		gsPath = fmt.Sprintf("%s/summary.%s-%s.%s.txt", sharder.bucketSubdir, server.LTMUserName, sharder.testID, kernelVersion)
 		err = sharder.gce.UploadFile(sharder.aggDir+"summary", gsPath)
 		check.Panic(err, sharder.log, "Failed to upload results summary")
 	}
@@ -781,9 +813,14 @@ func (sharder *ShardScheduler) clean() {
 // SharderStatus returns the info for running sharders.
 func SharderStatus() []server.SharderInfo {
 	sharderLock.Lock()
-	defer sharderLock.Unlock()
-	infoList := []server.SharderInfo{}
+	sharders := make([]*ShardScheduler, 0, len(sharderMap))
 	for _, v := range sharderMap {
+		sharders = append(sharders, v)
+	}
+	sharderLock.Unlock()
+
+	infoList := make([]server.SharderInfo, 0, len(sharders))
+	for _, v := range sharders {
 		infoList = append(infoList, v.Info())
 	}
 	sort.Slice(infoList, func(i, j int) bool {
