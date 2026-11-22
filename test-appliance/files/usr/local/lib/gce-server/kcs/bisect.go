@@ -98,7 +98,7 @@ func NewGitBisector(c server.TaskRequest, testID string) (*GitBisector, error) {
 	w := log.WithField("cmd", "bisectInit").Writer()
 	defer w.Close()
 
-	repo, err := git.NewRepository(testID, c.Options.GitRepo, w)
+	repo, err := git.NewBisectRepository(testID, c.Options.GitRepo, w)
 	check.Panic(err, log, "Failed to clone repo")
 
 	badCommit := c.Options.BadCommit
