@@ -267,7 +267,9 @@ else
 fi
 
 if test -z "$*" -a "$err" == 0 ; then
-    git describe > $BLD_DIR/.git_version
+    if ! git describe > "$BLD_DIR/.git_version" 2>/dev/null ; then
+	rm -f "$BLD_DIR/.git_version"
+    fi
 fi
 
 if test -z "$*" -a "$err" == 0 && \

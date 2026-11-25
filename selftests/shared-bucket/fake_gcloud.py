@@ -129,7 +129,8 @@ def check_vm_iam(binfo, caller_sa, caller_proj, perm):
     return True, ""
 
 
-def put_object(binfo, obj_name, data, caller_sa, caller_proj):
+def put_object(binfo, obj_name, data, caller_sa, caller_proj,
+               custom_fields=None):
     ok, err = check_vm_iam(binfo, caller_sa, caller_proj,
                            "storage.objects.create")
     if not ok:
@@ -162,12 +163,29 @@ def put_object(binfo, obj_name, data, caller_sa, caller_proj):
 
     prev = binfo["objects"].get(obj_name)
     writes = (prev["writes"] if prev else 0) + 1
-    binfo["objects"][obj_name] = {
+    entry = {
         "data_b64": base64.b64encode(data).decode("ascii"),
         "md5": md5_b64(data),
         "writes": writes,
     }
+    if custom_fields is not None:
+        entry["custom_fields"] = dict(custom_fields)
+    binfo["objects"][obj_name] = entry
     return True, ""
+
+
+def parse_custom_metadata_arg(raw):
+    """Parse gcloud --custom-metadata / --update-custom-metadata k=v pairs."""
+    if not raw:
+        return {}
+    items = {}
+    for part in raw.split(","):
+        if not part:
+            continue
+        if "=" in part:
+            k, v = part.split("=", 1)
+            items[k] = v
+    return items
 
 
 def parse_metadata_arg(raw):
@@ -204,6 +222,7 @@ def strip_global_flags(argv):
         "--network", "--scopes", "--tags", "--image-project",
         "--image-family", "--image", "--provisioning-model",
         "--service-account", "--delete-disks", "--disk",
+        "--custom-metadata", "--update-custom-metadata",
     }
     i = 0
     while i < len(argv):
@@ -219,7 +238,7 @@ def strip_global_flags(argv):
             continue
         if a in ("-q", "--quiet", "--raw", "--no-standard-images",
                  "--brief", "--checksums-only", "--recursive", "-r", "-b",
-                 "--no-auto-delete"):
+                 "--no-auto-delete", "--no-user-output-enabled"):
             bool_flags.add(a)
             i += 1
             continue
@@ -314,8 +333,51 @@ def handle_storage(state, args, flags, bool_flags, caller_sa, caller_proj):
             if not ok:
                 sys.stderr.write(err)
                 return 1
-            print("name: %s\ncustom_fields:\n  arch: amd64\n  ver: 6.12.0\n"
-                  % oname)
+            obj = binfo["objects"][oname]
+            cf = (obj["custom_fields"] if "custom_fields" in obj
+                  else {"arch": "amd64", "ver": "6.12.0"})
+            fmt = last_flag(flags, "format")
+            if fmt == "json":
+                payload = {
+                    "bucket": bname,
+                    "md5_hash": obj["md5"],
+                    "name": oname,
+                    "storage_url": "gs://%s/%s" % (bname, oname),
+                }
+                if cf:
+                    payload["custom_fields"] = cf
+                print(json.dumps(payload, indent=2))
+            else:
+                lines = ["name: %s" % oname]
+                if cf:
+                    lines.append("custom_fields:")
+                    for k, v in sorted(cf.items()):
+                        lines.append("  %s: %s" % (k, v))
+                print("\n".join(lines) + "\n")
+            return 0
+        if act == "update":
+            bname, oname = parse_gs(args[3])
+            binfo = state["buckets"].get(bname)
+            if not binfo or oname not in binfo["objects"]:
+                sys.stderr.write(
+                    "ERROR: (gcloud.storage.objects.update) URL matched no "
+                    "objects: %s\n" % args[3]
+                )
+                return 1
+            ok, err = check_vm_iam(binfo, caller_sa, caller_proj,
+                                   "storage.objects.create")
+            if not ok:
+                sys.stderr.write(err)
+                return 1
+            obj = binfo["objects"][oname]
+            if "custom-metadata" in flags:
+                obj["custom_fields"] = parse_custom_metadata_arg(
+                    last_flag(flags, "custom-metadata"))
+            elif "update-custom-metadata" in flags:
+                merged = dict(obj.get("custom_fields") or {})
+                merged.update(parse_custom_metadata_arg(
+                    last_flag(flags, "update-custom-metadata")))
+                obj["custom_fields"] = merged
             return 0
 
     if sub == "hash":
@@ -394,7 +456,10 @@ def handle_storage(state, args, flags, bool_flags, caller_sa, caller_proj):
                     expanded_srcs.extend(matches)
                 else:
                     expanded_srcs.append(src)
+            cm_raw = (last_flag(flags, "custom-metadata")
+                      if "custom-metadata" in flags else None)
             for src in expanded_srcs:
+                src_cf = None
                 if src == "-":
                     data = sys.stdin.buffer.read()
                     target_name = dobj
@@ -412,7 +477,10 @@ def handle_storage(state, args, flags, bool_flags, caller_sa, caller_proj):
                     if not ok:
                         sys.stderr.write(err)
                         return 1
-                    data = base64.b64decode(sbinfo["objects"][sobj]["data_b64"])
+                    sobj_entry = sbinfo["objects"][sobj]
+                    data = base64.b64decode(sobj_entry["data_b64"])
+                    if "custom_fields" in sobj_entry:
+                        src_cf = dict(sobj_entry["custom_fields"])
                     base = os.path.basename(sobj.rstrip("/"))
                     target_name = (
                         (dobj.rstrip("/") + "/" + base).lstrip("/")
@@ -431,8 +499,11 @@ def handle_storage(state, args, flags, bool_flags, caller_sa, caller_proj):
                         if (dst_trailing_slash or len(srcs) > 1 or dobj == "")
                         else dobj
                     )
+                cf_to_save = (parse_custom_metadata_arg(cm_raw)
+                              if cm_raw is not None
+                              else (src_cf if src_cf is not None else {}))
                 ok, err = put_object(binfo, target_name, data, caller_sa,
-                                     caller_proj)
+                                     caller_proj, custom_fields=cf_to_save)
                 if not ok:
                     sys.stderr.write(err)
                     return 1

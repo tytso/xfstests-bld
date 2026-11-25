@@ -86,11 +86,11 @@ function set_cross_compile ()
 
 function get_kernel_file_info () {
     local is_gs=
+    local kernel="$1"
     KERNEL_ARCH=
     KERNEL_VERSION=
-    KERNEL="$1"
 
-    case "$KERNEL" in
+    case "$kernel" in
 	gs://*)
 	    is_gs=yes
 	    ;;
@@ -98,36 +98,45 @@ function get_kernel_file_info () {
 
     if test -n "$is_gs" ; then
 	local f=$(mktemp --tmpdir gs_stat_XXXXXX)
-	if run_gcloud_always storage objects describe "$KERNEL" > "$f" ; then
-	    cat "$f" | sed -e '1,/^custom_fields:/d' | \
-		sed -e '/^[a-z]/,$d' > "$f.new"
-	    mv "$f.new" "$f"
-	else
+	if ! run_gcloud_always storage objects describe --format=json "$kernel" > "$f" ; then
 	    rm -f "$f"
 	    exit 1
 	fi
-	if grep -q arch: "$f" ; then
-	    KERNEL_ARCH=$(cat "$f" | grep arch: | sed -e 's/^ *arch: *//')
-	    KERNEL_VERSION=$(cat "$f" | grep ver: | sed -e 's/^ *ver: *//')
-	else
-	    KERNEL_ARCH=$(cat "$f" | grep arch= | sed -e 's/^ *arch=//' \
-						      -e 's/:.*//')
-	    KERNEL_VERSION=$(cat "$f" | grep ver= | sed -e 's/^ *ver=//' \
-							-e 's/:.*//')
-	fi
+	{
+	    IFS= read -r KERNEL_ARCH
+	    IFS= read -r KERNEL_VERSION
+	} < <(jq -r '
+	    (.custom_fields // {}) as $cf |
+	    ($cf.arch // ([ $cf | keys[] | select(startswith("arch=")) | ltrimstr("arch=") ][0]) // ""),
+	    ($cf.ver  // ([ $cf | keys[] | select(startswith("ver="))  | ltrimstr("ver=")  ][0]) // "")
+	' "$f")
 	rm -f "$f"
     else
-	if test ! -f "$KERNEL" ; then
-	    echo "get-kernel-arch: file not found: $KERNEL" >&2
+	if test ! -f "$kernel" ; then
+	    echo "get-kernel-arch: file not found: $kernel" >&2
 	    exit 1
 	fi
-	info=$(file -m "$DIR/util/kernel-magic" "$KERNEL" | sed -e "s;$KERNEL: ;;")
+	local info
+	info=$(file -m "$DIR/util/kernel-magic" "$kernel")
+	info="${info#"$kernel: "}"
 	case "$info" in
 	    "Linux kernel"*)
-		KERNEL_ARCH=$(echo $info | tr A-Z a-z |awk '{print $3}')
-		d=$(dirname $(dirname $(dirname $(dirname "$KERNEL"))))
-		if test -f "$d/.git_version" ; then
-		    KERNEL_VERSION=$(cat "$d/.git_version")
+		KERNEL_ARCH=$(echo "$info" | tr A-Z a-z | awk '{print $3}')
+		local resolved_kernel="$kernel"
+		if command -v realpath > /dev/null 2>&1 ; then
+		    resolved_kernel=$(realpath "$kernel" 2>/dev/null || echo "$kernel")
+		elif command -v readlink > /dev/null 2>&1 ; then
+		    resolved_kernel=$(readlink -f "$kernel" 2>/dev/null || echo "$kernel")
+		fi
+		local d
+		d=$(dirname "$(dirname "$(dirname "$(dirname "$resolved_kernel")")")")
+		if test -s "$d/.git_version" ; then
+		    KERNEL_VERSION=$(head -n 1 "$d/.git_version")
+		elif test -s "$d/include/config/kernel.release" ; then
+		    KERNEL_VERSION=$(head -n 1 "$d/include/config/kernel.release")
+		else
+		    KERNEL_VERSION=$(printf '%s\n' "$info" | \
+			sed -n 's/.*, version \([^, ]*\).*/\1/p')
 		fi
 		if test -f "$d/.config" ; then
 		    if test "$KERNEL_ARCH" = "x86" ; then
@@ -140,13 +149,22 @@ function get_kernel_file_info () {
 		fi
 		;;
 	    "Debian binary package"*)
-		KERNEL_ARCH=$(dpkg -I "$KERNEL" | grep "^ Architecture: " | \
-			   awk '{print $2}')
-		KERNEL_VERSION=$(dpkg -I "$KERNEL" | grep "^ Version: " | \
-			  awk '{print $2}')
+		if command -v dpkg > /dev/null 2>&1 ; then
+		    KERNEL_ARCH=$(dpkg -I "$kernel" | grep "^ Architecture: " | \
+			       awk '{print $2}')
+		    KERNEL_VERSION=$(dpkg -I "$kernel" | grep "^ Version: " | \
+			      awk '{print $2}')
+		elif command -v ar > /dev/null 2>&1 ; then
+		    local ctrl
+		    ctrl=$(ar p "$kernel" control.tar.xz 2>/dev/null | tar -xJf - -O ./control 2>/dev/null || \
+			   ar p "$kernel" control.tar.gz 2>/dev/null | tar -xzf - -O ./control 2>/dev/null || \
+			   ar p "$kernel" control.tar.zst 2>/dev/null | tar --zstd -xf - -O ./control 2>/dev/null)
+		    KERNEL_ARCH=$(printf '%s\n' "$ctrl" | awk '/^Architecture:/{print $2}')
+		    KERNEL_VERSION=$(printf '%s\n' "$ctrl" | awk '/^Version:/{print $2}')
+		fi
 		;;
 	    *)
-		echo "get-kernel-arch $i is not a kernel" >&2
+		echo "get-kernel-arch $kernel is not a kernel" >&2
 		echo "$info"
 		exit 1
 	esac

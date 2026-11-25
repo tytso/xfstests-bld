@@ -291,7 +291,7 @@ class Harness:
         }
         self.save_state()
 
-    def put_gs_object(self, bucket, obj_name, data):
+    def put_gs_object(self, bucket, obj_name, data, custom_fields=None):
         if isinstance(data, str):
             data = data.encode("utf-8")
         self.load_state()
@@ -303,14 +303,24 @@ class Harness:
                 if fld not in binfo["folders"]:
                     binfo["folders"].append(fld)
         prev = binfo["objects"].get(obj_name)
-        binfo["objects"][obj_name] = {
+        entry = {
             "data_b64": base64.b64encode(data).decode("ascii"),
             "md5": base64.b64encode(
                 __import__("hashlib").md5(data).digest()
             ).decode("ascii"),
             "writes": (prev["writes"] if prev else 0) + 1,
         }
+        if custom_fields is not None:
+            entry["custom_fields"] = dict(custom_fields)
+        binfo["objects"][obj_name] = entry
         self.save_state()
+
+    def get_gs_custom_fields(self, bucket, obj_name):
+        self.load_state()
+        obj = self.state["buckets"][bucket]["objects"].get(obj_name)
+        if not obj:
+            return None
+        return obj.get("custom_fields")
 
     def get_gs_object(self, bucket, obj_name):
         self.load_state()
@@ -1453,6 +1463,119 @@ def batch_and_rc_semantics_flat(h):
 def batch_and_rc_semantics_hns(h):
     """Empty dirs, persistent HNS folders, stop-ltm pre-delete, migration (HNS)"""
     _run_batch_and_rc_checks(h, hns=True)
+
+
+def _make_fake_x86_bzimage(path, ver_str="6.12.0-rc1-00012-gabcdef123456"):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    buf = bytearray(1024)
+    buf[510:512] = (0xAA55).to_bytes(2, "little")
+    buf[514:518] = b"HdrS"
+    buf[518:520] = (0x020F).to_bytes(2, "little")
+    buf[526:530] = (0x60).to_bytes(4, "little")
+    buf[529] = 1
+    payload = ("%s (builder@host) #1 SMP PREEMPT_DYNAMIC\x00"
+               % ver_str).encode("ascii")
+    buf[0x260:0x260 + len(payload)] = payload
+    with open(path, "wb") as f:
+        f.write(buf)
+
+
+def _make_fake_arm64_image(path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    buf = bytearray(256)
+    buf[0x38:0x3C] = (0x644D5241).to_bytes(4, "little")
+    with open(path, "wb") as f:
+        f.write(buf)
+
+
+@test
+def kernel_file_info_local_and_gcs_formats(h):
+    """get_kernel_file_info handles raw kernels (.git_version, kernel.release, bzImage) and GCS JSON"""
+    h.create_bucket("bkt", project="proj-a")
+    cli = h.make_client(project="proj-a", bucket="bkt", version="new")
+    rc, out, err = h.run_client(cli, ["setup"])
+    check(rc == 0, out + err)
+
+    # 1. x86 bzImage in build tree: empty .git_version falls back to kernel.release
+    bld_x86 = os.path.join(cli["tmp"], "bld-x86")
+    bz_in_tree = os.path.join(bld_x86, "arch", "x86", "boot", "bzImage")
+    _make_fake_x86_bzimage(bz_in_tree, "6.13.0-header")
+    with open(os.path.join(bld_x86, ".config"), "w") as f:
+        f.write("# Linux/x86_64 6.13.0 Kernel Configuration\n")
+    with open(os.path.join(bld_x86, ".git_version"), "w") as f:
+        f.write("")  # 0-byte .git_version (e.g. failed git describe)
+    krel_path = os.path.join(bld_x86, "include", "config", "kernel.release")
+    os.makedirs(os.path.dirname(krel_path), exist_ok=True)
+    with open(krel_path, "w") as f:
+        f.write("6.13.0-rc2-00005-g112233445566\n")
+
+    rc, out, err = h.run_client(cli, ["get-kernel-info", bz_in_tree])
+    check(rc == 0, out + err)
+    check("KERNEL_ARCH=amd64\nKERNEL_VERSION=6.13.0-rc2-00005-g112233445566\n"
+          == out, "unexpected kernel.release output: %r" % out)
+
+    # Relative path invocation from inside build tree resolves parent dirs
+    rel_env_script = (
+        'cd %s && "$DIR/gce-xfstests" get-kernel-info arch/x86/boot/bzImage\n'
+        % shlex.quote(bld_x86)
+    )
+    rc, out, err = h.run_client_bash(cli, rel_env_script)
+    check(rc == 0, out + err)
+    check("KERNEL_ARCH=amd64\nKERNEL_VERSION=6.13.0-rc2-00005-g112233445566\n"
+          == out, "unexpected relative bzImage output: %r" % out)
+
+    # Non-empty .git_version takes precedence
+    with open(os.path.join(bld_x86, ".git_version"), "w") as f:
+        f.write("v6.13-rc2-5-g112233445566\n")
+    rc, out, err = h.run_client(cli, ["get-kernel-info", bz_in_tree])
+    check(rc == 0, out + err)
+    check("KERNEL_ARCH=amd64\nKERNEL_VERSION=v6.13-rc2-5-g112233445566\n"
+          == out, "unexpected .git_version output: %r" % out)
+
+    # 2. Standalone x86 bzImage outside any build tree extracts version from header
+    standalone_bz = os.path.join(cli["tmp"], "standalone-bzImage")
+    _make_fake_x86_bzimage(standalone_bz, "6.12.7-standalone")
+    rc, out, err = h.run_client(cli, ["get-kernel-info", standalone_bz])
+    check(rc == 0, out + err)
+    check("KERNEL_ARCH=x86\nKERNEL_VERSION=6.12.7-standalone\n" == out,
+          "unexpected standalone bzImage output: %r" % out)
+
+    # 3. ARM64 Image in build tree without .git_version uses kernel.release
+    bld_arm = os.path.join(cli["tmp"], "bld-arm64")
+    arm_img = os.path.join(bld_arm, "arch", "arm64", "boot", "Image")
+    _make_fake_arm64_image(arm_img)
+    arm_krel = os.path.join(bld_arm, "include", "config", "kernel.release")
+    os.makedirs(os.path.dirname(arm_krel), exist_ok=True)
+    with open(arm_krel, "w") as f:
+        f.write("6.13.0-arm64\n")
+    rc, out, err = h.run_client(cli, ["get-kernel-info", arm_img])
+    check(rc == 0, out + err)
+    check("KERNEL_ARCH=arm64\nKERNEL_VERSION=6.13.0-arm64\n" == out,
+          "unexpected arm64 Image output: %r" % out)
+
+    # 4. GCS JSON metadata: YAML-ambiguous '6.12', ver-only, legacy arch=/ver=, empty
+    h.put_gs_object("bkt", "k-float", b"x",
+                    custom_fields={"arch": "amd64", "ver": "6.12"})
+    rc, out, err = h.run_client(cli, ["get-kernel-info", "gs://bkt/k-float"])
+    check(rc == 0 and out == "KERNEL_ARCH=amd64\nKERNEL_VERSION=6.12\n",
+          "unexpected float-like ver output: %r (%s)" % (out, err))
+
+    h.put_gs_object("bkt", "k-ver-only", b"x",
+                    custom_fields={"ver": "1:6.12.0-1"})
+    rc, out, err = h.run_client(cli, ["get-kernel-info", "gs://bkt/k-ver-only"])
+    check(rc == 0 and out == "KERNEL_ARCH=\nKERNEL_VERSION=1:6.12.0-1\n",
+          "unexpected ver-only output: %r (%s)" % (out, err))
+
+    h.put_gs_object("bkt", "k-legacy", b"x",
+                    custom_fields={"arch=arm64": "", "ver=6.1.0": ""})
+    rc, out, err = h.run_client(cli, ["get-kernel-info", "gs://bkt/k-legacy"])
+    check(rc == 0 and out == "KERNEL_ARCH=arm64\nKERNEL_VERSION=6.1.0\n",
+          "unexpected legacy metadata output: %r (%s)" % (out, err))
+
+    h.put_gs_object("bkt", "k-empty", b"x", custom_fields={})
+    rc, out, err = h.run_client(cli, ["get-kernel-info", "gs://bkt/k-empty"])
+    check(rc == 0 and out == "KERNEL_ARCH=\nKERNEL_VERSION=\n",
+          "unexpected empty metadata output: %r (%s)" % (out, err))
 
 
 def main():
