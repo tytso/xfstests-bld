@@ -14,6 +14,8 @@ import (
 	"thunk.org/gce-server/util/git"
 	"thunk.org/gce-server/util/logging"
 	"thunk.org/gce-server/util/server"
+
+	"google.golang.org/api/compute/v1"
 )
 
 func runLocalGit(t *testing.T, dir string, args ...string) string {
@@ -621,5 +623,98 @@ func TestDashedTestIDSplittingForBisectAndWatcher(t *testing.T) {
 	}
 	if forwardedLogID != "test-20261122-amd64-c870e04e" {
 		t.Fatalf("MockRun forwarded log testID = %q, want child ID", forwardedLogID)
+	}
+}
+
+func TestShardApplyInstanceMetadataPopulatesKernelVersion(t *testing.T) {
+	for _, tc := range []struct {
+		in     string
+		want   string
+		wantOK bool
+	}{
+		{
+			"Linux xfstests-ltm-20261125-aa 6.13.0-rc1-00012-gabcdef #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux",
+			"6.13.0-rc1-00012-gabcdef",
+			true,
+		},
+		{"6.12.7", "6.12.7", true},
+		{"", "", false},
+		{"Linux only-two-fields", "", false},
+		{"Linux xfstests-ltm-aa ../bad-version #1 SMP", "", false},
+		{"Linux xfstests-ltm-aa -bad-flag #1 SMP", "", false},
+		{"Darwin host 24.0.0", "", false},
+	} {
+		got, ok := parseMetadataKernelVersion(tc.in)
+		if ok != tc.wantOK || got != tc.want {
+			t.Fatalf("parseMetadataKernelVersion(%q) = (%q, %v), want (%q, %v)",
+				tc.in, got, ok, tc.want, tc.wantOK)
+		}
+	}
+
+	dir := t.TempDir()
+	log := logging.InitLogger(filepath.Join(dir, "run.log"))
+	defer logging.CloseLog(log)
+
+	sharder := &ShardScheduler{
+		testID:        "meta-kver",
+		origCmd:       "gce-xfstests --kernel none smoke",
+		kernelVersion: unknownKernelVersion,
+		testResult:    server.DefaultResult,
+		log:           log,
+		logDir:        dir + "/",
+	}
+	shard := &ShardWorker{
+		sharder:     sharder,
+		shardID:     "aa",
+		config:      "ext4/4k",
+		zone:        "us-central1-f",
+		vmStatus:    "launching",
+		vmtestStart: time.Now().Add(-2 * time.Minute),
+		vmReset:     true,
+		testResult:  server.DefaultResult,
+		log:         log.WithField("shardID", "aa"),
+	}
+
+	// Ensure status appearing before kernel_version in Metadata.Items does not
+	// skip kernel_version parsing, and invalid values are ignored.
+	statusVal := "[ext4/4k] generic/001"
+	badKver := "Linux xfstests-ltm-meta-kver-aa ../evil #1 SMP"
+	shard.applyInstanceMetadata(&compute.Metadata{
+		Items: []*compute.MetadataItems{
+			{Key: "status", Value: &statusVal},
+			{Key: "kernel_version", Value: &badKver},
+		},
+	}, shard.log)
+
+	if got := shard.getStatus(); got != statusVal {
+		t.Fatalf("shard status = %q, want %q", got, statusVal)
+	}
+	if got := sharder.getKernelVersion(); got != unknownKernelVersion {
+		t.Fatalf("expected invalid metadata kernel_version to be ignored, got %q", got)
+	}
+
+	goodKver := "Linux xfstests-ltm-meta-kver-aa 6.13.0-rc3+ #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux"
+	nextStatus := "[ext4/4k] generic/002"
+	shard.applyInstanceMetadata(&compute.Metadata{
+		Items: []*compute.MetadataItems{
+			{Key: "status", Value: &nextStatus},
+			{Key: "kernel_version", Value: &goodKver},
+		},
+	}, shard.log)
+
+	if got := sharder.Info().KernelVersion; got != "6.13.0-rc3+" {
+		t.Fatalf("sharder.Info().KernelVersion = %q, want %q", got, "6.13.0-rc3+")
+	}
+
+	// Once populated, a later shard metadata poll must not overwrite an existing
+	// known kernelVersion (e.g. from get-kernel-info or an earlier shard).
+	laterKver := "Linux xfstests-ltm-meta-kver-ab 6.99.0 #1 SMP"
+	shard.applyInstanceMetadata(&compute.Metadata{
+		Items: []*compute.MetadataItems{
+			{Key: "kernel_version", Value: &laterKver},
+		},
+	}, shard.log)
+	if got := sharder.getKernelVersion(); got != "6.13.0-rc3+" {
+		t.Fatalf("expected existing kernelVersion to be preserved, got %q", got)
 	}
 }

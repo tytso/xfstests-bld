@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -268,19 +269,7 @@ func (shard *ShardWorker) monitor() {
 			shard.vmTerminated = false
 		}
 
-		for _, metaData := range instanceInfo.Metadata.Items {
-			if metaData.Key == "status" && metaData.Value != nil {
-				shard.mu.Lock()
-				if *metaData.Value != shard.vmStatus {
-					shard.vmStatus = *metaData.Value
-					shard.vmtestStart = time.Now()
-					shard.vmReset = false
-					shard.mu.Unlock()
-					break
-				}
-				shard.mu.Unlock()
-			}
-		}
+		shard.applyInstanceMetadata(instanceInfo.Metadata, log)
 		if shard.getStatus() == "launching" {
 			if time.Since(monitorStart) > noStatusTimeout {
 				if !shard.sharder.keepDeadVM {
@@ -358,6 +347,49 @@ func (shard *ShardWorker) updateSerialData(offset int64) int64 {
 	}
 
 	return output.Next
+}
+
+func parseMetadataKernelVersion(raw string) (string, bool) {
+	fields := strings.Fields(raw)
+	var ver string
+	if len(fields) >= 3 && fields[0] == "Linux" {
+		ver = fields[2]
+	} else if len(fields) == 1 {
+		ver = fields[0]
+	} else {
+		return "", false
+	}
+	if err := check.ValidateTestID(ver); err != nil {
+		return "", false
+	}
+	return ver, true
+}
+
+func (shard *ShardWorker) applyInstanceMetadata(metadata *compute.Metadata, log *logrus.Entry) {
+	if metadata == nil {
+		return
+	}
+	for _, metaData := range metadata.Items {
+		if metaData == nil || metaData.Value == nil {
+			continue
+		}
+		switch metaData.Key {
+		case "status":
+			shard.mu.Lock()
+			if *metaData.Value != shard.vmStatus {
+				shard.vmStatus = *metaData.Value
+				shard.vmtestStart = time.Now()
+				shard.vmReset = false
+			}
+			shard.mu.Unlock()
+		case "kernel_version":
+			if ver, ok := parseMetadataKernelVersion(*metaData.Value); ok {
+				if shard.sharder.setKernelVersionIfUnknown(ver) && log != nil {
+					log.WithField("kernelVersion", ver).Info("Updated kernel version from shard metadata")
+				}
+			}
+		}
+	}
 }
 
 func (shard *ShardWorker) shutdownOnTimeout(metadata *compute.Metadata) {

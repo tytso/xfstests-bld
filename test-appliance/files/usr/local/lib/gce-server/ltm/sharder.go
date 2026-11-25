@@ -40,6 +40,7 @@ import (
 
 const genResultsSummaryPath = "/usr/local/bin/gen_results_summary"
 const defaultMonitorTimeout = 1 * time.Hour
+const unknownKernelVersion = "unknown_kernel_version"
 
 // ShardScheduler schedules tests and aggregates reports.
 type ShardScheduler struct {
@@ -196,7 +197,7 @@ func NewShardScheduler(c server.TaskRequest, testID string) (*ShardScheduler, er
 		gsBucket:           gsBucket,
 		bucketSubdir:       bucketSubdir,
 		gsKernel:           c.Options.GsKernel,
-		kernelVersion:      "unknown_kernel_version",
+		kernelVersion:      unknownKernelVersion,
 		kernelArch:         "",
 		arch:               c.Options.Arch,
 		reportReceiver:     c.Options.ReportEmail,
@@ -483,6 +484,19 @@ func (sharder *ShardScheduler) setKernelVersion(v string) {
 	sharder.mu.Lock()
 	sharder.kernelVersion = v
 	sharder.mu.Unlock()
+}
+
+func (sharder *ShardScheduler) setKernelVersionIfUnknown(v string) bool {
+	if err := check.ValidateTestID(v); err != nil {
+		return false
+	}
+	sharder.mu.Lock()
+	defer sharder.mu.Unlock()
+	if sharder.kernelVersion != "" && sharder.kernelVersion != unknownKernelVersion {
+		return false
+	}
+	sharder.kernelVersion = v
+	return true
 }
 
 func (sharder *ShardScheduler) getResult() server.ResultType {
@@ -883,7 +897,7 @@ func (sharder *ShardScheduler) packResults() {
 	kernelVersion := sharder.getKernelVersion()
 	if err := check.ValidateTestID(kernelVersion); err != nil {
 		sharder.log.WithField("kernelVersion", kernelVersion).WithError(err).Warn("Invalid kernelVersion when packing results, using default")
-		kernelVersion = "unknown_kernel_version"
+		kernelVersion = unknownKernelVersion
 	}
 
 	gsPath := fmt.Sprintf("%s/results.%s-%s.%s.tar.xz", sharder.bucketSubdir, server.LTMUserName, sharder.testID, kernelVersion)
