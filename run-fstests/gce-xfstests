@@ -42,6 +42,28 @@ get_remote_hash()
 		      | awk '/^md5_hash:/{print $2}')
 }
 
+build_kernel_gs_meta()
+{
+    gs_meta_kv=
+    gs_meta=
+    if test "$KERNEL_ARCH" = "x86" -a \
+	    \( "$ARCH" = "i386" -o "$ARCH" = "amd64" \) ; then
+	KERNEL_ARCH="$ARCH"
+    fi
+    if test -n "$KERNEL_ARCH" ; then
+	gs_meta_kv="arch=$KERNEL_ARCH"
+    fi
+    if test -n "$KERNEL_VERSION" ; then
+	if test -n "$gs_meta_kv" ; then
+	    gs_meta_kv="${gs_meta_kv},"
+	fi
+	gs_meta_kv="${gs_meta_kv}ver=$KERNEL_VERSION"
+    fi
+    if test -n "$gs_meta_kv" ; then
+	gs_meta="--custom-metadata=${gs_meta_kv}"
+    fi
+}
+
 verify_single_uri()
 {
     if test -z "$URI"
@@ -692,26 +714,11 @@ case "$1" in
 	    exit 1
 	fi
 	get_kernel_file_info "$KERNEL"
-	gs_meta=
-	if test -n "$KERNEL_ARCH" ; then
-	    if test -n "${gs_meta}" ; then
-		gs_meta="${gs_meta},"
-	    fi
-	    gs_meta="${gs_meta}arch=$KERNEL_ARCH"
-	fi
-	if test -n "$KERNEL_VERSION" ; then
-	    if test -n "${gs_meta}" ; then
-		gs_meta="${gs_meta},"
-	    fi
-	    gs_meta="${gs_meta}ver=$KERNEL_VERSION"
-	fi
-	if test -n "${gs_meta}" ; then
-	    gs_meta="--custom-metadata=${gs_meta}"
-	fi
+	build_kernel_gs_meta
 	if test -z "$NO_ACTION" ; then
 	    echo "Uploading $KERNEL to $GS_KERNEL"
 	fi
-	gcs_cp --no-user-output-enabled $gs_meta $KERNEL $GS_KERNEL
+	gcs_cp --no-user-output-enabled $gs_meta "$KERNEL" "$GS_KERNEL"
 	exit $?
 	;;
     launch-ltm)
@@ -926,6 +933,10 @@ case "$OVERRIDE_KERNEL" in
 	;;
 esac
 
+if test -n "$GCE_KERNEL" ; then
+    build_kernel_gs_meta
+fi
+
 if [ -z "$NO_ACTION" -a -n "$GCE_KERNEL" ] || \
    [ -n "$RUN_ON_LTM" -a -n "$GCE_KERNEL" ]
 then
@@ -938,13 +949,25 @@ then
     get_remote_hash "$GS_KERNEL"
     if test "$LOCAL_HASH" != "$REMOTE_HASH"
     then
-	gcs_cp_always "$GCE_KERNEL" "$GS_KERNEL"
+	gcs_cp_always $gs_meta "$GCE_KERNEL" "$GS_KERNEL"
+    elif test -n "$RUN_ON_LTM" -a -n "$gs_meta_kv"
+    then
+	if ! (
+	    orig_arch="$KERNEL_ARCH"
+	    orig_ver="$KERNEL_VERSION"
+	    get_kernel_file_info "$GS_KERNEL"
+	    ( test -z "$orig_arch" -o "$KERNEL_ARCH" = "$orig_arch" ) && \
+		( test -z "$orig_ver" -o "$KERNEL_VERSION" = "$orig_ver" )
+	) ; then
+	    run_gcloud_always storage objects update --no-user-output-enabled \
+		"--update-custom-metadata=${gs_meta_kv}" "$GS_KERNEL"
+	fi
     fi
 fi
 
 if test -n "$NO_ACTION" ; then
     if test -n "$GCE_KERNEL" ; then
-	echo run_gcloud_always storage cp "$GCE_KERNEL" "$GS_KERNEL"
+	echo run_gcloud_always storage cp ${gs_meta:+$gs_meta }"$GCE_KERNEL" "$GS_KERNEL"
     else
 	echo "Using kernel $GS_KERNEL"
     fi

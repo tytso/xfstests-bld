@@ -1578,6 +1578,109 @@ def kernel_file_info_local_and_gcs_formats(h):
           "unexpected empty metadata output: %r (%s)" % (out, err))
 
 
+@test
+def ltm_launch_sets_and_repairs_kernel_metadata(h):
+    """gce-xfstests ltm tags local kernel uploads and repairs untagged cached kernels"""
+    h.create_bucket("bkt", project="proj-a")
+    fake_curl = os.path.join(h.bin, "fake-ltm-curl")
+    curl_log = os.path.join(h.tmp, "ltm_curl.jsonl")
+    h._write_exec(
+        fake_curl,
+        '#!/usr/bin/env python3\n'
+        'import json, sys\n'
+        'argv = sys.argv[1:]\n'
+        'url = argv[-1]\n'
+        'cookie = None\n'
+        'body = None\n'
+        'for i, a in enumerate(argv):\n'
+        '    if a == "-c" and i + 1 < len(argv):\n'
+        '        cookie = argv[i + 1]\n'
+        '    if a == "-d" and i + 1 < len(argv):\n'
+        '        body = argv[i + 1]\n'
+        'if cookie:\n'
+        '    with open(cookie, "w") as f:\n'
+        '        f.write("a.proj-a.gce-xfstests\\tFALSE\\t/\\tTRUE\\t0\\ts\\t1\\n")\n'
+        'with open(%r, "a") as f:\n'
+        '    f.write(json.dumps({"url": url, "body": body}) + "\\n")\n'
+        'if url.endswith("/login"):\n'
+        '    print(json.dumps({"status": True, "msg": "Logged in"}))\n'
+        'else:\n'
+        '    print(json.dumps({"status": True, "test_id": "t1", "msg": "Launching tests"}))\n'
+        % (curl_log,)
+    )
+
+    cli = h.make_client(
+        project="proj-a", bucket="bkt", version="new",
+        extra_cfg="GCE_CURL=%s" % shlex.quote(fake_curl)
+    )
+    # Replace dummy_bz with a valid x86 bzImage in a build tree so arch+ver are known
+    bld_dir = os.path.join(cli["tmp"], "bld-cfg")
+    cfg_bz = os.path.join(bld_dir, "arch", "x86", "boot", "bzImage")
+    _make_fake_x86_bzimage(cfg_bz, "6.14.0-rc1-cfg")
+    with open(os.path.join(bld_dir, ".config"), "w") as f:
+        f.write("# Linux/x86_64 6.14.0 Kernel Configuration\n")
+    with open(cli["cfg"], "a", encoding="utf-8") as f:
+        f.write("GCE_KERNEL=%s\n" % shlex.quote(cfg_bz))
+
+    rc, out, err = h.run_client(cli, ["setup"])
+    check(rc == 0, out + err)
+
+    ltm_inst = os.path.join(cli["rundir"], ".ltm_instance_proj-a")
+    with open(ltm_inst, "w", encoding="utf-8") as f:
+        f.write(
+            'GCE_LTM_SERVER_CERT=%s/.gce_xfstests_cert_proj-a.pem\n'
+            'GCE_LTM_NAME=xfstests-ltm\n'
+            'GCE_LTM_EXT_IP=127.0.0.1\n'
+            'GCE_LTM_PWD=secret\n' % cli["rundir"]
+        )
+
+    # 1. Explicit --kernel <local> uploads <testrunid>-onerun.bzImage WITH metadata
+    override_bz = os.path.join(cli["tmp"], "override-bzImage")
+    _make_fake_x86_bzimage(override_bz, "6.14.2-override")
+    rc, out, err = h.run_client(
+        cli, ["ltm", "--testrunid", "run1", "--kernel", override_bz,
+              "-c", "ext4/4k", "generic/001"])
+    check(rc == 0, "ltm --kernel failed:\n%s\n%s" % (out, err))
+    check(h.get_gs_custom_fields("bkt", "run1-onerun.bzImage") == {
+        "arch": "amd64", "ver": "6.14.2-override"
+    }, "expected metadata on onerun kernel, got: %r"
+       % (h.get_gs_custom_fields("bkt", "run1-onerun.bzImage"),))
+    rc, out, err = h.run_client(
+        cli, ["get-kernel-info", "gs://bkt/run1-onerun.bzImage"])
+    check(rc == 0 and out == "KERNEL_ARCH=amd64\nKERNEL_VERSION=6.14.2-override\n",
+          "get-kernel-info on onerun failed: %r" % out)
+
+    # 2. Seed gs://bkt/bzImage with matching bytes of cfg_bz but NO custom_fields
+    #    (simulating an earlier untagged upload where LOCAL_HASH == REMOTE_HASH).
+    with open(cfg_bz, "rb") as f:
+        cfg_bytes = f.read()
+    h.put_gs_object("bkt", "bzImage", cfg_bytes, custom_fields={})
+    w_before = h.get_gs_writes("bkt", "bzImage")
+
+    rc, out, err = h.run_client(
+        cli, ["ltm", "--testrunid", "run2", "-c", "ext4/4k", "generic/001"])
+    check(rc == 0, "ltm default kernel failed:\n%s\n%s" % (out, err))
+    check(h.get_gs_writes("bkt", "bzImage") == w_before,
+          "expected metadata patch without re-uploading bzImage bytes")
+    check(h.get_gs_custom_fields("bkt", "bzImage") == {
+        "arch": "amd64", "ver": "6.14.0-rc1-cfg"
+    }, "expected repaired metadata on gs://bkt/bzImage, got: %r"
+       % (h.get_gs_custom_fields("bkt", "bzImage"),))
+
+    # 3. Second ltm launch with already-tagged cached kernel should NOT call objects update
+    h.clear_gcloud_log()
+    rc, out, err = h.run_client(
+        cli, ["ltm", "--testrunid", "run3", "-c", "ext4/4k", "generic/001"])
+    check(rc == 0, out + err)
+    update_calls = [
+        c["argv"] for c in h.gcloud_calls()
+        if "objects" in c["argv"] and "update" in c["argv"]
+    ]
+    check(len(update_calls) == 0,
+          "unexpected objects update when metadata already matched: %r"
+          % (update_calls,))
+
+
 def main():
     global verbose
     ap = argparse.ArgumentParser(description=__doc__)
