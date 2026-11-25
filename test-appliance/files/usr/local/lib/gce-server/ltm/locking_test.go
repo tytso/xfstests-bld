@@ -718,3 +718,79 @@ func TestShardApplyInstanceMetadataPopulatesKernelVersion(t *testing.T) {
 		t.Fatalf("expected existing kernelVersion to be preserved, got %q", got)
 	}
 }
+
+func TestAggResultsReadsShardKernelVersionWhenUnknown(t *testing.T) {
+	dir := t.TempDir()
+	log := logging.InitLogger(filepath.Join(dir, "run.log"))
+	defer logging.CloseLog(log)
+
+	makeShard := func(sharder *ShardScheduler, id string, kver string) *ShardWorker {
+		unpacked := filepath.Join(dir, "unpacked-"+id)
+		if err := os.MkdirAll(unpacked, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(unpacked, "kernel_version"), []byte(kver+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		return &ShardWorker{
+			sharder:            sharder,
+			shardID:            id,
+			config:             "ext4/4k",
+			unpackedResultsDir: unpacked,
+			serialOutputPath:   filepath.Join(dir, id+".serial"),
+			log:                log.WithField("shardID", id),
+		}
+	}
+
+	sharder := &ShardScheduler{
+		testID:        "agg-kver",
+		origCmd:       "gce-xfstests -c ext4/4k,ext4/1k smoke",
+		kernelVersion: unknownKernelVersion,
+		testResult:    server.DefaultResult,
+		log:           log,
+		logDir:        dir + "/",
+		aggDir:        filepath.Join(dir, "agg") + "/",
+	}
+	sharder.shards = []*ShardWorker{
+		makeShard(sharder, "aa", "../invalid-version"),
+		makeShard(sharder, "ab", "6.14.0-rc2-00003-gdeadbeef"),
+	}
+
+	sharder.aggResults()
+
+	if got := sharder.getKernelVersion(); got != "6.14.0-rc2-00003-gdeadbeef" {
+		t.Fatalf("aggResults kernelVersion = %q, want %q", got, "6.14.0-rc2-00003-gdeadbeef")
+	}
+
+	// Verify an already-known kernelVersion is not overwritten by aggResults().
+	dir2 := t.TempDir()
+	sharderKnown := &ShardScheduler{
+		testID:        "agg-known",
+		origCmd:       "gce-xfstests -c ext4/4k smoke",
+		kernelVersion: "6.14.0-preknown",
+		testResult:    server.DefaultResult,
+		log:           log,
+		logDir:        dir2 + "/",
+		aggDir:        filepath.Join(dir2, "agg") + "/",
+	}
+	unpackedKnown := filepath.Join(dir2, "unpacked-aa")
+	if err := os.MkdirAll(unpackedKnown, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(unpackedKnown, "kernel_version"), []byte("6.99.0-other\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	sharderKnown.shards = []*ShardWorker{{
+		sharder:            sharderKnown,
+		shardID:            "aa",
+		config:             "ext4/4k",
+		unpackedResultsDir: unpackedKnown,
+		serialOutputPath:   filepath.Join(dir2, "aa.serial"),
+		log:                log.WithField("shardID", "aa"),
+	}}
+
+	sharderKnown.aggResults()
+	if got := sharderKnown.getKernelVersion(); got != "6.14.0-preknown" {
+		t.Fatalf("expected preknown kernelVersion to be preserved, got %q", got)
+	}
+}

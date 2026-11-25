@@ -453,8 +453,9 @@ func (sharder *ShardScheduler) Run() {
 
 	defer logging.CloseLog(sharder.log)
 
-	subject := fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.getKernelVersion())
-	defer email.ReportFailure(sharder.log, sharder.logFile, sharder.reportFailReceiver, subject)
+	defer email.ReportFailureFunc(sharder.log, sharder.logFile, sharder.reportFailReceiver, func() string {
+		return fmt.Sprintf("xfstests failure %s-%s %s", server.LTMUserName, sharder.testID, sharder.getKernelVersion())
+	})
 
 	defer sharder.clean()
 
@@ -602,7 +603,7 @@ func (sharder *ShardScheduler) aggResults() {
 	}
 
 	for _, shard := range sharder.shards {
-		if sharder.getKernelVersion() != "" {
+		if v := sharder.getKernelVersion(); v != "" && v != unknownKernelVersion {
 			break
 		}
 		kernelVersionFile := fmt.Sprintf("%s%s/kernel_version", sharder.aggDir, shard.shardID)
@@ -611,11 +612,10 @@ func (sharder *ShardScheduler) aggResults() {
 			if !check.NoError(err, sharder.log, "Failed to read file") || len(content) == 0 {
 				continue
 			}
-			if err := check.ValidateTestID(content[0]); err != nil {
-				sharder.log.WithField("kernelVersion", content[0]).WithError(err).Warn("Ignoring invalid kernel_version from shard")
+			if !sharder.setKernelVersionIfUnknown(content[0]) {
+				sharder.log.WithField("kernelVersion", content[0]).Warn("Ignoring invalid kernel_version from shard")
 				continue
 			}
-			sharder.setKernelVersion(content[0])
 		}
 	}
 }
